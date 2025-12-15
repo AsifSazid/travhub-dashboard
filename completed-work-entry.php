@@ -892,6 +892,8 @@
             const type = document.getElementById('clientSearchType').value;
             const param = document.getElementById('clientSearchInput').value.trim();
 
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+
             if (!param) {
                 alert('Please enter a search term');
                 return;
@@ -906,19 +908,42 @@
             `;
 
             try {
-                const response = await fetch(`travhub-dashboard.test/travhub/api/2ndservice/client_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`);
+                const response = await fetch(`${proxyUrl}http://103.104.219.3:898/travhub/api/2ndservice/client_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`, {
+                    method: 'GET',
+                    mode: 'cors', // CORS মোড
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    // credentials: 'include' // যদি authentication লাগে
+                });
+
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
+                console.log('Client Data:', data);
 
                 displayClientResults(data);
             } catch (error) {
+                console.error('Error:', error);
                 resultsDiv.innerHTML = `
                     <div class="text-center text-red-500 py-4">
                         <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                        <p>Error fetching results</p>
+                        <p>Error fetching results: ${error.message}</p>
+                        <p class="text-sm mt-2">CORS issue detected. Please try:</p>
+                        <ol class="text-sm text-left mt-2">
+                            <li>1. Check API server CORS configuration</li>
+                            <li>2. Use proxy server</li>
+                            <li>3. Contact API provider</li>
+                        </ol>
                     </div>
                 `;
             }
         }
+
 
         // Vendor Search Function
         async function searchVendors() {
@@ -1047,7 +1072,6 @@
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             initDragDrop();
-            initPasteArea();
         });
     </script>
 </body>
