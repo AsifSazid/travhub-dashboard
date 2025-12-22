@@ -35,6 +35,15 @@
             </li>
 
             <li>
+                <a href="traveler-profile.php"
+                   class="flex items-center p-3 rounded-lg 
+                   <?= $currentPage == 'traveler-profile.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                    <i class="fas fa-users mr-3"></i>
+                    <span class="sidebar-text">Traveller's Profile</span>
+                </a>
+            </li>
+
+            <li>
                 <a href="clients.php"
                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'clients.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">

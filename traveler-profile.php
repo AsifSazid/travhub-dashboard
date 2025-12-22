@@ -152,11 +152,11 @@
                         <!-- Information Tab -->
                         <div id="information" class="tab-content">
                             <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center justify-center h-full">
+                                <div class="flex items-center col-span-2 justify-center h-full">
                                     <div class="text-center">
                                         <i class="fas fa-info-circle text-4xl text-green-500 mb-4"></i>
                                         <h3 class="text-xl font-semibold mb-2">Information Content</h3>
-                                        <p class="text-gray-600">Traveler information will be displayed here</p>
+                                        <?php include('combine-form.php')?>
                                     </div>
                                 </div>
                             </div>
