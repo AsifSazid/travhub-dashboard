@@ -76,8 +76,8 @@
             <div class="flex items-center p-3">
                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">JD</div>
                 <div class="ml-3">
-                    <p class="text-white font-medium">John Doe</p>
-                    <p class="text-gray-400 text-sm">Administrator</p>
+                    <p class="text-white font-medium">Tarekul Islam</p>
+                    <p class="text-gray-400 text-sm">Managing Director</p>
                 </div>
             </div>
         </div>

@@ -69,8 +69,8 @@
         <!-- Desktop user menu -->
         <div class="relative hidden md:block">
             <button id="userMenuBtn" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100">
-                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">JD</div>
-                <span class="text-gray-700 hidden lg:inline">John Doe</span>
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">TI</div>
+                <span class="text-gray-700 hidden lg:inline">Tarekul Islam</span>
                 <i class="fas fa-chevron-down text-gray-500 text-xs"></i>
             </button>
 
@@ -91,8 +91,8 @@
     <div class="flex items-center px-4 py-3 border-b border-gray-200">
         <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">JD</div>
         <div class="ml-3">
-            <p class="text-gray-800 font-medium">John Doe</p>
-            <p class="text-gray-500 text-sm">Administrator</p>
+            <p class="text-gray-800 font-medium">Tarekul Islam</p>
+            <p class="text-gray-500 text-sm">Managing Director</p>
         </div>
     </div>
     <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100">

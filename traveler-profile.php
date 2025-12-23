@@ -90,126 +90,117 @@
     </div>
 
     <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+    <main id="mainContent" class=" pl-64 transition-all duration-300">
         <div class="p-6">
-            <div class="grid grid-cols-6 gap-4">
-                <!-- Full Column: Drag & Drop and Paste Area -->
-                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col" style="min-height: 600px;">
-                    <!-- Header -->
-                    <div class="mb-6">
-                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                            <i class="fas fa-user-circle mr-2 text-purple-600"></i>
-                            Traveler Profile
-                        </h2>
-                        <p class="text-sm text-gray-600">Manage traveler information, documents, and related data</p>
+            <div class="bg-white rounded-lg shadow p-4 flex flex-col h-[400px] md:h-[calc(100vh-8rem)]">
+                <!-- Header -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-user-circle mr-2 text-purple-600"></i>
+                        Traveler Profile
+                    </h2>
+                    <p class="text-sm text-gray-600">Manage traveler information, documents, and related data</p>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div class="border-b border-gray-200 mb-6">
+                    <div class="flex space-x-1 overflow-x-auto custom-scrollbar">
+                        <button class="tab-button flex items-center active" data-tab="documents">
+                            <i class="fas fa-folder mr-2"></i>
+                            Documents
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="information">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Information
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="work-board">
+                            <i class="fas fa-clipboard-list mr-2"></i>
+                            Work Board
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="accounting">
+                            <i class="fas fa-calculator mr-2"></i>
+                            Accounting
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="linked-travellers">
+                            <i class="fas fa-users mr-2"></i>
+                            Linked Travellers
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="credentials">
+                            <i class="fas fa-key mr-2"></i>
+                            Credentials
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Content Area -->
+                <div class="flex-1 overflow-y-auto">
+                    <!-- Documents Tab -->
+                    <div id="documents" class="tab-content active">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center col-span-2 justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Documents Content</h3>
+                                    <p class="text-gray-600">Document management will be displayed here</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Tabs Navigation -->
-                    <div class="border-b border-gray-200 mb-6">
-                        <div class="flex space-x-1 overflow-x-auto custom-scrollbar">
-                            <button class="tab-button flex items-center active" data-tab="documents">
-                                <i class="fas fa-folder mr-2"></i>
-                                Documents
-                            </button>
-                            <button class="tab-button flex items-center" data-tab="information">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                Information
-                            </button>
-                            <button class="tab-button flex items-center" data-tab="work-board">
-                                <i class="fas fa-clipboard-list mr-2"></i>
-                                Work Board
-                            </button>
-                            <button class="tab-button flex items-center" data-tab="accounting">
-                                <i class="fas fa-calculator mr-2"></i>
-                                Accounting
-                            </button>
-                            <button class="tab-button flex items-center" data-tab="linked-travellers">
-                                <i class="fas fa-users mr-2"></i>
-                                Linked Travellers
-                            </button>
-                            <button class="tab-button flex items-center" data-tab="credentials">
-                                <i class="fas fa-key mr-2"></i>
-                                Credentials
-                            </button>
+                    <!-- Information Tab -->
+                    <div id="information" class="tab-content">
+                        <div class="h-full w-full">
+                            <?php include('combine-form.php') ?>
                         </div>
                     </div>
 
-                    <!-- Tab Content Area -->
-                    <div class="flex-1">
-                        <!-- Documents Tab -->
-                        <div id="documents" class="tab-content active">
-                            <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center col-span-2 justify-center h-full">
-                                    <div class="text-center">
-                                        <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
-                                        <h3 class="text-xl font-semibold mb-2">Documents Content</h3>
-                                        <p class="text-gray-600">Document management will be displayed here</p>
-                                    </div>
+                    <!-- Work Board Tab -->
+                    <div id="work-board" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-clipboard-list text-4xl text-purple-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Work Board Content</h3>
+                                    <p class="text-gray-600">Work board tasks will be displayed here</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Information Tab -->
-                        <div id="information" class="tab-content">
-                            <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center col-span-2 justify-center h-full">
-                                    <div class="text-center">
-                                        <i class="fas fa-info-circle text-4xl text-green-500 mb-4"></i>
-                                        <h3 class="text-xl font-semibold mb-2">Information Content</h3>
-                                        <?php include('combine-form.php')?>
-                                    </div>
+                    <!-- Accounting Tab -->
+                    <div id="accounting" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
+                                    <p class="text-gray-600">Financial information will be displayed here</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Work Board Tab -->
-                        <div id="work-board" class="tab-content">
-                            <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center justify-center h-full">
-                                    <div class="text-center">
-                                        <i class="fas fa-clipboard-list text-4xl text-purple-500 mb-4"></i>
-                                        <h3 class="text-xl font-semibold mb-2">Work Board Content</h3>
-                                        <p class="text-gray-600">Work board tasks will be displayed here</p>
-                                    </div>
+                    <!-- Linked Travellers Tab -->
+                    <div id="linked-travellers" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-users text-4xl text-red-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Linked Travellers Content</h3>
+                                    <p class="text-gray-600">Connected travelers will be displayed here</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Accounting Tab -->
-                        <div id="accounting" class="tab-content">
-                            <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center justify-center h-full">
-                                    <div class="text-center">
-                                        <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
-                                        <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
-                                        <p class="text-gray-600">Financial information will be displayed here</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Linked Travellers Tab -->
-                        <div id="linked-travellers" class="tab-content">
-                            <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center justify-center h-full">
-                                    <div class="text-center">
-                                        <i class="fas fa-users text-4xl text-red-500 mb-4"></i>
-                                        <h3 class="text-xl font-semibold mb-2">Linked Travellers Content</h3>
-                                        <p class="text-gray-600">Connected travelers will be displayed here</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Credentials Tab -->
-                        <div id="credentials" class="tab-content">
-                            <div class="grid grid-cols-2 gap-6 h-full">
-                                <div class="flex items-center justify-center h-full">
-                                    <div class="text-center">
-                                        <i class="fas fa-key text-4xl text-indigo-500 mb-4"></i>
-                                        <h3 class="text-xl font-semibold mb-2">Credentials Content</h3>
-                                        <p class="text-gray-600">Login credentials will be displayed here</p>
-                                    </div>
+                    <!-- Credentials Tab -->
+                    <div id="credentials" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-key text-4xl text-indigo-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Credentials Content</h3>
+                                    <p class="text-gray-600">Login credentials will be displayed here</p>
                                 </div>
                             </div>
                         </div>
@@ -221,8 +212,6 @@
 
     <!-- Floating Quick Access Tab -->
     <?php include 'elements/floating-menus.php'; ?>
-
-    <script src="assets/script.js"></script>
 
     <script src="assets/script.js"></script>
 
