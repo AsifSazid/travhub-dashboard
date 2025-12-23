@@ -1,5 +1,4 @@
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;
@@ -95,82 +94,79 @@
             transition: width 0.5s ease-in-out;
         }
     </style>
-    </head>
 
-
-
-        <!-- Header -->
-        <header class="text-center mb-12">
-            <div class="flex items-center justify-center mb-4">
-                <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                    <i class="fas fa-passport text-white text-xl"></i>
-                </div>
-                <h1 class="text-3xl font-bold text-gray-800">Traveller Information Form</h1>
+    <!-- Header -->
+    <header class="text-center mb-12">
+        <div class="flex items-center justify-center mb-4">
+            <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                <i class="fas fa-info-circle text-white text-xl"></i>
             </div>
-        </header>
+            <h1 class="text-3xl font-bold text-gray-800">Traveller Information Form</h1>
+        </div>
+    </header>
 
-        <!-- Main Application Container -->
-        <div class="bg-white rounded-xl shadow-lg">
-            <!-- PNR Display -->
-            <div class="px-8 pt-8 flex justify-between items-center">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Traveller PNR: <span id="pnr-display" class="font-mono text-blue-600"></span></h2>
-                    <p class="text-gray-600 text-sm">Your form data is automatically saved to Local Storage</p>
-                </div>
-                <div class="flex space-x-2">
-                    <button id="save-exit" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 text-sm">
-                        <i class="fas fa-save mr-2"></i>Save & Exit
-                    </button>
-                </div>
+    <!-- Main Application Container -->
+    <div class="bg-white rounded-xl shadow-lg">
+        <!-- PNR Display -->
+        <div class="px-8 pt-8 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Traveller PNR: <span id="pnr-display" class="font-mono text-blue-600"></span></h2>
+                <p class="text-gray-600 text-sm">Your form data is automatically saved to Local Storage</p>
             </div>
-
-            <!-- Progress -->
-            <div class="px-8 pt-4">
-                <div class="flex justify-between mb-2">
-                    <span class="text-sm font-medium text-gray-700">Progress</span>
-                    <span class="text-sm font-medium text-gray-500"><span id="current-step">1</span> of <span id="total-steps">16</span></span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div id="progress-bar" class="bg-green-600 h-2.5 rounded-full progress-bar" style="width: 6.25%"></div>
-                </div>
-            </div>
-
-            <!-- Main Content Area -->
-            <div class="flex flex-col md:flex-row p-8">
-                <!-- Step Navigation Sidebar -->
-                <div class="w-full md:w-1/4 mb-6 md:mb-0 md:pr-6">
-                    <div class="bg-gray-50 rounded-lg p-4 sticky top-4">
-                        <h3 class="font-bold text-gray-800 mb-4 flex items-center">
-                            <i class="fas fa-list-ol mr-2 text-blue-500"></i>
-                            Form Steps
-                        </h3>
-                        <div id="step-navigation" class="space-y-2">
-                            <!-- Step navigation items will be dynamically generated here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Form Steps -->
-                <div id="form-steps" class="w-full md:w-3/4">
-                    <!-- Steps will be dynamically generated here -->
-                </div>
-            </div>
-
-            <!-- Navigation Buttons -->
-            <div class="flex justify-between px-8 pb-8">
-                <button id="prev-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-6 rounded-lg transition duration-300 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i> Previous
-                </button>
-                <div>
-                    <button id="next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300 flex items-center">
-                        Save & Next Step <i class="fas fa-arrow-right ml-2"></i>
-                    </button>
-                </div>
-                <button id="submit-btn" class="hidden bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300">
-                    Submit Form
+            <div class="flex space-x-2">
+                <button id="save-exit" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 text-sm">
+                    <i class="fas fa-save mr-2"></i>Save & Exit
                 </button>
             </div>
         </div>
+
+        <!-- Progress -->
+        <div class="px-8 pt-4">
+            <div class="flex justify-between mb-2">
+                <span class="text-sm font-medium text-gray-700">Progress</span>
+                <span class="text-sm font-medium text-gray-500"><span id="current-step">1</span> of <span id="total-steps">16</span></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="progress-bar" class="bg-green-600 h-2.5 rounded-full progress-bar" style="width: 6.25%"></div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex flex-col md:flex-row p-8">
+            <!-- Step Navigation Sidebar -->
+            <div class="w-full md:w-1/4 mb-6 md:mb-0 md:pr-6">
+                <div class="bg-gray-50 rounded-lg p-4 sticky top-4">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-list-ol mr-2 text-blue-500"></i>
+                        Form Steps
+                    </h3>
+                    <div id="step-navigation" class="space-y-2">
+                        <!-- Step navigation items will be dynamically generated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Steps -->
+            <div id="form-steps" class="w-full md:w-3/4">
+                <!-- Steps will be dynamically generated here -->
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between px-8 pb-8">
+            <button id="prev-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-6 rounded-lg transition duration-300 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Previous
+            </button>
+            <div>
+                <button id="next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300 flex items-center">
+                    Save & Next Step <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+            <button id="submit-btn" class="hidden bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300">
+                Submit Form
+            </button>
+        </div>
+    </div>
 
 
     <script>

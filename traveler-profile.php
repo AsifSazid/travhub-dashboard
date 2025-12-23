@@ -150,7 +150,7 @@
                     <!-- Information Tab -->
                     <div id="information" class="tab-content">
                         <div class="h-full w-full">
-                            <?php include('combine-form.php') ?>
+                            <?php include('tp-combine-form.php') ?> <!-- tp means Traveller Profile -->
                         </div>
                     </div>
 
@@ -182,14 +182,8 @@
 
                     <!-- Linked Travellers Tab -->
                     <div id="linked-travellers" class="tab-content">
-                        <div class="grid grid-cols-2 gap-6 h-full">
-                            <div class="flex items-center justify-center h-full">
-                                <div class="text-center">
-                                    <i class="fas fa-users text-4xl text-red-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Linked Travellers Content</h3>
-                                    <p class="text-gray-600">Connected travelers will be displayed here</p>
-                                </div>
-                            </div>
+                        <div class="h-full w-full">
+                            <?php include('tp-linked-travellers.php') ?> <!-- tp means Traveller Profile -->
                         </div>
                     </div>
 
