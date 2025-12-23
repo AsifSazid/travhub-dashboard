@@ -173,53 +173,182 @@
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
         <div class="p-6">
             <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <!-- Tab Buttons -->
-                    <div class="flex border-b mb-6">
-                        <button
-                            class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
-                            data-tab="generalTab">
-                            <i class="fas fa-info-circle mr-1"></i> General Information
-                        </button>
 
-                        <button
-                            class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-purple-600"
-                            data-tab="taskTab">
-                            <i class="fas fa-tasks mr-1"></i> Task Management
-                        </button>
+                <!-- Full Column: Drag & Drop and Paste Area -->
+                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col" style="min-height: 200px;">
+                    <!-- Header -->
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-file-import mr-2 text-purple-600"></i>
+                            File Management
+                        </h2>
+                        <p class="text-sm text-gray-600">Drag & drop files or paste content from clipboard</p>
                     </div>
 
-                    <!-- ================= TAB CONTENT ================= -->
-
-                    <!-- 🔹 General Information TAB -->
-                    <div id="generalTab" class="tab-content">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-1">
-                            General Information for Completed Work Entry
-                        </h2>
-                        <p class="text-sm text-gray-600 mb-4">Please fill up the form</p>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 my-2">Search Client</label>
-                                <select
-                                    name="client"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                    <option value="">Search For</option>
-                                    <option value="1">Asif M Sazid</option>
-                                    <option value="2">Shahanur Alam</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 my-2">Work Title</label>
-                                <input
-                                    name="work_title"
-                                    placeholder="Write a Work Title"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <!-- Two Column Layout for Drag & Drop -->
+                    <div class="flex-1 grid grid-cols-2 gap-4">
+                        <!-- Left: Drag & Drop Zone -->
+                        <div class="flex flex-col">
+                            <!-- Drag & Drop Zone -->
+                            <div class="drag-drop-area rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center transition duration-300 hover:bg-gray-50"
+                                id="dragDropArea" style="min-height: 80px;">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                                <input type="file" id="fileInput" multiple class="hidden">
+                                <button onclick="document.getElementById('fileInput').click()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
+                                    <i class="fas fa-folder-open mr-2"></i>Browse Files
+                                </button>
                             </div>
 
+                            <!-- Dropped Files List -->
+                            <div class="file-list-container flex-1 overflow-y-auto">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h4 class="font-medium text-gray-700">Dropped Files</h4>
+                                    <span id="fileCount" class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">0 files</span>
+                                </div>
+                                <div id="droppedFilesList" class="space-y-2 custom-scrollbar">
+                                    <div class="text-center text-gray-500 py-4 text-sm">
+                                        <i class="fas fa-file mb-1"></i>
+                                        <p>No files added yet</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- Right: File Upload & Paste Zone -->
+                        <div class="flex flex-col">
+                            <button id="uploadPasteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#6b21a8;color:white;border:none;border-radius:0.25rem;cursor:pointer;">
+                                <i class="fas fa-upload"></i> Save Pasted Content
+                            </button>
 
+                            <textarea id="pasteArea" placeholder="Paste content here" style="width:100%;height:100px;margin-top:0.5rem;padding:0.5rem;border:1px solid #ccc;border-radius:0.25rem;"></textarea>
+
+                            <h4 style="margin-top:1rem;">Pasted Items</h4>
+                            <div id="pastedItemsList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
+                    <h3 class="text-2xl font-bold text-gray-900 text-center border-b pb-4 mb-4">
+                        Financial Transaction Management
+                    </h3>
+
+                    <div class="grid grid-cols-6 gap-4">
+                        <!-- Left Column: Client Search -->
+                        <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
+                            <!-- Header -->
+                            <div class="mb-4">
+                                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                                    <i class="fas fa-user-friends mr-2 text-primary-600"></i>
+                                    Client/traveller Search
+                                </h2>
+                                <p class="text-sm text-gray-600">Search clients by various criteria</p>
+                            </div>
+
+                            <!-- Search Form -->
+                            <div class="mb-4">
+                                <div class="flex space-x-2">
+                                    <select id="serachFor" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        <option value="">Search For</option>
+                                        <option value="client">Client</option>
+                                        <option value="traveller">Traveller</option>
+                                    </select>
+                                    <select id="clientSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        <option value="name">Name</option>
+                                        <option value="phone">Phone</option>
+                                        <option value="email">Email</option>
+                                        <option value="company">Company</option>
+                                        <option value="id">ID</option>
+                                        <option value="position">Position</option>
+                                        <option value="work_name">Work Name</option>
+                                        <option value="vendor_status">Vendor Status</option>
+                                        <option value="phone2">Phone 2</option>
+                                    </select>
+                                    <input type="text" id="clientSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                    <button id="clientSearchBtn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+
+                                </div>
+
+                                <div class="flex space-x-2 my-4">
+                                    <div class="w-2/3">
+                                        <label for="client_purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
+                                        <input type="text" id="client_purpose" name="client_purpose" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2" placeholder="e.g., Initial Payment">
+                                    </div>
+
+                                    <div class="w-1/3">
+                                        <label for="client_amount" class="block text-sm font-medium text-gray-700">Amount (Deposit)</label>
+                                        <input type="number" step="0.01" min="0.01" id="client_amount" name="client_amount" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2" placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <button id="newPurposeForClient" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
+                                    Record Client / Traveler Deposit
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Vendor Search -->
+                        <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
+                            <!-- Header -->
+                            <div class="mb-4">
+                                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                                    <i class="fas fa-building mr-2 text-green-600"></i>
+                                    Vendor Search
+                                </h2>
+                                <p class="text-sm text-gray-600">Search vendors by various criteria</p>
+                            </div>
+
+                            <!-- Search Form -->
+                            <div class="mb-4">
+                                <div class="flex space-x-2">
+                                    <select id="vendorSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        <option value="name">Name</option>
+                                        <option value="phone">Phone</option>
+                                        <option value="email">Email</option>
+                                        <option value="company">Company</option>
+                                        <option value="id">ID</option>
+                                        <option value="position">Position</option>
+                                        <option value="work_name">Work Name</option>
+                                        <option value="vendor_status">Vendor Status</option>
+                                        <option value="phone2">Phone 2</option>
+                                    </select>
+                                    <input type="text" id="vendorSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                    <button id="vendorSearchBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+
+                                </div>
+
+                                <div class="flex space-x-2 my-4">
+                                    <div class="w-2/3">
+                                        <label for="vendor_purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
+                                        <input type="text" id="vendor_purpose" name="vendor_purpose" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2" placeholder="e.g., Service Fee">
+                                    </div>
+
+                                    <div class="w-1/3">
+                                        <label for="vendor_amount" class="block text-sm font-medium text-gray-700">Amount (Withdrawal)</label>
+                                        <input type="number" step="0.01" min="0.01" id="vendor_amount" name="vendor_amount" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2" placeholder="0.00">
+                                    </div>
+
+                                    <div>
+                                        <button id="newPurposeForVendor" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
+                                    Record Vendor Withdrawal
+                                </button>
+                            </div>
+                        </div>
 
                         <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
                             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction Ledger</h2>
@@ -266,188 +395,10 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- 🔹 Task Management TAB -->
-                    <div id="taskTab" class="tab-content hidden">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-1">
-                            Task Management
-                        </h2>
-                        <p class="text-sm text-gray-600 mb-4">
-                            Drag & drop files or paste content from clipboard
-                        </p>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <!-- Left -->
-                            <div>
-                                <div
-                                    id="dragDropArea"
-                                    class="rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center hover:bg-gray-50">
-                                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-                                    <input type="file" id="fileInput" multiple class="hidden">
-                                    <button
-                                        onclick="document.getElementById('fileInput').click()"
-                                        class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                                        <i class="fas fa-folder-open mr-1"></i> Browse Files
-                                    </button>
-                                </div>
-
-                                <textarea
-                                    id="pasteArea"
-                                    placeholder="Paste content here"
-                                    class="w-full h-36 p-2 border-2 border-dashed border-gray-300 rounded"></textarea>
-
-                                <div class="mt-4">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <h4 class="text-sm font-medium">Dropped or Pasted Files</h4>
-                                        <span id="fileCount" class="text-xs bg-gray-200 px-2 py-1 rounded">0 files</span>
-                                    </div>
-                                    <div id="droppedFilesList" class="text-sm text-gray-500">
-                                        No files added yet
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Right -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 my-2">
-                                    Information
-                                </label>
-                                <textarea
-                                    rows="10"
-                                    class="w-full p-2 border rounded-lg"
-                                    placeholder="Write your information"></textarea>
-                            </div>
-                        </div>
-
-
-                        <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <h3 class="text-2xl font-bold text-gray-900 text-center border-b pb-4 mb-4">
-                                Financial Transaction Management
-                            </h3>
-
-                            <div class="grid grid-cols-6 gap-4">
-                                <!-- Left Column: Client Search -->
-                                <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
-                                    <!-- Header -->
-                                    <div class="mb-4">
-                                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                                            <i class="fas fa-user-friends mr-2 text-primary-600"></i>
-                                            Client/traveller Search
-                                        </h2>
-                                        <p class="text-sm text-gray-600">Search clients by various criteria</p>
-                                    </div>
-
-                                    <!-- Search Form -->
-                                    <div class="mb-4">
-                                        <div class="flex space-x-2">
-                                            <select id="serachFor" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                                <option value="">Search For</option>
-                                                <option value="client">Client</option>
-                                                <option value="traveller">Traveller</option>
-                                            </select>
-                                            <select id="clientSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                                <option value="name">Name</option>
-                                                <option value="phone">Phone</option>
-                                                <option value="email">Email</option>
-                                                <option value="company">Company</option>
-                                                <option value="id">ID</option>
-                                                <option value="position">Position</option>
-                                                <option value="work_name">Work Name</option>
-                                                <option value="vendor_status">Vendor Status</option>
-                                                <option value="phone2">Phone 2</option>
-                                            </select>
-                                            <input type="text" id="clientSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                            <button id="clientSearchBtn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-
-                                        </div>
-
-                                        <div class="flex space-x-2 my-4">
-                                            <div class="w-2/3">
-                                                <label for="client_purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
-                                                <input type="text" id="client_purpose" name="client_purpose" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2" placeholder="e.g., Initial Payment">
-                                            </div>
-
-                                            <div class="w-1/3">
-                                                <label for="client_amount" class="block text-sm font-medium text-gray-700">Amount (Deposit)</label>
-                                                <input type="number" step="0.01" min="0.01" id="client_amount" name="client_amount" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2" placeholder="0.00">
-                                            </div>
-                                            <div>
-                                                <button id="newPurposeForClient" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                                    <i class="fas fa-plus"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
-                                            Record Client / Traveler Deposit
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Right Column: Vendor Search -->
-                                <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
-                                    <!-- Header -->
-                                    <div class="mb-4">
-                                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                                            <i class="fas fa-building mr-2 text-green-600"></i>
-                                            Vendor Search
-                                        </h2>
-                                        <p class="text-sm text-gray-600">Search vendors by various criteria</p>
-                                    </div>
-
-                                    <!-- Search Form -->
-                                    <div class="mb-4">
-                                        <div class="flex space-x-2">
-                                            <select id="vendorSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                                <option value="name">Name</option>
-                                                <option value="phone">Phone</option>
-                                                <option value="email">Email</option>
-                                                <option value="company">Company</option>
-                                                <option value="id">ID</option>
-                                                <option value="position">Position</option>
-                                                <option value="work_name">Work Name</option>
-                                                <option value="vendor_status">Vendor Status</option>
-                                                <option value="phone2">Phone 2</option>
-                                            </select>
-                                            <input type="text" id="vendorSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                            <button id="vendorSearchBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-
-                                        </div>
-
-                                        <div class="flex space-x-2 my-4">
-                                            <div class="w-2/3">
-                                                <label for="vendor_purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
-                                                <input type="text" id="vendor_purpose" name="vendor_purpose" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2" placeholder="e.g., Service Fee">
-                                            </div>
-
-                                            <div class="w-1/3">
-                                                <label for="vendor_amount" class="block text-sm font-medium text-gray-700">Amount (Withdrawal)</label>
-                                                <input type="number" step="0.01" min="0.01" id="vendor_amount" name="vendor_amount" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2" placeholder="0.00">
-                                            </div>
-
-                                            <div>
-                                                <button id="newPurposeForVendor" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                                    <i class="fas fa-plus"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
-                                            Record Vendor Withdrawal
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-
             </div>
+        </div>
         </div>
     </main>
 
@@ -490,7 +441,7 @@
                 dragDropArea.classList.remove('dragover');
             });
 
-            // Drop event - FIXED VERSION
+            // Drop event
             dragDropArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 dragDropArea.classList.remove('dragover');
@@ -923,65 +874,90 @@
             }
         }
 
-        // Paste functionality
-        const pasteArea = document.getElementById('pasteArea');
+        // 
+        // Register FilePond plugins
+        FilePond.registerPlugin(
+            FilePondPluginFileValidateType,
+            FilePondPluginFileValidateSize,
+            FilePondPluginImagePreview
+        );
 
-        // Fixed paste event handler
+        // Create FilePond instance
+        const pond = FilePond.create(document.querySelector('#filepond'), {
+            server: {
+                process: {
+                    url: '',
+                    method: 'POST',
+                    withCredentials: false,
+                    headers: {},
+                    timeout: 7000,
+                    onload: (response) => {
+                        const res = JSON.parse(response);
+                        if (res.status === 'success') alert('Files uploaded successfully!');
+                        else alert(res.message);
+                    }
+                }
+            },
+            acceptedFileTypes: ['image/*', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain', 'application/zip'],
+            allowMultiple: true,
+            instantUpload: true
+        });
+
+        // Handle pasted content
+        const pasteArea = document.getElementById('pasteArea');
+        const uploadPasteBtn = document.getElementById('uploadPasteBtn');
+        const pastedItemsList = document.getElementById('pastedItemsList');
+
+        uploadPasteBtn.addEventListener('click', async () => {
+            const content = pasteArea.value.trim();
+            if (!content) {
+                alert('Paste something first');
+                return;
+            }
+            const fd = new FormData();
+            fd.append('pastedContent', content);
+
+            const res = await fetch('', {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.textContent = content.length > 100 ? content.substring(0, 100) + '...' : content;
+                pastedItemsList.appendChild(div);
+                pasteArea.value = '';
+                alert('Pasted content saved!');
+            } else {
+                alert(data.message);
+            }
+        });
+
+        // Optional: handle Ctrl+V paste directly for preview (without saving)
         pasteArea.addEventListener('paste', (e) => {
             const items = e.clipboardData.items;
-
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (item.kind === 'file') {
-                    // Get the file from clipboard
                     const blob = item.getAsFile();
-
-                    // Convert to File object
-                    const file = new File([blob], blob.name || `pasted_file_${Date.now()}`, {
-                        type: blob.type,
-                        lastModified: Date.now()
+                    const url = URL.createObjectURL(blob);
+                    const div = document.createElement('div');
+                    div.className = 'item';
+                    div.innerHTML = `<strong>${blob.name || 'pasted file'}</strong> (<a href="${url}" target="_blank">View</a>)`;
+                    pastedItemsList.appendChild(div);
+                } else if (item.kind === 'string') {
+                    item.getAsString(text => {
+                        if (text.trim() === '') return;
+                        const div = document.createElement('div');
+                        div.className = 'item';
+                        div.textContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+                        pastedItemsList.appendChild(div);
                     });
-
-                    // Add to droppedFiles array
-                    const existingIndex = droppedFiles.findIndex(f => f.name === file.name && f.size === file.size);
-
-                    if (existingIndex === -1) {
-                        droppedFiles.push(file);
-                        addFileToList(file);
-                        updateFileCount();
-                    } else {
-                        alert(`File "${file.name}" already exists!`);
-                    }
                 }
             }
-
-            // Prevent default behavior for files
-            if (items.length > 0) {
-                e.preventDefault();
-            }
         });
-
-        // Tab switching
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Remove active from all buttons
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('border-purple-600', 'text-purple-600');
-                    b.classList.add('text-gray-600');
-                });
-
-                // Add active to clicked button
-                btn.classList.add('border-purple-600', 'text-purple-600');
-
-                // Hide all tab contents
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.classList.add('hidden');
-                });
-
-                // Show selected tab content
-                document.getElementById(btn.dataset.tab).classList.remove('hidden');
-            });
-        });
+        // 
 
         // Client Search Function
         async function searchClients() {
@@ -1004,12 +980,15 @@
             try {
                 const response = await fetch(`http://103.104.219.3:898/travhub/api/2ndservice/client_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`, {
                     method: 'GET',
+                    mode: 'cors', // CORS মোড
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
-                    }
+                    },
+                    // credentials: 'include' // যদি authentication লাগে
                 });
 
+                // Check if response is ok
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -1024,10 +1003,17 @@
                     <div class="text-center text-red-500 py-4">
                         <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
                         <p>Error fetching results: ${error.message}</p>
+                        <p class="text-sm mt-2">CORS issue detected. Please try:</p>
+                        <ol class="text-sm text-left mt-2">
+                            <li>1. Check API server CORS configuration</li>
+                            <li>2. Use proxy server</li>
+                            <li>3. Contact API provider</li>
+                        </ol>
                     </div>
                 `;
             }
         }
+
 
         // Vendor Search Function
         async function searchVendors() {
@@ -1057,6 +1043,12 @@
                     <div class="text-center text-red-500 py-4">
                         <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
                         <p>Error fetching results: ${error.message}</p>
+                        <p class="text-sm mt-2">CORS issue detected. Please try:</p>
+                        <ol class="text-sm text-left mt-2">
+                            <li>1. Check API server CORS configuration</li>
+                            <li>2. Use proxy server</li>
+                            <li>3. Contact API provider</li>
+                        </ol>
                     </div>
                 `;
             }
@@ -1078,7 +1070,7 @@
 
             let html = '<div class="space-y-2">';
 
-            data.forEach((client) => {
+            data.forEach((client, index) => {
                 html += `
                     <div class="search-result-item bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition duration-200">
                         <div class="flex justify-between items-start">
@@ -1117,7 +1109,7 @@
 
             let html = '<div class="space-y-2">';
 
-            data.forEach((vendor) => {
+            data.forEach((vendor, index) => {
                 html += `
                     <div class="search-result-item bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition duration-200">
                         <div class="flex justify-between items-start">
