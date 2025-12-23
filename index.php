@@ -94,7 +94,7 @@ try {
     <?php include 'elements/aside.php'; ?>
 
     <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pb-16 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
+    <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
         <div class="p-3 md:p-6">
             <!-- Kanban Board -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

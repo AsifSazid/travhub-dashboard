@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traveler's Profile</title>
+    <title>Complete Work Entry</title>
     <link rel="icon" type="image/png" href="./assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -175,7 +175,7 @@
             <div class="grid grid-cols-6 gap-4">
 
                 <!-- Full Column: Drag & Drop and Paste Area -->
-                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col" style="min-height: 400px;">
+                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col" style="min-height: 200px;">
                     <!-- Header -->
                     <div class="mb-4">
                         <h2 class="text-lg font-semibold text-gray-800 flex items-center">
@@ -184,29 +184,23 @@
                         </h2>
                         <p class="text-sm text-gray-600">Drag & drop files or paste content from clipboard</p>
                     </div>
-                </div>
 
-                <!-- Full Column: Drag & Drop and Paste Area -->
-                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col" style="min-height: 400px;">
                     <!-- Two Column Layout for Drag & Drop -->
                     <div class="flex-1 grid grid-cols-2 gap-4">
                         <!-- Left: Drag & Drop Zone -->
                         <div class="flex flex-col">
                             <!-- Drag & Drop Zone -->
                             <div class="drag-drop-area rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center transition duration-300 hover:bg-gray-50"
-                                id="dragDropArea" style="min-height: 180px;">
+                                id="dragDropArea" style="min-height: 80px;">
                                 <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-                                <h3 class="text-lg font-medium text-gray-700 mb-1">Drag & Drop Files</h3>
-                                <p class="text-sm text-gray-500 text-center mb-3">or click to browse</p>
                                 <input type="file" id="fileInput" multiple class="hidden">
                                 <button onclick="document.getElementById('fileInput').click()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
                                     <i class="fas fa-folder-open mr-2"></i>Browse Files
                                 </button>
-                                <p class="text-xs text-gray-400 mt-3">Supports all file types</p>
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex space-x-2 mb-4">
+                            <!-- <div class="flex space-x-2 mb-4">
                                 <button onclick="openAllPreviews()" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 text-sm">
                                     <i class="fas fa-external-link-alt mr-2"></i>Open All in New Tabs
                                 </button>
@@ -216,7 +210,7 @@
                                 <button onclick="clearAllFiles()" class="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 text-sm">
                                     <i class="fas fa-trash-alt mr-2"></i>Clear All
                                 </button>
-                            </div>
+                            </div> -->
 
                             <!-- Dropped Files List -->
                             <div class="file-list-container flex-1 overflow-y-auto">
@@ -246,6 +240,90 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Left Column: Client Search -->
+                <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
+                    <!-- Header -->
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-user-friends mr-2 text-primary-600"></i>
+                            Client Search
+                        </h2>
+                        <p class="text-sm text-gray-600">Search clients by various criteria</p>
+                    </div>
+
+                    <!-- Search Form -->
+                    <div class="mb-4">
+                        <div class="flex space-x-2">
+                            <select id="clientSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="name">Name</option>
+                                <option value="phone">Phone</option>
+                                <option value="email">Email</option>
+                                <option value="company">Company</option>
+                                <option value="id">ID</option>
+                                <option value="position">Position</option>
+                                <option value="work_name">Work Name</option>
+                                <option value="vendor_status">Vendor Status</option>
+                                <option value="phone2">Phone 2</option>
+                            </select>
+                            <input type="text" id="clientSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <button id="clientSearchBtn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="clientResults" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50 custom-scrollbar min-h-[200px]">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-search fa-2x mb-2"></i>
+                            <p>Search results will appear here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Vendor Search -->
+                <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
+                    <!-- Header -->
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-building mr-2 text-green-600"></i>
+                            Vendor Search
+                        </h2>
+                        <p class="text-sm text-gray-600">Search vendors by various criteria</p>
+                    </div>
+
+                    <!-- Search Form -->
+                    <div class="mb-4">
+                        <div class="flex space-x-2">
+                            <select id="vendorSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="name">Name</option>
+                                <option value="phone">Phone</option>
+                                <option value="email">Email</option>
+                                <option value="company">Company</option>
+                                <option value="id">ID</option>
+                                <option value="position">Position</option>
+                                <option value="work_name">Work Name</option>
+                                <option value="vendor_status">Vendor Status</option>
+                                <option value="phone2">Phone 2</option>
+                            </select>
+                            <input type="text" id="vendorSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <button id="vendorSearchBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="vendorResults" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50 custom-scrollbar min-h-[200px]">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-search fa-2x mb-2"></i>
+                            <p>Search results will appear here</p>
+                        </div>
+                    </div>
+                </div>
+
+
             </div>
         </div>
         </div>
@@ -257,6 +335,23 @@
     <script src="assets/script.js"></script>
 
     <script>
+        // Search Type Data
+        const searchTypes = {
+            name: 'Name',
+            phone: 'Phone',
+            email: 'Email',
+            company: 'Company',
+            id: 'ID',
+            position: 'Position',
+            work_name: 'Work Name',
+            vendor_status: 'Vendor Status',
+            phone2: 'Phone 2'
+        };
+
+        // File Management Functions
+        let droppedFiles = [];
+        let pastedItems = [];
+
         // Initialize Drag & Drop
         function initDragDrop() {
             const dragDropArea = document.getElementById('dragDropArea');
@@ -766,6 +861,7 @@
             }
         });
 
+        // Optional: handle Ctrl+V paste directly for preview (without saving)
         pasteArea.addEventListener('paste', (e) => {
             const items = e.clipboardData.items;
             for (let i = 0; i < items.length; i++) {
@@ -787,6 +883,193 @@
                     });
                 }
             }
+        });
+        // 
+
+        // Client Search Function
+        async function searchClients() {
+            const type = document.getElementById('clientSearchType').value;
+            const param = document.getElementById('clientSearchInput').value.trim();
+
+            if (!param) {
+                alert('Please enter a search term');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('clientResults');
+            resultsDiv.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    <p class="mt-2 text-gray-600">Searching clients...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`http://103.104.219.3:898/travhub/api/2ndservice/client_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`, {
+                    method: 'GET',
+                    mode: 'cors', // CORS মোড
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    // credentials: 'include' // যদি authentication লাগে
+                });
+
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Client Data:', data);
+
+                displayClientResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-red-500 py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Error fetching results: ${error.message}</p>
+                        <p class="text-sm mt-2">CORS issue detected. Please try:</p>
+                        <ol class="text-sm text-left mt-2">
+                            <li>1. Check API server CORS configuration</li>
+                            <li>2. Use proxy server</li>
+                            <li>3. Contact API provider</li>
+                        </ol>
+                    </div>
+                `;
+            }
+        }
+
+
+        // Vendor Search Function
+        async function searchVendors() {
+            const type = document.getElementById('vendorSearchType').value;
+            const param = document.getElementById('vendorSearchInput').value.trim();
+
+            if (!param) {
+                alert('Please enter a search term');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('vendorResults');
+            resultsDiv.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                    <p class="mt-2 text-gray-600">Searching vendors...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`http://103.104.219.3:898/travhub/api/2ndservice/vendor_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`);
+                const data = await response.json();
+
+                displayVendorResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-red-500 py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Error fetching results: ${error.message}</p>
+                        <p class="text-sm mt-2">CORS issue detected. Please try:</p>
+                        <ol class="text-sm text-left mt-2">
+                            <li>1. Check API server CORS configuration</li>
+                            <li>2. Use proxy server</li>
+                            <li>3. Contact API provider</li>
+                        </ol>
+                    </div>
+                `;
+            }
+        }
+
+        // Display Client Results
+        function displayClientResults(data) {
+            const resultsDiv = document.getElementById('clientResults');
+
+            if (!data || data.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>No clients found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="space-y-2">';
+
+            data.forEach((client, index) => {
+                html += `
+                    <div class="search-result-item bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition duration-200">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-medium text-gray-800">${client.name || 'N/A'}</h4>
+                                <div class="text-sm text-gray-600 mt-1 space-y-1">
+                                    ${client.email ? `<div><i class="fas fa-envelope mr-1"></i> ${client.email}</div>` : ''}
+                                    ${client.phone ? `<div><i class="fas fa-phone mr-1"></i> ${client.phone}</div>` : ''}
+                                    ${client.company ? `<div><i class="fas fa-building mr-1"></i> ${client.company}</div>` : ''}
+                                    ${client.position ? `<div><i class="fas fa-briefcase mr-1"></i> ${client.position}</div>` : ''}
+                                </div>
+                            </div>
+                            <span class="bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded">Client</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // Display Vendor Results
+        function displayVendorResults(data) {
+            const resultsDiv = document.getElementById('vendorResults');
+
+            if (!data || data.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>No vendors found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="space-y-2">';
+
+            data.forEach((vendor, index) => {
+                html += `
+                    <div class="search-result-item bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition duration-200">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-medium text-gray-800">${vendor.name || 'N/A'}</h4>
+                                <div class="text-sm text-gray-600 mt-1 space-y-1">
+                                    ${vendor.email ? `<div><i class="fas fa-envelope mr-1"></i> ${vendor.email}</div>` : ''}
+                                    ${vendor.phone ? `<div><i class="fas fa-phone mr-1"></i> ${vendor.phone}</div>` : ''}
+                                    ${vendor.company ? `<div><i class="fas fa-building mr-1"></i> ${vendor.company}</div>` : ''}
+                                    ${vendor.work_name ? `<div><i class="fas fa-tools mr-1"></i> ${vendor.work_name}</div>` : ''}
+                                    ${vendor.vendor_status ? `<div><i class="fas fa-check-circle mr-1"></i> ${vendor.vendor_status}</div>` : ''}
+                                </div>
+                            </div>
+                            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Vendor</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // Event Listeners
+        document.getElementById('clientSearchBtn').addEventListener('click', searchClients);
+        document.getElementById('vendorSearchBtn').addEventListener('click', searchVendors);
+
+        document.getElementById('clientSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchClients();
+        });
+
+        document.getElementById('vendorSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchVendors();
         });
 
         // Initialize on load
