@@ -1,14 +1,14 @@
 <?php
 
 $host = 'localhost';
-$dbname = 'travhub_workflow';
-$username = 'root';
-$password = '';
+// $dbname = 'travhub_workflow';
+// $username = 'root';
+// $password = '';
 
 // FOR SERVER
-// $dbname = 'sazummec_travhub_dashboard';
-// $username = 'sazummec_common_root';
-// $password = 'C0ww0nR001';
+$dbname = 'sazummec_travhub_dashboard';
+$username = 'sazummec_common_root';
+$password = 'C0ww0nR001';
 
 try {
     $pdo = new PDO(
