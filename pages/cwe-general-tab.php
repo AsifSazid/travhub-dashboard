@@ -1,18 +1,45 @@
 <div id="generalTab" class="tab-content">
-    <h2 class="text-lg font-semibold text-gray-800 mb-1">
-        General Information for Completed Work Entry
-    </h2>
-    <p class="text-sm text-gray-600 mb-4">Please fill up the form</p>
+    <div class="flex items-start gap-4 flex-wrap">
+        <!-- Left content -->
+        <div class="flex-1 min-w-0">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">
+                General Information for Completed Work Entry
+            </h2>
+            <p class="text-sm text-gray-600 mb-4">Please fill up the form</p>
+        </div>
+
+        <!-- Button only on md and above -->
+        <a href="#" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
+            <i class="fas fa-plus-circle mr-3"></i>Add New Client
+        </a>
+    </div>
+
+
 
     <form action="">
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 my-2">Search Client</label>
-                <select name="client" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                    <option value="">Search For</option>
-                    <option value="1">Asif M Sazid</option>
-                    <option value="2">Shahanur Alam</option>
-                </select>
+                <label class="col-span-3 block text-sm font-medium text-gray-700 my-2">Search Client</label>
+
+                <div class="relative w-full">
+                    <div class="flex">
+                        <input
+                            type="text"
+                            id="clientInput"
+                            placeholder="Search for a client..."
+                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            autocomplete="off">
+                        <button
+                            id="dropdownToggle"
+                            class="px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg bg-gray-100 hover:bg-gray-200"
+                            type="button">
+                            ▼
+                        </button>
+                    </div>
+                    <ul id="clientDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto hidden z-50">
+                        <!-- JS will populate options here -->
+                    </ul>
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 my-2">Work Title</label>
@@ -70,3 +97,107 @@
         </div>
     </div>
 </div>
+
+<script>
+    // All API's for this Page
+    const API_URL_FOR_ALL_CLIENTS = "<?php echo $getAllClientsApi; ?>";
+    const API_URL_FOR_WORK_STORE = "<?php echo $storeWorkApi; ?>";
+
+
+    // get client's data
+    const clientInput = document.getElementById('clientInput');
+    const clientDropdown = document.getElementById('clientDropdown');
+    const dropdownToggle = document.getElementById('dropdownToggle');
+
+    let clientsData = [];
+    fetch(API_URL_FOR_ALL_CLIENTS)
+        .then(res => res.json())
+        .then(data => {
+            clientsData = data.clients;
+            renderDropdown(clientsData);
+        })
+        .catch(err => console.error(err));
+
+    function renderDropdown(list) {
+        clientDropdown.innerHTML = '';
+        list.forEach(client => {
+            const li = document.createElement('li');
+            li.textContent = `${client.id} | ${client.name} | ${client.phone}`;
+            li.className = "px-4 py-2 cursor-pointer hover:bg-purple-100";
+            li.addEventListener('click', () => {
+                clientInput.value = li.textContent;
+                clientDropdown.classList.add('hidden');
+            });
+            clientDropdown.appendChild(li);
+        });
+    }
+
+    // Filter on typing
+    clientInput.addEventListener('input', () => {
+        const value = clientInput.value.toLowerCase();
+        const filtered = clientsData.filter(c =>
+            `${c.id} | ${c.name} | ${c.phone}`.toLowerCase().includes(value)
+        );
+        renderDropdown(filtered);
+        clientDropdown.classList.remove('hidden');
+    });
+
+    // Toggle button click
+    dropdownToggle.addEventListener('click', () => {
+        if (clientDropdown.classList.contains('hidden')) {
+            renderDropdown(clientsData);
+            clientDropdown.classList.remove('hidden');
+        } else {
+            clientDropdown.classList.add('hidden');
+        }
+    });
+
+    // Hide dropdown on outside click
+    document.addEventListener('click', (e) => {
+        if (!clientInput.contains(e.target) && !clientDropdown.contains(e.target) && !dropdownToggle.contains(e.target)) {
+            clientDropdown.classList.add('hidden');
+        }
+    });
+
+
+    // store work
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // page reload prevent
+
+        // Get form values
+        const clientValue = document.getElementById('clientInput').value;
+        const workTitle = form.querySelector('input[name="work_title"]').value;
+
+        // Prepare payload
+        const payload = {
+            client: clientValue,
+            work_title: workTitle
+        };
+
+        // Send data to API
+        fetch(API_URL_FOR_WORK_STORE, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('API Response:', data);
+
+                if (data.success) {
+                    alert('Work saved successfully!');
+                    form.reset(); // optional: reset form
+                } else {
+                    alert('Error: ' + (data.message || 'Something went wrong'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Network or server error');
+            });
+    });
+</script>

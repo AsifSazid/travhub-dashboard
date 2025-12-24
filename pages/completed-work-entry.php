@@ -1,3 +1,14 @@
+<?php
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$getAllClientsApi = $ip_port . "api/clients/all-clients.php";
+$storeWorkApi = $ip_port . "api/works/store.php";
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -882,16 +893,16 @@
         }
 
         // Event Listeners
-        document.getElementById('clientSearchBtn').addEventListener('click', searchClients);
-        document.getElementById('vendorSearchBtn').addEventListener('click', searchVendors);
+        // document.getElementById('clientSearchBtn').addEventListener('click', searchClients);
+        // document.getElementById('vendorSearchBtn').addEventListener('click', searchVendors);
 
-        document.getElementById('clientSearchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchClients();
-        });
+        // document.getElementById('clientSearchInput').addEventListener('keypress', (e) => {
+        //     if (e.key === 'Enter') searchClients();
+        // });
 
-        document.getElementById('vendorSearchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchVendors();
-        });
+        // document.getElementById('vendorSearchInput').addEventListener('keypress', (e) => {
+        //     if (e.key === 'Enter') searchVendors();
+        // });
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {

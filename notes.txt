@@ -5,24 +5,40 @@
 |   tp                         |    traveller profile                                                                    |
 |------------------------------|-----------------------------------------------------------------------------------------|
 |------------------------------|-----------------------------------------------------------------------------------------|
-|   tp-combine-form.php        |    traveller profile combine form file that mean tp is for traveller profile            |
+|   tp-combine-form.php        |    traveller profile combine form file that means tp is for traveller profile           |
 |------------------------------|-----------------------------------------------------------------------------------------|
 |------------------------------|-----------------------------------------------------------------------------------------|
-|   tp-documents.php           |    traveller profile documents file that mean tp is for traveller profile               |
+|   tp-documents.php           |    traveller profile documents file that means tp is for traveller profile              |
 |------------------------------|-----------------------------------------------------------------------------------------|
 |------------------------------|-----------------------------------------------------------------------------------------|
-|   tp-work-board.php          |    traveller profile work board file that mean tp is for traveller profile              |
+|   tp-work-board.php          |    traveller profile work board file that means tp is for traveller profile             |
 |------------------------------|-----------------------------------------------------------------------------------------|
 |------------------------------|-----------------------------------------------------------------------------------------|
-|   tp-accounting.php          |    traveller profile accounting file that mean tp is for traveller profile              |
+|   tp-accounting.php          |    traveller profile accounting file that means tp is for traveller profile             |
 |------------------------------|-----------------------------------------------------------------------------------------|
 |------------------------------|-----------------------------------------------------------------------------------------|
-|   tp-linked-travellers.php   |    traveller profile linked traveller file that mean tp is for traveller profile        |
+|   tp-linked-travellers.php   |    traveller profile linked traveller file that means tp is for traveller profile       |
 |------------------------------|-----------------------------------------------------------------------------------------|
 |------------------------------|-----------------------------------------------------------------------------------------|
-|   tp-credentials.php         |    traveller profile credentials file that mean tp is for traveller profile             |
+|   tp-credentials.php         |    traveller profile credentials file that means tp is for traveller profile            |
 |------------------------------|-----------------------------------------------------------------------------------------|
-
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   cwe                        |    completed work entry                                                                 |
+|------------------------------|-----------------------------------------------------------------------------------------|
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   cwe-general-tab.php        |    completed work entry general tab file that means cwe is for completed work entry     |
+|------------------------------|-----------------------------------------------------------------------------------------|
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   cwe-task-mgnt.php          |    completed work entry task management tab file that means cwe is for completed work   |
+|                              |    entry                                                                                |
+|------------------------------|-----------------------------------------------------------------------------------------|
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   cwe_tm                     |    completed work entry - task Management                                               |
+|------------------------------|-----------------------------------------------------------------------------------------|
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   cwe_tm-financial-trxn.php  |    completed work entry task management financial transaction file that means cwe is    |
+|                              |    for completed work entry (task management)                                           |
+|------------------------------|-----------------------------------------------------------------------------------------|
 
 
 
