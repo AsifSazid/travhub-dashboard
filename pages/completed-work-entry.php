@@ -5,11 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Work Entry</title>
-    <link rel="icon" type="image/png" href="./assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <script>
         tailwind.config = {
             theme: {
@@ -206,21 +206,9 @@
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="assets/script.js"></script>
+    <script src="../assets/js/script.js"></script>
 
     <script>
-        // Search Type Data
-        const searchTypes = {
-            name: 'Name',
-            phone: 'Phone',
-            email: 'Email',
-            company: 'Company',
-            id: 'ID',
-            position: 'Position',
-            work_name: 'Work Name',
-            vendor_status: 'Vendor Status',
-            phone2: 'Phone 2'
-        };
 
         // File Management Functions
         let droppedFiles = [];
@@ -655,7 +643,7 @@
             updateFileCount();
 
             const filesList = document.getElementById('droppedFilesList');
-            const fileItems = filesList.get../elementsByClassName('file-item');
+            const fileItems = filesList.getElementsByClassName('file-item');
 
             for (let i = 0; i < fileItems.length; i++) {
                 if (fileItems[i].dataset.fileName === fileName) {
