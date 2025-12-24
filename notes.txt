@@ -22,3 +22,84 @@
 |------------------------------|-----------------------------------------------------------------------------------------|
 |   tp-credentials.php         |    traveller profile credentials file that mean tp is for traveller profile             |
 |------------------------------|-----------------------------------------------------------------------------------------|
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+www/travhub-dashboard(eta k ami root folder dhorlam)
+
+ROOT (Folder)
+    |
+    |--- api (Folder)
+    |        |
+    |        |--- get-all-leads.php
+    |        |--- leads-store.php
+    |
+    |--- assets (Folder)
+    |        |
+    |        |--- css (Folder)
+    |        |      |
+    |        |      |---style.css
+    |        |
+    |        |--- images/logo (Folder)
+    |        |       |
+    |        |       |--- logo.png
+    |        |
+    |        |--- js (Folder)
+    |        |       |
+    |        |       |--- functional (Folder)
+    |        |       |         |
+    |        |       |         |--- dashboard.js
+    |        |       |
+    |        |       |--- script.js
+    |
+    |
+    |          
+    |--- elements (Folder)
+    |        |
+    |        |--- aside.php
+    |        |--- floating-menus.php
+    |        |--- header.php
+    | 
+    |
+    |         
+    |--- pages (Folder)
+    |        |
+    |        |--- index.php
+    |        |--- rest of the files
+    |
+    |
+    |  
+    |--- server (Folder)
+    |        |
+    |        |--- db_connection.php
+    |        |--- uuid_generator.php
+    |
+    |
+    |  
+    |--- uploads (Folder)
+    |
+    |
+    |  
+    |--- .htaccess
+    |--- ippath.txt
+    |--- notes.txt

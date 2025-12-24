@@ -69,10 +69,10 @@
 <body class="bg-gray-50 font-sans">
 
     <!-- Top Navigation -->
-    <?php include 'elements/header.php'; ?>
+    <?php include '../elements/header.php'; ?>
 
     <!-- Sidebar -->
-    <?php include 'elements/aside.php'; ?>
+    <?php include '../elements/aside.php'; ?>
 
     <!-- Preview Modal -->
     <div id="previewModal" class="preview-modal">
@@ -205,7 +205,7 @@
     </main>
 
     <!-- Floating Quick Access Tab -->
-    <?php include 'elements/floating-menus.php'; ?>
+    <?php include '../elements/floating-menus.php'; ?>
 
     <script src="assets/script.js"></script>
 

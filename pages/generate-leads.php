@@ -1,3 +1,14 @@
+<?php
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$leadStore = $ip_port . "api/leads/store.php";
+
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,10 +16,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Service Lead Generation</title>
-    <link rel="icon" type="image/png" href="./assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <script>
         tailwind.config = {
             theme: {
@@ -53,10 +64,10 @@
 
 <body class="bg-gray-50 font-sans">
     <!-- Top Navigation -->
-    <?php include 'elements/header.php'; ?>
+    <?php include '../elements/header.php'; ?>
 
     <!-- Sidebar -->
-    <?php include 'elements/aside.php'; ?>
+    <?php include '../elements/aside.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
@@ -686,7 +697,7 @@
     </main>
 
     <!-- Floating Quick Access Tab -->
-    <?php include 'elements/floating-menus.php'; ?>
+    <?php include '../elements/floating-menus.php'; ?>
 
     <!-- Preview Modal -->
     <div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -711,9 +722,10 @@
         </div>
     </div>
 
-    <script src="assets/script.js"></script>
+    <script src="../assets/js/script.js"></script>
     <!-- Custom JavaScript -->
     <script>
+        const API_LEAD_STORE = "<?php echo $leadStore; ?>";
         // Data Collector Class
         class DataCollector {
             constructor() {
@@ -1431,9 +1443,8 @@
                 };
 
                 // YOUR API ENDPOINT HERE
-                const API_URL = './server/lead-store.php';
 
-                const response = await fetch(API_URL, {
+                const response = await fetch(API_LEAD_STORE, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

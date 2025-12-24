@@ -29,10 +29,10 @@
 
 <body class="bg-gray-50 font-sans">
     <!-- Top Navigation -->
-    <?php include 'elements/header.php'; ?>
+    <?php include '../elements/header.php'; ?>
 
     <!-- Sidebar -->
-    <?php include 'elements/aside.php'; ?>
+    <?php include '../elements/aside.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
@@ -662,7 +662,7 @@
     </main>
 
     <!-- Floating Quick Access Tab -->
-    <?php include 'elements/floating-menus.php'; ?>
+    <?php include '../elements/floating-menus.php'; ?>
 
     <script src="assets/script.js"></script>
     <!-- Custom JavaScript -->
@@ -1098,7 +1098,7 @@
                         if (!select.value) {
                             select.classList.add('border-red-500');
                             isValid = false;
-                            errorMessage = `Please select ${select.previousElementSibling?.textContent?.toLowerCase() || 'required field'}`;
+                            errorMessage = `Please select ${select.previous../elementsibling?.textContent?.toLowerCase() || 'required field'}`;
                         } else {
                             select.classList.remove('border-red-500');
                         }
@@ -1109,7 +1109,7 @@
                         if (!input.value) {
                             input.classList.add('border-red-500');
                             isValid = false;
-                            errorMessage = `Please fill in ${input.previousElementSibling?.textContent?.toLowerCase() || 'required field'}`;
+                            errorMessage = `Please fill in ${input.previous../elementsibling?.textContent?.toLowerCase() || 'required field'}`;
                         } else {
                             input.classList.remove('border-red-500');
                         }

@@ -1,18 +1,11 @@
 <?php
-require 'server/db_connection.php';
-
-try {
-    $stmt = $pdo->prepare("
-            SELECT * FROM leads 
-            WHERE lead_status = ?
-            ORDER BY created_at DESC
-        ");
-    $stmt->execute(['pending']);
-    $leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    echo '<p class="text-red-500">' . $e->getMessage() . '</p>';
-    exit;
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
 }
+
+$getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
+
 ?>
 
 <!DOCTYPE html>
@@ -22,10 +15,10 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="icon" type="image/png" href="./assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         /* Additional styles for lead cards and modal */
         .lead-card {
@@ -88,10 +81,10 @@ try {
 
 <body class="bg-gray-50 font-sans">
     <!-- Top Navigation -->
-    <?php include 'elements/header.php'; ?>
+    <?php include '../elements/header.php'; ?>
 
     <!-- Sidebar -->
-    <?php include 'elements/aside.php'; ?>
+    <?php include '../elements/aside.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
@@ -107,85 +100,13 @@ try {
                         </a>
                     </div>
                     <div id="leadsColumn" class="column-scroll overflow-y-auto flex-grow space-y-2 md:space-y-3">
-                        <?php
-                        if (!empty($leads)) {
-
-                            $index = 0;
-                            $total = count($leads);
-
-                            while ($index < $total) {
-                                $lead = $leads[$index];
-
-                                $clientInfo  = json_decode($lead['client_info'], true);
-                                $serviceData = json_decode($lead['service_data'], true);
-
-                                $name = $clientInfo['name'] ?? 'Unknown';
-                                $email = $clientInfo['email'] ?? 'N/A';
-                                $phone = $clientInfo['phone'] ?? 'N/A';
-
-                                // Service type display
-                                $displayService = 'N/A';
-                                if (!empty($lead['service_type'])) {
-                                    $decodedType = json_decode($lead['service_type'], true);
-                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decodedType)) {
-                                        $displayService = implode(', ', array_map('ucfirst', $decodedType));
-                                    } else {
-                                        $displayService = $lead['service_type'];
-                                    }
-                                }
-
-                                // Country
-                                $country = 'N/A';
-                                if (is_array($serviceData)) {
-                                    foreach ($serviceData as $service) {
-                                        if (!empty($service['country'])) {
-                                            $country = strtoupper($service['country']);
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                $submittedAt = !empty($lead['created_at'])
-                                    ? date("j M, Y", strtotime($lead['created_at']))
-                                    : 'Unknown';
-                        ?>
-                                <div class="kanban-card bg-white p-4 rounded-lg shadow-sm border border-gray-200 lead-card"
-                                    data-lead-id="<?= $lead['id']; ?>"
-                                    data-lead-info='<?= htmlspecialchars(json_encode($lead), ENT_QUOTES, "UTF-8"); ?>'>
-
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <h3 class="font-medium text-gray-800"><?= htmlspecialchars($name); ?></h3>
-
-                                            <p class="text-sm text-gray-600 mt-1">
-                                                <?= htmlspecialchars($displayService); ?>
-                                            </p>
-
-                                            <div class="flex items-center mt-2 text-xs text-gray-500">
-                                                <i class="fas fa-clock mr-1"></i>
-                                                <span><?= $submittedAt; ?></span>
-                                            </div>
-
-                                            <div class="flex items-center mt-1 text-xs text-gray-500">
-                                                <i class="fas fa-map-marker-alt mr-1"></i>
-                                                <span><?= htmlspecialchars($country); ?></span>
-                                            </div>
-                                        </div>
-
-                                        <button class="kanban-btn-move text-gray-400 hover:text-blue-500"
-                                            data-from="leads"
-                                            data-to="newWork">
-                                            <i class="fas fa-arrow-right"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                        <?php
-                                $index++;
-                            }
-                        } else {
-                            echo '<p class="text-gray-500 text-sm">No pending leads found.</p>';
-                        }
-                        ?>
+                        <!-- Leads will be loaded dynamically by JavaScript -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading leads...</span>
+                            </div>
+                            <p class="text-gray-500 text-sm mt-2">Loading leads...</p>
+                        </div>
 
                         <button class="kanban-btn-load-more w-full py-2 bg-white border border-dashed border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                             data-column="leads">
@@ -431,7 +352,7 @@ try {
     </main>
 
     <!-- Floating Quick Access Tab -->
-    <?php include 'elements/floating-menus.php'; ?>
+    <?php include '../elements/floating-menus.php'; ?>
 
     <!-- Lead Details Modal Template -->
     <template id="leadDetailsModalTemplate">
@@ -454,7 +375,7 @@ try {
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Status</p>
-                        <p class="text-sm font-semibold"><span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Lead</span></p>
+                        <p class="text-sm font-semibold my-1"><span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Lead</span></p>
                     </div>
                 </div>
             </div>
@@ -530,8 +451,26 @@ try {
     </div>
 
     <!-- Custom JavaScript Library -->
-    <script src="./assets/script.js"></script>
+    <script>
+        const API_URL_FOR_ALL_LEADS  = "<?php echo $getAllLeadsApi; ?>";           
+    </script>
+        
+    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/functional/dashboard.js"></script>
 
+    <script>
+
+        // Initialize both when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            UIInteractions.init();
+            DashboardApp.init();
+
+            // Optional: Auto-refresh leads every 30 seconds
+            setInterval(() => {
+                DashboardApp.refreshLeads();
+            }, 30000);
+        });
+    </script>
 </body>
 
 </html>

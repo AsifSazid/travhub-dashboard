@@ -23,10 +23,10 @@ if (!$data) {
 }
 
 // DB connection
-require 'db_connection.php';
+require '../../server/db_connection.php';
 
 // UUID generator
-require 'uuid_generator.php';
+require '../../server/uuid_generator.php';
 
 try {
     $uuid = generateUUID();

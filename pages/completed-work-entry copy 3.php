@@ -149,10 +149,10 @@
 
 <body class="bg-gray-50 font-sans">
     <!-- Top Navigation -->
-    <?php include 'elements/header.php'; ?>
+    <?php include '../elements/header.php'; ?>
 
     <!-- Sidebar -->
-    <?php include 'elements/aside.php'; ?>
+    <?php include '../elements/aside.php'; ?>
 
     <!-- Preview Modal -->
     <div id="previewModal" class="preview-modal">
@@ -199,6 +199,19 @@
                                 </button>
                             </div>
 
+                            <!-- Action Buttons -->
+                            <!-- <div class="flex space-x-2 mb-4">
+                                <button onclick="openAllPreviews()" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 text-sm">
+                                    <i class="fas fa-external-link-alt mr-2"></i>Open All in New Tabs
+                                </button>
+                                <button onclick="downloadAllFiles()" class="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 text-sm">
+                                    <i class="fas fa-download mr-2"></i>Download All
+                                </button>
+                                <button onclick="clearAllFiles()" class="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 text-sm">
+                                    <i class="fas fa-trash-alt mr-2"></i>Clear All
+                                </button>
+                            </div> -->
+
                             <!-- Dropped Files List -->
                             <div class="file-list-container flex-1 overflow-y-auto">
                                 <div class="flex justify-between items-center mb-2">
@@ -228,174 +241,88 @@
                     </div>
                 </div>
 
-                <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-                    <h3 class="text-2xl font-bold text-gray-900 text-center border-b pb-4 mb-4">
-                        Financial Transaction Management
-                    </h3>
+                <!-- Left Column: Client Search -->
+                <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
+                    <!-- Header -->
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-user-friends mr-2 text-primary-600"></i>
+                            Client Search
+                        </h2>
+                        <p class="text-sm text-gray-600">Search clients by various criteria</p>
+                    </div>
 
-                    <div class="grid grid-cols-6 gap-4">
-                        <!-- Left Column: Client Search -->
-                        <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <!-- Header -->
-                            <div class="mb-4">
-                                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                                    <i class="fas fa-user-friends mr-2 text-primary-600"></i>
-                                    Client/traveller Search
-                                </h2>
-                                <p class="text-sm text-gray-600">Search clients by various criteria</p>
-                            </div>
-
-                            <!-- Search Form -->
-                            <div class="mb-4">
-                                <div class="flex space-x-2">
-                                    <select id="serachFor" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                        <option value="">Search For</option>
-                                        <option value="client">Client</option>
-                                        <option value="traveller">Traveller</option>
-                                    </select>
-                                    <select id="clientSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                        <option value="name">Name</option>
-                                        <option value="phone">Phone</option>
-                                        <option value="email">Email</option>
-                                        <option value="company">Company</option>
-                                        <option value="id">ID</option>
-                                        <option value="position">Position</option>
-                                        <option value="work_name">Work Name</option>
-                                        <option value="vendor_status">Vendor Status</option>
-                                        <option value="phone2">Phone 2</option>
-                                    </select>
-                                    <input type="text" id="clientSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                    <button id="clientSearchBtn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-
-                                </div>
-
-                                <div class="flex space-x-2 my-4">
-                                    <div class="w-2/3">
-                                        <label for="client_purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
-                                        <input type="text" id="client_purpose" name="client_purpose" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2" placeholder="e.g., Initial Payment">
-                                    </div>
-
-                                    <div class="w-1/3">
-                                        <label for="client_amount" class="block text-sm font-medium text-gray-700">Amount (Deposit)</label>
-                                        <input type="number" step="0.01" min="0.01" id="client_amount" name="client_amount" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2" placeholder="0.00">
-                                    </div>
-                                    <div>
-                                        <button id="newPurposeForClient" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
-                                    Record Client / Traveler Deposit
-                                </button>
-                            </div>
+                    <!-- Search Form -->
+                    <div class="mb-4">
+                        <div class="flex space-x-2">
+                            <select id="clientSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="name">Name</option>
+                                <option value="phone">Phone</option>
+                                <option value="email">Email</option>
+                                <option value="company">Company</option>
+                                <option value="id">ID</option>
+                                <option value="position">Position</option>
+                                <option value="work_name">Work Name</option>
+                                <option value="vendor_status">Vendor Status</option>
+                                <option value="phone2">Phone 2</option>
+                            </select>
+                            <input type="text" id="clientSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <button id="clientSearchBtn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
+                    </div>
 
-                        <!-- Right Column: Vendor Search -->
-                        <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <!-- Header -->
-                            <div class="mb-4">
-                                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                                    <i class="fas fa-building mr-2 text-green-600"></i>
-                                    Vendor Search
-                                </h2>
-                                <p class="text-sm text-gray-600">Search vendors by various criteria</p>
-                            </div>
-
-                            <!-- Search Form -->
-                            <div class="mb-4">
-                                <div class="flex space-x-2">
-                                    <select id="vendorSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                        <option value="name">Name</option>
-                                        <option value="phone">Phone</option>
-                                        <option value="email">Email</option>
-                                        <option value="company">Company</option>
-                                        <option value="id">ID</option>
-                                        <option value="position">Position</option>
-                                        <option value="work_name">Work Name</option>
-                                        <option value="vendor_status">Vendor Status</option>
-                                        <option value="phone2">Phone 2</option>
-                                    </select>
-                                    <input type="text" id="vendorSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                    <button id="vendorSearchBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-
-                                </div>
-
-                                <div class="flex space-x-2 my-4">
-                                    <div class="w-2/3">
-                                        <label for="vendor_purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
-                                        <input type="text" id="vendor_purpose" name="vendor_purpose" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2" placeholder="e.g., Service Fee">
-                                    </div>
-
-                                    <div class="w-1/3">
-                                        <label for="vendor_amount" class="block text-sm font-medium text-gray-700">Amount (Withdrawal)</label>
-                                        <input type="number" step="0.01" min="0.01" id="vendor_amount" name="vendor_amount" required="" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2" placeholder="0.00">
-                                    </div>
-
-                                    <div>
-                                        <button id="newPurposeForVendor" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
-                                    Record Vendor Withdrawal
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction Ledger</h2>
-
-                            <div class="overflow-x-auto table-container">
-                                <table id="ledgerTable" class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client (ID)</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor (ID)</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dir</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-green-600">Deposit (IN)</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-red-600">Withdraw (OUT)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ledgerTableBody" class="bg-white divide-y divide-gray-200">
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2025-11-29 02:06:58</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Best Western Plus Pearl Creek Hotel</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Client: Rony Maldives (13)</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dubai Hotel 7th to 10th August/BestWesternPlusPearlCreekHotel_Dubai_7Aug-10Aug_ShahidulIslam.pdf</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600">
-                                                19200.00
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-600">
-                                                0.00
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot id="ledgerTableFoot">
-                                        <tr class="bg-gray-100 font-bold">
-                                            <td colspan="4" class="px-6 py-4 text-right text-base text-gray-900">Total:</td>
-                                            <td class="px-6 py-4 text-right text-base text-gray-900"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-base text-green-700">
-                                                19200.00 </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-base text-red-700">
-                                                0.00 </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
+                    <!-- Results Container -->
+                    <div id="clientResults" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50 custom-scrollbar min-h-[200px]">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-search fa-2x mb-2"></i>
+                            <p>Search results will appear here</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Right Column: Vendor Search -->
+                <div class="col-span-3 bg-white rounded-lg shadow p-4 flex flex-col">
+                    <!-- Header -->
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-building mr-2 text-green-600"></i>
+                            Vendor Search
+                        </h2>
+                        <p class="text-sm text-gray-600">Search vendors by various criteria</p>
+                    </div>
+
+                    <!-- Search Form -->
+                    <div class="mb-4">
+                        <div class="flex space-x-2">
+                            <select id="vendorSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="name">Name</option>
+                                <option value="phone">Phone</option>
+                                <option value="email">Email</option>
+                                <option value="company">Company</option>
+                                <option value="id">ID</option>
+                                <option value="position">Position</option>
+                                <option value="work_name">Work Name</option>
+                                <option value="vendor_status">Vendor Status</option>
+                                <option value="phone2">Phone 2</option>
+                            </select>
+                            <input type="text" id="vendorSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <button id="vendorSearchBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="vendorResults" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50 custom-scrollbar min-h-[200px]">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-search fa-2x mb-2"></i>
+                            <p>Search results will appear here</p>
+                        </div>
+                    </div>
+                </div>
+
 
             </div>
         </div>
@@ -403,7 +330,7 @@
     </main>
 
     <!-- Floating Quick Access Tab -->
-    <?php include 'elements/floating-menus.php'; ?>
+    <?php include '../elements/floating-menus.php'; ?>
 
     <script src="assets/script.js"></script>
 
@@ -854,7 +781,7 @@
             updateFileCount();
 
             const filesList = document.getElementById('droppedFilesList');
-            const fileItems = filesList.getElementsByClassName('file-item');
+            const fileItems = filesList.get../elementsByClassName('file-item');
 
             for (let i = 0; i < fileItems.length; i++) {
                 if (fileItems[i].dataset.fileName === fileName) {

@@ -8,7 +8,7 @@
         <ul class="space-y-2">
 
             <li>
-                <a href="../index.php"
+                <a href="../pages/index.php"
                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'index.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-home mr-3"></i>
@@ -17,7 +17,7 @@
             </li>
 
             <li>
-                <a href="../generate-leads.php"
+                <a href="../pages/generate-leads.php"
                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-circle-plus mr-3"></i>
