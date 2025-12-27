@@ -5,6 +5,7 @@ if (empty($ip_port)) {
 }
 
 $leadStore = $ip_port . "api/leads/store.php";
+$getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
 ?>
 
@@ -509,19 +510,24 @@ $leadStore = $ip_port . "api/leads/store.php";
                                 </div>
 
                                 <!-- Client Search Section -->
-                                <div id="clientSearchSection" class="mb-2">
-                                    <label class="block text-gray-700 mb-2">Search Client *</label>
-                                    <div class="relative">
-                                        <input type="text" id="clientSearch" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Type client name to search...">
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                            <i class="fas fa-search text-gray-400"></i>
-                                        </div>
-                                        <div id="clientResults" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                            <div class="p-2 hover:bg-gray-100 cursor-pointer">John Doe (john@example.com) [ID: 101]</div>
-                                            <div class="p-2 hover:bg-gray-100 cursor-pointer">Jane Smith (jane@company.com) [ID: 102]</div>
-                                            <div class="p-2 hover:bg-gray-100 cursor-pointer">Robert Johnson (robert@test.com) [ID: 103]</div>
-                                        </div>
+                                <div id="clientSearchSection" class="relative w-full mb-2">
+                                    <div class="flex">
+                                        <input
+                                            type="text"
+                                            id="clientInput"
+                                            placeholder="Search for a client..."
+                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                            autocomplete="off">
+                                        <button
+                                            id="dropdownToggle"
+                                            class="px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg bg-gray-100 hover:bg-gray-200"
+                                            type="button">
+                                            ▼
+                                        </button>
                                     </div>
+                                    <ul id="clientDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto hidden z-50">
+                                        <!-- JS will populate options here -->
+                                    </ul>
                                 </div>
 
                                 <!-- New Client Section -->
@@ -726,6 +732,7 @@ $leadStore = $ip_port . "api/leads/store.php";
     <!-- Custom JavaScript -->
     <script>
         const API_LEAD_STORE = "<?php echo $leadStore; ?>";
+        const API_URL_FOR_ALL_CLIENTS = "<?php echo $getAllClientsApi; ?>";
         // Data Collector Class
         class DataCollector {
             constructor() {
@@ -737,6 +744,11 @@ $leadStore = $ip_port . "api/leads/store.php";
                     leadInfo: {}
                 };
 
+                // Track if client search is initialized
+                this.clientSearchInitialized = false;
+                this.clientsData = [];
+                this.eventListeners = [];
+
                 this.initialize();
             }
 
@@ -746,17 +758,53 @@ $leadStore = $ip_port . "api/leads/store.php";
             }
 
             setupEventListeners() {
-                // Collect data on input changes
-                document.addEventListener('input', () => this.collectAllData());
-                document.addEventListener('change', () => this.collectAllData());
-                document.addEventListener('click', () => setTimeout(() => this.collectAllData(), 100));
+                // Store references for cleanup
+                const collectAllData = () => this.collectAllData();
+                const collectAllDataDelayed = () => setTimeout(() => this.collectAllData(), 100);
+
+                document.addEventListener('input', collectAllData);
+                document.addEventListener('change', collectAllData);
+                document.addEventListener('click', collectAllDataDelayed);
 
                 // Collect on tab change
                 document.querySelectorAll('.tab-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
+                    const tabClickHandler = () => {
                         setTimeout(() => this.collectAllData(), 300);
+                    };
+                    btn.addEventListener('click', tabClickHandler);
+                    this.eventListeners.push({
+                        element: btn,
+                        event: 'click',
+                        handler: tabClickHandler
                     });
                 });
+
+                // Store for cleanup
+                this.eventListeners.push({
+                    element: document,
+                    event: 'input',
+                    handler: collectAllData
+                }, {
+                    element: document,
+                    event: 'change',
+                    handler: collectAllData
+                }, {
+                    element: document,
+                    event: 'click',
+                    handler: collectAllDataDelayed
+                });
+            }
+
+            cleanup() {
+                // Remove all event listeners
+                this.eventListeners.forEach(({
+                    element,
+                    event,
+                    handler
+                }) => {
+                    element.removeEventListener(event, handler);
+                });
+                this.eventListeners = [];
             }
 
             collectAllData() {
@@ -766,18 +814,107 @@ $leadStore = $ip_port . "api/leads/store.php";
                 this.updateServiceTypes();
             }
 
+            async initializeClientSearch() {
+                try {
+                    const response = await fetch(API_URL_FOR_ALL_CLIENTS);
+                    const data = await response.json();
+                    this.clientsData = data.clients || [];
+
+                    const clientInput = document.getElementById('clientInput');
+                    const clientDropdown = document.getElementById('clientDropdown');
+                    const dropdownToggle = document.getElementById('dropdownToggle');
+
+                    if (!clientInput || !clientDropdown || !dropdownToggle) return;
+
+                    const renderDropdown = (list) => {
+                        clientDropdown.innerHTML = '';
+                        list.forEach(client => {
+                            const li = document.createElement('li');
+                            li.textContent = `${client.id} | ${client.name} | ${client.phone}`;
+                            li.className = "px-4 py-2 cursor-pointer hover:bg-purple-100";
+                            li.addEventListener('click', () => {
+                                clientInput.value = li.textContent;
+                                clientDropdown.classList.add('hidden');
+                                this.collectAllData();
+                            });
+                            clientDropdown.appendChild(li);
+                        });
+                    };
+
+                    // Filter on typing
+                    const inputHandler = () => {
+                        const value = clientInput.value.toLowerCase();
+                        const filtered = this.clientsData.filter(c =>
+                            `${c.id} | ${c.name} | ${c.phone}`.toLowerCase().includes(value)
+                        );
+                        renderDropdown(filtered);
+                        clientDropdown.classList.remove('hidden');
+                    };
+
+                    // Toggle button click
+                    const toggleHandler = () => {
+                        if (clientDropdown.classList.contains('hidden')) {
+                            renderDropdown(this.clientsData);
+                            clientDropdown.classList.remove('hidden');
+                        } else {
+                            clientDropdown.classList.add('hidden');
+                        }
+                    };
+
+                    // Hide dropdown on outside click
+                    const outsideClickHandler = (e) => {
+                        if (!clientInput.contains(e.target) &&
+                            !clientDropdown.contains(e.target) &&
+                            !dropdownToggle.contains(e.target)) {
+                            clientDropdown.classList.add('hidden');
+                        }
+                    };
+
+                    clientInput.addEventListener('input', inputHandler);
+                    dropdownToggle.addEventListener('click', toggleHandler);
+                    document.addEventListener('click', outsideClickHandler);
+
+                    // Store for cleanup
+                    this.eventListeners.push({
+                        element: clientInput,
+                        event: 'input',
+                        handler: inputHandler
+                    }, {
+                        element: dropdownToggle,
+                        event: 'click',
+                        handler: toggleHandler
+                    }, {
+                        element: document,
+                        event: 'click',
+                        handler: outsideClickHandler
+                    });
+
+                } catch (err) {
+                    console.error('Failed to load clients:', err);
+                    this.clientsData = [];
+                }
+            }
+
             collectClientInfo() {
                 const isClient = document.getElementById('clientYes')?.checked;
 
                 if (isClient) {
-                    const searchValue = document.getElementById('clientSearch')?.value || '';
-                    const clientId = this.extractClientId(searchValue);
+                    if (!this.clientSearchInitialized) {
+                        this.initializeClientSearch();
+                        this.clientSearchInitialized = true;
+                    }
 
-                    this.collectedData.clientInfo = {
-                        type: 'existing',
-                        searchTerm: searchValue,
-                        clientId: clientId
-                    };
+                    const clientInput = document.getElementById('clientInput');
+                    if (clientInput) {
+                        const clientId = this.extractClientId(clientInput.value);
+                        this.collectedData.clientInfo = {
+                            type: 'existing',
+                            clientId: clientId,
+                            searchValue: clientInput.value,
+                            name: this.extractClientName(clientInput.value),
+                            phone: this.extractClientPhone(clientInput.value)
+                        };
+                    }
                 } else {
                     // Collect phones
                     const phones = [];
@@ -823,12 +960,24 @@ $leadStore = $ip_port . "api/leads/store.php";
             }
 
             extractClientId(searchValue) {
-                const match = searchValue.match(/\[ID:\s*(\d+)\]/);
+                const match = searchValue.match(/(\d+)\s*\|\s*/);
                 return match ? match[1] : null;
             }
 
+            extractClientName(searchValue) {
+                const parts = searchValue.split('|');
+                return parts.length > 1 ? parts[1].trim() : '';
+            }
+
+            extractClientPhone(searchValue) {
+                const parts = searchValue.split('|');
+                return parts.length > 2 ? parts[2].trim() : '';
+            }
+
             collectLeadInfo() {
-                const priority = document.querySelector('input[name="workPriority"]:checked')?.value || 'easy';
+                const priority = document.querySelector('input[name="priority"]:checked')?.value ||
+                    document.querySelector('input[name="workPriority"]:checked')?.value ||
+                    'easy';
 
                 this.collectedData.leadInfo = {
                     conversationNote: document.getElementById('conversationNote')?.value || '',
@@ -863,9 +1012,9 @@ $leadStore = $ip_port . "api/leads/store.php";
 
             collectVisaData() {
                 const form = document.getElementById('visaForm');
-                if (!form || form.classList.contains('hidden')) return {};
+                if (!form || form.classList.contains('hidden')) return null;
 
-                return {
+                const data = {
                     country: form.querySelector('select[data-field="country"]')?.value || '',
                     visaCategory: form.querySelector('select[data-field="visaCategory"]')?.value || '',
                     visaSubCategory: form.querySelector('select[data-field="visaSubCategory"]')?.value || '',
@@ -875,53 +1024,62 @@ $leadStore = $ip_port . "api/leads/store.php";
                     costBearer: form.querySelector('input[data-field="costBearer"]:checked')?.value || '',
                     invitationStatus: form.querySelector('input[data-field="invitationStatus"]:checked')?.value || ''
                 };
+
+                return this.hasServiceData(data, 'visa') ? data : null;
             }
 
             collectHotelData() {
                 const form = document.getElementById('hotelForm');
-                if (!form || form.classList.contains('hidden')) return {};
+                if (!form || form.classList.contains('hidden')) return null;
 
                 const bookings = [];
                 document.querySelectorAll('.hotel-booking-entry').forEach((entry, index) => {
-                    bookings.push({
-                        bookingNumber: index + 1,
-                        checkIn: entry.querySelector('input[data-field="checkIn"]')?.value || '',
-                        checkOut: entry.querySelector('input[data-field="checkOut"]')?.value || '',
-                        pax: parseInt(entry.querySelector('input[data-field="pax"]')?.value) || 1,
-                        rooms: parseInt(entry.querySelector('input[data-field="rooms"]')?.value) || 1,
-                        nights: parseInt(entry.querySelector('input[data-field="nights"]')?.value) || 1,
-                        destination: entry.querySelector('input[data-field="destination"]')?.value || '',
-                        note: entry.querySelector('textarea[data-field="note"]')?.value || ''
-                    });
+                    const checkIn = entry.querySelector('input[data-field="checkIn"]')?.value || '';
+                    const checkOut = entry.querySelector('input[data-field="checkOut"]')?.value || '';
+                    const destination = entry.querySelector('input[data-field="destination"]')?.value || '';
+
+                    if (checkIn || checkOut || destination) {
+                        bookings.push({
+                            bookingNumber: index + 1,
+                            checkIn: checkIn,
+                            checkOut: checkOut,
+                            pax: parseInt(entry.querySelector('input[data-field="pax"]')?.value) || 1,
+                            rooms: parseInt(entry.querySelector('input[data-field="rooms"]')?.value) || 1,
+                            nights: parseInt(entry.querySelector('input[data-field="nights"]')?.value) || 1,
+                            destination: destination,
+                            note: entry.querySelector('textarea[data-field="note"]')?.value || ''
+                        });
+                    }
                 });
 
-                return {
+                const data = {
                     totalBookings: bookings.length,
                     bookings: bookings
                 };
+
+                return this.hasServiceData(data, 'hotel') ? data : null;
             }
 
             collectAirTicketData() {
                 const form = document.getElementById('airForm');
-                if (!form || form.classList.contains('hidden')) return {};
+                if (!form || form.classList.contains('hidden')) return null;
 
                 const routes = [];
                 document.querySelectorAll('.route-field').forEach((route, index) => {
                     const routeInput = route.querySelector('input[data-field="route"]');
                     const dateInput = route.querySelector('input[data-field="dateOfFly"]');
-                    const noteInput = route.querySelector('input[data-field="routeNote"]');
 
-                    if (routeInput || dateInput) {
+                    if (routeInput?.value.trim() || dateInput?.value.trim()) {
                         routes.push({
                             routeNumber: index + 1,
                             route: routeInput?.value || '',
                             dateOfFly: dateInput?.value || '',
-                            note: noteInput?.value || ''
+                            note: route.querySelector('input[data-field="routeNote"]')?.value || ''
                         });
                     }
                 });
 
-                return {
+                const data = {
                     adult: parseInt(form.querySelector('input[data-field="adult"]')?.value) || 0,
                     child: parseInt(form.querySelector('input[data-field="child"]')?.value) || 0,
                     infant: parseInt(form.querySelector('input[data-field="infant"]')?.value) || 0,
@@ -930,13 +1088,15 @@ $leadStore = $ip_port . "api/leads/store.php";
                     dateFlexible: document.getElementById('dateFlexible')?.checked || false,
                     routes: routes
                 };
+
+                return this.hasServiceData(data, 'air') ? data : null;
             }
 
             collectTourPackageData() {
                 const form = document.getElementById('tourForm');
-                if (!form || form.classList.contains('hidden')) return {};
+                if (!form || form.classList.contains('hidden')) return null;
 
-                return {
+                const data = {
                     destination: form.querySelector('select[data-field="destination"]')?.value || '',
                     adult: parseInt(form.querySelector('input[data-field="adult"]')?.value) || 0,
                     child: parseInt(form.querySelector('input[data-field="child"]')?.value) || 0,
@@ -949,6 +1109,8 @@ $leadStore = $ip_port . "api/leads/store.php";
                     totalNights: parseInt(form.querySelector('input[data-field="totalNights"]')?.value) || 1,
                     totalBudget: parseInt(form.querySelector('input[data-field="totalBudget"]')?.value) || 0
                 };
+
+                return this.hasServiceData(data, 'tour') ? data : null;
             }
 
             updateServiceTypes() {
@@ -959,18 +1121,13 @@ $leadStore = $ip_port . "api/leads/store.php";
                     const data = this.collectedData.serviceData[service];
                     if (data && this.hasServiceData(data, service)) {
                         servicesWithData.push(service);
+                    } else {
+                        delete this.collectedData.serviceData[service];
                     }
                 });
 
                 this.collectedData.serviceType = servicesWithData;
                 this.collectedData.serviceCount = servicesWithData.length;
-
-                // Clean up empty service data
-                Object.keys(this.collectedData.serviceData).forEach(service => {
-                    if (!servicesWithData.includes(service)) {
-                        delete this.collectedData.serviceData[service];
-                    }
-                });
             }
 
             hasServiceData(data, serviceType) {
@@ -1009,7 +1166,7 @@ $leadStore = $ip_port . "api/leads/store.php";
             dataCollector = new DataCollector();
 
             // Preview Button
-            document.getElementById('previewDataBtn').addEventListener('click', function() {
+            document.getElementById('previewDataBtn')?.addEventListener('click', function() {
                 if (dataCollector) {
                     const allData = dataCollector.getAllData();
                     showPreview(allData);
@@ -1017,7 +1174,7 @@ $leadStore = $ip_port . "api/leads/store.php";
             });
 
             // Create Lead Button
-            document.getElementById('createLeadBtn').addEventListener('click', async function() {
+            document.getElementById('createLeadBtn')?.addEventListener('click', async function() {
                 if (!validateAllForms()) {
                     alert('Please fill in all required fields (marked with *).');
                     return;
@@ -1028,6 +1185,12 @@ $leadStore = $ip_port . "api/leads/store.php";
 
                     if (allData.serviceCount === 0) {
                         alert('Please fill in at least one service form.');
+                        return;
+                    }
+
+                    // Validate at least one service has data
+                    if (!validateServiceForms()) {
+                        alert('Please fill in required fields in the service forms.');
                         return;
                     }
 
@@ -1044,6 +1207,13 @@ $leadStore = $ip_port . "api/leads/store.php";
                     if (confirm(`Create lead with ${allData.serviceCount} service(s): ${servicesList}?`)) {
                         await submitToAPI(allData);
                     }
+                }
+            });
+
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                if (dataCollector) {
+                    dataCollector.cleanup();
                 }
             });
         });
@@ -1070,8 +1240,12 @@ $leadStore = $ip_port . "api/leads/store.php";
                         content.classList.add('hidden');
                         content.classList.remove('active');
                     });
-                    document.getElementById(tabId + 'Form').classList.remove('hidden');
-                    document.getElementById(tabId + 'Form').classList.add('active');
+
+                    const targetForm = document.getElementById(tabId + 'Form');
+                    if (targetForm) {
+                        targetForm.classList.remove('hidden');
+                        targetForm.classList.add('active');
+                    }
                 });
             });
 
@@ -1082,38 +1256,25 @@ $leadStore = $ip_port . "api/leads/store.php";
             const nonClientSection = document.getElementById('nonClientSection');
 
             function toggleClientSections() {
-                if (clientYes.checked) {
-                    clientSearchSection.classList.remove('hidden');
-                    nonClientSection.classList.add('hidden');
+                if (clientYes && clientYes.checked) {
+                    if (clientSearchSection) clientSearchSection.classList.remove('hidden');
+                    if (nonClientSection) nonClientSection.classList.add('hidden');
                 } else {
-                    clientSearchSection.classList.add('hidden');
-                    nonClientSection.classList.remove('hidden');
+                    if (clientSearchSection) clientSearchSection.classList.add('hidden');
+                    if (nonClientSection) nonClientSection.classList.remove('hidden');
+                }
+
+                // Reset data collector's client search initialization
+                if (dataCollector && !clientYes.checked) {
+                    dataCollector.clientSearchInitialized = false;
                 }
             }
 
-            clientYes.addEventListener('change', toggleClientSections);
-            clientNo.addEventListener('change', toggleClientSections);
-            toggleClientSections();
-
-            // Client Search
-            const clientSearch = document.getElementById('clientSearch');
-            const clientResults = document.getElementById('clientResults');
-
-            clientSearch?.addEventListener('input', function() {
-                if (this.value.length > 1) {
-                    clientResults.classList.remove('hidden');
-                } else {
-                    clientResults.classList.add('hidden');
-                }
-            });
-
-            // Select client from results
-            clientResults?.querySelectorAll('div').forEach(item => {
-                item.addEventListener('click', function() {
-                    clientSearch.value = this.textContent;
-                    clientResults.classList.add('hidden');
-                });
-            });
+            if (clientYes && clientNo) {
+                clientYes.addEventListener('change', toggleClientSections);
+                clientNo.addEventListener('change', toggleClientSections);
+                toggleClientSections();
+            }
 
             // Set min date to today
             const today = new Date().toISOString().split('T')[0];
@@ -1144,13 +1305,17 @@ $leadStore = $ip_port . "api/leads/store.php";
             const tourDateFlexible = document.getElementById('tourDateFlexible');
             const tourFlexibleStatus = document.getElementById('tourFlexibleStatus');
 
-            dateFlexible?.addEventListener('change', function() {
-                flexibleStatus.textContent = this.checked ? 'Yes' : 'No';
-            });
+            if (dateFlexible && flexibleStatus) {
+                dateFlexible.addEventListener('change', function() {
+                    flexibleStatus.textContent = this.checked ? 'Yes' : 'No';
+                });
+            }
 
-            tourDateFlexible?.addEventListener('change', function() {
-                tourFlexibleStatus.textContent = this.checked ? 'Yes' : 'No';
-            });
+            if (tourDateFlexible && tourFlexibleStatus) {
+                tourDateFlexible.addEventListener('change', function() {
+                    tourFlexibleStatus.textContent = this.checked ? 'Yes' : 'No';
+                });
+            }
         }
 
         function addHotelBooking() {
@@ -1384,44 +1549,181 @@ $leadStore = $ip_port . "api/leads/store.php";
             let isValid = true;
 
             // Validate conversation note
-            // const conversationNote = document.getElementById('conversationNote');
-            // if (!conversationNote.value.trim()) {
-            //     conversationNote.classList.add('border-red-500');
-            //     isValid = false;
-            // } else {
-            //     conversationNote.classList.remove('border-red-500');
-            // }
+            const conversationNote = document.getElementById('conversationNote');
+            if (conversationNote && !conversationNote.value.trim()) {
+                conversationNote.classList.add('border-red-500');
+                isValid = false;
+            } else if (conversationNote) {
+                conversationNote.classList.remove('border-red-500');
+            }
 
             // Validate client info
-            if (document.getElementById('clientYes').checked) {
-                const clientSearch = document.getElementById('clientSearch');
-                if (!clientSearch.value.trim()) {
-                    clientSearch.classList.add('border-red-500');
+            if (document.getElementById('clientYes')?.checked) {
+                const clientInput = document.getElementById('clientInput');
+                if (clientInput && !clientInput.value.trim()) {
+                    clientInput.classList.add('border-red-500');
                     isValid = false;
-                } else {
-                    clientSearch.classList.remove('border-red-500');
+                } else if (clientInput) {
+                    clientInput.classList.remove('border-red-500');
                 }
             } else {
                 const newClientName = document.getElementById('newClientName');
-                if (!newClientName.value.trim()) {
+                if (newClientName && !newClientName.value.trim()) {
                     newClientName.classList.add('border-red-500');
                     isValid = false;
-                } else {
+                } else if (newClientName) {
                     newClientName.classList.remove('border-red-500');
                 }
             }
 
-            // Validate work priority
-            const workPriority = document.querySelector('input[name="workPriority"]:checked');
-            if (!workPriority) {
+            // Validate work priority - check both possible names
+            const priority = document.querySelector('input[name="priority"]:checked') ||
+                document.querySelector('input[name="workPriority"]:checked');
+            if (!priority) {
+                // Highlight priority field
+                document.querySelectorAll('input[name="priority"], input[name="workPriority"]').forEach(el => {
+                    el.closest('.flex')?.classList.add('border-red-500', 'p-2', 'rounded');
+                });
                 isValid = false;
+            } else {
+                document.querySelectorAll('input[name="priority"], input[name="workPriority"]').forEach(el => {
+                    el.closest('.flex')?.classList.remove('border-red-500', 'p-2', 'rounded');
+                });
             }
+
+            return isValid;
+        }
+
+        function validateServiceForms() {
+            const activeTab = document.querySelector('.tab-content:not(.hidden)');
+            if (!activeTab) return false;
+
+            const service = activeTab.id.replace('Form', '');
+            let isValid = true;
+
+            switch (service) {
+                case 'visa':
+                    isValid = validateVisaForm();
+                    break;
+                case 'hotel':
+                    isValid = validateHotelForm();
+                    break;
+                case 'air':
+                    isValid = validateAirForm();
+                    break;
+                case 'tour':
+                    isValid = validateTourForm();
+                    break;
+            }
+
+            return isValid;
+        }
+
+        function validateVisaForm() {
+            const form = document.getElementById('visaForm');
+            if (!form || form.classList.contains('hidden')) return false;
+
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    field.classList.remove('border-red-500');
+                }
+            });
+
+            return isValid;
+        }
+
+        function validateHotelForm() {
+            const form = document.getElementById('hotelForm');
+            if (!form || form.classList.contains('hidden')) return false;
+
+            const bookings = form.querySelectorAll('.hotel-booking-entry');
+            if (bookings.length === 0) return false;
+
+            let isValid = true;
+            bookings.forEach(booking => {
+                const requiredFields = booking.querySelectorAll('[required]');
+                requiredFields.forEach(field => {
+                    if (!field.value.trim()) {
+                        field.classList.add('border-red-500');
+                        isValid = false;
+                    } else {
+                        field.classList.remove('border-red-500');
+                    }
+                });
+            });
+
+            return isValid;
+        }
+
+        function validateAirForm() {
+            const form = document.getElementById('airForm');
+            if (!form || form.classList.contains('hidden')) return false;
+
+            let isValid = true;
+
+            // Check at least one passenger
+            const adult = parseInt(form.querySelector('input[data-field="adult"]')?.value) || 0;
+            const child = parseInt(form.querySelector('input[data-field="child"]')?.value) || 0;
+            const infant = parseInt(form.querySelector('input[data-field="infant"]')?.value) || 0;
+
+            if (adult + child + infant === 0) {
+                alert('Please enter at least one passenger');
+                return false;
+            }
+
+            // Check routes
+            const routes = form.querySelectorAll('.route-field');
+            if (routes.length === 0) {
+                alert('Please add at least one route');
+                return false;
+            }
+
+            routes.forEach(route => {
+                const routeInput = route.querySelector('input[data-field="route"]');
+                const dateInput = route.querySelector('input[data-field="dateOfFly"]');
+
+                if (!routeInput.value.trim() || !dateInput.value.trim()) {
+                    routeInput?.classList.add('border-red-500');
+                    dateInput?.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    routeInput?.classList.remove('border-red-500');
+                    dateInput?.classList.remove('border-red-500');
+                }
+            });
+
+            return isValid;
+        }
+
+        function validateTourForm() {
+            const form = document.getElementById('tourForm');
+            if (!form || form.classList.contains('hidden')) return false;
+
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    field.classList.remove('border-red-500');
+                }
+            });
 
             return isValid;
         }
 
         async function submitToAPI(formData) {
             const btn = document.getElementById('createLeadBtn');
+            if (!btn) return;
+
             const originalText = btn.innerHTML;
 
             // Show loading
@@ -1442,7 +1744,7 @@ $leadStore = $ip_port . "api/leads/store.php";
                     }
                 };
 
-                // YOUR API ENDPOINT HERE
+                console.log('Submitting data:', finalData);
 
                 const response = await fetch(API_LEAD_STORE, {
                     method: 'POST',
@@ -1452,19 +1754,20 @@ $leadStore = $ip_port . "api/leads/store.php";
                     },
                     body: JSON.stringify(finalData)
                 });
-                
+
                 if (response.ok) {
                     const result = await response.json();
                     showSuccess(`Lead created successfully! Lead ID: ${result.leadId || 'N/A'}`);
-                    // Reset forms if needed
-                    // resetForms();
+                    // Optionally reset form
+                    resetForm();
                 } else {
-                    throw new Error('Failed to create lead');
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
                 }
 
             } catch (error) {
                 console.error('Error:', error);
-                // showError('Failed to create lead. Please try again.');
+                showError('Failed to create lead. Please try again. Error: ' + error.message);
 
                 // Save locally if offline
                 if (error.message.includes('network') || !navigator.onLine) {
@@ -1480,10 +1783,12 @@ $leadStore = $ip_port . "api/leads/store.php";
 
         function showSuccess(message) {
             alert('Success: ' + message);
+            // Optional: Show nice toast notification
         }
 
         function showError(message) {
             alert('Error: ' + message);
+            // Optional: Show nice error notification
         }
 
         function showOfflineMessage() {
@@ -1491,31 +1796,96 @@ $leadStore = $ip_port . "api/leads/store.php";
         }
 
         function saveDataLocally(data) {
-            const pending = JSON.parse(localStorage.getItem('pendingLeads') || '[]');
-            pending.push({
-                data: data,
-                timestamp: new Date().toISOString()
-            });
-            localStorage.setItem('pendingLeads', JSON.stringify(pending));
+            try {
+                const pending = JSON.parse(localStorage.getItem('pendingLeads') || '[]');
+                pending.push({
+                    data: data,
+                    timestamp: new Date().toISOString(),
+                    id: Date.now()
+                });
+                localStorage.setItem('pendingLeads', JSON.stringify(pending));
+                console.log('Saved locally:', data);
+            } catch (e) {
+                console.error('Failed to save locally:', e);
+            }
         }
 
         function showPreview(data) {
             const modal = document.getElementById('previewModal');
             const content = document.getElementById('previewContent');
 
+            if (!modal || !content) return;
+
             content.textContent = JSON.stringify(data, null, 2);
             modal.classList.remove('hidden');
         }
 
         function closePreview() {
-            document.getElementById('previewModal').classList.add('hidden');
+            const modal = document.getElementById('previewModal');
+            if (modal) modal.classList.add('hidden');
         }
 
         function copyPreviewData() {
-            const content = document.getElementById('previewContent').textContent;
-            navigator.clipboard.writeText(content).then(() => {
+            const content = document.getElementById('previewContent');
+            if (!content) return;
+
+            navigator.clipboard.writeText(content.textContent).then(() => {
                 alert('JSON copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
             });
+        }
+
+        function resetForm() {
+            // Reset all form fields
+            document.querySelectorAll('form input, form select, form textarea').forEach(field => {
+                if (field.type !== 'button' && field.type !== 'submit') {
+                    field.value = '';
+                }
+            });
+
+            // Reset to today's date for date fields
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('input[type="date"]').forEach(input => {
+                input.value = today;
+            });
+
+            // Reset dynamic fields
+            document.getElementById('hotelBookingsContainer').innerHTML = '';
+            document.getElementById('routeFieldsContainer').innerHTML = '';
+            document.getElementById('phoneFieldsContainer').innerHTML = `
+        <div class="phone-field flex gap-2 mb-2">
+            <div class="flex-1">
+                <select name="phoneType[]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm">
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="primary">Primary</option>
+                    <option value="secondary">Secondary</option>
+                </select>
+            </div>
+            <div class="flex-1">
+                <input type="tel" name="phoneNumber[]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm" placeholder="Phone number">
+            </div>
+            <div class="w-10 flex items-center">
+                <button type="button" class="remove-phone-btn text-red-600 hover:text-red-800 p-1 rounded-lg hover:bg-red-50" style="display: none;">
+                    <i class="fas fa-trash text-sm"></i>
+                </button>
+            </div>
+        </div>
+    `;
+
+            // Reset tabs to first one
+            document.querySelector('.tab-btn').click();
+
+            // Reset data collector
+            if (dataCollector) {
+                dataCollector.collectedData = {
+                    serviceCount: 0,
+                    serviceType: [],
+                    clientInfo: {},
+                    serviceData: {},
+                    leadInfo: {}
+                };
+            }
         }
     </script>
 </body>
