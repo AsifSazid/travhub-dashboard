@@ -14,8 +14,6 @@
         </a>
     </div>
 
-
-
     <form action="">
         <div class="grid grid-cols-2 gap-4">
             <div>
@@ -53,46 +51,21 @@
     <hr class="my-6">
 
     <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction Ledger</h2>
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Work Lists</h2>
 
         <div class="overflow-x-auto table-container">
-            <table id="ledgerTable" class="min-w-full divide-y divide-gray-200">
+            <table id="workTable" class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client (ID)</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor (ID)</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dir</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-green-600">Deposit (IN)</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-red-600">Withdraw (OUT)</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Title</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work For (Client)</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Files</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
-                <tbody id="ledgerTableBody" class="bg-white divide-y divide-gray-200">
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2025-11-29 02:06:58</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Best Western Plus Pearl Creek Hotel</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Client: Rony Maldives (13)</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dubai Hotel 7th to 10th August/BestWesternPlusPearlCreekHotel_Dubai_7Aug-10Aug_ShahidulIslam.pdf</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600">
-                            19200.00
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-600">
-                            0.00
-                        </td>
-                    </tr>
+                <tbody id="workTableBody" class="bg-white divide-y divide-gray-200">
                 </tbody>
-                <tfoot id="ledgerTableFoot">
-                    <tr class="bg-gray-100 font-bold">
-                        <td colspan="4" class="px-6 py-4 text-right text-base text-gray-900">Total:</td>
-                        <td class="px-6 py-4 text-right text-base text-gray-900"></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-base text-green-700">
-                            19200.00 </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-base text-red-700">
-                            0.00 </td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
     </div>
@@ -101,6 +74,7 @@
 <script>
     // All API's for this Page
     const API_URL_FOR_ALL_CLIENTS = "<?php echo $getAllClientsApi; ?>";
+    const API_URL_FOR_ALL_WORKS = "<?php echo $getAllWorksApi; ?>";
     const API_URL_FOR_WORK_STORE = "<?php echo $storeWorkApi; ?>";
 
 
@@ -121,11 +95,15 @@
     function renderDropdown(list) {
         clientDropdown.innerHTML = '';
         list.forEach(client => {
+            // phone ke parse koro
+            const phoneObj = JSON.parse(client.phone);
+            const primaryPhone = phoneObj.primary_no;
+
             const li = document.createElement('li');
-            li.textContent = `${client.id} | ${client.name} | ${client.phone}`;
+            li.textContent = `${client.id} | ${client.given_name} ${client.sur_name} | ${primaryPhone}`;
             li.className = "px-4 py-2 cursor-pointer hover:bg-purple-100";
             li.addEventListener('click', () => {
-                clientInput.value = li.textContent;
+                clientInput.value = li.textContent + `| ${client.uuid}`;
                 clientDropdown.classList.add('hidden');
             });
             clientDropdown.appendChild(li);
@@ -160,8 +138,47 @@
     });
 
 
-    // store work
 
+    // get all works
+    const tableBody = document.getElementById('workTableBody');
+
+    fetch(API_URL_FOR_ALL_WORKS)
+        .then(res => res.json())
+        .then(data => {
+            const worksData = data.works;
+            renderTable(worksData);
+        })
+        .catch(err => console.error('Error fetching data:', err));
+
+    function renderTable(list) {
+        // আগের ডাটা মুছে ফেলা
+        tableBody.innerHTML = '';
+
+        list.forEach(work => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50";
+
+            // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${work.created_at || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${work.title || 'No Title'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${work.client_name || 'Unknown'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${work.file_info || 'Folder'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <a href="completed-task-entry.php?work_id=${work.id}" title="Tasks">
+                        <i class="fas fa-tasks"></i>
+                    </a>
+                </td>
+            `;
+
+            tableBody.appendChild(tr);
+        });
+    }
+
+
+
+
+    // store work
     const form = document.querySelector('form');
     form.addEventListener('submit', function(e) {
         e.preventDefault(); // page reload prevent

@@ -5,7 +5,6 @@ if (empty($ip_port)) {
 }
 
 $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
-$getAllWorksApi = $ip_port . "api/works/all-works.php";
 $storeWorkApi = $ip_port . "api/works/store.php";
 
 ?>
@@ -193,6 +192,12 @@ $storeWorkApi = $ip_port . "api/works/store.php";
                             data-tab="generalTab">
                             <i class="fas fa-info-circle mr-1"></i> General Information
                         </button>
+
+                        <button
+                            class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-purple-600"
+                            data-tab="taskTab">
+                            <i class="fas fa-tasks mr-1"></i> Task Management
+                        </button>
                     </div>
 
                     <!-- ================= TAB CONTENT ================= -->
@@ -200,6 +205,8 @@ $storeWorkApi = $ip_port . "api/works/store.php";
                     <!-- 🔹 General Information TAB -->
                     <?php include('cwe-general-tab.php') ?>
                     
+                    <!-- 🔹 Task Management TAB -->
+                    <?php include('cwe-task-mgnt-tab.php') ?>
                 </div>
 
 
@@ -705,6 +712,28 @@ $storeWorkApi = $ip_port . "api/works/store.php";
             }
         });
 
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active from all buttons
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('border-purple-600', 'text-purple-600', 'border-b-2');
+                    b.classList.add('text-gray-600');
+                });
+
+                // Add active to clicked button
+                btn.classList.add('border-purple-600', 'text-purple-600', 'border-b-2');
+
+                // Hide all tab contents
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.add('hidden');
+                });
+
+                // Show selected tab content
+                document.getElementById(btn.dataset.tab).classList.remove('hidden');
+            });
+        });
+
         // Client Search Function
         async function searchClients() {
             const type = document.getElementById('clientSearchType').value;
@@ -862,6 +891,18 @@ $storeWorkApi = $ip_port . "api/works/store.php";
             html += '</div>';
             resultsDiv.innerHTML = html;
         }
+
+        // Event Listeners
+        // document.getElementById('clientSearchBtn').addEventListener('click', searchClients);
+        // document.getElementById('vendorSearchBtn').addEventListener('click', searchVendors);
+
+        // document.getElementById('clientSearchInput').addEventListener('keypress', (e) => {
+        //     if (e.key === 'Enter') searchClients();
+        // });
+
+        // document.getElementById('vendorSearchInput').addEventListener('keypress', (e) => {
+        //     if (e.key === 'Enter') searchVendors();
+        // });
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {

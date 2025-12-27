@@ -510,7 +510,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
                                 </div>
 
                                 <!-- Client Search Section -->
-                                <div id="clientSearchSection" class="relative w-full mb-2">
+                                <div id="clientSearchSection" class="relative w-full mt-4 mb-2">
                                     <div class="flex">
                                         <input
                                             type="text"

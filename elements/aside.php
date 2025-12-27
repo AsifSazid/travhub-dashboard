@@ -35,6 +35,15 @@
             </li>
 
             <li>
+                <a href="completed-task-entry.php"
+                   class="flex items-center p-3 rounded-lg 
+                   <?= $currentPage == 'completed-task-entry.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                    <i class="fas fa-tasks mr-3"></i>
+                    <span class="sidebar-text">Completed Task Entry</span>
+                </a>
+            </li>
+
+            <li>
                 <a href="traveler-profile.php"
                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'traveler-profile.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">

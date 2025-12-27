@@ -4,9 +4,10 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$getAllClientsApi = $ip_port . "api/clients/all-clients.php";
-$getAllWorksApi = $ip_port . "api/works/all-works.php";
-$storeWorkApi = $ip_port . "api/works/store.php";
+$getAllTasksApi = $ip_port . "api/tasks/all-tasks.php";
+$storeTasksApi = $ip_port . "api/tasks/store.php";
+
+$workId = $_GET['work_id'];
 
 ?>
 
@@ -186,35 +187,174 @@ $storeWorkApi = $ip_port . "api/works/store.php";
         <div class="p-6">
             <div class="grid grid-cols-6 gap-4">
                 <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <!-- Tab Buttons -->
-                    <div class="flex border-b mb-6">
-                        <button
-                            class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
-                            data-tab="generalTab">
-                            <i class="fas fa-info-circle mr-1"></i> General Information
-                        </button>
+                    <div id="taskTab" class="tab-content">
+                        <div class="flex border-b mb-6">
+                            <button
+                                class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
+                                data-tab="taskTab">
+                                <i class="fas fa-tasks mr-1"></i> Task Management
+                            </button>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-800 mb-1">
+                            Task Management
+                        </h2>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Drag & drop files or paste content from clipboard
+                        </p>
+
+                        <form id="taskForm">
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Left -->
+                                <div>
+                                    <div class="mb-4">
+                                        <label for="taskCategory" class="block text-sm font-medium text-gray-700 my-2">Task Category</label>
+                                        <select id="taskCategory" name="task_category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                            <option value="">Search For</option>
+                                            <option value="1">Air Ticket Issue</option>
+                                            <option value="2">Hotel Booking</option>
+                                        </select>
+                                    </div>
+
+                                    <label class="block text-sm font-medium text-gray-700 my-2">Upload or Paste Your Documents</label>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div id="dragDropArea" class="rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center hover:bg-gray-50">
+                                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                                            <input type="file" id="fileInput" multiple class="hidden">
+                                            <button
+                                                type="button"
+                                                onclick="document.getElementById('fileInput').click()"
+                                                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                                <i class="fas fa-folder-open mr-1"></i> Browse Files
+                                            </button>
+                                        </div>
+
+                                        <textarea id="pasteArea"
+                                            placeholder="Paste content here"
+                                            class="w-full h-36 p-2 border-2 border-dashed border-gray-300 rounded"></textarea>
+
+                                        <div class="mt-4">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <h4 class="text-sm font-medium">Dropped or Pasted Files</h4>
+                                                <span id="fileCount" class="text-xs bg-gray-200 px-2 py-1 rounded">0 files</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="droppedFilesList" class="text-sm text-gray-500">
+                                        No files added yet
+                                    </div>
+
+                                </div>
+
+                                <!-- Right -->
+                                <div>
+                                    <label for="infoFileName" class="block text-sm font-medium text-gray-700 my-2">
+                                        Information File
+                                    </label>
+                                    <input type="text" id="infoFileName" name="infoFileName" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    <label for="infoArea" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Information
+                                    </label>
+                                    <textarea id="infoArea" rows="5" class="w-full p-2 border rounded-lg" placeholder="Write your information"></textarea>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="flex-1 px-4 py-2 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">Submit</button>
+
+                        </form>
+
+                        <hr class="my-6">
+
+                        <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Task Lists</h2>
+
+                            <div class="overflow-x-auto table-container">
+                                <table id="ledgerTable" class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Title</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Title</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Files</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ledgerTableBody" class="bg-white divide-y divide-gray-200">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2025-11-29 02:06:58</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Task One for Rony Maldives (13)</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Air Ticket</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Air Ticket</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Folder</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <a href="cwe_tm-financial-trxn.php?work_id=123&task_id=234">
+                                                    <i class="fa-solid fa-calculator"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <hr class="my-6">
+
+                        <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction Ledger</h2>
+
+                            <div class="overflow-x-auto table-container">
+                                <table id="ledgerTable" class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client (ID)</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor (ID)</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dir</th>
+                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-green-600">Deposit (IN)</th>
+                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-red-600">Withdraw (OUT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ledgerTableBody" class="bg-white divide-y divide-gray-200">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2025-11-29 02:06:58</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Best Western Plus Pearl Creek Hotel</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Client: Rony Maldives (13)</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dubai Hotel 7th to 10th August/BestWesternPlusPearlCreekHotel_Dubai_7Aug-10Aug_ShahidulIslam.pdf</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600">
+                                                19200.00
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-600">
+                                                0.00
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot id="ledgerTableFoot">
+                                        <tr class="bg-gray-100 font-bold">
+                                            <td colspan="4" class="px-6 py-4 text-right text-base text-gray-900">Total:</td>
+                                            <td class="px-6 py-4 text-right text-base text-gray-900"></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-base text-green-700">
+                                                19200.00 </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-base text-red-700">
+                                                0.00 </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-
-                    <!-- ================= TAB CONTENT ================= -->
-
-                    <!-- 🔹 General Information TAB -->
-                    <?php include('cwe-general-tab.php') ?>
-                    
                 </div>
-
-
             </div>
         </div>
     </main>
 
-    <!-- Floating Quick Access Tab -->
-    <?php include '../elements/floating-menus.php'; ?>
-
-    <script src="../assets/js/script.js"></script>
-
     <script>
+        const API_URL_FOR_ALL_TASKS = "<?php echo $getAllTasksApi; ?>";
+        const API_URL_FOR_TASK_STORE = "<?php echo $storeTasksApi; ?>";
 
-        // File Management Functions
+        // File Management Variables
         let droppedFiles = [];
         let pastedItems = [];
 
@@ -234,7 +374,7 @@ $storeWorkApi = $ip_port . "api/works/store.php";
                 dragDropArea.classList.remove('dragover');
             });
 
-            // Drop event - FIXED VERSION
+            // Drop event
             dragDropArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 dragDropArea.classList.remove('dragover');
@@ -249,15 +389,23 @@ $storeWorkApi = $ip_port . "api/works/store.php";
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     handleFiles(e.target.files);
-                    e.target.value = '';
+                    e.target.value = ''; // Reset input
                 }
             });
 
             // Click on drag drop area to trigger file input
             dragDropArea.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+                // Only trigger if clicking on the area itself, not on buttons
+                if (e.target === dragDropArea || e.target.tagName === 'I') {
                     fileInput.click();
                 }
+            });
+
+            // Separate handler for browse button
+            const browseButton = dragDropArea.querySelector('button');
+            browseButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent event from bubbling to parent
+                fileInput.click();
             });
         }
 
@@ -545,72 +693,6 @@ $storeWorkApi = $ip_port . "api/works/store.php";
             }
         }
 
-        // Open all previews in new tabs
-        function openAllPreviews() {
-            if (droppedFiles.length === 0) {
-                alert('No files to preview!');
-                return;
-            }
-
-            // Open each file in a new tab
-            droppedFiles.forEach((file, index) => {
-                setTimeout(() => {
-                    previewInNewTab(file.name);
-                }, index * 300); // Stagger the openings
-            });
-        }
-
-        // Download all files as zip (simplified version)
-        function downloadAllFiles() {
-            if (droppedFiles.length === 0) {
-                alert('No files to download!');
-                return;
-            }
-
-            // Download each file individually (for simplicity)
-            droppedFiles.forEach((file, index) => {
-                setTimeout(() => {
-                    downloadFile(file.name);
-                }, index * 500);
-            });
-
-            alert(`${droppedFiles.length} files will be downloaded one by one.`);
-        }
-
-        // Clear all files
-        function clearAllFiles() {
-            if (droppedFiles.length === 0) {
-                alert('No files to clear!');
-                return;
-            }
-
-            if (confirm(`Are you sure you want to remove all ${droppedFiles.length} files?`)) {
-                droppedFiles = [];
-                document.getElementById('droppedFilesList').innerHTML = `
-                    <div class="text-center text-gray-500 py-4 text-sm">
-                        <i class="fas fa-file mb-1"></i>
-                        <p>No files added yet</p>
-                    </div>
-                `;
-                updateFileCount();
-            }
-        }
-
-        // Download file
-        function downloadFile(fileName) {
-            const file = droppedFiles.find(f => f.name === fileName);
-            if (!file) return;
-
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = file.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
         // Get file icon based on type
         function getFileIcon(fileType) {
             if (fileType.startsWith('image/')) return 'fas fa-file-image';
@@ -636,7 +718,17 @@ $storeWorkApi = $ip_port . "api/works/store.php";
         // Update file count
         function updateFileCount() {
             const countElement = document.getElementById('fileCount');
-            countElement.textContent = `${droppedFiles.length} file${droppedFiles.length !== 1 ? 's' : ''}`;
+            const fileCount = droppedFiles.length;
+            countElement.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+
+            // Update count color based on number of files
+            if (fileCount === 0) {
+                countElement.className = 'text-xs bg-gray-200 px-2 py-1 rounded';
+            } else if (fileCount < 5) {
+                countElement.className = 'text-xs bg-green-100 text-green-800 px-2 py-1 rounded';
+            } else {
+                countElement.className = 'text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded';
+            }
         }
 
         // Remove file from list
@@ -667,16 +759,137 @@ $storeWorkApi = $ip_port . "api/works/store.php";
             }
         }
 
+        // Download file
+        function downloadFile(fileName) {
+            const file = droppedFiles.find(f => f.name === fileName);
+            if (!file) return;
+
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Clear all files
+        function clearAllFiles() {
+            if (droppedFiles.length === 0) {
+                alert('No files to clear!');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to remove all ${droppedFiles.length} files?`)) {
+                droppedFiles = [];
+                document.getElementById('droppedFilesList').innerHTML = `
+                    <div class="text-center text-gray-500 py-4 text-sm">
+                        <i class="fas fa-file mb-1"></i>
+                        <p>No files added yet</p>
+                    </div>
+                `;
+                updateFileCount();
+            }
+        }
+
+        // Store Task Form Submission
+        const form = document.getElementById('taskForm');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent page reload
+
+            // Create FormData
+            const formData = new FormData();
+
+            // Get values
+            const taskCategory = document.getElementById('taskCategory').value;
+            const infoFileName = document.getElementById('infoFileName').value;
+            const infoArea = document.getElementById('infoArea').value;
+            const pasteArea = document.getElementById('pasteArea').value;
+            const workId = "<?php echo $workId; ?>";
+
+            // Validate required fields
+            if (!taskCategory) {
+                alert('Please select a task category');
+                return;
+            }
+
+            // Append normal fields
+            formData.append('task_category', taskCategory);
+            formData.append('info_file_name', infoFileName);
+            formData.append('information', infoArea);
+            formData.append('pasted_text', pasteArea);
+            formData.append('work_id', workId);
+
+            // Append files
+            if (droppedFiles.length > 0) {
+                droppedFiles.forEach(file => {
+                    formData.append('files[]', file);
+                });
+            }
+
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+            submitBtn.disabled = true;
+
+            // Send to API
+            fetch(API_URL_FOR_TASK_STORE, {
+                    method: 'POST',
+                    body: formData // FormData will automatically set Content-Type
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('API Response:', data);
+
+                    if (data.success) {
+                        alert('Task saved successfully!');
+                        // Reset form
+                        form.reset();
+                        // Clear files
+                        droppedFiles = [];
+                        document.getElementById('droppedFilesList').innerHTML = `
+                            <div class="text-center text-gray-500 py-4 text-sm">
+                                <i class="fas fa-file mb-1"></i>
+                                <p>No files added yet</p>
+                            </div>
+                        `;
+                        updateFileCount();
+
+                        // Optionally refresh task list
+                        // loadTasks();
+                    } else {
+                        alert(data.message || 'Something went wrong');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    alert('Server or network error. Please try again.');
+                })
+                .finally(() => {
+                    // Reset button state
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+        });
+
         // Paste functionality
         const pasteArea = document.getElementById('pasteArea');
 
-        // Fixed paste event handler
         pasteArea.addEventListener('paste', (e) => {
             const items = e.clipboardData.items;
+            let hasFiles = false;
 
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (item.kind === 'file') {
+                    hasFiles = true;
                     // Get the file from clipboard
                     const blob = item.getAsFile();
 
@@ -699,175 +912,43 @@ $storeWorkApi = $ip_port . "api/works/store.php";
                 }
             }
 
-            // Prevent default behavior for files
-            if (items.length > 0) {
+            // Prevent default behavior for files (to avoid text duplication)
+            if (hasFiles) {
                 e.preventDefault();
             }
         });
 
-        // Client Search Function
-        async function searchClients() {
-            const type = document.getElementById('clientSearchType').value;
-            const param = document.getElementById('clientSearchInput').value.trim();
-
-            if (!param) {
-                alert('Please enter a search term');
-                return;
-            }
-
-            const resultsDiv = document.getElementById('clientResults');
-            resultsDiv.innerHTML = `
-                <div class="text-center py-4">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                    <p class="mt-2 text-gray-600">Searching clients...</p>
-                </div>
-            `;
-
-            try {
-                const response = await fetch(`http://103.104.219.3:898/travhub/api/2ndservice/client_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Client Data:', data);
-
-                displayClientResults(data);
-            } catch (error) {
-                console.error('Error:', error);
-                resultsDiv.innerHTML = `
-                    <div class="text-center text-red-500 py-4">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                        <p>Error fetching results: ${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-
-        // Vendor Search Function
-        async function searchVendors() {
-            const type = document.getElementById('vendorSearchType').value;
-            const param = document.getElementById('vendorSearchInput').value.trim();
-
-            if (!param) {
-                alert('Please enter a search term');
-                return;
-            }
-
-            const resultsDiv = document.getElementById('vendorResults');
-            resultsDiv.innerHTML = `
-                <div class="text-center py-4">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                    <p class="mt-2 text-gray-600">Searching vendors...</p>
-                </div>
-            `;
-
-            try {
-                const response = await fetch(`http://103.104.219.3:898/travhub/api/2ndservice/vendor_list_by_search.php?peramiter=${encodeURIComponent(param)}&type_of_data=${type}`);
-                const data = await response.json();
-
-                displayVendorResults(data);
-            } catch (error) {
-                resultsDiv.innerHTML = `
-                    <div class="text-center text-red-500 py-4">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                        <p>Error fetching results: ${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-
-        // Display Client Results
-        function displayClientResults(data) {
-            const resultsDiv = document.getElementById('clientResults');
-
-            if (!data || data.length === 0) {
-                resultsDiv.innerHTML = `
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-search fa-2x mb-2"></i>
-                        <p>No clients found</p>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = '<div class="space-y-2">';
-
-            data.forEach((client) => {
-                html += `
-                    <div class="search-result-item bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition duration-200">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h4 class="font-medium text-gray-800">${client.name || 'N/A'}</h4>
-                                <div class="text-sm text-gray-600 mt-1 space-y-1">
-                                    ${client.email ? `<div><i class="fas fa-envelope mr-1"></i> ${client.email}</div>` : ''}
-                                    ${client.phone ? `<div><i class="fas fa-phone mr-1"></i> ${client.phone}</div>` : ''}
-                                    ${client.company ? `<div><i class="fas fa-building mr-1"></i> ${client.company}</div>` : ''}
-                                    ${client.position ? `<div><i class="fas fa-briefcase mr-1"></i> ${client.position}</div>` : ''}
-                                </div>
-                            </div>
-                            <span class="bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded">Client</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            resultsDiv.innerHTML = html;
-        }
-
-        // Display Vendor Results
-        function displayVendorResults(data) {
-            const resultsDiv = document.getElementById('vendorResults');
-
-            if (!data || data.length === 0) {
-                resultsDiv.innerHTML = `
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-search fa-2x mb-2"></i>
-                        <p>No vendors found</p>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = '<div class="space-y-2">';
-
-            data.forEach((vendor) => {
-                html += `
-                    <div class="search-result-item bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition duration-200">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h4 class="font-medium text-gray-800">${vendor.name || 'N/A'}</h4>
-                                <div class="text-sm text-gray-600 mt-1 space-y-1">
-                                    ${vendor.email ? `<div><i class="fas fa-envelope mr-1"></i> ${vendor.email}</div>` : ''}
-                                    ${vendor.phone ? `<div><i class="fas fa-phone mr-1"></i> ${vendor.phone}</div>` : ''}
-                                    ${vendor.company ? `<div><i class="fas fa-building mr-1"></i> ${vendor.company}</div>` : ''}
-                                    ${vendor.work_name ? `<div><i class="fas fa-tools mr-1"></i> ${vendor.work_name}</div>` : ''}
-                                    ${vendor.vendor_status ? `<div><i class="fas fa-check-circle mr-1"></i> ${vendor.vendor_status}</div>` : ''}
-                                </div>
-                            </div>
-                            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Vendor</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            resultsDiv.innerHTML = html;
-        }
-
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             initDragDrop();
+
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+D to clear all files
+                if (e.ctrlKey && e.key === 'd') {
+                    e.preventDefault();
+                    clearAllFiles();
+                }
+                // Escape to clear paste area
+                if (e.key === 'Escape' && document.activeElement === pasteArea) {
+                    pasteArea.value = '';
+                }
+            });
+
+            // Add tooltips
+            const fileInput = document.getElementById('fileInput');
+            fileInput.title = 'Select files to upload (Ctrl+Click to select multiple)';
+
+            // Add help text
+            const dragDropArea = document.getElementById('dragDropArea');
+            const helpText = document.createElement('p');
+            helpText.className = 'text-xs text-gray-500 mt-2';
+            helpText.textContent = 'Drag & drop files here or click to browse';
+            dragDropArea.appendChild(helpText);
         });
     </script>
+
 </body>
+
 
 </html>
