@@ -9,7 +9,7 @@
         </div>
 
         <!-- Button only on md and above -->
-        <a href="#" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
+        <a href="add-client.php" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
             <i class="fas fa-plus-circle mr-3"></i>Add New Client
         </a>
     </div>

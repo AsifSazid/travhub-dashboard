@@ -1,0 +1,47 @@
+{
+    "hotel_name": "Grand Mercure Guangzhou Baiyun International Airport",
+    "hotel_address": [
+        {
+            "address_line_1": "No. 10 Konggang Avenue, Huadu District, Guangzhou, Guangdong, China",
+            "address_line_2": null,
+            "address_city": "Guangzhou",
+            "address_state": "Guangdong",
+            "address_zip_code": null
+        }
+    ],
+    "hotel_phone_no": "+86-20-86888418",
+    "hotel_email": null,
+    "hotel_room_no": "1",
+    "hotel_room_type": "Comfortable King-size Bed Room",
+    "sur_name": "HASAN",
+    "given_name": "MOHAMMAD MOSABBERUL",
+    "address": {
+        "present_address": [],
+        "permanent_address": []
+    },
+    "check_in": "2025-12-25",
+    "check_out": "2025-12-27",
+    "occupancy": "2",
+    "room_info": "1 queen bed",
+    "meal_plan": "No meals included",
+    "guest_details": "MOHAMMAD MOSABBERUL HASAN",
+    "no_of_pax": [
+        {
+            "type": "Adult",
+            "count": "2"
+        },
+        {
+            "type": "Child",
+            "count": ""
+        },
+        {
+            "type": "Infant",
+            "count": ""
+        }
+    ],
+    "booking_date": null,
+    "cancellation": "Free cancellation",
+    "terms_n_conditions": "If you fail to check in, a penalty equivalent to the cancellation fee will be charged.",
+    "pcn": null,
+    "hcn": "1688894740348614"
+}

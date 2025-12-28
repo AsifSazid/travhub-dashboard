@@ -3,11 +3,11 @@ $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
+$workId = $_GET['work_id'];
 
-$getAllTasksApi = $ip_port . "api/tasks/all-tasks.php";
+$getAllTasksForWorkApi = $ip_port . "api/tasks/tasks-for-work.php?work_id=$workId";
 $storeTasksApi = $ip_port . "api/tasks/store.php";
 
-$workId = $_GET['work_id'];
 
 ?>
 
@@ -190,6 +190,11 @@ $workId = $_GET['work_id'];
                     <div id="taskTab" class="tab-content">
                         <div class="flex border-b mb-6">
                             <button
+                                class="tab-btn px-4 py-2 text-sm font-medium"
+                                onclick="window.location.href='/pages/completed-work-entry.php'">
+                                <i class="fas fa-tasks mr-1"></i> General Information
+                            </button>
+                            <button
                                 class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
                                 data-tab="taskTab">
                                 <i class="fas fa-tasks mr-1"></i> Task Management
@@ -269,7 +274,7 @@ $workId = $_GET['work_id'];
                             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Task Lists</h2>
 
                             <div class="overflow-x-auto table-container">
-                                <table id="ledgerTable" class="min-w-full divide-y divide-gray-200">
+                                <table id="taskTable" class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -280,19 +285,7 @@ $workId = $_GET['work_id'];
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="ledgerTableBody" class="bg-white divide-y divide-gray-200">
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2025-11-29 02:06:58</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Task One for Rony Maldives (13)</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Air Ticket</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Air Ticket</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Folder</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <a href="cwe_tm-financial-trxn.php?work_id=123&task_id=234">
-                                                    <i class="fa-solid fa-calculator"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
+                                    <tbody id="taskTableBody" class="bg-white divide-y divide-gray-200">
                                     </tbody>
                                 </table>
                             </div>
@@ -351,8 +344,8 @@ $workId = $_GET['work_id'];
     </main>
 
     <script>
-        const API_URL_FOR_ALL_TASKS = "<?php echo $getAllTasksApi; ?>";
         const API_URL_FOR_TASK_STORE = "<?php echo $storeTasksApi; ?>";
+        const API_URL_FOR_ALL_TASKS_FOR_WORK = "<?php echo $getAllTasksForWorkApi; ?>";
 
         // File Management Variables
         let droppedFiles = [];
@@ -917,6 +910,44 @@ $workId = $_GET['work_id'];
                 e.preventDefault();
             }
         });
+
+
+        // get all tasks
+        const tableBody = document.getElementById('taskTableBody');
+
+        fetch(API_URL_FOR_ALL_TASKS_FOR_WORK)
+            .then(res => res.json())
+            .then(data => {
+                const tasksData = data.tasks;
+                renderTable(tasksData);
+            })
+            .catch(err => console.error('Error fetching data:', err));
+
+        function renderTable(list) {
+            // আগের ডাটা মুছে ফেলা
+            tableBody.innerHTML = '';
+
+            list.forEach(task => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+
+                // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
+                tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${task.created_at || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${task.title || 'No Title'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${task.category || 'Unknown'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${task.work_title || 'Unknown'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.file_info || 'Folder'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <a href="cwe_tm-financial-trxn.php?work_id=${task.work_id}&task_id=${task.id}" title="">
+                        <i class="fas fa-calculator"></i>
+                    </a>
+                </td>
+            `;
+
+                tableBody.appendChild(tr);
+            });
+        }
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {

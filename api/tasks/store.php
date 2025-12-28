@@ -9,8 +9,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ---------------- CONFIGURATION ----------------
-$GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // Replace with your actual API key
-$GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+$GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
+$GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 // ---------------- GET DATA ----------------
 $uuid           = generateUUID();
@@ -27,12 +27,17 @@ if (!$category || !$workId) {
 }
 
 // ---------------- GET WORK DIRECTORY ----------------
-$stmt = $pdo->prepare("SELECT work_dir_path FROM works WHERE id = ?");
+$stmt = $pdo->prepare("SELECT work_dir_path , uuid , title FROM works WHERE id = ?");
 $stmt->execute([$workId]);
 $work = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$work || empty($work['work_dir_path'])) {
     echo json_encode(['success' => false, 'message' => 'Work directory not found']);
+    exit;
+}
+
+if (empty($work['title']) || empty($work['uuid'])) {
+    echo json_encode(['success' => false, 'message' => 'Work Title or UUID not found']);
     exit;
 }
 
@@ -88,117 +93,45 @@ if ($extractedData) {
     $uploadedFiles[] = $dataFile;
 }
 
-// ---------------- SAVE TO DATABASE ----------------
-try {
-    // Convert uploaded files to relative paths
-    $relativePaths = array_map(function ($path) {
-        return str_replace($_SERVER['DOCUMENT_ROOT'] . '/', '', $path);
-    }, $uploadedFiles);
-
-    $filesJson = json_encode($relativePaths);
-    $extractedDataJson = $extractedData ? json_encode($extractedData) : null;
-
-    $stmt = $pdo->prepare("
-        INSERT INTO tasks 
-        (uuid, work_id, category, info_file_name, info_details, 
-         status, created_by, files_json, extracted_data) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-
-    $stmt->execute([
-        $uuid,
-        $workId,
-        $category,
-        $infoFileName,
-        $infoDetails,
-        'pending',
-        'system',
-        $filesJson,
-        $extractedDataJson
-    ]);
-
-    $taskId = $pdo->lastInsertId();
-
-    // If category is Air Ticket or Hotel Booking, insert into specific tables
-    if ($extractedData) {
-        if ($category == 1) { // Air Ticket
-            saveAirTicketData($pdo, $taskId, $extractedData);
-        } elseif ($category == 2) { // Hotel Booking
-            saveHotelBookingData($pdo, $taskId, $extractedData);
-        }
-    }
-
-    $response = [
-        'success' => true,
-        'message' => 'Task created successfully',
-        'task_id' => $taskId,
-        'task_uuid' => $uuid,
-        'extracted_data' => $extractedData,
-        'gemini_response' => $geminiResponse
-    ];
-} catch (Exception $e) {
-    $response = [
-        'success' => false,
-        'message' => 'Database error: ' . $e->getMessage()
-    ];
-}
-
-echo json_encode($response);
 
 // ---------------- FUNCTION: PROCESS WITH GEMINI ----------------
 function processFilesWithGemini($files, $category)
 {
-    global $GEMINI_API_KEY, $GEMINI_API_URL;
+    global $GEMINI_API_KEY, $GEMINI_MODEL;
 
-    // Prepare prompt based on category
     $prompt = getPromptForCategory($category);
-
-    // Process each file
     $responses = [];
+
     foreach ($files as $file) {
-        $fileContent = file_get_contents($file);
+        if (!file_exists($file)) continue;
 
-        // Check if file is image
         $mimeType = mime_content_type($file);
-        $isImage = strpos($mimeType, 'image/') === 0;
+        $fileData = base64_encode(file_get_contents($file));
 
-        if ($isImage) {
-            // For images, encode to base64
-            $base64Image = base64_encode($fileContent);
-            $mimeType = $mimeType ?: 'image/jpeg';
-
-            $requestData = [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt],
-                            [
-                                'inline_data' => [
-                                    'mime_type' => $mimeType,
-                                    'data' => $base64Image
-                                ]
+        // Gemini handles PDF, Images, and Text natively via 'inline_data'
+        $requestData = [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => $prompt],
+                        [
+                            'inline_data' => [
+                                'mime_type' => $mimeType,
+                                'data' => $fileData
                             ]
                         ]
                     ]
                 ]
-            ];
-        } else {
-            // For text files (PDF, DOC, TXT, etc.)
-            $textContent = extractTextFromFile($file);
+            ],
+            // This forces Gemini to return valid JSON only
+            'generationConfig' => [
+                'response_mime_type' => 'application/json'
+            ]
+        ];
 
-            $requestData = [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt . "\n\nDocument content:\n" . $textContent]
-                        ]
-                    ]
-                ]
-            ];
-        }
+        $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$GEMINI_MODEL}:generateContent?key={$GEMINI_API_KEY}";
 
-        // Call Gemini API
-        $ch = curl_init($GEMINI_API_URL . "?key=" . $GEMINI_API_KEY);
+        $ch = curl_init($apiUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
@@ -212,31 +145,17 @@ function processFilesWithGemini($files, $category)
 
         if ($httpCode === 200) {
             $resultData = json_decode($result, true);
-            if (isset($resultData['candidates'][0]['content']['parts'][0]['text'])) {
-                $extractedText = $resultData['candidates'][0]['content']['parts'][0]['text'];
+            $extractedText = $resultData['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
-                // Try to parse JSON from response
-                $jsonStart = strpos($extractedText, '{');
-                $jsonEnd = strrpos($extractedText, '}');
-
-                if ($jsonStart !== false && $jsonEnd !== false) {
-                    $jsonStr = substr($extractedText, $jsonStart, $jsonEnd - $jsonStart + 1);
-                    $parsedData = json_decode($jsonStr, true);
-
-                    if ($parsedData) {
-                        $responses[] = $parsedData;
-                    }
-                }
+            if ($extractedText) {
+                $responses[] = $extractedText;
             }
         }
     }
 
-    // Merge responses if multiple files
-    $mergedData = mergeResponses($responses, $category);
-
     return [
-        'success' => !empty($mergedData),
-        'data' => $mergedData
+        'success' => !empty($responses),
+        'data' => $responses
     ];
 }
 
@@ -282,6 +201,20 @@ function getPromptForCategory($category)
     } elseif ($category == 2) { // Hotel Booking
         return "Extract information from this hotel booking document and return ONLY valid JSON in this exact format:
         {
+            \"hotel_name\": \"\",
+            \"hotel_address\": [
+                {
+                    \"address_line_1\": \"\",
+                    \"address_line_2\": \"\",
+                    \"address_city\": \"\",
+                    \"address_state\": \"\",
+                    \"address_zip_code\": \"\"
+                }
+            ]
+            \"hotel_phone_no\": \"\",
+            \"hotel_email\": \"\",
+            \"hotel_room_no\": \"\",
+            \"hotel_room_type\": \"\",
             \"sur_name\": \"\",
             \"given_name\": \"\",
             \"address\": {
@@ -306,7 +239,8 @@ function getPromptForCategory($category)
             },
             \"check_in\": \"\",
             \"check_out\": \"\",
-            \"room_type\": \"\",
+            \"occupancy\": \"\",
+            \"room_info\": \"\",
             \"meal_plan\": \"\",
             \"guest_details\": \"\",
             \"no_of_pax\": [
@@ -324,6 +258,8 @@ function getPromptForCategory($category)
                 }
             ],
             \"booking_date\": \"\",
+            \"cancellation\": \"\",
+            \"terms_n_conditions\": \"\",
             \"pcn\": \"\",
             \"hcn\": \"\"
         }
@@ -340,236 +276,66 @@ function getPromptForCategory($category)
     return "Extract all relevant information from this document and return as JSON.";
 }
 
-// ---------------- FUNCTION: EXTRACT TEXT FROM FILE ----------------
-function extractTextFromFile($filePath)
-{
-    $mimeType = mime_content_type($filePath);
-    $text = '';
+// ---------------- SAVE TO DATABASE ----------------
+try {
+    // Convert uploaded files to relative paths
+    $relativePaths = array_map(function ($path) {
+        return str_replace($_SERVER['DOCUMENT_ROOT'] . '/', '', $path);
+    }, $uploadedFiles);
 
-    if ($mimeType === 'application/pdf') {
-        // For PDF files - you'll need a PDF parser library
-        // Example using shell command (requires pdftotext installed)
-        $tempFile = tempnam(sys_get_temp_dir(), 'pdf_');
-        shell_exec("pdftotext '$filePath' '$tempFile'");
-        $text = file_get_contents($tempFile);
-        unlink($tempFile);
-    } elseif (in_array($mimeType, ['text/plain', 'text/html'])) {
-        $text = file_get_contents($filePath);
-    } elseif ($mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        // For DOCX files
-        $zip = new ZipArchive;
-        if ($zip->open($filePath) === TRUE) {
-            $text = $zip->getFromName('word/document.xml');
-            $text = strip_tags($text);
-            $zip->close();
-        }
+    $filesJson = json_encode($relativePaths);
+    $extractedDataJson = $extractedData ? json_encode($extractedData) : null;
+
+    $stmt = $pdo->prepare("
+        INSERT INTO tasks (
+            uuid, 
+            category, 
+            info_file_name, 
+            info_details, 
+            work_id, 
+            work_uuid, 
+            work_title, 
+            hotel_info, 
+            air_ticket_info, 
+            all_file_path, 
+            status, 
+            created_by
+        ) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    if ($category == 1) {
+        $airTicketInfo = json_encode($extractedData);
+        $hotelInfo = null;
+    } else {
+        $hotelInfo = json_encode($extractedData);
+        $airTicketInfo = null;
     }
 
-    return $text ?: "Unable to extract text from file.";
+    $stmt->execute([
+        $uuid,
+        $category,
+        $infoFileName,
+        $infoDetails,
+        $workId,
+        $work['uuid'],
+        $work['title'],
+        $hotelInfo,
+        $airTicketInfo,
+        $filesJson,
+        'pending',
+        'system',
+    ]);
+
+    $response = [
+        'success' => true,
+        'message' => 'Task created successfully',
+    ];
+} catch (Exception $e) {
+    $response = [
+        'success' => false,
+        'message' => 'Database error: ' . $e->getMessage()
+    ];
 }
 
-// ---------------- FUNCTION: MERGE RESPONSES ----------------
-function mergeResponses($responses, $category)
-{
-    if (empty($responses)) return null;
-    if (count($responses) === 1) return $responses[0];
-
-    // For multiple responses, merge intelligently
-    $merged = $responses[0];
-
-    for ($i = 1; $i < count($responses); $i++) {
-        foreach ($responses[$i] as $key => $value) {
-            if (is_array($value)) {
-                if ($key === 'other_applicants' || $key === 'itinerary_information') {
-                    // Append arrays for Air Ticket
-                    if (!isset($merged[$key])) $merged[$key] = [];
-                    $merged[$key] = array_merge($merged[$key], $value);
-                } elseif (is_array($merged[$key]) && is_array($value)) {
-                    // Merge associative arrays
-                    $merged[$key] = array_merge($merged[$key], $value);
-                }
-            } elseif (!empty($value) && empty($merged[$key])) {
-                // Fill empty fields
-                $merged[$key] = $value;
-            }
-        }
-    }
-
-    return $merged;
-}
-
-// ---------------- FUNCTION: SAVE AIR TICKET DATA ----------------
-function saveAirTicketData($pdo, $taskId, $data)
-{
-    try {
-        // Save main applicant
-        $stmt = $pdo->prepare("
-            INSERT INTO air_ticket_applicants 
-            (task_id, sur_name, given_name, salutation, passport_no, is_primary) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-
-        $stmt->execute([
-            $taskId,
-            $data['applicant_sur_name'] ?? '',
-            $data['applicant_given_name'] ?? '',
-            $data['applicant_salutation'] ?? '',
-            $data['applicant_passport_no'] ?? '',
-            1 // is_primary
-        ]);
-
-        // Save other applicants
-        if (!empty($data['other_applicants'])) {
-            foreach ($data['other_applicants'] as $applicant) {
-                $stmt = $pdo->prepare("
-                    INSERT INTO air_ticket_applicants 
-                    (task_id, sur_name, given_name, salutation, passport_no, is_primary) 
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-
-                $stmt->execute([
-                    $taskId,
-                    $applicant['applicant_sur_name'] ?? '',
-                    $applicant['applicant_given_name'] ?? '',
-                    $applicant['applicant_salutation'] ?? '',
-                    $applicant['applicant_passport_no'] ?? '',
-                    0 // not primary
-                ]);
-            }
-        }
-
-        // Save itinerary
-        if (!empty($data['itinerary_information'])) {
-            foreach ($data['itinerary_information'] as $itinerary) {
-                $stmt = $pdo->prepare("
-                    INSERT INTO air_ticket_itinerary 
-                    (task_id, departure_from, departure_at, arrival_in, 
-                     arrival_at, flight_no, flight_info) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-
-                $stmt->execute([
-                    $taskId,
-                    $itinerary['departure_from'] ?? '',
-                    $itinerary['departure_at'] ?? '',
-                    $itinerary['arrival_in'] ?? '',
-                    $itinerary['arrival_at'] ?? '',
-                    $itinerary['flight_no'] ?? '',
-                    $itinerary['flight_info'] ?? ''
-                ]);
-            }
-        }
-
-        // Save PNR info
-        $stmt = $pdo->prepare("
-            INSERT INTO air_ticket_pnr 
-            (task_id, airline_pnr, galileo_pnr, date_of_issue) 
-            VALUES (?, ?, ?, ?)
-        ");
-
-        $stmt->execute([
-            $taskId,
-            $data['airline_pnr'] ?? '',
-            $data['galileo_pnr'] ?? '',
-            $data['date_of_issue'] ?? ''
-        ]);
-    } catch (Exception $e) {
-        // Log error but don't stop execution
-        error_log("Error saving air ticket data: " . $e->getMessage());
-    }
-}
-
-// ---------------- FUNCTION: SAVE HOTEL BOOKING DATA ----------------
-function saveHotelBookingData($pdo, $taskId, $data)
-{
-    try {
-        // Save guest info
-        $stmt = $pdo->prepare("
-            INSERT INTO hotel_booking_guests 
-            (task_id, sur_name, given_name, check_in, check_out, 
-             room_type, meal_plan, guest_details, booking_date, 
-             pcn, hcn) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-
-        $stmt->execute([
-            $taskId,
-            $data['sur_name'] ?? '',
-            $data['given_name'] ?? '',
-            $data['check_in'] ?? '',
-            $data['check_out'] ?? '',
-            $data['room_type'] ?? '',
-            $data['meal_plan'] ?? '',
-            $data['guest_details'] ?? '',
-            $data['booking_date'] ?? '',
-            $data['pcn'] ?? '',
-            $data['hcn'] ?? ''
-        ]);
-
-        // Save address
-        if (!empty($data['address'])) {
-            $addresses = $data['address'];
-
-            // Save present address
-            if (!empty($addresses['present_address'])) {
-                foreach ($addresses['present_address'] as $address) {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO hotel_booking_addresses 
-                        (task_id, address_type, line_1, line_2, 
-                         city, state, zip_code) 
-                        VALUES (?, 'present', ?, ?, ?, ?, ?)
-                    ");
-
-                    $stmt->execute([
-                        $taskId,
-                        $address['address_line_1'] ?? '',
-                        $address['address_line_2'] ?? '',
-                        $address['address_city'] ?? '',
-                        $address['address_state'] ?? '',
-                        $address['address_zip_code'] ?? ''
-                    ]);
-                }
-            }
-
-            // Save permanent address
-            if (!empty($addresses['permanent_address'])) {
-                foreach ($addresses['permanent_address'] as $address) {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO hotel_booking_addresses 
-                        (task_id, address_type, line_1, line_2, 
-                         city, state, zip_code) 
-                        VALUES (?, 'permanent', ?, ?, ?, ?, ?)
-                    ");
-
-                    $stmt->execute([
-                        $taskId,
-                        $address['address_line_1'] ?? '',
-                        $address['address_line_2'] ?? '',
-                        $address['address_city'] ?? '',
-                        $address['address_state'] ?? '',
-                        $address['address_zip_code'] ?? ''
-                    ]);
-                }
-            }
-        }
-
-        // Save pax count
-        if (!empty($data['no_of_pax'])) {
-            foreach ($data['no_of_pax'] as $pax) {
-                $stmt = $pdo->prepare("
-                    INSERT INTO hotel_booking_pax 
-                    (task_id, pax_type, count) 
-                    VALUES (?, ?, ?)
-                ");
-
-                $stmt->execute([
-                    $taskId,
-                    $pax['type'] ?? '',
-                    $pax['count'] ?? 0
-                ]);
-            }
-        }
-    } catch (Exception $e) {
-        error_log("Error saving hotel booking data: " . $e->getMessage());
-    }
-}
+echo json_encode($response);

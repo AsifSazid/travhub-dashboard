@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         /* Tab Styles */
         .tab-button {
@@ -207,7 +207,7 @@
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="assets/script.js"></script>
+    <script src="../assets/script.js"></script>
 
     <script>
         // Tab switching functionality
