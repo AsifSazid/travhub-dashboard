@@ -1,3 +1,17 @@
+<?php
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$workId = $_GET['work_id'];
+
+$getClientsApi = $ip_port . "api/clients/get-client.php?work_id=$workId";
+$getAllVendorsApi = $ip_port . "api/vendors/all-vendors.php";
+$getVendorStoreApi = $ip_port . "api/vendors/all-vendors.php";
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,7 +19,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Work Entry</title>
-    <link rel="icon" type="image/png" href="./assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
@@ -190,29 +204,7 @@
 
                         <!-- Search Form -->
                         <div class="mb-4">
-                            <div class="flex space-x-2">
-                                <select id="serachFor" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                    <option value="">Search For</option>
-                                    <option value="client">Client</option>
-                                    <option value="traveller">Traveller</option>
-                                </select>
-                                <select id="clientSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                    <option value="name">Name</option>
-                                    <option value="phone">Phone</option>
-                                    <option value="email">Email</option>
-                                    <option value="company">Company</option>
-                                    <option value="id">ID</option>
-                                    <option value="position">Position</option>
-                                    <option value="work_name">Work Name</option>
-                                    <option value="vendor_status">Vendor Status</option>
-                                    <option value="phone2">Phone 2</option>
-                                </select>
-                                <input type="text" id="clientSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                <button id="clientSearchBtn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition duration-200">
-                                    <i class="fas fa-search"></i>
-                                </button>
-
-                            </div>
+                            <div id="clientWorkInfo" class="flex space-x-2"></div>
 
                             <div class="flex space-x-2 my-4">
                                 <div class="w-2/3">
@@ -251,21 +243,25 @@
                         <!-- Search Form -->
                         <div class="mb-4">
                             <div class="flex space-x-2">
-                                <select id="vendorSearchType" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                    <option value="name">Name</option>
-                                    <option value="phone">Phone</option>
-                                    <option value="email">Email</option>
-                                    <option value="company">Company</option>
-                                    <option value="id">ID</option>
-                                    <option value="position">Position</option>
-                                    <option value="work_name">Work Name</option>
-                                    <option value="vendor_status">Vendor Status</option>
-                                    <option value="phone2">Phone 2</option>
-                                </select>
-                                <input type="text" id="vendorSearchInput" placeholder="Enter search term..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                <button id="vendorSearchBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                                    <i class="fas fa-search"></i>
-                                </button>
+                                <div class="relative w-full">
+                                    <div class="flex">
+                                        <input
+                                            type="text"
+                                            id="vendorInput"
+                                            placeholder="Search for a vendor..."
+                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                            autocomplete="off">
+                                        <button
+                                            id="dropdownToggle"
+                                            class="px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg bg-gray-100 hover:bg-gray-200"
+                                            type="button">
+                                            ▼
+                                        </button>
+                                    </div>
+                                    <ul id="vendorDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto hidden z-50">
+                                        <!-- JS will populate options here -->
+                                    </ul>
+                                </div>
 
                             </div>
 
@@ -299,7 +295,97 @@
 
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/script.js"></script>
+    <script src="../assets/js/script.js"></script>
+
+
+    <script>
+        const GET_CLIENT_API = "<?php echo $getClientsApi; ?>";
+        const GET_ALL_VENDOR_API = "<?php echo $getAllVendorsApi; ?>";
+
+        const vendorInput = document.getElementById('vendorInput');
+        const vendorDropdown = document.getElementById('vendorDropdown');
+        const dropdownToggle = document.getElementById('dropdownToggle');
+
+        let vendorsData = [];
+        fetch(GET_ALL_VENDOR_API)
+            .then(res => res.json())
+            .then(data => {
+                vendorsData = data.vendors;
+                renderDropdown(vendorsData);
+            })
+            .catch(err => console.error(err));
+
+        function renderDropdown(list) {
+            vendorDropdown.innerHTML = '';
+            list.forEach(vendor => {
+
+                const li = document.createElement('li');
+                li.textContent = `${vendor.id} | ${vendor.client_name}`;
+                li.className = "px-4 py-2 cursor-pointer hover:bg-purple-100";
+                li.addEventListener('click', () => {
+                    vendorInput.value = li.textContent ;
+                    vendorDropdown.classList.add('hidden');
+                });
+                vendorDropdown.appendChild(li);
+            });
+        }
+
+        // Filter on typing
+        vendorInput.addEventListener('input', () => {
+            const value = vendorInput.value.toLowerCase();
+            const filtered = vendorsData.filter(c =>
+                `${c.id} | ${c.name} | ${c.phone}`.toLowerCase().includes(value)
+            );
+            renderDropdown(filtered);
+            vendorDropdown.classList.remove('hidden');
+        });
+
+        // Toggle button click
+        dropdownToggle.addEventListener('click', () => {
+            if (vendorDropdown.classList.contains('hidden')) {
+                renderDropdown(vendorsData);
+                vendorDropdown.classList.remove('hidden');
+            } else {
+                vendorDropdown.classList.add('hidden');
+            }
+        });
+
+        // Hide dropdown on outside click
+        document.addEventListener('click', (e) => {
+            if (!vendorInput.contains(e.target) && !vendorDropdown.contains(e.target) && !dropdownToggle.contains(e.target)) {
+                vendorDropdown.classList.add('hidden');
+            }
+        });
+
+
+
+
+
+        // get client data
+        fetch(GET_CLIENT_API)
+            .then(res => res.json())
+            .then(data => {
+
+                if (!data.success) return;
+
+                const client = data.client;
+                const work = data.work;
+
+                const clientName = `${client.given_name} ${client.sur_name}`;
+                const workName = work.title; // or work.file_name
+
+                document.getElementById('clientWorkInfo').innerHTML = `
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        ${clientName}
+                    </h3>
+                    <h3 class="text-gray-400">/ </h3>
+                    <h3 class="text-lg text-gray-600">
+                         Work Title: ${workName}
+                    </h3>
+                `;
+            })
+            .catch(err => console.error('Error fetching data:', err));
+    </script>
 </body>
 
 </html>
