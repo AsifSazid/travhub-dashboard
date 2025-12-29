@@ -8,8 +8,10 @@ header('Access-Control-Allow-Origin: *');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+
 // ---------------- CONFIGURATION ----------------
-$GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
+// $GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
+$GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt'));// Replace with your actual API key
 $GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 // ---------------- GET DATA ----------------

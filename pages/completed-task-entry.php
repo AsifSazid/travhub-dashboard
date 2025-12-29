@@ -7,6 +7,7 @@ $workId = $_GET['work_id'];
 
 $getAllTasksForWorkApi = $ip_port . "api/tasks/tasks-for-work.php?work_id=$workId";
 $storeTasksApi = $ip_port . "api/tasks/store.php";
+$getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?work_id=$workId";
 
 
 ?>
@@ -294,46 +295,22 @@ $storeTasksApi = $ip_port . "api/tasks/store.php";
                         <hr class="my-6">
 
                         <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction Ledger</h2>
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions - Work Wise</h2>
 
                             <div class="overflow-x-auto table-container">
-                                <table id="ledgerTable" class="min-w-full divide-y divide-gray-200">
+                                <table id="finTable" class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client (ID)</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor (ID)</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dir</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-green-600">Deposit (IN)</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider text-red-600">Withdraw (OUT)</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client/Vendor Name</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="ledgerTableBody" class="bg-white divide-y divide-gray-200">
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2025-11-29 02:06:58</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Best Western Plus Pearl Creek Hotel</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Client: Rony Maldives (13)</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dubai Hotel 7th to 10th August/BestWesternPlusPearlCreekHotel_Dubai_7Aug-10Aug_ShahidulIslam.pdf</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600">
-                                                19200.00
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-600">
-                                                0.00
-                                            </td>
-                                        </tr>
+                                    <tbody id="finTableBody" class="bg-white divide-y divide-gray-200">
                                     </tbody>
-                                    <tfoot id="ledgerTableFoot">
-                                        <tr class="bg-gray-100 font-bold">
-                                            <td colspan="4" class="px-6 py-4 text-right text-base text-gray-900">Total:</td>
-                                            <td class="px-6 py-4 text-right text-base text-gray-900"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-base text-green-700">
-                                                19200.00 </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-base text-red-700">
-                                                0.00 </td>
-                                        </tr>
-                                    </tfoot>
                                 </table>
                             </div>
                         </div>
@@ -346,6 +323,7 @@ $storeTasksApi = $ip_port . "api/tasks/store.php";
     <script>
         const API_URL_FOR_TASK_STORE = "<?php echo $storeTasksApi; ?>";
         const API_URL_FOR_ALL_TASKS_FOR_WORK = "<?php echo $getAllTasksForWorkApi; ?>";
+        const GET_FINANCIAL_STATEMENT_API = "<?php echo $getWorkFinEntriesApi; ?>";
 
         // File Management Variables
         let droppedFiles = [];
@@ -856,7 +834,7 @@ $storeTasksApi = $ip_port . "api/tasks/store.php";
                         updateFileCount();
 
                         // Optionally refresh task list
-                        // loadTasks();
+                        loadTasks();
                     } else {
                         alert(data.message || 'Something went wrong');
                     }
@@ -915,13 +893,15 @@ $storeTasksApi = $ip_port . "api/tasks/store.php";
         // get all tasks
         const tableBody = document.getElementById('taskTableBody');
 
-        fetch(API_URL_FOR_ALL_TASKS_FOR_WORK)
-            .then(res => res.json())
-            .then(data => {
-                const tasksData = data.tasks;
-                renderTable(tasksData);
-            })
-            .catch(err => console.error('Error fetching data:', err));
+        function loadTasks() {
+            fetch(API_URL_FOR_ALL_TASKS_FOR_WORK)
+                .then(res => res.json())
+                .then(data => {
+                    const tasksData = data.tasks;
+                    renderTable(tasksData);
+                })
+                .catch(err => console.error('Error fetching data:', err));
+        }
 
         function renderTable(list) {
             // আগের ডাটা মুছে ফেলা
@@ -948,6 +928,86 @@ $storeTasksApi = $ip_port . "api/tasks/store.php";
                 tableBody.appendChild(tr);
             });
         }
+
+
+        // Financial Transaction Against Task
+        function reloadFinancialTable() {
+            fetch(GET_FINANCIAL_STATEMENT_API)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) return;
+
+                    const finStmts = data.finStmts;
+                    renderFinTable(finStmts);
+                })
+        }
+
+        const finTableBody = document.getElementById('finTableBody');
+
+        function renderFinTable(list) {
+            // আগের ডাটা মুছে ফেলা
+            finTableBody.innerHTML = '';
+
+            list.forEach(finSingleEntry => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+
+                // type normalize
+                const type = (finSingleEntry.type || '').toLowerCase();
+
+                let typeBadge = `
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                            UNKNOWN
+                        </span>
+                    `;
+
+                if (type === 'debit') {
+                    typeBadge = `
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                DEBIT
+                            </span>
+                        `;
+                } else if (type === 'credit') {
+                    typeBadge = `
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                CREDIT
+                            </span>
+                        `;
+                }
+
+                tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${finSingleEntry.date || 'N/A'}
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            ${finSingleEntry.purpose || 'No Data Found'}
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${finSingleEntry.client_name || finSingleEntry.vendor_name || 'Unknown'}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        ${finSingleEntry.work_title || 'No Data Found'}
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        ${typeBadge}
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${finSingleEntry.amount || '-'}
+                        </td>
+                    `;
+
+                finTableBody.appendChild(tr);
+            });
+
+        }
+
+        loadTasks();
+        reloadFinancialTable();
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {

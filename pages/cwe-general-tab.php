@@ -84,6 +84,7 @@
     const dropdownToggle = document.getElementById('dropdownToggle');
 
     let clientsData = [];
+
     fetch(API_URL_FOR_ALL_CLIENTS)
         .then(res => res.json())
         .then(data => {
@@ -142,13 +143,16 @@
     // get all works
     const tableBody = document.getElementById('workTableBody');
 
-    fetch(API_URL_FOR_ALL_WORKS)
-        .then(res => res.json())
-        .then(data => {
-            const worksData = data.works;
-            renderTable(worksData);
-        })
-        .catch(err => console.error('Error fetching data:', err));
+    function loadWorks() {
+        fetch(API_URL_FOR_ALL_WORKS)
+            .then(res => res.json())
+            .then(data => {
+                const worksData = data.works;
+                renderTable(worksData);
+            })
+            .catch(err => console.error('Error fetching data:', err));
+
+    }
 
     function renderTable(list) {
         // আগের ডাটা মুছে ফেলা
@@ -176,7 +180,7 @@
     }
 
 
-
+    loadWorks();
 
     // store work
     const form = document.querySelector('form');
@@ -208,6 +212,7 @@
                 if (data.success) {
                     alert('Work saved successfully!');
                     form.reset(); // optional: reset form
+                    loadWorks();
                 } else {
                     alert('Error: ' + (data.message || 'Something went wrong'));
                 }
