@@ -4,8 +4,10 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeAllVendorApi = $ip_port . "api/vendors/all-vendors.php";
-$storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
+$vendorId = $_GET['vendor_id'];
+
+
+$getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.php?vendor_id=$vendorId";
 
 ?>
 
@@ -21,48 +23,49 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        .search-result-item {
-            transition: all 0.2s ease;
-        }
-
-        .search-result-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .drag-drop-area {
-            border: 2px dashed #d1d5db;
+        /* Tab Styles */
+        .tab-button {
+            padding: 12px 20px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
-        .drag-drop-area.dragover {
+        .tab-button:hover {
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        .tab-button.active {
+            color: #3b82f6;
             border-color: #3b82f6;
-            background-color: rgba(59, 130, 246, 0.05);
+            background-color: #eff6ff;
         }
 
-        .file-item {
-            animation: slideIn 0.3s ease-out;
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #3b82f6;
         }
 
-        @keyframes slideIn {
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
             from {
                 opacity: 0;
                 transform: translateY(10px);
@@ -73,89 +76,7 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                 transform: translateY(0);
             }
         }
-
-        .draggable-item {
-            cursor: move;
-            user-select: none;
-        }
-
-        .draggable-item.dragging {
-            opacity: 0.5;
-        }
-
-        /* Scrollbar styling */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-
-        /* Preview Modal */
-        .preview-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            animation: fadeIn 0.3s ease;
-        }
-
-        .preview-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(50px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
     </style>
-    <!-- Add to the <head> section for FilePond -->
-    <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet">
-    <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
-    <script src="https://unpkg.com/filepond@^4/dist/filepond.js"></script>
-    <script src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
-    <script src="https://unpkg.com/filepond-plugin-file-validate-size/dist/filepond-plugin-file-validate-size.js"></script>
-    <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
 </head>
 
 <body class="bg-gray-50 font-sans">
@@ -181,25 +102,105 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     </div>
 
     <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+    <main id="mainContent" class=" pl-64 transition-all duration-300">
         <div class="p-6">
-            <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Vendor Lists</h2>
+            <div class="bg-white rounded-lg shadow p-4 flex flex-col h-[400px] md:h-[calc(100vh-8rem)]">
+                <!-- Header -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-user-circle mr-2 text-purple-600"></i>
+                        Client's Profile
+                    </h2>
+                    <p class="text-sm text-gray-600">Manage traveler information, documents, and related data</p>
+                </div>
 
-                    <div class="overflow-x-auto table-container">
-                        <table id="clientTable" class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl No</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Name</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clientTableBody" class="bg-white divide-y divide-gray-200">
-                            </tbody>
-                        </table>
+                <!-- Tabs Navigation -->
+                <div class="border-b border-gray-200 mb-6">
+                    <div class="flex space-x-1 overflow-x-auto custom-scrollbar">
+                        <button class="tab-button flex items-center active" data-tab="documents">
+                            <i class="fas fa-folder mr-2"></i>
+                            Documents
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="information">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Information
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="work-board">
+                            <i class="fas fa-clipboard-list mr-2"></i>
+                            Work Board
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="accounting">
+                            <i class="fas fa-calculator mr-2"></i>
+                            Accounting
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="credentials">
+                            <i class="fas fa-key mr-2"></i>
+                            Credentials
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Content Area -->
+                <div class="flex-1 overflow-y-auto">
+                    <!-- Documents Tab -->
+                    <div id="documents" class="tab-content active">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center col-span-2 justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Documents Content</h3>
+                                    <p class="text-gray-600">Document management will be displayed here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Board Tab -->
+                    <div id="work-board" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-clipboard-list text-4xl text-purple-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Work Board Content</h3>
+                                    <p class="text-gray-600">Work board tasks will be displayed here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accounting Tab -->
+                    <div id="accounting" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
+                                    <p class="text-gray-600">Financial information will be displayed here</p>
+
+                                    <?php include('sv-accounting.php') ?> <!-- sc means show client -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Linked Travellers Tab -->
+                    <div id="linked-travellers" class="tab-content">
+                        <div class="h-full w-full">
+                            <?php include('tp-linked-travellers.php') ?> <!-- tp means Traveller Profile -->
+                        </div>
+                    </div>
+
+                    <!-- Credentials Tab -->
+                    <div id="credentials" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center">
+                                    <i class="fas fa-key text-4xl text-indigo-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Credentials Content</h3>
+                                    <p class="text-gray-600">Login credentials will be displayed here</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -212,77 +213,46 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     <script src="../assets/js/script.js"></script>
 
     <script>
-        const API_URL_FOR_ALL_VENDORS = "<?php echo $storeAllVendorApi; ?>";
-        const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
 
-        // Client
-        const tableBody = document.getElementById('clientTableBody');
-
-        function loadVendor() {
-            let vendorsData = [];
-            fetch(API_URL_FOR_ALL_VENDORS)
-                .then(res => res.json())
-                .then(data => {
-                    vendorsData = data.vendors;
-                    renderDropdown(vendorsData);
-                })
-                .catch(err => console.error(err));
-        }
-
-        function renderDropdown(list) {
-            // আগের ডাটা মুছে ফেলা
-            tableBody.innerHTML = '';
-
-            list.forEach((vendor, index) => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50";
-
-                // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
-                tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.client_name || 'No Name'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.vendor_id || 'No ID'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="completed-task-entry.php?work_id=${vendor.id}" title="Tasks">
-                        <i class="fas fa-tasks mr-2"></i>
-                    </a>
-                    <button onclick="deleteVendor(${vendor.client_id})" title="Tasks">
-                        <i class="fa-solid fa-trash text-red-600 hover:text-red-800"></i>
-                    </button>
-                </td>
-            `;
-
-                tableBody.appendChild(tr);
-            });
-        }
-
-        function deleteVendor(clientId) {
-            fetch(API_URL_FOR_VENDOR_DELETE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        client_id: clientId
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Vendor deleted successfully');
-                    }
-                    loadVendor();
-                })
-                .catch(err => {
-                    console.error(err);
-                    checkbox.checked = false;
-                    alert('Something went wrong');
+            // Function to switch tabs
+            function switchTab(tabId) {
+                // Remove active class from all tabs
+                tabButtons.forEach(button => {
+                    button.classList.remove('active');
                 });
 
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
 
-        }
+                // Add active class to clicked tab
+                const activeButton = document.querySelector(`[data-tab="${tabId}"]`);
+                const activeContent = document.getElementById(tabId);
 
-        loadVendor();
+                if (activeButton && activeContent) {
+                    activeButton.classList.add('active');
+                    activeContent.classList.add('active');
+                }
+            }
+
+            // Add click event to tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    switchTab(tabId);
+                });
+            });
+
+            // Initialize first tab as active
+            if (tabButtons.length > 0) {
+                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                switchTab(firstTabId);
+            }
+        });
     </script>
 </body>
 

@@ -6,9 +6,10 @@ if (empty($ip_port)) {
 
 $clientId = $_GET['client_id'];
 
-$storeVendorApi = $ip_port . "api/vendors/client-store.php";
-$storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
-$showClientApi = $ip_port . "api/clients/show.php";
+
+// $showClientApi = $ip_port . "api/clients/show.php";
+$getClientsWorksApi = $ip_port . "api/works/client-works.php?client_id=$clientId";
+$getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.php?client_id=$clientId";
 
 ?>
 
@@ -159,11 +160,13 @@ $showClientApi = $ip_port . "api/clients/show.php";
                     <!-- Work Board Tab -->
                     <div id="work-board" class="tab-content">
                         <div class="grid grid-cols-2 gap-6 h-full">
-                            <div class="flex items-center justify-center h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
-                                    <i class="fas fa-clipboard-list text-4xl text-purple-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Work Board Content</h3>
-                                    <p class="text-gray-600">Work board tasks will be displayed here</p>
+                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
+                                    <p class="text-gray-600">Financial information will be displayed here</p>
+
+                                    <?php include('sc-works.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
                         </div>
@@ -172,11 +175,13 @@ $showClientApi = $ip_port . "api/clients/show.php";
                     <!-- Accounting Tab -->
                     <div id="accounting" class="tab-content">
                         <div class="grid grid-cols-2 gap-6 h-full">
-                            <div class="flex items-center justify-center h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
                                     <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
                                     <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
                                     <p class="text-gray-600">Financial information will be displayed here</p>
+
+                                    <?php include('sc-accounting.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
                         </div>

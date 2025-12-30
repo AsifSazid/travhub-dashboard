@@ -243,10 +243,10 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.client_name || 'No Name'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.vendor_id || 'No ID'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="completed-task-entry.php?work_id=${vendor.id}" title="Tasks">
-                        <i class="fas fa-tasks mr-2"></i>
+                    <a href="show-vendors.php?vendor_id=${vendor.id}" title="Show">
+                        <i class="fas fa-eye mr-2"></i>
                     </a>
-                    <button onclick="deleteVendor(${vendor.client_id})" title="Tasks">
+                    <button onclick="deleteVendor(${vendor.client_id})" title="Delete">
                         <i class="fa-solid fa-trash text-red-600 hover:text-red-800"></i>
                     </button>
                 </td>
