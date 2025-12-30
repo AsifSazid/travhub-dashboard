@@ -4,8 +4,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeAllClientApi = $ip_port . "api/clients/all-clients.php";
-$storeVendorApi = $ip_port . "api/vendors/client-store.php";
+$storeAllVendorApi = $ip_port . "api/vendors/all-vendors.php";
 $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
 
 ?>
@@ -186,17 +185,15 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
         <div class="p-6">
             <div class="grid grid-cols-6 gap-4">
                 <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Client Lists</h2>
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Vendor Lists</h2>
 
                     <div class="overflow-x-auto table-container">
                         <table id="clientTable" class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl No</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client Name</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone No</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Is Vendor</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor ID</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
@@ -209,63 +206,49 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
         </div>
     </main>
 
+    <!-- Floating Quick Access Tab -->
+    <?php include '../elements/floating-menus.php'; ?>
+
+    <script src="../assets/js/script.js"></script>
+
     <script>
-        const API_URL_FOR_ALL_CLIENTS = "<?php echo $storeAllClientApi; ?>";
-        const API_URL_FOR_VENDOR_STORE = "<?php echo $storeVendorApi; ?>";
+        const API_URL_FOR_ALL_VENDORS = "<?php echo $storeAllVendorApi; ?>";
         const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
 
         // Client
         const tableBody = document.getElementById('clientTableBody');
 
-        let clientsData = [];
-        fetch(API_URL_FOR_ALL_CLIENTS)
-            .then(res => res.json())
-            .then(data => {
-                clientsData = data.clients;
-                renderDropdown(clientsData);
-            })
-            .catch(err => console.error(err));
+        function loadVendor() {
+            let vendorsData = [];
+            fetch(API_URL_FOR_ALL_VENDORS)
+                .then(res => res.json())
+                .then(data => {
+                    vendorsData = data.vendors;
+                    renderDropdown(vendorsData);
+                })
+                .catch(err => console.error(err));
+        }
 
         function renderDropdown(list) {
             // আগের ডাটা মুছে ফেলা
             tableBody.innerHTML = '';
 
-            list.forEach(client => {
-                const phoneObj = JSON.parse(client.phone);
-                const primaryPhone = phoneObj.primary_no;
-
-                const emailObj = JSON.parse(client.email);
-                const primaryEmail = phoneObj.primary;
-
+            list.forEach((vendor, index) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50";
 
                 // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
                 tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${client.id || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${client.given_name || 'No Title'} ${client.sur_name}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.client_name || 'No Name'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.vendor_id || 'No ID'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input 
-                            type="checkbox"
-                            class="sr-only peer"
-                            ${client.is_vendor == 1 ? 'checked' : ''}
-                            onchange="toggleVendor(${client.id}, this)"
-                        >
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
-                            peer-checked:bg-green-600 
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                            after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                            peer-checked:after:translate-x-full relative">
-                        </div>
-                    </label>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="completed-task-entry.php?work_id=${client.id}" title="Tasks">
-                        <i class="fas fa-tasks"></i>
+                    <a href="completed-task-entry.php?work_id=${vendor.id}" title="Tasks">
+                        <i class="fas fa-tasks mr-2"></i>
                     </a>
+                    <button onclick="deleteVendor(${vendor.client_id})" title="Tasks">
+                        <i class="fa-solid fa-trash text-red-600 hover:text-red-800"></i>
+                    </button>
                 </td>
             `;
 
@@ -273,12 +256,8 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
             });
         }
 
-        function toggleVendor(clientId, checkbox) {
-            const url = checkbox.checked ?
-                API_URL_FOR_VENDOR_STORE :
-                API_URL_FOR_VENDOR_DELETE;
-
-            fetch(url, {
+        function deleteVendor(clientId) {
+            fetch(API_URL_FOR_VENDOR_DELETE, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -290,18 +269,20 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Vendor added successfully');
-                    } else {
-                        alert('Failed to add vendor');
-                        checkbox.checked = false;
+                        alert('Vendor deleted successfully');
                     }
+                    loadVendor();
                 })
                 .catch(err => {
                     console.error(err);
                     checkbox.checked = false;
                     alert('Something went wrong');
                 });
+
+
         }
+
+        loadVendor();
     </script>
 </body>
 

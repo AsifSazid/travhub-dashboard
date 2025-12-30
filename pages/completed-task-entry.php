@@ -320,6 +320,8 @@ $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?w
         </div>
     </main>
 
+    <script src="../assets/js/script.js"></script>
+
     <script>
         const API_URL_FOR_TASK_STORE = "<?php echo $storeTasksApi; ?>";
         const API_URL_FOR_ALL_TASKS_FOR_WORK = "<?php echo $getAllTasksForWorkApi; ?>";

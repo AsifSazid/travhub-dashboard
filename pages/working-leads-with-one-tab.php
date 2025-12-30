@@ -664,7 +664,7 @@
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="assets/script.js"></script>
+    <script src="../assets/js/script.js"></script>
     <!-- Custom JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {

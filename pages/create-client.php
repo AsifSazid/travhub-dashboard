@@ -422,6 +422,8 @@ $storeClientApi = $ip_port . "api/clients/store.php";
         </div> -->
     </main>
 
+    <script src="../assets/js/script.js"></script>
+
     <script>
         const API_URL_FOR_CLIENT_STORE = "<?php echo $storeClientApi; ?>";
 

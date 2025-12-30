@@ -1,6 +1,6 @@
-<?php 
-    // Get current page file name
-    $currentPage = basename($_SERVER['PHP_SELF']); 
+<?php
+// Get current page file name
+$currentPage = basename($_SERVER['PHP_SELF']);
 ?>
 
 <aside id="sidebar" class="fixed top-16 left-0 h-full bg-slate-800 text-white sidebar-transition z-20 w-64">
@@ -9,7 +9,7 @@
 
             <li>
                 <a href="index.php"
-                   class="flex items-center p-3 rounded-lg 
+                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'index.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-home mr-3"></i>
                     <span class="sidebar-text">Dashboard</span>
@@ -17,32 +17,32 @@
             </li>
 
             <li>
-                <a href="clients.php"
-                   class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'clients.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                <a href="index-clients.php"
+                    class="flex items-center p-3 rounded-lg 
+                   <?= $currentPage == 'index-clients.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-users mr-3"></i>
                     <span class="sidebar-text">Clients</span>
                 </a>
             </li>
             <li>
-                <a href="generate-leads.php"
-                   class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                    <i class="fas fa-circle-plus mr-3"></i>
-                    <span class="sidebar-text">Traveller</span>
+                <a href="index-travelers.php"
+                    class="flex items-center p-3 rounded-lg 
+                   <?= $currentPage == 'index-travelers.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                    <i class="fas fa-users mr-3"></i>
+                    <span class="sidebar-text">Traveller's Profile</span>
                 </a>
             </li>
             <li>
-                <a href="generate-leads.php"
-                   class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                <a href="index-vendors.php"
+                    class="flex items-center p-3 rounded-lg 
+                   <?= $currentPage == 'index-vendors.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-circle-plus mr-3"></i>
                     <span class="sidebar-text">Vendor</span>
                 </a>
             </li>
             <li>
                 <a href="generate-leads.php"
-                   class="flex items-center p-3 rounded-lg 
+                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-circle-plus mr-3"></i>
                     <span class="sidebar-text">Generate Lead</span>
@@ -51,7 +51,7 @@
 
             <li>
                 <a href="completed-work-entry.php"
-                   class="flex items-center p-3 rounded-lg 
+                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'completed-work-entry.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-tasks mr-3"></i>
                     <span class="sidebar-text">Completed Work Entry</span>
@@ -68,17 +68,8 @@
             </li> -->
 
             <li>
-                <a href="traveler-profile.php"
-                   class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'traveler-profile.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                    <i class="fas fa-users mr-3"></i>
-                    <span class="sidebar-text">Traveller's Profile</span>
-                </a>
-            </li>
-
-            <li>
                 <a href="analytics.php"
-                   class="flex items-center p-3 rounded-lg 
+                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'analytics.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-chart-bar mr-3"></i>
                     <span class="sidebar-text">Analytics</span>
@@ -87,7 +78,7 @@
 
             <li>
                 <a href="settings.php"
-                   class="flex items-center p-3 rounded-lg 
+                    class="flex items-center p-3 rounded-lg 
                    <?= $currentPage == 'settings.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                     <i class="fas fa-cog mr-3"></i>
                     <span class="sidebar-text">Settings</span>
