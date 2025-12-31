@@ -119,7 +119,11 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                 <!-- Tabs Navigation -->
                 <div class="border-b border-gray-200 mb-6">
                     <div class="flex space-x-1 overflow-x-auto custom-scrollbar">
-                        <button class="tab-button flex items-center active" data-tab="documents">
+                        <button class="tab-button flex items-center active" data-tab="details">
+                            <i class="fas fa-folder mr-2"></i>
+                            Details
+                        </button>
+                        <button class="tab-button flex items-center" data-tab="documents">
                             <i class="fas fa-folder mr-2"></i>
                             Documents
                         </button>
@@ -144,14 +148,45 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
 
                 <!-- Tab Content Area -->
                 <div class="flex-1 overflow-y-auto">
-                    <!-- Documents Tab -->
-                    <div id="documents" class="tab-content active">
-                        <div class="grid grid-cols-2 gap-6 h-full">
+                    <!-- Details Tab -->
+                    <div id="details" class="tab-content active">
+                        <div class="grid grid-cols-3 gap-6 h-full">
                             <div class="flex items-center col-span-2 justify-center h-full">
                                 <div class="text-center">
                                     <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Documents Content</h3>
-                                    <p class="text-gray-600">Document management will be displayed here</p>
+                                    <h3 class="text-xl font-semibold mb-2">Traveller Management</h3>
+                                    <p class="text-gray-600">Traveller management will be displayed here</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center h-full border-l border-gray-400">
+                                <div class="text-center">
+                                    <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
+                                    <h3 class="text-xl font-semibold mb-2">Client Profile</h3>
+                                    <p class="text-gray-600">Client Profile management will be displayed here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents Tab -->
+                    <div id="documents" class="tab-content active">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+                                    <?php include('sc-documents.php') ?> <!-- sc means show client -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Information Tab -->
+                    <div id="information" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+                                    <h3 class="text-xl font-semibold mb-2">Information</h3>
+
+                                    <?php include('sc-informations.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
                         </div>
@@ -162,10 +197,6 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
-                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
-                                    <p class="text-gray-600">Financial information will be displayed here</p>
-
                                     <?php include('sc-works.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
@@ -177,10 +208,6 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
-                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
-                                    <p class="text-gray-600">Financial information will be displayed here</p>
-
                                     <?php include('sc-accounting.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
@@ -190,20 +217,14 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                     <!-- Linked Travellers Tab -->
                     <div id="linked-travellers" class="tab-content">
                         <div class="h-full w-full">
-                            <?php include('tp-linked-travellers.php') ?> <!-- tp means Traveller Profile -->
+                            <?php include('tp-linked-travellers.php') ?> <!-- sc means show client -->
                         </div>
                     </div>
 
                     <!-- Credentials Tab -->
                     <div id="credentials" class="tab-content">
-                        <div class="grid grid-cols-2 gap-6 h-full">
-                            <div class="flex items-center justify-center h-full">
-                                <div class="text-center">
-                                    <i class="fas fa-key text-4xl text-indigo-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Credentials Content</h3>
-                                    <p class="text-gray-600">Login credentials will be displayed here</p>
-                                </div>
-                            </div>
+                        <div class="h-full w-full">
+                            <?php include('credentials.php') ?> <!-- sc means show client -->
                         </div>
                     </div>
                 </div>

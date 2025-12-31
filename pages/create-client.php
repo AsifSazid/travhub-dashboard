@@ -219,6 +219,22 @@ $storeClientApi = $ip_port . "api/clients/store.php";
                             </div>
                         </div>
 
+                        <div>
+                            <label for="vendorType" class="block text-sm font-medium text-gray-700 mb-2">
+                                Vendor Type <span class="text-red-500">*</span>
+                            </label>
+                            <div id="vendorType" class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="is_vendor" value="1" class="form-radio h-4 w-4 text-blue-600">
+                                    <span class="ml-2 text-gray-700">Is Vendor</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="is_vendor" value="0" class="form-radio h-4 w-4 text-blue-600" checked>
+                                    <span class="ml-2 text-gray-700">Not a Vendor</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- 3 Column Layout -->
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <!-- Column 1: Personal Information -->
@@ -426,6 +442,7 @@ $storeClientApi = $ip_port . "api/clients/store.php";
 
     <script>
         const API_URL_FOR_CLIENT_STORE = "<?php echo $storeClientApi; ?>";
+        const vendorType = "<?php echo $vendorType; ?>";
 
         // Secondary Phone Management
         function addSecondaryPhone() {

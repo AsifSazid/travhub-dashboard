@@ -21,7 +21,6 @@
 
     <script>
         const API_URL_FOR_CLIENTS_WORKS = "<?php echo $getClientsWorksApi; ?>";
-        alert(API_URL_FOR_CLIENTS_WORKS);
         function loadWorks() {
             fetch(API_URL_FOR_CLIENTS_WORKS)
                 .then(res => res.json())

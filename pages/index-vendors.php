@@ -185,7 +185,14 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
         <div class="p-6">
             <div class="grid grid-cols-6 gap-4">
                 <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Vendor Lists</h2>
+                    <div class="flex items-start gap-4 flex-wrap mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Vendor Lists</h2>
+                        </div>
+                        <a href="create-vendor.php" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
+                            <i class="fas fa-plus-circle mr-3"></i>Add New Vendor
+                        </a>
+                    </div>
 
                     <div class="overflow-x-auto table-container">
                         <table id="clientTable" class="min-w-full divide-y divide-gray-200">
