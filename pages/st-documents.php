@@ -1,16 +1,24 @@
 <div class="bg-white rounded-lg shadow p-4 flex flex-col text-left">
+
     <div class="grid grid-cols-3 gap-4">
+        <!-- Left -->
+        <div class="col-span-2">
+            <div class="mb-4">
+                <h3 class="text-xl font-semibold mb-2">Files Are Shown here-</h3>
+            </div>
+        </div>
+
+
+        <!-- Right -->
         <form id="docForms">
-            <!-- Left -->
-            <div class="col-span-2">
+            <div class="col-span-1">
                 <div class="mb-4">
                     <label class="block mb-2 text-sm font-medium text-gray-700">
                         Select Document
                     </label>
 
                     <select
-                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700
-               focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
+                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
                         <option value="" selected disabled>-- Select --</option>
                         <option value="trade_license">Trade License</option>
                         <option value="trade_license_translated">Trade License (Translated and Notarized)</option>
@@ -54,19 +62,11 @@
                 </div>
 
             </div>
-
-
             <button type="submit" class="flex-1 px-4 py-2 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">Submit</button>
 
         </form>
-
-        <!-- Right -->
-        <div class="col-span-1">
-            <div class="mb-4">
-                <h3 class="text-xl font-semibold mb-2">Files Are Shown here-</h3>
-            </div>
-        </div>
     </div>
+
 </div>
 
 

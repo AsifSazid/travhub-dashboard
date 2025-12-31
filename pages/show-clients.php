@@ -143,6 +143,10 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                             <i class="fas fa-key mr-2"></i>
                             Credentials
                         </button>
+                        <button class="tab-button flex items-center" data-tab="negotiations">
+                            <i class="fa-solid fa-handshake mr-2"></i>
+                            Negotiations
+                        </button>
                     </div>
                 </div>
 
@@ -151,11 +155,17 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                     <!-- Details Tab -->
                     <div id="details" class="tab-content active">
                         <div class="grid grid-cols-3 gap-6 h-full">
-                            <div class="flex items-center col-span-2 justify-center h-full">
+                            <div class="col-span-2 h-full">
                                 <div class="text-center">
                                     <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
                                     <h3 class="text-xl font-semibold mb-2">Traveller Management</h3>
                                     <p class="text-gray-600">Traveller management will be displayed here</p>
+
+                                    <hr class="my-8">
+
+                                    <div>
+                                        Traveller Group
+                                    </div>
                                 </div>
                             </div>
                             <div class="flex items-center justify-center h-full border-l border-gray-400">
@@ -225,6 +235,13 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
                     <div id="credentials" class="tab-content">
                         <div class="h-full w-full">
                             <?php include('credentials.php') ?> <!-- sc means show client -->
+                        </div>
+                    </div>
+
+                    <!-- Negotiations Tab -->
+                    <div id="negotiations" class="tab-content">
+                        <div class="h-full w-full">
+                            <?php include('sc-negotiations.php') ?> <!-- sc means show client -->
                         </div>
                     </div>
                 </div>
