@@ -17,8 +17,8 @@ if (!$data) {
 }
 
 // Validate required fields
-if (empty($data['full_name'])) {
-    echo json_encode(['success' => false, 'message' => 'Full name is required']);
+if (empty($data['name'])) {
+    echo json_encode(['success' => false, 'message' => 'Vendor name is required']);
     exit;
 }
 
@@ -28,55 +28,52 @@ if (empty($data['phone']) || empty($data['email'])) {
 }
 
 try {
-    // Generate UUID
-    $uuid = generateIDs('clients');
+    // Generate UUID & SYS ID for vendor
+    $uuid = generateIDs('vendors');
 
-    echo $uuid['uuid'];
-    
     // Prepare SQL
     $stmt = $pdo->prepare("
-        INSERT INTO clients (
+        INSERT INTO vendors (
             uuid,
-            client_sys_id, 
-            type, 
-            name, 
-            phone, 
-            email, 
-            address, 
-            status, 
-            created_by, 
+            vendor_sys_id,
+            type,
+            name,
+            email,
+            phone,
+            address,
+            status,
+            created_by,
             updated_by
-        ) 
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    
+
     // Execute
     $stmt->execute([
         $uuid['uuid'],
         $uuid['sys_id'],
-        $data['type'] ?? 'individual',
-        $data['full_name'],
-        json_encode($data['phone']),
+        $data['type'] ?? 'local agent',
+        $data['name'],
         json_encode($data['email']),
-        json_encode($data['address']),
+        json_encode($data['phone']),
+        json_encode($data['address'] ?? null),
         $data['status'] ?? 'active',
         $data['created_by'] ?? 'system',
-        $data['created_by'] ?? 'system'
+        $data['updated_by'] ?? 'system'
     ]);
-    
-    $clientId = $pdo->lastInsertId();
-    
+
+    $vendorId = $pdo->lastInsertId();
+
     echo json_encode([
         'success' => true,
-        'message' => 'Client added successfully',
-        'client_id' => $clientId,
-        'client_uuid' => $uuid
+        'message' => 'Vendor added successfully',
+        'vendor_id' => $vendorId,
+        'vendor_uuid' => $uuid
     ]);
-    
+
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
         'message' => 'Database error: ' . $e->getMessage()
     ]);
 }
-?>

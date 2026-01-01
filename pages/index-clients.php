@@ -6,7 +6,7 @@ if (empty($ip_port)) {
 
 $storeAllClientApi = $ip_port . "api/clients/all-clients.php";
 $storeVendorApi = $ip_port . "api/vendors/client-store.php";
-$storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
+$removeClientVendorApi = $ip_port . "api/vendors/edit-client-vendor.php";
 
 ?>
 
@@ -200,9 +200,11 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl No</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client ID</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client Name</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone No</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Is Vendor</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
@@ -224,7 +226,7 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     <script>
         const API_URL_FOR_ALL_CLIENTS = "<?php echo $storeAllClientApi; ?>";
         const API_URL_FOR_VENDOR_STORE = "<?php echo $storeVendorApi; ?>";
-        const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
+        const API_URL_FOR_VENDOR_REMOVE = "<?php echo $removeClientVendorApi; ?>";
 
         // Client
         const tableBody = document.getElementById('clientTableBody');
@@ -247,43 +249,49 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                 const primaryPhone = phoneObj.primary_no;
 
                 const emailObj = JSON.parse(client.email);
-                const primaryEmail = phoneObj.primary;
+                const primaryEmail = emailObj.primary;
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50";
 
                 // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
                 tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <a href="show-clients.php?client_id=${client.id}" title="Details">
-                        ${client.given_name || 'No Title'} ${client.sur_name}
-                    </a>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input 
-                            type="checkbox"
-                            class="sr-only peer"
-                            ${client.is_vendor == 1 ? 'checked' : ''}
-                            onchange="toggleVendor(${client.id}, this)"
-                        >
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
-                            peer-checked:bg-green-600 
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                            after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                            peer-checked:after:translate-x-full relative">
-                        </div>
-                    </label>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="show-clients.php?client_id=${client.id}" title="Details">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                </td>
-            `;
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            <a href="show-clients.php?client_id=${client.id}" title="Details">
+                                ${client.client_sys_id || 'No ID'}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            <a href="show-clients.php?client_id=${client.id}" title="Details">
+                                ${client.name || 'No Name'}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${client.type || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox"
+                                    class="sr-only peer"
+                                    ${client.is_vendor == 1 ? 'checked' : ''}
+                                    onchange="toggleVendor(${client.id}, this)"
+                                >
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
+                                    peer-checked:bg-green-600 
+                                    after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                    after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                                    peer-checked:after:translate-x-full relative">
+                                </div>
+                            </label>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <a href="show-clients.php?client_id=${client.id}" title="Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    `;
 
                 tableBody.appendChild(tr);
             });
@@ -292,7 +300,7 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
         function toggleVendor(clientId, checkbox) {
             const url = checkbox.checked ?
                 API_URL_FOR_VENDOR_STORE :
-                API_URL_FOR_VENDOR_DELETE;
+                API_URL_FOR_VENDOR_REMOVE;
 
             fetch(url, {
                     method: 'POST',

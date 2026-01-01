@@ -20,61 +20,61 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-if (empty($data['client_id'])) {
+if (empty($data['vendor_id'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Client ID required'
+        'message' => 'Vendor ID required'
     ]);
     exit;
 }
 
-$client_id = (int) $data['client_id'];
+$vendor_id = (int) $data['vendor_id'];
 
 try {
     // 🔐 Start Transaction
     $pdo->beginTransaction();
 
     /* ======================
-       1️⃣ Fetch Client
+       1️⃣ Fetch Vendor
        ====================== */
     $stmt = $pdo->prepare("
         SELECT *
-        FROM clients
+        FROM vendors
         WHERE id = :id
         LIMIT 1
     ");
-    $stmt->execute(['id' => $client_id]);
-    $client = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute(['id' => $vendor_id]);
+    $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$client) {
-        throw new Exception('Client not found');
+    if (!$vendor) {
+        throw new Exception('Vendor not found');
     }
 
-    if ((int)$client['is_vendor'] === 1) {
+    if ((int)$vendor['is_client'] === 1) {
         $pdo->rollBack();
         echo json_encode([
             'success' => true,
-            'message' => 'Client already vendor'
+            'message' => 'Vendor already client'
         ]);
         exit;
     }
 
     /* ======================
-       2️⃣ Generate Vendor IDs
+       2️⃣ Generate Client IDs
        ====================== */
-    $vendorIDs = generateIDs('vendors');
+    $clientIDs = generateIDs('clients');
 
-    $vendor_uuid   = $vendorIDs['uuid'];
-    $vendor_sys_id = $vendorIDs['sys_id'];
-    $vendor_name   = $client['name'];
+    $client_uuid   = $clientIDs['uuid'];
+    $client_sys_id = $clientIDs['sys_id'];
+    $client_name   = $vendor['name'];
 
     /* ======================
-       3️⃣ Insert Vendor
+       3️⃣ Insert Client
        ====================== */
     $stmt = $pdo->prepare("
-        INSERT INTO vendors (
+        INSERT INTO clients (
             uuid,
-            vendor_sys_id,
+            client_sys_id,
             type,
             name,
             email,
@@ -86,7 +86,7 @@ try {
         )
         VALUES (
             :uuid,
-            :vendor_sys_id,
+            :client_sys_id,
             :type,
             :name,
             :email,
@@ -99,40 +99,40 @@ try {
     ");
 
     $stmt->execute([
-        'uuid'           => $vendor_uuid,
-        'vendor_sys_id'  => $vendor_sys_id,
-        'type'           => 'client',
-        'name'           => $vendor_name,
-        'email'          => $client['email'],
-        'phone'          => $client['phone'],
-        'address'        => $client['address'],
+        'uuid'           => $client_uuid,
+        'client_sys_id'  => $client_sys_id,
+        'type'           => 'vendor',
+        'name'           => $client_name,
+        'email'          => $vendor['email'],
+        'phone'          => $vendor['phone'],
+        'address'        => $vendor['address'],
         'status'         => 'active',
         'created_by'     => 'system',
         'updated_by'     => 'system'
     ]);
 
-    $vendor_db_id = $pdo->lastInsertId();
+    $client_db_id = $pdo->lastInsertId();
 
     /* ======================
-       4️⃣ Update Client with Vendor Info
+       4️⃣ Update Vendor with Client Info
        ====================== */
     $stmt = $pdo->prepare("
-        UPDATE clients
+        UPDATE vendors
         SET
-            is_vendor      = 1,
-            vendor_id      = :vendor_id,
-            vendor_uuid    = :vendor_uuid,
-            vendor_sys_id  = :vendor_sys_id,
-            vendor_name    = :vendor_name
-        WHERE id = :client_id
+            is_client      = 1,
+            client_id      = :client_id,
+            client_uuid    = :client_uuid,
+            client_sys_id  = :client_sys_id,
+            client_name    = :client_name
+        WHERE id = :vendor_id
     ");
 
     $stmt->execute([
-        'vendor_id'     => $vendor_db_id,
-        'vendor_uuid'   => $vendor_uuid,
-        'vendor_sys_id' => $vendor_sys_id,
-        'vendor_name'   => $vendor_name,
-        'client_id'     => $client_id
+        'client_id'     => $client_db_id,
+        'client_uuid'   => $client_uuid,
+        'client_sys_id' => $client_sys_id,
+        'client_name'   => $client_name,
+        'vendor_id'     => $vendor_id
     ]);
 
     // ✅ Commit
@@ -140,12 +140,12 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => 'Client converted to vendor successfully',
-        'vendor'  => [
-            'id'       => $vendor_db_id,
-            'uuid'     => $vendor_uuid,
-            'sys_id'   => $vendor_sys_id,
-            'name'     => $vendor_name
+        'message' => 'Vendor converted to client successfully',
+        'client'  => [
+            'id'       => $client_db_id,
+            'uuid'     => $client_uuid,
+            'sys_id'   => $client_sys_id,
+            'name'     => $client_name
         ]
     ]);
 
