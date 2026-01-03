@@ -101,10 +101,10 @@
             const primaryPhone = phoneObj.primary_no;
 
             const li = document.createElement('li');
-            li.textContent = `${client.id} | ${client.given_name} ${client.sur_name} | ${primaryPhone}`;
+            li.textContent = `${client.id} | ${client.name} | ${primaryPhone}`;
             li.className = "px-4 py-2 cursor-pointer hover:bg-purple-100";
             li.addEventListener('click', () => {
-                clientInput.value = li.textContent + `| ${client.uuid}`;
+                clientInput.value = li.textContent + ` | ${client.sys_id}`;
                 clientDropdown.classList.add('hidden');
             });
             clientDropdown.appendChild(li);
@@ -164,7 +164,41 @@
 
             // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
             tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${work.created_at || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                ${work.meta_data ? (() => {
+                    const meta = JSON.parse(work.meta_data);
+                    const created = meta.created_by_date || {};
+                    
+                    // Get the last update (last item in array)
+                    const updatedArray = meta.updated_by_date || [];
+                    const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
+                    
+                    return `
+                    <div class="space-y-2">
+                        <div>
+                        <div class="font-bold text-base leading-tight capitalize">
+                            ${created.user || 'N/A'}
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            ${created.date || ''}
+                        </div>
+                        </div>
+                        
+                        <!-- Last Update - Smaller and Lighter -->
+                        ${lastUpdate ? `
+                        <div class="pt-1 border-t border-gray-100">
+                            <div class="font-small text-sm text-gray-700 capitalize">
+                            ${lastUpdate.user} (Lastest Update)
+                            </div>
+                            <div class="text-xs text-gray-400">
+                            ${lastUpdate.date}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    `;
+                })() : 'N/A'}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${work.title || 'No Title'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${work.client_name || 'Unknown'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${work.file_info || 'Folder'}</td>
@@ -223,3 +257,4 @@
             });
     });
 </script>
+

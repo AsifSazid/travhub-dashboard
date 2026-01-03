@@ -1,0 +1,126 @@
+# 📄 **generate_meta_data.php - Documentation**
+
+## 🎯 **Purpose**
+এটি **Meta Data** তৈরি করার জন্য একটি ফাংশন। Meta Data মানে হলো - কে কখন ডাটা তৈরি করলো এবং কে কখন আপডেট করলো তার সম্পূর্ণ হিস্ট্রি।
+
+## 📁 **How to Use**
+
+### **Step 1: Require করুন**
+আপনি যেকোনো API ফোল্ডারে আছেন (যেমন: `api/clients/`, `api/leads/`, `api/works/`, `api/vendor/`) - সেখান থেকে ফাইলটি require করুন:
+
+```php
+require_once '../../server/generate_meta_data.php';
+```
+অথবা
+```php
+require '../../server/generate_meta_data.php';
+```
+
+### **Step 2: ব্যবহার করুন**
+
+#### **Case A: নতুন ডাটা তৈরি করার সময় (CREATE)**
+```php
+$metaDataJson = buildMetaData(
+    null,
+    $_SESSION['user_name'] ?? 'system'
+);
+```
+
+**ব্যাখ্যা:**
+- প্রথম প্যারামিটার `null` দিতে হবে (কারণ নতুন ডাটা)
+- দ্বিতীয় প্যারামিটার user নাম (সেশন থেকে অথবা ডিফল্ট 'system')
+
+#### **Case B: existing ডাটা আপডেট করার সময় (UPDATE)**
+```php
+// 1. প্রথমে Database থেকে পুরানো meta_data পড়ুন
+$stmt = $pdo->prepare("SELECT meta_data FROM your_table WHERE id = :id");
+$stmt->execute(['id' => $id]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// 2. নতুন meta_data তৈরি করুন
+$metaDataJson = buildMetaData(
+    $row['meta_data'],
+    $_SESSION['user_name'] ?? 'demo_name'
+);
+```
+
+**ব্যাখ্যা:**
+- প্রথম প্যারামিটার Database থেকে পড়া পুরানো JSON
+- দ্বিতীয় প্যারামিটার যিনি আপডেট করছেন তার নাম
+
+## 💾 **Database এ Save করার নিয়ম**
+
+### **নতুন ডাটা INSERT:**
+```php
+$stmt = $pdo->prepare("
+    INSERT INTO your_table (name, email, meta_data) 
+    VALUES (:name, :email, :meta_data)
+");
+
+$stmt->execute([
+    'name' => $name,
+    'email' => $email,
+    'meta_data' => $metaDataJson  // এখানে meta_data pass করুন
+]);
+```
+
+### **Existing ডাটা UPDATE:**
+```php
+$stmt = $pdo->prepare("
+    UPDATE your_table 
+    SET name = :name, meta_data = :meta_data 
+    WHERE id = :id
+");
+
+$stmt->execute([
+    'name' => $newName,
+    'meta_data' => $metaDataJson,  // নতুন meta_data
+    'id' => $recordId
+]);
+```
+
+## 📊 **Meta Data এর Structure**
+ফাংশনটি নিচের ফরম্যাটে JSON রিটার্ন করে:
+
+```json
+{
+    "created_by_date": {
+        "user": "demo_name",
+        "date": "03-01-2026 16:40"
+    },
+    "updated_by_date": [
+        {"user": "demo_name", "date": "03-01-2026 16:40"},
+        {"user": "admin", "date": "04-01-2026 11:05"}
+    ]
+}
+```
+
+- **created_by_date**: প্রথম কে তৈরি করেছিলো
+- **updated_by_date**: লিস্ট আকারে সব আপডেট হিস্ট্রি
+
+## ⚠️ **মনে রাখার বিষয়**
+1. **Path সঠিক আছে কিনা** check করুন: সব API থেকে `../../server/`
+2. **Session** ব্যবহার করলে `session_start()` call করুন
+3. Database column এর type **JSON** বা **TEXT** রাখুন
+
+## ✅ **সফল ব্যবহারের উদাহরণ**
+
+```php
+// File: api/clients/store.php
+<?php
+session_start();
+require_once '../../server/generate_meta_data.php';
+
+if ($isNewClient) {
+    // CREATE
+    $meta = buildMetaData(null, $_SESSION['user_name']);
+    // ... INSERT to database
+} else {
+    // UPDATE
+    $oldMeta = $client['meta_data'];
+    $newMeta = buildMetaData($oldMeta, $_SESSION['user_name']);
+    // ... UPDATE database
+}
+```
+
+**সহজ নিয়ম:** নতুন বানাতে `null`, আপডেট করতে `পুরানো JSON` দিন। ✅

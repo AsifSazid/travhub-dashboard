@@ -31,7 +31,9 @@ if (empty($data['client_id'])) {
 $client_id = (int) $data['client_id'];
 
 try {
-    // 🔐 Start Transaction
+    /* ======================
+       🔐 Start Transaction
+       ====================== */
     $pdo->beginTransaction();
 
     /* ======================
@@ -60,7 +62,49 @@ try {
     }
 
     /* ======================
-       2️⃣ Generate Vendor IDs
+       2️⃣ Check Existing Vendor (SYNC)
+       ====================== */
+    $vendorSearchStmt = $pdo->prepare("
+        SELECT *
+        FROM vendors
+        WHERE client_id = :id
+        LIMIT 1
+    ");
+    $vendorSearchStmt->execute(['id' => $client_id]);
+    $foundedVendor = $vendorSearchStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($foundedVendor) {
+
+        // 🔁 Sync client with existing vendor
+        $stmt = $pdo->prepare("
+            UPDATE clients
+            SET
+                is_vendor      = 1,
+                vendor_id      = :vendor_id,
+                vendor_uuid    = :vendor_uuid,
+                vendor_sys_id  = :vendor_sys_id,
+                vendor_name    = :vendor_name
+            WHERE id = :client_id
+        ");
+
+        $stmt->execute([
+            'vendor_id'     => $foundedVendor['id'],
+            'vendor_uuid'   => $foundedVendor['uuid'],
+            'vendor_sys_id' => $foundedVendor['vendor_sys_id'],
+            'vendor_name'   => $foundedVendor['name'],
+            'client_id'     => $client_id
+        ]);
+
+        $pdo->commit();
+        echo json_encode([
+            'success' => true,
+            'message' => 'Client and vendor synchronization complete'
+        ]);
+        exit;
+    }
+
+    /* ======================
+       3️⃣ Generate Vendor IDs
        ====================== */
     $vendorIDs = generateIDs('vendors');
 
@@ -69,7 +113,7 @@ try {
     $vendor_name   = $client['name'];
 
     /* ======================
-       3️⃣ Insert Vendor
+       4️⃣ Insert Vendor
        ====================== */
     $stmt = $pdo->prepare("
         INSERT INTO vendors (
@@ -81,6 +125,11 @@ try {
             phone,
             address,
             status,
+            is_client,
+            client_id,
+            client_uuid,
+            client_sys_id,
+            client_name,
             created_by,
             updated_by
         )
@@ -93,6 +142,11 @@ try {
             :phone,
             :address,
             :status,
+            :is_client,
+            :client_id,
+            :client_uuid,
+            :client_sys_id,
+            :client_name,
             :created_by,
             :updated_by
         )
@@ -107,6 +161,11 @@ try {
         'phone'          => $client['phone'],
         'address'        => $client['address'],
         'status'         => 'active',
+        'is_client'      => 1,
+        'client_id'      => $client['id'],
+        'client_uuid'    => $client['uuid'],
+        'client_sys_id'  => $client['client_sys_id'],
+        'client_name'    => $client['name'],
         'created_by'     => 'system',
         'updated_by'     => 'system'
     ]);
@@ -114,7 +173,7 @@ try {
     $vendor_db_id = $pdo->lastInsertId();
 
     /* ======================
-       4️⃣ Update Client with Vendor Info
+       5️⃣ Update Client with Vendor Info
        ====================== */
     $stmt = $pdo->prepare("
         UPDATE clients
@@ -135,20 +194,21 @@ try {
         'client_id'     => $client_id
     ]);
 
-    // ✅ Commit
+    /* ======================
+       ✅ Commit
+       ====================== */
     $pdo->commit();
 
     echo json_encode([
         'success' => true,
         'message' => 'Client converted to vendor successfully',
         'vendor'  => [
-            'id'       => $vendor_db_id,
-            'uuid'     => $vendor_uuid,
-            'sys_id'   => $vendor_sys_id,
-            'name'     => $vendor_name
+            'id'     => $vendor_db_id,
+            'uuid'   => $vendor_uuid,
+            'sys_id' => $vendor_sys_id,
+            'name'   => $vendor_name
         ]
     ]);
-
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

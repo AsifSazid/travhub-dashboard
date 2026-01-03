@@ -59,6 +59,43 @@ try {
         exit;
     }
 
+
+    $clientSearchStmt = $pdo->prepare("
+        SELECT *
+        FROM clients
+        WHERE vendor_id = :id
+        LIMIT 1
+    ");
+    $clientSearchStmt->execute(['id' => $vendor_id]);
+    $foundedClient = $clientSearchStmt->fetch(PDO::FETCH_ASSOC);
+    if ($foundedClient) {
+        $stmt = $pdo->prepare("
+            UPDATE vendors
+            SET
+                is_client      = 1,
+                client_id      = :client_id,
+                client_uuid    = :client_uuid,
+                client_sys_id  = :client_sys_id,
+                client_name    = :client_name
+            WHERE id = :vendor_id
+        ");
+
+        $stmt->execute([
+            'client_id'     => $foundedClient['id'],
+            'client_uuid'   => $foundedClient['uuid'],
+            'client_sys_id' => $foundedClient['client_sys_id'],
+            'client_name'   => $foundedClient['name'],
+            'vendor_id'     => $vendor_id
+        ]);
+
+        $pdo->commit();
+        echo json_encode([
+            'success' => true,
+            'message' => 'Vendor and client Synchronization Complete'
+        ]);
+        exit;
+    }
+
     /* ======================
        2️⃣ Generate Client IDs
        ====================== */
@@ -81,6 +118,11 @@ try {
             phone,
             address,
             status,
+            is_vendor,
+            vendor_id,
+            vendor_uuid,
+            vendor_sys_id,
+            vendor_name,
             created_by,
             updated_by
         )
@@ -93,6 +135,11 @@ try {
             :phone,
             :address,
             :status,
+            :is_vendor,
+            :vendor_id,
+            :vendor_uuid,
+            :vendor_sys_id,
+            :vendor_name,
             :created_by,
             :updated_by
         )
@@ -107,6 +154,11 @@ try {
         'phone'          => $vendor['phone'],
         'address'        => $vendor['address'],
         'status'         => 'active',
+        'is_vendor'      => '1',
+        'vendor_id'      => $vendor['id'],
+        'vendor_uuid'    => $vendor['uuid'],
+        'vendor_sys_id'  => $vendor['vendor_sys_id'],
+        'vendor_name'    => $vendor['name'],
         'created_by'     => 'system',
         'updated_by'     => 'system'
     ]);
@@ -148,7 +200,6 @@ try {
             'name'     => $client_name
         ]
     ]);
-
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -159,3 +210,4 @@ try {
         'message' => $e->getMessage()
     ]);
 }
+

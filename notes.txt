@@ -67,8 +67,44 @@ ROOT (Folder)
     |
     |--- api (Folder)
     |        |
-    |        |--- get-all-leads.php
-    |        |--- leads-store.php
+    |        |---clients
+    |        |      |
+    |        |      |---all-clients.php
+    |        |      |---get-client.php
+    |        |      |---store.php
+    |        |      |---vendor-store.php
+    |        |    
+    |        |---financial_entries
+    |        |      |
+    |        |      |---client-fin-entries.php
+    |        |      |---store.php
+    |        |      |---task-fin-entries.php
+    |        |      |---vendor-fin-entries.php
+    |        |      |---work-fin-entries.php
+    |        |
+    |        |---leads
+    |        |      |
+    |        |      |---all-leads.php
+    |        |      |---store.php
+    |        |
+    |        |---tasks
+    |        |      |
+    |        |      |---all-tasks.php
+    |        |      |---store.php
+    |        |      |---task-for-work.php
+    |        |
+    |        |---vendor
+    |        |      |
+    |        |      |---all-vendors.php
+    |        |      |---client-store.php
+    |        |      |---delete-vendor.php
+    |        |      |---store.php
+    |        |
+    |        |---works
+    |        |      |
+    |        |      |---all-works.php
+    |        |      |---client-works.php
+    |        |      |---store.php
     |
     |--- assets (Folder)
     |        |
@@ -108,7 +144,9 @@ ROOT (Folder)
     |--- server (Folder)
     |        |
     |        |--- db_connection.php
+    |        |--- generate_meta_data.php
     |        |--- uuid_generator.php
+    |        |--- uuid_with_system_id_generator.php
     |
     |
     |  

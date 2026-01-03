@@ -30,8 +30,6 @@ if (empty($data['phone']) || empty($data['email'])) {
 try {
     // Generate UUID
     $uuid = generateIDs('clients');
-
-    echo $uuid['uuid'];
     
     // Prepare SQL
     $stmt = $pdo->prepare("

@@ -7,7 +7,7 @@ function generateIDs(string $tag): array
 
     return [
         'uuid'   => uuidV4(), // ✅ pure UUID v4
-        'sys_id' => $sysData // ✅ business readable ID
+        'sys_id' => $sysData // ✅ 16 char business readable ID
     ];
 }
 
@@ -16,9 +16,10 @@ function generateUUID(string $tag): string
     require 'db_connection.php'; // $pdo
 
     $map = [
-        'clients'   => ['table' => 'clients',   'column' => 'client_sys_id',   'short' => 'C'],
-        'travelers' => ['table' => 'travelers', 'column' => 'traveler_sys_id', 'short' => 'T'],
-        'vendors'   => ['table' => 'vendors',   'column' => 'vendor_sys_id',   'short' => 'V'],
+        'clients'   => ['table' => 'clients',   'column' => 'sys_id',   'short' => 'CL'],
+        'travelers' => ['table' => 'travelers', 'column' => 'sys_id', 'short' => 'TR'],
+        'vendors'   => ['table' => 'vendors',   'column' => 'sys_id',   'short' => 'VR'],
+        'works'   => ['table' => 'works',   'column' => 'sys_id',   'short' => 'WK'],
     ];
 
     if (!isset($map[$tag])) {
@@ -29,8 +30,7 @@ function generateUUID(string $tag): string
     $column = $map[$tag]['column'];
     $short  = $map[$tag]['short'];
 
-    $company = 'TH';
-    $static  = 'NR';
+    $company = 'THR';
     $year    = date('y'); // 26
 
     // 🔹 Last sys_id of CURRENT YEAR only
@@ -48,26 +48,27 @@ function generateUUID(string $tag): string
     $lastSysId = $stmt->fetchColumn();
 
     if ($lastSysId) {
-        // THC-NR-26-00K-9999
+        // THR-CL-26-00K999
         $parts  = explode('-', $lastSysId);
-        $block  = $parts[3];          // 00K
-        $serial = (int) $parts[4];    // 9999
+        $blockSerial = explode('K', $parts[3]);
+
+        $block  = $blockSerial[0];          // 00K
+        $serial = $blockSerial[1];    // 999
+
 
         if ($serial >= 999) {
-            // 🔥 block increase, serial reset
-            $blockNumber = (int) str_replace('K', '', $block);
-            $block = str_pad($blockNumber + 1, 2, '0', STR_PAD_LEFT) . 'K';
-            $serial = '001';
+            $block = str_pad($block + 1, 2, '0', STR_PAD_LEFT);
+            $serial = 001;
         } else {
             $serial = str_pad($serial + 1, 3, '0', STR_PAD_LEFT);
         }
     } else {
         // 🔹 New year or empty table
-        $block  = '00K';
-        $serial = '001';
+        $block  = 00;
+        $serial = 001;
     }
 
-    $sys_id = "{$company}-{$static}-{$year}-{$block}-{$serial}";
+    $sys_id = "{$company}-{$short}-{$year}-{$block}K{$serial}";
 
     return $sys_id;
 }
@@ -88,4 +89,4 @@ function uuidV4(): string
 
 
 
-// THC-NR-26-00K-001
+// THR-CL-26-00K001

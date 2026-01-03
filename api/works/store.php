@@ -1,6 +1,7 @@
 <?php
 require '../../server/db_connection.php';
-require '../../server/uuid_generator.php';
+require '../../server/uuid_with_system_id_generator.php';
+require '../../server/generate_meta_data.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -19,17 +20,18 @@ if (!$input) {
 
 // extract values
 $rawClient = $input['client'] ?? null;
-
 $parts = explode('|', $rawClient);
 
 // ID always first part
 $clientId = trim($parts[0]);
-$clientUuid = trim($parts[3]);
+$clientSysID = trim($parts[3]);
 $clientName = trim($parts[1]);
 $workTitle = $input['work_title'] ?? null;
-$clientFolderName = trim(str_replace(' ', '', $parts[1])) . trim(str_replace('+', '', $parts[2]));
 
-$folderDirectory = $rootPath . '/storage/clients/' . $clientFolderName;
+$clientFolderName = trim(str_replace(' ', '', $parts[3])) . '_' . trim(str_replace(' ', '', $parts[1]));
+
+$folderDirectory = $rootPath . '/storage/clients/' . $clientFolderName . '/';
+
 if (!is_dir($folderDirectory)) {
     mkdir($folderDirectory, 0755, true);
 }
@@ -63,28 +65,33 @@ try {
         $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE id = ?");
         $updateStmt->execute([$updatedWorkName, $clientId]);
 
-        $uuid = generateUUID();
+        $uuid = generateIDs('works');
+
+        $metaDataJson = buildMetaData(
+            null,
+            $_SESSION['user_name'] ?? 'system'
+        );
 
         $workStoreSql = "INSERT INTO works (
                 uuid,
+                sys_id,
                 file_name, 
-                client_id, 
-                client_uuid, 
+                client_sys_id, 
                 client_name, 
                 title,
-                work_dir_path 
+                meta_data
             ) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         $workStoreStmt = $pdo->prepare($workStoreSql);
 
         $workStoreStmt->execute([
-            $uuid,
+            $uuid['uuid'],
+            $uuid['sys_id'],
             isset($workFileName) ? $workFileName : null,
-            isset($clientId) ? $clientId : null,
-            isset($clientUuid) ? $clientUuid : null,
+            isset($clientSysID) ? $clientSysID : null,
             isset($clientName) ? $clientName : null,
             isset($workTitle) ? $workTitle : null,
-            isset($workDirectory) ? $workDirectory : null
+            isset($metaDataJson) ? $metaDataJson : null
         ]);
 
         mkdir($workDirectory, 0755, true);
