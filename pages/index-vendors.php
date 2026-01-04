@@ -262,12 +262,12 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
                 tr.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <a href="show-vendors.php?vendor_id=${vendor.id}" title="Details">
-                                ${vendor.vendor_sys_id || 'No ID'}
+                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
+                                ${vendor.sys_id || 'No ID'}
                             </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <a href="show-vendors.php?vendor_id=${vendor.id}" title="Details">
+                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
                                 ${vendor.name || 'No Name'}
                             </a>
                         </td>
@@ -291,7 +291,7 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
                             </label>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <a href="show-vendors.php?vendor_id=${vendor.id}" title="Details">
+                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </td>

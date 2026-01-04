@@ -9,7 +9,7 @@ $workId = $_GET['work_id'];
 try {
     $stmtForWork = $pdo->prepare("
         SELECT * FROM works
-        WHERE id =?
+        WHERE sys_id =?
         ORDER BY id ASC
     ");
     $stmtForWork->execute([$workId]);
@@ -17,10 +17,10 @@ try {
 
     $stmt = $pdo->prepare("
         SELECT * FROM clients
-        WHERE id =?
+        WHERE sys_id =?
         ORDER BY id ASC
     ");
-    $stmt->execute([$work['client_id']]);
+    $stmt->execute([$work['client_sys_id']]);
     $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
     echo json_encode(['client' => $client, 'work' => $work,  'success' => true]); // Send JSON to the client

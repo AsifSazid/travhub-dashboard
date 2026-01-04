@@ -16,10 +16,36 @@ function generateUUID(string $tag): string
     require 'db_connection.php'; // $pdo
 
     $map = [
-        'clients'   => ['table' => 'clients',   'column' => 'sys_id',   'short' => 'CL'],
+        // Core Modules
+        'clients'   => ['table' => 'clients',   'column' => 'sys_id', 'short' => 'CL'],
+        'vendors'   => ['table' => 'vendors',   'column' => 'sys_id', 'short' => 'VR'],
+        'works'     => ['table' => 'works',     'column' => 'sys_id', 'short' => 'WK'],
         'travelers' => ['table' => 'travelers', 'column' => 'sys_id', 'short' => 'TR'],
-        'vendors'   => ['table' => 'vendors',   'column' => 'sys_id',   'short' => 'VR'],
-        'works'   => ['table' => 'works',   'column' => 'sys_id',   'short' => 'WK'],
+
+        // Sales & Marketing
+        'leads'     => ['table' => 'leads',     'column' => 'sys_id', 'short' => 'LD'],
+        'quotations' => ['table' => 'quotations', 'column' => 'sys_id', 'short' => 'QT'],
+
+        // Project Management  
+        'tasks'     => ['table' => 'tasks',     'column' => 'sys_id', 'short' => 'TS'],
+        'projects'  => ['table' => 'projects',  'column' => 'sys_id', 'short' => 'PR'],
+
+        // Finance
+        'payments'  => ['table' => 'payments',  'column' => 'sys_id', 'short' => 'PM'],
+        'invoices'  => ['table' => 'invoices',  'column' => 'sys_id', 'short' => 'IN'],
+        'expenses'  => ['table' => 'expenses',  'column' => 'sys_id', 'short' => 'EX'],
+        'financial_entries'  => ['table' => 'financial_entries',  'column' => 'sys_id', 'short' => 'FE'],
+
+        // Operations
+        'bookings'  => ['table' => 'bookings',  'column' => 'sys_id', 'short' => 'BK'],
+        'tickets'   => ['table' => 'tickets',   'column' => 'sys_id', 'short' => 'TK'],
+
+        // HRM
+        'employees' => ['table' => 'employees', 'column' => 'sys_id', 'short' => 'EM'],
+
+        // Inventory
+        'products'  => ['table' => 'products',  'column' => 'sys_id', 'short' => 'PD'],
+        'orders'    => ['table' => 'orders',    'column' => 'sys_id', 'short' => 'OR'],
     ];
 
     if (!isset($map[$tag])) {

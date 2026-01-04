@@ -39,7 +39,12 @@
 |   cwe_tm-financial-trxn.php  |    completed work entry task management financial transaction file that means cwe is    |
 |                              |    for completed work entry (task management)                                           |
 |------------------------------|-----------------------------------------------------------------------------------------|
-
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   te                         |    task entry                                                                           |
+|------------------------------|-----------------------------------------------------------------------------------------|
+|------------------------------|-----------------------------------------------------------------------------------------|
+|   te-work-folder.php         |    task entry work folder file that means te is for task entry                          |
+|------------------------------|-----------------------------------------------------------------------------------------|
 
 
 
@@ -152,6 +157,17 @@ ROOT (Folder)
     |  
     |--- uploads (Folder)
     |
+    |
+    |--- storage (Folder)
+    |       |
+    |       |--- clients
+    |       |       |
+    |       |       |---THR-CL-26-00K001_ShakilAhmed
+    |       |       |       |
+    |       |       |       |---Hotel_Booking (Ei folder dekhabe)
+    |       |       |       |       
+    |       |       |       |---THR-CL-26-00K001_ShakilAhmed ( Othoba Ei folder dekhabe)
+    |       |       |       |       
     |
     |  
     |--- .htaccess

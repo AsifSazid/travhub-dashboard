@@ -1,6 +1,7 @@
 <?php
 require '../../server/db_connection.php';
-require '../../server/uuid_generator.php';
+require '../../server/uuid_with_system_id_generator.php';
+require '../../server/generate_meta_data.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -11,11 +12,11 @@ ini_set('display_errors', 1);
 
 // ---------------- CONFIGURATION ----------------
 // $GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
-$GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt'));// Replace with your actual API key
+$GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt')); // Replace with your actual API key
 $GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 // ---------------- GET DATA ----------------
-$uuid           = generateUUID();
+$uuid           = generateIDs('tasks');
 $category       = $_POST['task_category'] ?? null;
 $infoFileName   = $_POST['info_file_name'] ?? null;
 $infoDetails    = $_POST['information'] ?? null;
@@ -29,22 +30,20 @@ if (!$category || !$workId) {
 }
 
 // ---------------- GET WORK DIRECTORY ----------------
-$stmt = $pdo->prepare("SELECT work_dir_path , uuid , title FROM works WHERE id = ?");
+$stmt = $pdo->prepare("SELECT sys_id , title , client_sys_id , client_name FROM works WHERE sys_id = ?");
 $stmt->execute([$workId]);
 $work = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$work || empty($work['work_dir_path'])) {
-    echo json_encode(['success' => false, 'message' => 'Work directory not found']);
-    exit;
-}
-
-if (empty($work['title']) || empty($work['uuid'])) {
+if (empty($work['title']) || empty($work['sys_id'])) {
     echo json_encode(['success' => false, 'message' => 'Work Title or UUID not found']);
     exit;
 }
 
-$workBaseDir = rtrim($work['work_dir_path'], '/');
-$taskDirectory = $workBaseDir . '/tasks/' . $uuid;
+$rootPath = $_SERVER['DOCUMENT_ROOT'];
+
+$clientFolderName = trim(str_replace(' ', '', $work['client_sys_id'])) . '_' . trim(str_replace(' ', '', $work['client_name'])) . '/' . str_replace(' ', '_', $work['title']);
+
+$taskDirectory = $rootPath . '/storage/clients/' . $clientFolderName . '/tasks/' . $uuid['sys_id'];
 
 // ---------------- CREATE DIRECTORIES ----------------
 if (!is_dir($taskDirectory)) {
@@ -288,20 +287,25 @@ try {
     $filesJson = json_encode($relativePaths);
     $extractedDataJson = $extractedData ? json_encode($extractedData) : null;
 
+    $metaDataJson = buildMetaData(
+        null,
+        $_SESSION['user_name'] ?? 'system'
+    );
+
     $stmt = $pdo->prepare("
         INSERT INTO tasks (
             uuid, 
+            sys_id, 
             category, 
             info_file_name, 
             info_details, 
-            work_id, 
-            work_uuid, 
+            work_sys_id, 
             work_title, 
             hotel_info, 
             air_ticket_info, 
-            all_file_path, 
+            all_file_name, 
             status, 
-            created_by
+            meta_data
         ) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
@@ -315,18 +319,18 @@ try {
     }
 
     $stmt->execute([
-        $uuid,
+        $uuid['uuid'],
+        $uuid['sys_id'],
         $category,
         $infoFileName,
         $infoDetails,
-        $workId,
-        $work['uuid'],
+        $work['sys_id'],
         $work['title'],
         $hotelInfo,
         $airTicketInfo,
         $filesJson,
         'pending',
-        'system',
+        $metaDataJson,
     ]);
 
     $response = [

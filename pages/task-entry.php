@@ -8,6 +8,7 @@ $workId = $_GET['work_id'];
 $getAllTasksForWorkApi = $ip_port . "api/tasks/tasks-for-work.php?work_id=$workId";
 $storeTasksApi = $ip_port . "api/tasks/store.php";
 $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?work_id=$workId";
+$getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
 
 
 ?>
@@ -151,6 +152,20 @@ $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?w
                 opacity: 1;
             }
         }
+
+        .context-menu-item {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            border-radius: 4px;
+            user-select: none;
+        }
+
+        .context-menu-item:hover {
+            background-color: #374151;
+            /* Tailwind gray-700 */
+        }
     </style>
     <!-- Add to the <head> section for FilePond -->
     <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet">
@@ -186,133 +201,204 @@ $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?w
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
         <div class="p-6">
-            <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <div id="taskTab" class="tab-content">
-                        <div class="flex border-b mb-6">
-                            <button
-                                class="tab-btn px-4 py-2 text-sm font-medium"
-                                onclick="window.location.href='/pages/completed-work-entry.php'">
-                                <i class="fas fa-tasks mr-1"></i> General Information
-                            </button>
-                            <button
-                                class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
-                                data-tab="taskTab">
-                                <i class="fas fa-tasks mr-1"></i> Task Management
-                            </button>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-800 mb-1">
-                            Task Management
-                        </h2>
-                        <p class="text-sm text-gray-600 mb-4">
-                            Drag & drop files or paste content from clipboard
-                        </p>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div id="taskTab" class="tab-content">
 
-                        <form id="taskForm">
-                            <div class="grid grid-cols-2 gap-4">
-                                <!-- Left -->
-                                <div>
-                                    <div class="mb-4">
-                                        <label for="taskCategory" class="block text-sm font-medium text-gray-700 my-2">Task Category</label>
-                                        <select id="taskCategory" name="task_category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                            <option value="">Search For</option>
-                                            <option value="1">Air Ticket Issue</option>
-                                            <option value="2">Hotel Booking</option>
-                                        </select>
-                                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span">
+                            <div class="flex border-b mb-6">
+                                <button
+                                    class="tab-btn px-4 py-2 text-sm font-medium"
+                                    onclick="window.location.href='/pages/completed-work-entry.php'">
+                                    <i class="fas fa-tasks mr-1"></i> General Information
+                                </button>
+                                <button
+                                    class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
+                                    data-tab="taskTab">
+                                    <i class="fas fa-tasks mr-1"></i> Task Management
+                                </button>
+                            </div>
+                            <h2 class="text-lg font-semibold text-gray-800 mb-1">
+                                Task Management
+                            </h2>
+                            <p class="text-sm text-gray-600 mb-4">
+                                Drag & drop files or paste content from clipboard
+                            </p>
 
-                                    <label class="block text-sm font-medium text-gray-700 my-2">Upload or Paste Your Documents</label>
-
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div id="dragDropArea" class="rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center hover:bg-gray-50">
-                                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-                                            <input type="file" id="fileInput" multiple class="hidden">
-                                            <button
-                                                type="button"
-                                                onclick="document.getElementById('fileInput').click()"
-                                                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                                                <i class="fas fa-folder-open mr-1"></i> Browse Files
-                                            </button>
+                            <form id="taskForm">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Left -->
+                                    <div>
+                                        <div class="mb-4">
+                                            <label for="taskCategory" class="block text-sm font-medium text-gray-700 my-2">Task Category</label>
+                                            <select id="taskCategory" name="task_category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                                <option value="">Search For</option>
+                                                <option value="1">Air Ticket Issue</option>
+                                                <option value="2">Hotel Booking</option>
+                                            </select>
                                         </div>
 
-                                        <textarea id="pasteArea"
-                                            placeholder="Paste content here"
-                                            class="w-full h-36 p-2 border-2 border-dashed border-gray-300 rounded"></textarea>
+                                        <label class="block text-sm font-medium text-gray-700 my-2">Upload or Paste Your Documents</label>
 
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div id="dragDropArea" class="rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center hover:bg-gray-50">
+                                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                                                <input type="file" id="fileInput" multiple class="hidden">
+                                                <button
+                                                    type="button"
+                                                    onclick="document.getElementById('fileInput').click()"
+                                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                                    Browse Files
+                                                    <!-- <i class="fas fa-folder-open mr-1"></i>  -->
+                                                </button>
+                                            </div>
+
+                                            <textarea id="pasteArea"
+                                                placeholder="Paste content here"
+                                                class="w-full h-36 p-2 border-2 border-dashed border-gray-300 rounded"></textarea>
+
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Right -->
+                                    <div>
+                                        <label for="infoFileName" class="block text-sm font-medium text-gray-700 my-2">
+                                            Information File
+                                        </label>
+                                        <input type="text" id="infoFileName" name="infoFileName" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <label for="infoArea" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Information
+                                        </label>
+                                        <textarea id="infoArea" rows="5" class="w-full p-2 border rounded-lg" placeholder="Write your information"></textarea>
+                                    </div>
+
+                                    <!-- Full -->
+                                    <div class="col-span-2">
                                         <div class="mt-4">
                                             <div class="flex justify-between items-center mb-2">
                                                 <h4 class="text-sm font-medium">Dropped or Pasted Files</h4>
                                                 <span id="fileCount" class="text-xs bg-gray-200 px-2 py-1 rounded">0 files</span>
                                             </div>
                                         </div>
+                                        <div id="droppedFilesList" class="text-sm text-gray-500">
+                                            No files added yet
+                                        </div>
                                     </div>
-                                    <div id="droppedFilesList" class="text-sm text-gray-500">
-                                        No files added yet
-                                    </div>
-
                                 </div>
 
-                                <!-- Right -->
-                                <div>
-                                    <label for="infoFileName" class="block text-sm font-medium text-gray-700 my-2">
-                                        Information File
-                                    </label>
-                                    <input type="text" id="infoFileName" name="infoFileName" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                    <label for="infoArea" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Information
-                                    </label>
-                                    <textarea id="infoArea" rows="5" class="w-full p-2 border rounded-lg" placeholder="Write your information"></textarea>
+                                <button type="submit" class="flex-1 px-4 py-2 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">Submit</button>
+
+                            </form>
+                        </div>
+                        <div class="col-span">
+                            <?php include('te-work-folder.php') ?>
+                        </div>
+                    </div>
+
+                    <hr class="my-6">
+
+                    <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                            <h2 class="text-2xl font-semibold text-gray-800">Task Lists</h2>
+
+                            <!-- Search Area -->
+                            <div id="typing-search" class="w-full md:w-auto">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fas fa-search text-gray-400"></i>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        id="taskSearchInput"
+                                        placeholder="Search tasks by ID, title, category, or work..."
+                                        class="pl-10 pr-4 py-2.5 w-full md:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all duration-200">
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <span id="searchResultCount" class="text-xs text-gray-400 hidden">0 found</span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <button type="submit" class="flex-1 px-4 py-2 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">Submit</button>
+                                <!-- Search Filters -->
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <div class="flex items-center space-x-2">
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="searchFilter" value="id" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-2 text-sm text-gray-700">ID</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="searchFilter" value="title" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-2 text-sm text-gray-700">Title</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="searchFilter" value="category" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-2 text-sm text-gray-700">Category</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="searchFilter" value="work" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-2 text-sm text-gray-700">Work</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="searchFilter" value="files" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-2 text-sm text-gray-700">Files</span>
+                                        </label>
+                                    </div>
 
-                        </form>
-
-                        <hr class="my-6">
-
-                        <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Task Lists</h2>
-
-                            <div class="overflow-x-auto table-container">
-                                <table id="taskTable" class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Title</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Title</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Files</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="taskTableBody" class="bg-white divide-y divide-gray-200">
-                                    </tbody>
-                                </table>
+                                    <button id="clearSearch" class="ml-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors">
+                                        <i class="fas fa-times mr-1"></i> Clear
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <hr class="my-6">
+                        <!-- Loading Indicator -->
+                        <div id="loadingIndicator" class="hidden flex items-center justify-center p-8">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <span class="ml-3 text-gray-600">Loading tasks...</span>
+                        </div>
 
-                        <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
-                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions - Work Wise</h2>
+                        <!-- No Results Message -->
+                        <div id="noResultsMessage" class="hidden text-center p-8">
+                            <i class="fas fa-search text-gray-300 text-4xl mb-3"></i>
+                            <h3 class="text-lg font-medium text-gray-700 mb-1">No tasks found</h3>
+                            <p class="text-gray-500">Try adjusting your search or filters</p>
+                        </div>
 
-                            <div class="overflow-x-auto table-container">
-                                <table id="finTable" class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client/Vendor Name</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="finTableBody" class="bg-white divide-y divide-gray-200">
-                                    </tbody>
-                                </table>
+                        <!-- Tasks Container -->
+                        <div class="overflow-x-auto table-container">
+                            <div id="tasksContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 p-4">
+                                <!-- Task cards will be dynamically inserted here -->
                             </div>
+                        </div>
+
+                        <!-- Results Info -->
+                        <div id="resultsInfo" class="mt-4 pt-4 border-t border-gray-200 hidden">
+                            <div class="flex items-center justify-between text-sm text-gray-600">
+                                <span id="totalTasksCount">0 tasks</span>
+                                <span id="filteredTasksCount" class="font-medium"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-6">
+
+                    <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions - Work Wise</h2>
+
+                        <div class="overflow-x-auto table-container">
+                            <table id="finTable" class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client/Vendor Name</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finTableBody" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -893,43 +979,227 @@ $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?w
 
 
         // get all tasks
-        const tableBody = document.getElementById('taskTableBody');
+        // Global variables
+        let allTasks = [];
+        let searchTimeout;
+
+        // Get all tasks
+        const tasksContainer = document.getElementById('tasksContainer');
+        const taskSearchInput = document.getElementById('taskSearchInput');
+        const searchResultCount = document.getElementById('searchResultCount');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const resultsInfo = document.getElementById('resultsInfo');
+        const totalTasksCount = document.getElementById('totalTasksCount');
+        const filteredTasksCount = document.getElementById('filteredTasksCount');
+        const clearSearchBtn = document.getElementById('clearSearch');
 
         function loadTasks() {
+            loadingIndicator.classList.remove('hidden');
+            tasksContainer.innerHTML = '';
+
             fetch(API_URL_FOR_ALL_TASKS_FOR_WORK)
                 .then(res => res.json())
                 .then(data => {
-                    const tasksData = data.tasks;
-                    renderTable(tasksData);
+                    allTasks = data.tasks || [];
+                    renderCards(allTasks);
+                    updateResultsInfo(allTasks.length, allTasks.length);
+                    loadingIndicator.classList.add('hidden');
                 })
-                .catch(err => console.error('Error fetching data:', err));
+                .catch(err => {
+                    console.error('Error fetching data:', err);
+                    loadingIndicator.classList.add('hidden');
+                });
         }
 
-        function renderTable(list) {
-            // আগের ডাটা মুছে ফেলা
-            tableBody.innerHTML = '';
+        function renderCards(tasks) {
+            // Clear previous data
+            tasksContainer.innerHTML = '';
 
-            list.forEach(task => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50";
+            if (tasks.length === 0) {
+                noResultsMessage.classList.remove('hidden');
+                tasksContainer.classList.add('hidden');
+                return;
+            }
 
-                // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
-                tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${task.created_at || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${task.title || 'No Title'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${task.category || 'Unknown'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${task.work_title || 'Unknown'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.file_info || 'Folder'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="cwe_tm-financial-trxn.php?work_id=${task.work_id}&task_id=${task.id}" title="">
-                        <i class="fas fa-calculator"></i>
-                    </a>
-                </td>
-            `;
+            noResultsMessage.classList.add('hidden');
+            tasksContainer.classList.remove('hidden');
 
-                tableBody.appendChild(tr);
+            tasks.forEach(task => {
+                const card = document.createElement('a');
+                card.href = `cwe_tm-financial-trxn.php?work_id=${task.work_sys_id}&task_id=${task.sys_id}`;
+                card.className = "group bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full hover:-translate-y-1 hover:border-blue-300 cursor-pointer";
+
+                // Determine category color and text
+                let categoryColor = 'gray';
+                let categoryText = 'Unknown';
+                let categoryIcon = 'fas fa-question-circle';
+
+                if (task.category == 1) {
+                    categoryColor = 'blue';
+                    categoryText = 'Air Ticket Issue';
+                    categoryIcon = 'fas fa-plane';
+                } else if (task.category == 2) {
+                    categoryColor = 'green';
+                    categoryText = 'Hotel Booking';
+                    categoryIcon = 'fas fa-hotel';
+                }
+
+                card.innerHTML = `
+            <div class="p-4 flex-grow">
+                <!-- Date and ID -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-900 bg-gray-100 px-3 py-1 rounded-full task-id">
+                            #${task.sys_id || 'N/A'}
+                        </span>
+                        <span class="text-xs text-gray-500 task-date">
+                            <i class="far fa-calendar mr-1"></i>${task.created_at || 'N/A'}
+                        </span>
+                    </div>
+                    
+                    <!-- Task Title -->
+                    <h3 class="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate task-title">
+                        ${task.sys_id || 'No Title'}
+                    </h3>
+                </div>
+
+                <!-- Category Badge -->
+                <div class="mb-4">
+                    <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-${categoryColor}-100 text-${categoryColor}-800 border border-${categoryColor}-200 task-category">
+                        <i class="${categoryIcon} mr-2 text-xs"></i>
+                        ${categoryText}
+                    </div>
+                </div>
+
+                <!-- Work Title -->
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex items-center text-gray-700">
+                        <i class="fas fa-briefcase text-gray-400 mr-3 text-sm"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs text-gray-500 mb-1">Work Title</div>
+                            <div class="text-sm font-medium truncate task-work">${task.work_title || 'Unknown'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Info -->
+                <div class="flex items-center p-3 bg-${categoryColor}-50 rounded-lg border border-${categoryColor}-100">
+                    <i class="fas fa-folder text-${categoryColor}-500 mr-3"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-${categoryColor}-700 mb-1">Files</div>
+                        <div class="text-sm text-gray-900 truncate task-files">${task.file_info || 'Folder'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer with action -->
+            <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-${categoryColor}-50 transition-colors">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700 group-hover:text-${categoryColor}-700 transition-colors">
+                        Financial Transaction
+                    </span>
+                    <div class="flex items-center">
+                        <i class="fas fa-calculator text-gray-400 group-hover:text-${categoryColor}-500 transition-colors mr-2"></i>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-${categoryColor}-500 group-hover:translate-x-1 transition-all"></i>
+                    </div>
+                </div>
+            </div>
+        `;
+
+                tasksContainer.appendChild(card);
             });
         }
+
+        function searchTasks() {
+            const searchTerm = taskSearchInput.value.toLowerCase().trim();
+            const filters = Array.from(document.querySelectorAll('input[name="searchFilter"]:checked'))
+                .map(checkbox => checkbox.value);
+
+            if (searchTerm === '') {
+                renderCards(allTasks);
+                updateResultsInfo(allTasks.length, allTasks.length);
+                searchResultCount.classList.add('hidden');
+                return;
+            }
+
+            const filteredTasks = allTasks.filter(task => {
+                let match = false;
+
+                filters.forEach(filter => {
+                    switch (filter) {
+                        case 'id':
+                            if (task.sys_id && task.sys_id.toLowerCase().includes(searchTerm)) match = true;
+                            break;
+                        case 'title':
+                            if (task.sys_id && task.sys_id.toLowerCase().includes(searchTerm)) match = true;
+                            break;
+                        case 'category':
+                            const categoryText = task.category == 1 ? 'air ticket issue' :
+                                task.category == 2 ? 'hotel booking' : 'unknown';
+                            if (categoryText.includes(searchTerm)) match = true;
+                            break;
+                        case 'work':
+                            if (task.work_title && task.work_title.toLowerCase().includes(searchTerm)) match = true;
+                            break;
+                        case 'files':
+                            if (task.file_info && task.file_info.toLowerCase().includes(searchTerm)) match = true;
+                            break;
+                    }
+                });
+
+                return match;
+            });
+
+            renderCards(filteredTasks);
+            updateResultsInfo(allTasks.length, filteredTasks.length);
+
+            // Update search result count
+            if (filteredTasks.length > 0) {
+                searchResultCount.textContent = `${filteredTasks.length} found`;
+                searchResultCount.classList.remove('hidden');
+            } else {
+                searchResultCount.classList.add('hidden');
+            }
+        }
+
+        function updateResultsInfo(total, filtered) {
+            totalTasksCount.textContent = `${total} tasks`;
+
+            if (total === filtered) {
+                resultsInfo.classList.add('hidden');
+            } else {
+                resultsInfo.classList.remove('hidden');
+                filteredTasksCount.textContent = `Showing ${filtered} of ${total}`;
+            }
+        }
+
+        // Event Listeners
+        taskSearchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(searchTasks, 300);
+        });
+
+        // Add keydown event for instant search on Enter
+        taskSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                searchTasks();
+            }
+        });
+
+        // Filter checkbox change event
+        document.querySelectorAll('input[name="searchFilter"]').forEach(checkbox => {
+            checkbox.addEventListener('change', searchTasks);
+        });
+
+        // Clear search button
+        clearSearchBtn.addEventListener('click', () => {
+            taskSearchInput.value = '';
+            searchResultCount.classList.add('hidden');
+            renderCards(allTasks);
+            updateResultsInfo(allTasks.length, allTasks.length);
+        });
 
 
         // Financial Transaction Against Task
@@ -949,6 +1219,17 @@ $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?w
         function renderFinTable(list) {
             // আগের ডাটা মুছে ফেলা
             finTableBody.innerHTML = '';
+
+            if (!list || list.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-center text-sm text-gray-500" colspan="6">
+                        No record found
+                    </td>
+                `;
+                finTableBody.appendChild(tr);
+                return; // ekhane function sesh
+            }
 
             list.forEach(finSingleEntry => {
                 const tr = document.createElement('tr');
@@ -1033,11 +1314,11 @@ $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?w
             fileInput.title = 'Select files to upload (Ctrl+Click to select multiple)';
 
             // Add help text
-            const dragDropArea = document.getElementById('dragDropArea');
-            const helpText = document.createElement('p');
-            helpText.className = 'text-xs text-gray-500 mt-2';
-            helpText.textContent = 'Drag & drop files here or click to browse';
-            dragDropArea.appendChild(helpText);
+            // const dragDropArea = document.getElementById('dragDropArea');
+            // const helpText = document.createElement('p');
+            // helpText.className = 'text-xs text-gray-500 mt-2';
+            // helpText.textContent = 'Drag & drop files here or click to browse';
+            // dragDropArea.appendChild(helpText);
         });
     </script>
 

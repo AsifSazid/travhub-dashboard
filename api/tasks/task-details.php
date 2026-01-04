@@ -8,14 +8,14 @@ $taskId = $_GET['task_id'];
 
 try {
     $stmt = $pdo->prepare("
-        SELECT * FROM financial_entries
-        WHERE task_sys_id =?
-        ORDER BY id DESC
+        SELECT * FROM tasks
+        WHERE sys_id =?
+        ORDER BY id ASC
     ");
     $stmt->execute([$taskId]);
-    $finStmts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    echo json_encode(['finStmts' => $finStmts, 'success' => true]); // Send JSON to the client
+    echo json_encode(['task' => $task,  'success' => true]); // Send JSON to the client
 } catch (Exception $e) {
     // Return error as JSON too
     echo json_encode([
