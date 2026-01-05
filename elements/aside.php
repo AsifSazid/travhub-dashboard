@@ -40,42 +40,58 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <span class="sidebar-text">Vendor</span>
                 </a>
             </li>
-            <li>
-                <a href="generate-leads.php"
-                    class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                    <i class="fas fa-circle-plus mr-3"></i>
-                    <span class="sidebar-text">Generate Lead</span>
-                </a>
-            </li>
 
-            <li>
-                <a href="completed-work-entry.php"
-                    class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'completed-work-entry.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                    <i class="fas fa-tasks mr-3"></i>
-                    <span class="sidebar-text">Completed Work Entry</span>
-                </a>
-            </li>
+            <!-- Working Area Accordion -->
+            <div class="accordion-item mt-4" data-accordion="working-area">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fas fa-briefcase mr-3"></i>
+                        <span class="font-medium">Working Area</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200"></i>
+                </button>
 
-            <!-- <li>
-                <a href="completed-task-entry.php"
-                   class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'completed-task-entry.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                    <i class="fas fa-tasks mr-3"></i>
-                    <span class="sidebar-text">Completed Task Entry</span>
-                </a>
-            </li> -->
+                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden max-h-0 transition-all duration-300">
+                    <a href="generate-leads.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-circle-plus mr-3"></i>
+                        <span class="sidebar-text">Generate Lead</span>
+                    </a>
+                    <a href="completed-work-entry.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'completed-work-entry.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-tasks mr-3"></i>
+                        <span class="sidebar-text">Completed Work Entry</span>
+                    </a>
+                </div>
+            </div>
 
-            <li>
-                <a href="analytics.php"
-                    class="flex items-center p-3 rounded-lg 
-                   <?= $currentPage == 'analytics.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                    <i class="fas fa-chart-bar mr-3"></i>
-                    <span class="sidebar-text">Analytics</span>
-                </a>
-            </li>
+            <!-- Finance Accordion -->
+            <div class="accordion-item mt-4" data-accordion="finance">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fas fa-chart-line mr-3"></i>
+                        <span class="font-medium">Finance</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200"></i>
+                </button>
 
+                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden max-h-0 transition-all duration-300">
+                    <a href="accounting.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'accounting.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-bangladeshi-taka-sign mr-3"></i>
+                        <span class="sidebar-text">Accounting</span>
+                    </a>
+                    <a href="analytics.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'analytics.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-chart-bar mr-3"></i>
+                        <span class="sidebar-text">Analytics</span>
+                    </a>
+                </div>
+            </div>
             <li>
                 <a href="settings.php"
                     class="flex items-center p-3 rounded-lg 
@@ -99,3 +115,104 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
     </nav>
 </aside>
+
+<style>
+    /* Accordion Styles */
+    .accordion-item {
+        position: relative;
+    }
+
+    .accordion-toggle {
+        cursor: pointer;
+        outline: none;
+    }
+
+    .accordion-arrow {
+        transition: transform 0.3s ease;
+    }
+
+    .accordion-toggle.active .accordion-arrow {
+        transform: rotate(180deg);
+    }
+
+    .accordion-content {
+        max-height: 0;
+        opacity: 0;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .accordion-content.open {
+        max-height: 500px;
+        opacity: 1;
+    }
+
+    /* Active page styles for accordion items */
+    .accordion-content a.active {
+        background-color: rgb(51 65 85);
+        color: white;
+    }
+
+    .accordion-item {
+        position: relative;
+    }
+
+    .accordion-toggle {
+        cursor: pointer;
+        outline: none;
+        user-select: none;
+        border: none;
+        background: none;
+        width: 100%;
+    }
+
+    .accordion-arrow {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 0.875rem;
+    }
+
+    .accordion-content {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+
+    .accordion-content a {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        color: rgb(209 213 219);
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .accordion-content a:hover {
+        background-color: rgb(51 65 85);
+        color: white;
+    }
+
+    .accordion-content a.active {
+        background-color: rgb(51 65 85);
+        color: white;
+        font-weight: 500;
+    }
+
+    /* Sidebar collapsed styles */
+    .sidebar-collapsed .accordion-toggle span,
+    .sidebar-collapsed .accordion-toggle i:first-child {
+        display: none;
+    }
+
+    .sidebar-collapsed .accordion-toggle {
+        justify-content: center;
+        padding: 0.75rem;
+    }
+
+    .sidebar-collapsed .accordion-arrow {
+        display: none;
+    }
+
+    .sidebar-collapsed .accordion-content {
+        display: none !important;
+    }
+</style>

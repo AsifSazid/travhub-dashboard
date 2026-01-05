@@ -7,6 +7,12 @@ const UIInteractions = (function () {
     let mobileMenuOpen = false;
     let mobileSearchOpen = false;
     let activeModal = null;
+    
+    // Accordion state
+    let accordions = {
+        'working-area': true,  // Default open
+        'finance': true       // Default open
+    };
 
     // DOM Elements
     const mainContent = document.getElementById('mainContent');
@@ -104,6 +110,16 @@ const UIInteractions = (function () {
                     icon.classList.remove('mr-3');
                 }
             });
+
+            // Hide sidebar text when collapsed
+            document.querySelectorAll('.sidebar-text').forEach(text => {
+                text.classList.add('hidden');
+            });
+
+            // Hide accordion content when sidebar collapsed
+            document.querySelectorAll('.accordion-content').forEach(content => {
+                content.classList.add('hidden');
+            });
         } else {
             sidebar.classList.remove('w-16', 'sidebar-collapsed');
             sidebar.classList.add('w-64');
@@ -116,6 +132,21 @@ const UIInteractions = (function () {
                 const icon = link.querySelector('i');
                 if (icon) {
                     icon.classList.add('mr-3');
+                }
+            });
+
+            // Show sidebar text when expanded
+            document.querySelectorAll('.sidebar-text').forEach(text => {
+                text.classList.remove('hidden');
+            });
+
+            // Show accordion content when sidebar expanded (if open)
+            document.querySelectorAll('.accordion-item').forEach(item => {
+                const accordionId = item.getAttribute('data-accordion');
+                const content = item.querySelector('.accordion-content');
+                if (accordions[accordionId] && content) {
+                    content.classList.remove('hidden');
+                    content.style.maxHeight = content.scrollHeight + 'px';
                 }
             });
         }
@@ -167,6 +198,141 @@ const UIInteractions = (function () {
         }
     }
 
+    // Accordion functions
+    function toggleAccordion(accordionId) {
+        const item = document.querySelector(`[data-accordion="${accordionId}"]`);
+        if (!item) return;
+        
+        const toggleBtn = item.querySelector('.accordion-toggle');
+        const content = item.querySelector('.accordion-content');
+        const arrow = item.querySelector('.accordion-arrow');
+        
+        // Toggle state
+        accordions[accordionId] = !accordions[accordionId];
+        
+        if (accordions[accordionId]) {
+            // Open accordion
+            toggleBtn.classList.add('active');
+            content.classList.add('open');
+            content.classList.remove('hidden');
+            if (arrow) {
+                arrow.style.transform = 'rotate(180deg)';
+            }
+            
+            // Calculate height for smooth animation
+            const scrollHeight = content.scrollHeight;
+            content.style.maxHeight = scrollHeight + 'px';
+            
+            // After transition, set auto height
+            setTimeout(() => {
+                if (accordions[accordionId]) {
+                    content.style.maxHeight = 'none';
+                }
+            }, 300);
+        } else {
+            // Close accordion
+            toggleBtn.classList.remove('active');
+            content.classList.remove('open');
+            if (arrow) {
+                arrow.style.transform = 'rotate(0deg)';
+            }
+            
+            // Set height before closing for smooth animation
+            const scrollHeight = content.scrollHeight;
+            content.style.maxHeight = scrollHeight + 'px';
+            
+            // Force reflow
+            content.offsetHeight;
+            
+            // Start closing animation
+            content.style.maxHeight = '0';
+            
+            // Hide after animation
+            setTimeout(() => {
+                if (!accordions[accordionId] && sidebarCollapsed) {
+                    content.classList.add('hidden');
+                }
+            }, 300);
+        }
+    }
+
+    function initAccordions() {
+        // Add event listeners to all accordion toggle buttons
+        document.querySelectorAll('.accordion-toggle').forEach(toggleBtn => {
+            toggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const accordionItem = this.closest('.accordion-item');
+                const accordionId = accordionItem.getAttribute('data-accordion');
+                
+                if (accordionId) {
+                    toggleAccordion(accordionId);
+                }
+            });
+        });
+
+        // Set initial state based on accordions object
+        Object.keys(accordions).forEach(id => {
+            const item = document.querySelector(`[data-accordion="${id}"]`);
+            if (item) {
+                const toggleBtn = item.querySelector('.accordion-toggle');
+                const content = item.querySelector('.accordion-content');
+                const arrow = item.querySelector('.accordion-arrow');
+                
+                if (accordions[id]) {
+                    // Open accordion
+                    toggleBtn.classList.add('active');
+                    content.classList.add('open');
+                    content.classList.remove('hidden');
+                    if (arrow) {
+                        arrow.style.transform = 'rotate(180deg)';
+                    }
+                    
+                    // Set height
+                    const scrollHeight = content.scrollHeight;
+                    content.style.maxHeight = scrollHeight + 'px';
+                    
+                    // After a moment, set to auto for dynamic content
+                    setTimeout(() => {
+                        if (accordions[id]) {
+                            content.style.maxHeight = 'none';
+                        }
+                    }, 100);
+                } else {
+                    // Close accordion
+                    toggleBtn.classList.remove('active');
+                    content.classList.remove('open');
+                    content.style.maxHeight = '0';
+                    if (arrow) {
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                }
+            }
+        });
+
+        // Highlight active page in accordion and open parent accordion
+        const currentPath = window.location.pathname.split('/').pop() || 'index.php';
+        const currentPage = '<?= isset($currentPage) ? $currentPage : "" ?>' || currentPath;
+        
+        // First check all sidebar links
+        document.querySelectorAll('#sidebar a').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === currentPage || href === currentPath) {
+                link.classList.add('active');
+                
+                // Ensure parent accordion is open
+                const accordionItem = link.closest('.accordion-item');
+                if (accordionItem) {
+                    const accordionId = accordionItem.getAttribute('data-accordion');
+                    if (accordionId && !accordions[accordionId]) {
+                        toggleAccordion(accordionId);
+                    }
+                }
+            }
+        });
+    }
+
     function openModal(modalId) {
         const template = modalTemplates[modalId];
         if (template) {
@@ -192,6 +358,11 @@ const UIInteractions = (function () {
             });
             document.body.classList.add('mobile-view');
             document.body.classList.remove('desktop-view');
+            
+            // Auto close sidebar on mobile if open
+            if (!sidebarCollapsed && sidebarToggle) {
+                toggleSidebar();
+            }
         } else if (width < 1024) {
             document.querySelectorAll('.kanban-column').forEach(col => {
                 col.style.minHeight = '600px';
@@ -208,6 +379,9 @@ const UIInteractions = (function () {
     }
 
     function initEventListeners() {
+        // Initialize accordions
+        initAccordions();
+
         // Sidebar toggle
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', toggleSidebar);
@@ -302,6 +476,20 @@ const UIInteractions = (function () {
 
         // Window resize
         window.addEventListener('resize', checkScreenSize);
+        
+        // Close accordions when sidebar is collapsed (optional)
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                setTimeout(() => {
+                    if (sidebarCollapsed) {
+                        // When sidebar is collapsed, ensure accordion content is hidden
+                        document.querySelectorAll('.accordion-content').forEach(content => {
+                            content.classList.add('hidden');
+                        });
+                    }
+                }, 300);
+            });
+        }
     }
 
     function init() {
@@ -316,6 +504,29 @@ const UIInteractions = (function () {
                 el.style.webkitOverflowScrolling = 'touch';
             });
         }
+        
+        // Initialize active page highlighting
+        highlightActivePage();
+    }
+    
+    function highlightActivePage() {
+        const currentPath = window.location.pathname.split('/').pop() || 'index.php';
+        const currentPage = '<?= isset($currentPage) ? $currentPage : "" ?>' || currentPath;
+        
+        // Remove all active classes first
+        document.querySelectorAll('#sidebar a').forEach(link => {
+            link.classList.remove('bg-slate-700', 'text-white');
+            link.classList.add('text-gray-300');
+        });
+        
+        // Add active class to current page
+        document.querySelectorAll('#sidebar a').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === currentPage || href === currentPath) {
+                link.classList.remove('text-gray-300');
+                link.classList.add('bg-slate-700', 'text-white');
+            }
+        });
     }
 
     // Public API
@@ -325,6 +536,13 @@ const UIInteractions = (function () {
         closeModal: closeModal,
         toggleSidebar: toggleSidebar,
         toggleNotificationPanel: toggleNotificationPanel,
-        toggleUserMenu: toggleUserMenu
+        toggleUserMenu: toggleUserMenu,
+        toggleAccordion: toggleAccordion,
+        highlightActivePage: highlightActivePage
     };
 })();
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    UIInteractions.init();
+});

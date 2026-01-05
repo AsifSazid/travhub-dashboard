@@ -1,4 +1,3 @@
-
     <style>
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;

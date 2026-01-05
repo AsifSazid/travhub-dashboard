@@ -4,9 +4,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$getAllClientsApi = $ip_port . "api/clients/all-clients.php";
-$getAllWorksApi = $ip_port . "api/works/all-works.php";
-$storeWorkApi = $ip_port . "api/works/store.php";
+$storeClientApi = $ip_port . "api/clients/store.php";
 
 ?>
 
@@ -16,7 +14,7 @@ $storeWorkApi = $ip_port . "api/works/store.php";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete Work Entry</title>
+    <title>Accounting</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -67,32 +65,13 @@ $storeWorkApi = $ip_port . "api/works/store.php";
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
         <div class="p-6">
             <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-12 bg-white rounded-lg shadow p-4">
-                    <!-- Tab Buttons -->
-                    <div class="flex border-b mb-6">
-                        <button
-                            class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-purple-600 text-purple-600"
-                            data-tab="generalTab">
-                            <i class="fas fa-info-circle mr-1"></i> General Information
-                        </button>
-                    </div>
-
-                    <!-- ================= TAB CONTENT ================= -->
-
-                    <!-- 🔹 General Information TAB -->
-                    <?php include('cwe-general-tab.php') ?>
-                    
-                </div>
-
 
             </div>
         </div>
     </main>
 
-    <!-- Floating Quick Access Tab -->
-    <?php include '../elements/floating-menus.php'; ?>
-
     <script src="../assets/js/script.js"></script>
+
 
 </body>
 
