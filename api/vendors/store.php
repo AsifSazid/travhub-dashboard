@@ -1,6 +1,8 @@
 <?php
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
+require '../../server/generate_meta_data.php';
+
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -27,25 +29,29 @@ if (empty($data['phone']) || empty($data['email'])) {
     exit;
 }
 
+$uuid = generateIDs('vendors');
+$metaDataJson = buildMetaData(
+    null,
+    $_SESSION['user_name'] ?? 'system'
+);
+
 try {
     // Generate UUID & SYS ID for vendor
-    $uuid = generateIDs('vendors');
 
     // Prepare SQL
     $stmt = $pdo->prepare("
         INSERT INTO vendors (
             uuid,
-            vendor_sys_id,
+            sys_id,
             type,
             name,
             email,
             phone,
             address,
             status,
-            created_by,
-            updated_by
+            meta_data
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Execute
@@ -58,8 +64,7 @@ try {
         json_encode($data['phone']),
         json_encode($data['address'] ?? null),
         $data['status'] ?? 'active',
-        $data['created_by'] ?? 'system',
-        $data['updated_by'] ?? 'system'
+        $metaDataJson
     ]);
 
     $vendorId = $pdo->lastInsertId();
@@ -70,7 +75,6 @@ try {
         'vendor_id' => $vendorId,
         'vendor_uuid' => $uuid
     ]);
-
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,

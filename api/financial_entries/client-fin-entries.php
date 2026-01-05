@@ -9,7 +9,7 @@ $clientId = $_GET['client_id'];
 try {
     $stmt = $pdo->prepare("
         SELECT * FROM financial_entries
-        WHERE client_id =?
+        WHERE client_sys_id =?
         ORDER BY id DESC
     ");
     $stmt->execute([$clientId]);

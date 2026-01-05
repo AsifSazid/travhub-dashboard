@@ -1,6 +1,8 @@
 <?php
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
+require '../../server/generate_meta_data.php';
+
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -30,24 +32,27 @@ if (empty($data['phone']) || empty($data['email'])) {
 try {
     // Generate UUID
     $uuid = generateIDs('clients');
-    
+    $metaDataJson = buildMetaData(
+        null,
+        $_SESSION['user_name'] ?? 'system'
+    );
+
     // Prepare SQL
     $stmt = $pdo->prepare("
         INSERT INTO clients (
             uuid,
-            client_sys_id, 
+            sys_id, 
             type, 
             name, 
             phone, 
             email, 
             address, 
             status, 
-            created_by, 
-            updated_by
+            meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    
+
     // Execute
     $stmt->execute([
         $uuid['uuid'],
@@ -58,23 +63,20 @@ try {
         json_encode($data['email']),
         json_encode($data['address']),
         $data['status'] ?? 'active',
-        $data['created_by'] ?? 'system',
-        $data['created_by'] ?? 'system'
+        $metaDataJson
     ]);
-    
+
     $clientId = $pdo->lastInsertId();
-    
+
     echo json_encode([
         'success' => true,
         'message' => 'Client added successfully',
         'client_id' => $clientId,
         'client_uuid' => $uuid
     ]);
-    
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
         'message' => 'Database error: ' . $e->getMessage()
     ]);
 }
-?>

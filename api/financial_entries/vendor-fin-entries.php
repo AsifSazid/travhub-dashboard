@@ -9,7 +9,7 @@ $vendorId = $_GET['vendor_id'];
 try {
     $stmt = $pdo->prepare("
         SELECT * FROM financial_entries
-        WHERE vendor_id =?
+        WHERE vendor_sys_id =?
         ORDER BY id DESC
     ");
     $stmt->execute([$vendorId]);

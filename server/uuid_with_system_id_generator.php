@@ -78,15 +78,15 @@ function generateUUID(string $tag): string
         $parts  = explode('-', $lastSysId);
         $blockSerial = explode('K', $parts[3]);
 
-        $block  = $blockSerial[0];          // 00K
+        $block  = $blockSerial[0];    // 00K
         $serial = $blockSerial[1];    // 999
 
 
         if ($serial >= 999) {
-            $block = str_pad($block + 1, 2, '0', STR_PAD_LEFT);
+            $block = str_pad((int) $block + 1, 2, '0', STR_PAD_LEFT);
             $serial = 001;
         } else {
-            $serial = str_pad($serial + 1, 3, '0', STR_PAD_LEFT);
+            $serial = str_pad((int) $serial + 1, 3, '0', STR_PAD_LEFT);
         }
     } else {
         // 🔹 New year or empty table
@@ -95,6 +95,7 @@ function generateUUID(string $tag): string
     }
 
     $sys_id = "{$company}-{$short}-{$year}-{$block}K{$serial}";
+
 
     return $sys_id;
 }
