@@ -86,14 +86,14 @@ function generateUUID(string $tag): string
 
         if ($serial >= 999) {
             $block = str_pad((int) $block + 1, 2, '0', STR_PAD_LEFT);
-            $serial = 001;
+            $serial = (int) 001;
         } else {
             $serial = str_pad((int) $serial + 1, 3, '0', STR_PAD_LEFT);
         }
     } else {
         // 🔹 New year or empty table
-        $block  = 00;
-        $serial = 001;
+        $block  = (int) 00;
+        $serial = (int) 001;
     }
 
     $sys_id = "{$company}-{$short}-{$year}-{$block}K{$serial}";
