@@ -35,6 +35,8 @@ function generateUUID(string $tag): string
         'invoices'  => ['table' => 'invoices',  'column' => 'sys_id', 'short' => 'IN'],
         'expenses'  => ['table' => 'expenses',  'column' => 'sys_id', 'short' => 'EX'],
         'financial_entries'  => ['table' => 'financial_entries',  'column' => 'sys_id', 'short' => 'FE'],
+        'ac_banking'  => ['table' => 'ac_banking',  'column' => 'sys_id', 'short' => 'AC'],
+        'ac_banking_stmts'  => ['table' => 'ac_banking_stmts',  'column' => 'sys_id', 'short' => 'AS'],
 
         // Operations
         'bookings'  => ['table' => 'bookings',  'column' => 'sys_id', 'short' => 'BK'],

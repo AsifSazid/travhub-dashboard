@@ -78,9 +78,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </button>
 
                 <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden max-h-0 transition-all duration-300">
-                    <a href="accounting.php"
+                    <a href="accounts.php"
                         class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'accounting.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'accounts.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-bangladeshi-taka-sign mr-3"></i>
                         <span class="sidebar-text">Accounting</span>
                     </a>

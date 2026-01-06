@@ -634,3 +634,7 @@
         padding-top: 48px !important;
     }
 }
+
+#mainContent {
+    padding-top: 0px !important;
+}
