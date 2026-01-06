@@ -89,11 +89,11 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                             <h2 class="text-lg font-semibold text-gray-800 mb-1">
                                 Task Management
                             </h2>
-                            <p class="text-sm text-gray-600 mb-4">
-                                Drag & drop files or paste content from clipboard
-                            </p>
-
                             <form id="taskForm">
+                                <label for="taskDate" class="block text-sm font-medium text-gray-700 my-2">
+                                    Task Date 
+                                </label>
+                                <input type="date" name="taskDate" id="taskDate" class="block text-sm font-medium text-gray-700 mb-2">
                                 <div class="grid grid-cols-2 gap-4">
                                     <!-- Left -->
                                     <div>
@@ -733,6 +733,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             const infoFileName = document.getElementById('infoFileName').value;
             const infoArea = document.getElementById('infoArea').value;
             const pasteArea = document.getElementById('pasteArea').value;
+            const taskDate = document.getElementById('taskDate').value;
             const workId = "<?php echo $workId; ?>";
 
             // Validate required fields
@@ -747,6 +748,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             formData.append('information', infoArea);
             formData.append('pasted_text', pasteArea);
             formData.append('work_id', workId);
+            formData.append('taskDate', taskDate);
 
             // Append files
             if (droppedFiles.length > 0) {

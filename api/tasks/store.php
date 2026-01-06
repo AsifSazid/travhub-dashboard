@@ -22,6 +22,7 @@ $infoFileName   = $_POST['info_file_name'] ?? null;
 $infoDetails    = $_POST['information'] ?? null;
 $pastedText     = $_POST['pasted_text'] ?? null;
 $workId         = $_POST['work_id'] ?? null;
+$taskDate         = $_POST['taskDate'] ?? null;
 
 // ---------------- VALIDATION ----------------
 if (!$category || !$workId) {
@@ -291,6 +292,16 @@ try {
         null,
         $_SESSION['user_name'] ?? 'system'
     );
+
+    $metaData = json_decode($metaDataJson, true);
+
+    // যদি $taskDate এ data থাকে
+    if (!empty($taskDate)) {
+        $metaData['created_by_date']['date'] = $taskDate;
+    }
+
+    // আবার array → JSON string
+    $metaDataJson = json_encode($metaData);
 
     $stmt = $pdo->prepare("
         INSERT INTO tasks (
