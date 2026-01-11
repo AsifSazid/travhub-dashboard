@@ -77,7 +77,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                             <div class="flex border-b mb-6">
                                 <button
                                     class="tab-btn px-4 py-2 text-sm font-medium"
-                                    onclick="window.location.href='/pages/completed-work-entry.php'">
+                                    onclick="window.location.href='/travhub-admin/pages/completed-work-entry.php'">
                                     <i class="fas fa-tasks mr-1"></i> General Information
                                 </button>
                                 <button
@@ -321,17 +321,18 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             });
 
             // Click on drag drop area to trigger file input
+            // Modified version with proper event handling
             dragDropArea.addEventListener('click', (e) => {
-                // Only trigger if clicking on the area itself, not on buttons
-                if (e.target === dragDropArea || e.target.tagName === 'I') {
+                // Check if the click is directly on the area (not on any child elements)
+                if (e.currentTarget === e.target) {
                     fileInput.click();
                 }
             });
-
-            // Separate handler for browse button
-            const browseButton = dragDropArea.querySelector('button');
+            
+            // Browse button handler
             browseButton.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent event from bubbling to parent
+                e.preventDefault();
+                e.stopPropagation();
                 fileInput.click();
             });
         }

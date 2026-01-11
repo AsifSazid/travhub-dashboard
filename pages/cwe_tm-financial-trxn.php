@@ -488,7 +488,9 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         let vendorsData = [];
         let allTransactions = [];
         let currentClientId = null;
+        let clientName = null;
         let selectedVendorLi = null;
+        let task = null;
 
         // DOM Elements
         const vendorInput = document.getElementById('vendorInput');
@@ -514,7 +516,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 const data = await response.json();
 
                 if (data.success && data.task) {
-                    const task = data.task;
+                    task = data.task;
 
                     // Update task info card
                     document.getElementById('taskIdDisplay').textContent = task.sys_id || 'N/A';
@@ -605,7 +607,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 </div>
             `;
         }
-
+        
         function loadTaskFiles(task) {
             try {
                 const files = task.all_file_name ? JSON.parse(task.all_file_name) : [];
@@ -636,30 +638,35 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             icon = 'fas fa-file-alt';
                             color = 'indigo';
                         }
-
+                        
                         // Escape special characters
-                        const safeFilePath = file.replace(/'/g, "\\'").replace(/"/g, '\\"');
-
+                        const cleanClientName = clientName.replace(/\s+/g, '');
+                        // const cleanWorkTitle  = WORK_TITLE.replace(/\s+/g, '_');
+                        
+                        const safeFilePath =
+                            `/travhub-admin/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}/tasks/${TASK_ID}/` +
+                            file.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                            
                         return `
-                    <div class="file-chip cursor-pointer hover:shadow-sm" 
-                         onclick="previewFile('${safeFilePath}')" 
-                         title="${fileName}">
-                        <i class="${icon} text-${color}-500 mr-1"></i>
-                        <span class="truncate max-w-[150px]">${fileName}</span>
-                    </div>
-                `;
+                            <a class="file-chip cursor-pointer hover:shadow-sm" 
+                                 href="${safeFilePath}" target="_blank"
+                                 title="${fileName}">
+                                <i class="${icon} text-${color}-500 mr-1"></i>
+                                <span class="truncate max-w-[150px]">${fileName}</span>
+                            </a>
+                        `;
                     }).join('');
 
                     fileAttachments.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-medium text-gray-700">
-                        <i class="fas fa-paperclip mr-1"></i> Attached Files (${files.length})
-                    </h4>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    ${filesHTML}
-                </div>
-            `;
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-medium text-gray-700">
+                                <i class="fas fa-paperclip mr-1"></i> Attached Files (${files.length})
+                            </h4>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            ${filesHTML}
+                        </div>
+                    `;
                 } else {
                     fileAttachments.innerHTML = `
                 <div class="text-center py-4 text-gray-500">
@@ -678,7 +685,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         `;
             }
         }
-
+        
         // Load Client Data
         async function loadClientData() {
             try {
@@ -691,7 +698,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                     currentClientId = client.sys_id;
 
-                    const clientName = `${client.name}`;
+                    clientName = `${client.name}`;
                     const workName = work.title;
 
                     document.getElementById('clientWorkInfo').innerHTML = `
@@ -712,6 +719,8 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         </div>
                     `;
                 }
+                
+                loadTaskFiles(task);
             } catch (error) {
                 console.error('Error loading client data:', error);
             }

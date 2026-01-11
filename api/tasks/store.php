@@ -50,7 +50,7 @@ $workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);
 $workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
 // Build folder path
-$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}+{$workTitle}/tasks";
+$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}/tasks";
 $taskDirectory = makeDir($clientFolderName, $cleanSysId);
 
 // ---------------- FILE UPLOAD ----------------

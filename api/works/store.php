@@ -64,9 +64,9 @@ try {
         );
         
         $sysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
-        $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
+        // $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
 
-        makeDir($clientFolderName, $workFolderName);
+        makeDir($clientFolderName, $sysId);
 
         $workStoreSql = "INSERT INTO works (
                 uuid,

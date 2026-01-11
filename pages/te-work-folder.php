@@ -411,7 +411,7 @@
                     // For files, you can implement file preview or download
                     // alert(`Opening file: ${file.name}`);
                     // In production: 
-                    window.open(`/storage/clients/${this.clientFolder}/${this.workFolder}/${file.path}`);
+                    window.open(`/travhub-admin/storage/clients/${this.clientFolder}/${this.workFolder}/${file.path}`);
                 }
             }
 

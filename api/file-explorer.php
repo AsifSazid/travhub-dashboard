@@ -49,7 +49,8 @@ class FileExplorerAPI
             preg_replace('/\s+/', '', $work['client_sys_id']) . '_' .
             preg_replace('/\s+/', '', $work['client_name']);
 
-        $this->workFolder = str_replace(' ', '_', $work['sys_id']) . '+' . str_replace(' ', '_', $work['title']);
+        // $this->workFolder = str_replace(' ', '_', $work['sys_id']) . '+' . str_replace(' ', '_', $work['title']);
+        $this->workFolder = str_replace(' ', '_', $work['sys_id']);
 
         $this->basePath = $root . '/' . $this->clientFolder . '/' . $this->workFolder;
         
