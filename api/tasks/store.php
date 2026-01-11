@@ -2,6 +2,7 @@
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
+require '../../server/make-dir.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -40,20 +41,49 @@ if (empty($work['title']) || empty($work['sys_id'])) {
     exit;
 }
 
-$rootPath = $_SERVER['DOCUMENT_ROOT'];
+// make directory
+// Clean folder name parts
+$cleanSysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
+$clientSysId = preg_replace('/\s+/u', '', $work['client_sys_id']);   
+$clientName  = preg_replace('/\s+/u', '', $work['client_name']);     
+$workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);          
+$workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
-$clientFolderName = trim(str_replace(' ', '', $work['client_sys_id'])) . '_' . trim(str_replace(' ', '', $work['client_name'])) . '/' . str_replace(' ', '_', $work['title']);
-
-$taskDirectory = $rootPath . '/storage/clients/' . $clientFolderName . '/tasks/' . $uuid['sys_id'];
-
-// ---------------- CREATE DIRECTORIES ----------------
-if (!is_dir($taskDirectory)) {
-    mkdir($taskDirectory, 0755, true);
-}
+// Build folder path
+$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}+{$workTitle}/tasks";
+$taskDirectory = makeDir($clientFolderName, $cleanSysId);
 
 // ---------------- FILE UPLOAD ----------------
 $uploadedFiles = [];
 $filesToProcess = []; // Store files for Gemini processing
+
+// ---------------- SAVE INFO FILE IF PROVIDED ----------------
+if ($infoFileName && $infoDetails) {
+    // ফাইলনেম থেকে এক্সটেনশন আলাদা করুন
+    $fileExtension = pathinfo($infoFileName, PATHINFO_EXTENSION);
+    
+    // যদি এক্সটেনশন না থাকে, তাহলে .txt করে দিন
+    if (empty($fileExtension)) {
+        $infoFileName = $infoFileName . '.txt';
+    }
+    
+    // সেফ ফাইলনেম তৈরি করুন
+    $safeInfoFileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $infoFileName);
+    $infoFilePath = $taskDirectory . '/' . $safeInfoFileName;
+    
+    // ফাইলে $infoDetails লিখুন
+    file_put_contents($infoFilePath, $infoDetails);
+    
+    // ফাইলটিকে আপলোডেড ফাইলের তালিকায় যোগ করুন
+    $uploadedFiles[] = $infoFilePath;
+    
+    // এই ফাইলটিও Gemini-তে প্রসেস করার জন্য তালিকায় যোগ করুন
+    $filesToProcess[] = $infoFilePath;
+    
+    // ডিবাগিং জন্য (পরবর্তীতে মুছে ফেলবেন)
+    error_log("Info file created: " . $infoFilePath);
+}
+
 
 if (!empty($_FILES['files']['name'][0])) {
     foreach ($_FILES['files']['name'] as $key => $name) {
@@ -74,6 +104,7 @@ if (!empty($pastedText)) {
     $textFile = $taskDirectory . '/pasted_text.txt';
     file_put_contents($textFile, $pastedText);
     $uploadedFiles[] = $textFile;
+    $filesToProcess[] = $textFile; // এটিকেও Gemini-তে প্রসেস করুন
 }
 
 // ---------------- PROCESS WITH GEMINI AI ----------------
@@ -82,19 +113,11 @@ $extractedData = null;
 
 if (!empty($filesToProcess)) {
     $geminiResponse = processFilesWithGemini($filesToProcess, $category);
-
+    
     if ($geminiResponse && isset($geminiResponse['success']) && $geminiResponse['success']) {
         $extractedData = $geminiResponse['data'];
     }
 }
-
-// ---------------- SAVE EXTRACTED DATA TO FILE ----------------
-if ($extractedData) {
-    $dataFile = $taskDirectory . '/extracted_data.json';
-    file_put_contents($dataFile, json_encode($extractedData, JSON_PRETTY_PRINT));
-    $uploadedFiles[] = $dataFile;
-}
-
 
 // ---------------- FUNCTION: PROCESS WITH GEMINI ----------------
 function processFilesWithGemini($files, $category)
@@ -107,22 +130,22 @@ function processFilesWithGemini($files, $category)
     foreach ($files as $file) {
         if (!file_exists($file)) continue;
 
-        //$mimeType = mime_content_type($file);
+        // $mimeType = mime_content_type($file);
         if (function_exists('mime_content_type')) {
-                    $mimeType = mime_content_type($file);
-                } else {
-                    $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                    $mime_types = [
-                        'pdf'  => 'application/pdf',
-                        'jpg'  => 'image/jpeg',
-                        'jpeg' => 'image/jpeg',
-                        'png'  => 'image/png',
-                        'txt'  => 'text/plain',
-                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'json' => 'application/json'
-                    ];
-                    $mimeType = $mime_types[$extension] ?? 'application/octet-stream';
-                }
+            $mimeType = mime_content_type($file);
+        } else {
+            $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            $mime_types = [
+                'pdf'  => 'application/pdf',
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+                'txt'  => 'text/plain',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'json' => 'application/json'
+            ];
+            $mimeType = $mime_types[$extension] ?? 'application/octet-stream';
+        }
         
         
         
@@ -148,7 +171,7 @@ function processFilesWithGemini($files, $category)
                 'response_mime_type' => 'application/json'
             ]
         ];
-
+        
         $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$GEMINI_MODEL}:generateContent?key={$GEMINI_API_KEY}";
 
         $ch = curl_init($apiUrl);
@@ -172,7 +195,7 @@ function processFilesWithGemini($files, $category)
             }
         }
     }
-
+    
     return [
         'success' => !empty($responses),
         'data' => $responses
@@ -300,7 +323,8 @@ function getPromptForCategory($category)
 try {
     // Convert uploaded files to relative paths
     $relativePaths = array_map(function ($path) {
-        return str_replace($_SERVER['DOCUMENT_ROOT'] . '/', '', $path);
+        // return str_replace($_SERVER['DOCUMENT_ROOT'] . '/', '', $path);
+        return basename($path);
     }, $uploadedFiles);
 
     $filesJson = json_encode($relativePaths);

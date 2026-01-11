@@ -2,6 +2,7 @@
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
+require '../../server/make-dir.php';
 
 
 header('Content-Type: application/json');
@@ -36,7 +37,17 @@ try {
         null,
         $_SESSION['user_name'] ?? 'system'
     );
-
+    
+    // make directory
+    // Clean folder name parts
+    $cleanSysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
+    $cleanFullName = preg_replace('/\s+/u', '', $data['full_name']);
+    
+    // Make folder name
+    $clientFolderName = $cleanSysId . '_' . $cleanFullName;
+    
+    makeDir('clients', $clientFolderName);
+    
     // Prepare SQL
     $stmt = $pdo->prepare("
         INSERT INTO clients (

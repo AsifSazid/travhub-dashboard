@@ -2,6 +2,7 @@
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
+require '../../server/make-dir.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -9,8 +10,6 @@ header('Access-Control-Allow-Origin: *');
 
 // get POST data (JSON)
 $input = json_decode(file_get_contents('php://input'), true);
-
-$rootPath = $_SERVER['DOCUMENT_ROOT'];
 
 
 if (!$input) {
@@ -28,17 +27,9 @@ $clientSysID = trim($parts[3]);
 $clientName = trim($parts[1]);
 $workTitle = $input['work_title'] ?? null;
 
-$clientFolderName = trim(str_replace(' ', '', $parts[3])) . '_' . trim(str_replace(' ', '', $parts[1]));
-
-$folderDirectory = $rootPath . '/storage/clients/' . $clientFolderName . '/';
-
-if (!is_dir($folderDirectory)) {
-    mkdir($folderDirectory, 0755, true);
-}
-
-$workFileName = str_replace(' ', '_', $workTitle);
-
-$workDirectory = $folderDirectory . "/" . $workFileName;
+$cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
+$cleanFullName = preg_replace('/\s+/u', '', $clientName);
+$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
 
 // validation
 if (!$rawClient) {
@@ -71,6 +62,11 @@ try {
             null,
             $_SESSION['user_name'] ?? 'system'
         );
+        
+        $sysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
+        $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
+
+        makeDir($clientFolderName, $workFolderName);
 
         $workStoreSql = "INSERT INTO works (
                 uuid,

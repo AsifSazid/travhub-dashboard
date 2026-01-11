@@ -29,13 +29,13 @@ class FileExplorerAPI
     private function initWorkDirectory(): void
     {
         $stmt = $this->pdo->prepare(
-            "SELECT title, client_sys_id, client_name 
+            "SELECT title, sys_id, client_sys_id, client_name 
              FROM works 
              WHERE sys_id = ? LIMIT 1"
         );
         $stmt->execute([$this->workId]);
         $work = $stmt->fetch(PDO::FETCH_ASSOC);
-
+        
         if (!$work) {
             $this->sendError('Work not found', 404);
         }
@@ -49,10 +49,10 @@ class FileExplorerAPI
             preg_replace('/\s+/', '', $work['client_sys_id']) . '_' .
             preg_replace('/\s+/', '', $work['client_name']);
 
-        $this->workFolder = str_replace(' ', '_', $work['title']);
+        $this->workFolder = str_replace(' ', '_', $work['sys_id']) . '+' . str_replace(' ', '_', $work['title']);
 
         $this->basePath = $root . '/' . $this->clientFolder . '/' . $this->workFolder;
-
+        
         if (!is_dir($this->basePath)) {
             mkdir($this->basePath, 0755, true);
         }
