@@ -232,6 +232,7 @@ class FileExplorerAPI
     }
 
     /* ================= SECURITY ================= */
+<<<<<<< HEAD
 
     private function safePath(string $relative): string
     {
@@ -278,6 +279,51 @@ class FileExplorerAPI
         return implode('/', $result);
     }
 
+=======
+private function safePath(string $relative): string
+{
+    // 1. Clean up the relative path
+    $relative = trim($relative, '/\\');
+    
+    // 2. Create the absolute path
+    $requestedPath = $this->basePath . ($relative ? DIRECTORY_SEPARATOR . $relative : '');
+    
+    // 3. Resolve the real path (this removes ../ and ./ automatically)
+    $realRequestedPath = realpath($requestedPath);
+    $realBasePath = realpath($this->basePath);
+
+    // 4. Check if the path actually exists (realpath returns false if not)
+    if ($realRequestedPath === false) {
+        // If it's a new folder creation, realpath might fail. 
+        // In that case, we normalize manually but still check the prefix.
+        $realRequestedPath = $this->normalizePathManual($requestedPath);
+    }
+
+    // 5. Critical Security Check: Does the requested path start with the base path?
+    // We use case-insensitive comparison for Windows compatibility
+    if (stripos($realRequestedPath, $realBasePath) !== 0) {
+        $this->sendError('Access denied: Path traversal attempt', 403);
+    }
+    
+    return $realRequestedPath;
+}
+
+private function normalizePathManual(string $path): string 
+{
+    $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+    $parts = explode(DIRECTORY_SEPARATOR, $path);
+    $safe = [];
+    foreach ($parts as $part) {
+        if ($part === '.' || $part === '') continue;
+        if ($part === '..') {
+            array_pop($safe);
+            continue;
+        }
+        $safe[] = $part;
+    }
+    return (strpos($path, DIRECTORY_SEPARATOR) === 0 ? DIRECTORY_SEPARATOR : '') . implode(DIRECTORY_SEPARATOR, $safe);
+}
+>>>>>>> server
     /* ================= HELPERS ================= */
 
     private function deleteDirectory(string $dir): void

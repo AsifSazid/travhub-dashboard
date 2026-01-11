@@ -1043,7 +1043,11 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     // Reload financial data
                     loadFinancialData();
                 } else {
+<<<<<<< HEAD
                     showNotification('Error: ' + (result.message || 'Unknown error'), 'error');
+=======
+                    showNotification('Error5: ' + (result.message || 'Unknown error'), 'error');
+>>>>>>> server
                 }
             } catch (error) {
                 console.error('Error saving transaction:', error);

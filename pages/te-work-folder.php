@@ -128,7 +128,11 @@
             async initialize() {
                 try {
                     await this.loadFolder('');
+<<<<<<< HEAD
                     setInterval(() => this.updateTime(), 60000);
+=======
+                    // setInterval(() => this.updateTime(), 60000);
+>>>>>>> server
                     this.setupEventListeners();
                     this.updateNavigationButtons();
                 } catch (error) {
