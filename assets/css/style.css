@@ -1,0 +1,640 @@
+/* Dashboard CSS - Combined Responsive Version */
+:root {
+    --primary: #3b82f6;
+    --secondary: #6366f1;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --dark: #1e293b;
+    --gray: #64748b;
+    --light: #f8fafc;
+    --border: #e2e8f0;
+}
+
+/* Base Transitions */
+.sidebar-transition {
+    transition: all 0.3s ease;
+}
+
+.card-hover {
+    transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.kanban-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-slide-in {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-animation {
+    animation: modalAppear 0.3s ease-out;
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Scrollbar Styling */
+.column-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.column-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.column-scroll::-webkit-scrollbar-track {
+    background: #f7fafc;
+    border-radius: 3px;
+}
+
+.column-scroll::-webkit-scrollbar-thumb {
+    background-color: #cbd5e0;
+    border-radius: 3px;
+}
+
+/* Button Animations */
+.kanban-btn-move,
+.kanban-btn-edit {
+    transition: all 0.2s ease;
+}
+
+.kanban-btn-move:hover,
+.kanban-btn-edit:hover {
+    transform: scale(1.1);
+}
+
+/* Sidebar Text Animation */
+.sidebar-text {
+    transition: all 0.3s ease;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.sidebar-collapsed .sidebar-text {
+    opacity: 0;
+    transform: translateX(-10px);
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* User Info Animation */
+.user-info {
+    transition: all 0.3s ease;
+}
+
+.sidebar-collapsed .user-info {
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border: none !important;
+}
+
+/* Notification & User Menu */
+.notification-panel,
+.user-menu {
+    transform: scale(0.95);
+    opacity: 0;
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.notification-panel.show,
+.user-menu.show {
+    transform: scale(1);
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Mobile Menu */
+.mobile-menu {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.mobile-menu.open {
+    transform: translateX(0);
+}
+
+/* =========================================== */
+/* RESPONSIVE DESIGN */
+/* =========================================== */
+
+/* Mobile Devices (up to 640px) */
+@media (max-width: 640px) {
+    /* Header */
+    .header-logo {
+        max-width: 120px;
+    }
+    
+    .header-title {
+        font-size: 0.875rem;
+    }
+    
+    /* Main Content */
+    .main-content {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+    /* Kanban Board */
+    .kanban-board {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+    
+    .kanban-column {
+        min-height: 400px !important;
+        max-height: 500px !important;
+    }
+    
+    /* Cards */
+    .kanban-card {
+        padding: 0.75rem !important;
+        font-size: 0.875rem;
+    }
+    
+    .kanban-card h3 {
+        font-size: 0.875rem;
+    }
+    
+    .kanban-card p {
+        font-size: 0.75rem;
+    }
+    
+    /* Modals */
+    .modal-content {
+        width: 95% !important;
+        margin: 0 2.5% !important;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    /* Floating Menu */
+    .floating-menu {
+        bottom: 80px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 90% !important;
+    }
+    
+    /* Utility Classes for Mobile */
+    .mobile-only {
+        display: block !important;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+    
+    .mobile-hide {
+        display: none !important;
+    }
+    
+    /* Bottom Navigation */
+    .bottom-nav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 64px;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+        z-index: 40;
+    }
+    
+    /* Sidebar */
+    .sidebar-desktop {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar-mobile-open {
+        transform: translateX(0);
+    }
+    
+    /* Button Sizes */
+    .btn-responsive {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Typography */
+    .text-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .heading-responsive {
+        font-size: 1rem;
+    }
+    
+    /* Spacing */
+    .p-responsive {
+        padding: 0.75rem;
+    }
+    
+    .m-responsive {
+        margin: 0.5rem;
+    }
+}
+
+/* Tablet Devices (641px to 768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+    .kanban-board {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .kanban-column {
+        min-height: 500px !important;
+    }
+    
+    .sidebar {
+        width: 56px !important;
+    }
+    
+    .main-content {
+        padding-left: 56px !important;
+    }
+    
+    .header-title {
+        font-size: 1rem;
+    }
+    
+    .search-bar {
+        width: 200px;
+    }
+    
+    .tablet-only {
+        display: block !important;
+    }
+    
+    .tablet-hide {
+        display: none !important;
+    }
+    
+    .btn-responsive {
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .text-responsive {
+        font-size: 0.9375rem;
+    }
+    
+    .heading-responsive {
+        font-size: 1.125rem;
+    }
+}
+
+/* Small Desktop (769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .kanban-board {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+    
+    .kanban-column {
+        min-height: 600px !important;
+    }
+    
+    .sidebar {
+        width: 200px !important;
+    }
+    
+    .main-content {
+        padding-left: 200px !important;
+    }
+    
+    .sidebar-text {
+        font-size: 0.875rem;
+    }
+    
+    .small-desktop-only {
+        display: block !important;
+    }
+    
+    .btn-responsive {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.9375rem;
+    }
+    
+    .text-responsive {
+        font-size: 1rem;
+    }
+    
+    .heading-responsive {
+        font-size: 1.25rem;
+    }
+}
+
+/* Large Desktop (1025px and above) */
+@media (min-width: 1025px) {
+    .kanban-board {
+        grid-template-columns: repeat(6, 1fr) !important;
+    }
+    
+    .kanban-column {
+        min-height: calc(100vh - 8rem) !important;
+    }
+    
+    .desktop-only {
+        display: block !important;
+    }
+    
+    .mobile-only {
+        display: none !important;
+    }
+    
+    .btn-responsive {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+    
+    .text-responsive {
+        font-size: 1.0625rem;
+    }
+    
+    .heading-responsive {
+        font-size: 1.5rem;
+    }
+}
+
+/* =========================================== */
+/* TOUCH DEVICE OPTIMIZATIONS */
+/* =========================================== */
+.touch-device .kanban-card,
+.touch-device .btn-responsive,
+.touch-device .quick-access-btn {
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+    min-width: 44px;
+}
+
+.touch-device .column-scroll {
+    -webkit-overflow-scrolling: touch;
+}
+
+.touch-device .mobile-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================================== */
+/* UTILITY CLASSES */
+/* =========================================== */
+
+/* Grid Responsive Fallback */
+.grid-responsive {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+/* Card Responsive */
+.responsive-card {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+    .responsive-card {
+        width: calc(50% - 0.5rem);
+        margin-bottom: 0;
+    }
+}
+
+@media (min-width: 1024px) {
+    .responsive-card {
+        width: calc(33.333% - 0.667rem);
+    }
+}
+
+/* Table Responsive */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Hide Scrollbar on Mobile */
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Loading States */
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Fade Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.fade-out {
+    animation: fadeOut 0.3s ease-out;
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* Slide Animations */
+.slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.slide-out-right {
+    animation: slideOutRight 0.3s ease-out;
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(100%);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .print-only {
+        display: block !important;
+    }
+    
+    body {
+        font-size: 12pt;
+        line-height: 1.5;
+    }
+    
+    .kanban-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .dark-mode\:bg-gray-900 {
+        background-color: #111827;
+    }
+    
+    .dark-mode\:text-white {
+        color: #f9fafb;
+    }
+    
+    .dark-mode\:border-gray-700 {
+        border-color: #374151;
+    }
+    
+    .dark-mode\:bg-gray-800 {
+        background-color: #1f2937;
+    }
+    
+    .dark-mode\:text-gray-300 {
+        color: #d1d5db;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    :root {
+        --primary: #0056b3;
+        --secondary: #4d4dff;
+        --success: #006400;
+        --warning: #8a6600;
+        --error: #8b0000;
+    }
+    
+    .kanban-card {
+        border: 2px solid var(--border);
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .modal-slide-in,
+    .modal-animation {
+        animation: none;
+    }
+    
+    .sidebar-transition {
+        transition: none;
+    }
+}
+
+/* Landscape Mode Optimizations */
+@media (orientation: landscape) and (max-height: 500px) {
+    .kanban-column {
+        min-height: 300px !important;
+        max-height: 350px !important;
+    }
+    
+    .header {
+        height: 48px !important;
+    }
+    
+    .sidebar {
+        top: 48px !important;
+    }
+    
+    .main-content {
+        padding-top: 48px !important;
+    }
+}
+
+#mainContent {
+    padding-top: 0px !important;
+}

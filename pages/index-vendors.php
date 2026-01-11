@@ -1,0 +1,246 @@
+<?php
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$storeAllVendorApi = $ip_port . "api/vendors/all-vendors.php";
+$storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
+$storeClientApi = $ip_port . "api/clients/vendor-store.php";
+$removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
+
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Work Entry</title>
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+    <!-- Top Navigation -->
+    <?php include '../elements/header.php'; ?>
+
+    <!-- Sidebar -->
+    <?php include '../elements/aside.php'; ?>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="preview-modal">
+        <div class="preview-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
+                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modalPreviewContent" class="p-4">
+                <!-- Preview content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+        <div class="p-6">
+            <div class="grid grid-cols-6 gap-4">
+                <div class="col-span-12 bg-white rounded-lg shadow p-4">
+                    <div class="flex items-start gap-4 flex-wrap mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Vendor Lists</h2>
+                        </div>
+                        <a href="create-vendor.php" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
+                            <i class="fas fa-plus-circle mr-3"></i>Add New Vendor
+                        </a>
+                    </div>
+
+                    <div class="overflow-x-auto table-container">
+                        <table id="clientTable" class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl No</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Is Client</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientTableBody" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Floating Quick Access Tab -->
+    <?php include '../elements/floating-menus.php'; ?>
+
+    <script src="../assets/js/script.js"></script>
+
+    <script>
+        const API_URL_FOR_ALL_VENDORS = "<?php echo $storeAllVendorApi; ?>";
+        const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
+        const API_URL_FOR_CLIENT_STORE = "<?php echo $storeClientApi;?>";
+        const API_URL_FOR_CLIENT_REMOVE = "<?php echo $removeVendorClientApi;?>";
+
+        // Client
+        const tableBody = document.getElementById('clientTableBody');
+
+        function loadVendor() {
+            let vendorsData = [];
+            fetch(API_URL_FOR_ALL_VENDORS)
+                .then(res => res.json())
+                .then(data => {
+                    vendorsData = data.vendors;
+                    renderDropdown(vendorsData);
+                })
+                .catch(err => console.error(err));
+        }
+
+        function renderDropdown(list) {
+            // আগের ডাটা মুছে ফেলা
+            tableBody.innerHTML = '';
+
+            list.forEach((vendor, index) => {
+                const phoneObj = JSON.parse(vendor.phone);
+                const primaryPhone = phoneObj.primary_no;
+
+                const emailObj = JSON.parse(vendor.email);
+                const primaryEmail = emailObj.primary;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+
+                // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
+                tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
+                                ${vendor.sys_id || 'No ID'}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
+                                ${vendor.name || 'No Name'}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${vendor.type || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox"
+                                    class="sr-only peer"
+                                    ${vendor.is_client == 1 ? 'checked' : ''}
+                                    onchange="toggleClient(${vendor.id}, this)"
+                                >
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
+                                    peer-checked:bg-green-600 
+                                    after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                    after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                                    peer-checked:after:translate-x-full relative">
+                                </div>
+                            </label>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    `;
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function toggleClient(vendorId, checkbox) {
+            const url = checkbox.checked ?
+                API_URL_FOR_CLIENT_STORE :
+                API_URL_FOR_CLIENT_REMOVE;
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        vendor_id: vendorId
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Vendor added successfully');
+                    } else {
+                        alert('Failed to add vendor');
+                        checkbox.checked = false;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    checkbox.checked = false;
+                    alert('Something went wrong');
+                });
+        }
+
+        function deleteVendor(clientId) {
+            fetch(API_URL_FOR_VENDOR_DELETE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        client_id: clientId
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Vendor deleted successfully');
+                    }
+                    loadVendor();
+                })
+                .catch(err => {
+                    console.error(err);
+                    checkbox.checked = false;
+                    alert('Something went wrong');
+                });
+
+
+        }
+
+        loadVendor();
+    </script>
+</body>
+
+</html>

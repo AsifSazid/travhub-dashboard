@@ -1,0 +1,166 @@
+# 📄 **uuid_with_system_id_generator.php - Documentation (Updated)**
+
+## 🎯 **Purpose**
+এটি **দুই ধরনের ID** তৈরি করে:
+1. **UUID v4** - ডাটাবেজের জন্য Unique ID (e.g., `550e8400-e29b-41d4-a716-446655440000`)
+2. **System ID** - ব্যবসায়িক ব্যবহারের জন্য Readable ID (e.g., `THR-CL-26-00K001`)
+
+**✅ পরিবর্তন:** এখন থেকে System ID হবে **16 characters** fixed length: `THR-CL-26-00K001`
+
+## 📁 **How to Use**
+
+### **Step 1: Require করুন**
+```php
+require_once '../../server/uuid_with_system_id_generator.php';
+```
+
+### **Step 2: Available Tags (ব্যবহার করতে পারবেন)**
+এই **৪টি ট্যাগ** শুধু ব্যবহার করতে পারবেন:
+
+| Tag | ব্যবহার | System ID উদাহরণ |
+|-----|---------|------------------|
+| `'clients'` | ক্লায়েন্টদের জন্য | `THR-CL-26-00K001` |
+| `'vendors'` | ভেন্ডারদের জন্য | `THR-VR-26-00K001` |
+| `'works'` | কাজগুলোর জন্য | `THR-WK-26-00K001` |
+| `'travelers'` | ট্র্যাভেলারদের জন্য | `THR-TR-26-00K001` |
+
+### **Step 3: ব্যবহার করুন**
+
+```php
+$ids = generateIDs('clients');
+```
+
+**এটি return করবে:**
+```php
+[
+    'uuid'   => '550e8400-e29b-41d4-a716-446655440000',  // UUID v4
+    'sys_id' => 'THR-CL-26-00K001'                       // System ID (16 chars)
+]
+```
+
+## 🛠️ **ব্যবহারের উদাহরণ**
+
+### **নতুন ক্লায়েন্ট তৈরি:**
+```php
+// File: api/clients/store.php
+require_once '../../server/uuid_with_system_id_generator.php';
+
+$ids = generateIDs('clients');  // ✅ 'clients' ট্যাগ দিন
+
+$stmt = $pdo->prepare("
+    INSERT INTO clients (uuid, sys_id, name, email) 
+    VALUES (:uuid, :sys_id, :name, :email)
+");
+
+$stmt->execute([
+    'uuid'   => $ids['uuid'],      // ✅ UUID v4
+    'sys_id' => $ids['sys_id'],    // ✅ THR-CL-26-00K001
+    'name'   => $clientName,
+    'email'  => $clientEmail
+]);
+```
+
+## 🔢 **System ID Format ব্যাখ্যা (Fixed 16 Chars)**
+
+```
+THR - CL - 26 - 00K001
+ │     │    │     │
+ │     │    │     └── Block (00) + "K" + Serial (001) = 6 chars
+ │     │    └── Year (26) = 2 chars + 1 hyphen = 3 chars
+ │     └── Short Code (CL) = 2 chars + 1 hyphen = 3 chars
+ └── Company (THR) = 3 chars + 1 hyphen = 4 chars
+                     Total: 4 + 3 + 3 + 6 = 16 characters
+```
+
+**📏 Character Breakdown:**
+1. `THR-` = 4 chars
+2. `CL-` = 3 chars  
+3. `26-` = 3 chars
+4. `00K001` = 6 chars
+**Total: 16 characters**
+
+## ⚙️ **নতুন Code এর বিশেষত্ব**
+
+### **Block-Serial System:**
+- **Block:** `00`, `01`, `02`... (2 digits)
+- **Separator:** `K` (fixed character)
+- **Serial:** `001` থেকে `999` (3 digits)
+- **Format:** `{Block}K{Serial}` (e.g., `00K001`, `00K999`, `01K001`)
+
+### **Auto-increment Logic:**
+1. `00K001` → `00K002` → ... → `00K999`
+2. `00K999` পরেই → `01K001`
+3. প্রতি বছর ১লা জানুয়ারিতে `00K001` থেকে restart হবে
+
+## ⚠️ **গুরুত্বপূর্ণ তথ্য**
+1. **Fixed Length:** সব System ID exactly **16 characters** হবে
+2. **Year-based:** প্রতি নতুন বছরে নতুন serial শুরু (`00K001`)
+3. **Block Change:** প্রতি 999 records পর Block increment (`00K` → `01K`)
+4. **K Character:** Block ও Serial এর মধ্যে `K` থাকবে (e.g., `00K001`)
+
+## ✅ **সঠিক ব্যবহারের টেমপ্লেট**
+
+```php
+<?php
+// File: api/your-folder/store.php
+session_start();
+require_once '../../server/uuid_with_system_id_generator.php';
+require_once '../../server/generate_meta_data.php';
+
+// 1. ID তৈরি করুন (ট্যাগ সঠিক দিন)
+$ids = generateIDs('clients');  // 'clients', 'vendors', 'works', 'travelers'
+
+// 2. Meta Data তৈরি করুন  
+$meta = buildMetaData(null, $_SESSION['user_name']);
+
+// 3. Database এ Save করুন
+$stmt = $pdo->prepare("
+    INSERT INTO your_table (uuid, sys_id, name, meta_data) 
+    VALUES (?, ?, ?, ?)
+");
+
+$stmt->execute([
+    $ids['uuid'],      // ✅ UUID (36 chars)
+    $ids['sys_id'],    // ✅ System ID (16 chars)  
+    $name,
+    $meta
+]);
+
+echo "Record created with System ID: " . $ids['sys_id'];
+```
+
+## 🔧 **Custom Tags যোগ করার নিয়ম**
+
+আপনার প্রয়োজন অনুযায়ী `$map` array তে যোগ করুন:
+```php
+// File: server/uuid_with_system_id_generator.php
+$map = [
+    // Existing
+    'clients'   => ['table' => 'clients', 'column' => 'sys_id', 'short' => 'CL'],
+    
+    // New tag যোগ করতে চাইলে:
+    'leads'     => ['table' => 'leads',   'column' => 'sys_id', 'short' => 'LD'],
+    'tasks'     => ['table' => 'tasks',   'column' => 'sys_id', 'short' => 'TS'],
+    // ... আপনার ইচ্ছামত
+];
+```
+
+**নতুন tag যোগ করলে:** System ID হবে `THR-LD-26-00K001`, `THR-TS-26-00K001` ইত্যাদি।
+
+## ❌ **Common Errors এড়ানোর Tip**
+
+```php
+// ❌ WRONG - ভুল ট্যাগ
+$ids = generateIDs('customer');  // Error: Invalid tag
+
+// ❌ WRONG - case sensitive  
+$ids = generateIDs('Clients');   // Error: Invalid tag
+
+// ✅ CORRECT - সঠিক ট্যাগ
+$ids = generateIDs('clients');   // ✅ ঠিক আছে
+$ids = generateIDs('vendors');   // ✅ ঠিক আছে  
+$ids = generateIDs('works');     // ✅ ঠিক আছে
+$ids = generateIDs('travelers'); // ✅ ঠিক আছে
+```
+
+**সহজ নিয়ম:** সঠিক ট্যাগ দিন → **UUID + 16 char System ID** পাবেন → Database এ Save করুন ✅
