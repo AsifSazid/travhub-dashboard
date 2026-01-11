@@ -107,29 +107,7 @@ function processFilesWithGemini($files, $category)
     foreach ($files as $file) {
         if (!file_exists($file)) continue;
 
-<<<<<<< HEAD
         $mimeType = mime_content_type($file);
-=======
-        //$mimeType = mime_content_type($file);
-        if (function_exists('mime_content_type')) {
-                    $mimeType = mime_content_type($file);
-                } else {
-                    $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                    $mime_types = [
-                        'pdf'  => 'application/pdf',
-                        'jpg'  => 'image/jpeg',
-                        'jpeg' => 'image/jpeg',
-                        'png'  => 'image/png',
-                        'txt'  => 'text/plain',
-                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'json' => 'application/json'
-                    ];
-                    $mimeType = $mime_types[$extension] ?? 'application/octet-stream';
-                }
-        
-        
-        
->>>>>>> server
         $fileData = base64_encode(file_get_contents($file));
 
         // Gemini handles PDF, Images, and Text natively via 'inline_data'

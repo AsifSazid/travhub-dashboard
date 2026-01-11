@@ -1,11 +1,7 @@
 <?php
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
-<<<<<<< HEAD
-    $ip_port = "http://103.104.219.3:898";
-=======
     $ip_port = "http://103.104.219.3:899";
->>>>>>> server
 }
 $workId = $_GET['work_id'];
 
@@ -93,19 +89,11 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                             <h2 class="text-lg font-semibold text-gray-800 mb-1">
                                 Task Management
                             </h2>
-<<<<<<< HEAD
                             <form id="taskForm">
                                 <label for="taskDate" class="block text-sm font-medium text-gray-700 my-2">
                                     Task Date 
                                 </label>
                                 <input type="date" name="taskDate" id="taskDate" class="block text-sm font-medium text-gray-700 mb-2">
-=======
-                            <p class="text-sm text-gray-600 mb-4">
-                                Drag & drop files or paste content from clipboard
-                            </p>
-
-                            <form id="taskForm">
->>>>>>> server
                                 <div class="grid grid-cols-2 gap-4">
                                     <!-- Left -->
                                     <div>
@@ -745,10 +733,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             const infoFileName = document.getElementById('infoFileName').value;
             const infoArea = document.getElementById('infoArea').value;
             const pasteArea = document.getElementById('pasteArea').value;
-<<<<<<< HEAD
             const taskDate = document.getElementById('taskDate').value;
-=======
->>>>>>> server
             const workId = "<?php echo $workId; ?>";
 
             // Validate required fields
@@ -763,10 +748,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             formData.append('information', infoArea);
             formData.append('pasted_text', pasteArea);
             formData.append('work_id', workId);
-<<<<<<< HEAD
             formData.append('taskDate', taskDate);
-=======
->>>>>>> server
 
             // Append files
             if (droppedFiles.length > 0) {
@@ -812,21 +794,13 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                         // Optionally refresh task list
                         loadTasks();
                     } else {
-<<<<<<< HEAD
-                        alert(data.message || 'Something went wrong');
-=======
                         alert(data.message || 'Error:', 'Something went wrong'); 
->>>>>>> server
                     }
                 })
                 .catch(err => {
                     console.error('Error:', err);
-<<<<<<< HEAD
-                    alert('Server or network error. Please try again.');
-=======
                     alert('Server or network error. Please try again.'+ err.message);
                    
->>>>>>> server
                 })
                 .finally(() => {
                     // Reset button state
