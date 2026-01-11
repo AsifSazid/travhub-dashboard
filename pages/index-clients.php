@@ -125,59 +125,76 @@ $removeClientVendorApi = $ip_port . "api/vendors/edit-client-vendor.php";
         function renderDropdown(list) {
             // আগের ডাটা মুছে ফেলা
             tableBody.innerHTML = '';
-
+        
+            // যদি কোনো client না থাকে
+            if (!list || list.length === 0) {
+                const tr = document.createElement('tr');
+        
+                tr.innerHTML = `
+                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-users-slash text-3xl text-gray-400"></i>
+                            <p class="text-sm">No Clients Found!</p>
+                        </div>
+                    </td>
+                `;
+        
+                tableBody.appendChild(tr);
+                return;
+            }
+        
             list.forEach((client, index) => {
-                const phoneObj = JSON.parse(client.phone);
-                const primaryPhone = phoneObj.primary_no;
-
-                const emailObj = JSON.parse(client.email);
-                const primaryEmail = emailObj.primary;
-
+                const phoneObj = JSON.parse(client.phone || '{}');
+                const primaryPhone = phoneObj.primary_no || 'Unknown';
+        
+                const emailObj = JSON.parse(client.email || '{}');
+                const primaryEmail = emailObj.primary || 'Unknown';
+        
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50";
-
-                // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
+        
                 tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <a href="show-clients.php?client_id=${client.sys_id}" title="Details">
-                                ${client.sys_id || 'No ID'}
-                            </a>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <a href="show-clients.php?client_id=${client.sys_id}" title="Details">
-                                ${client.name || 'No Name'}
-                            </a>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${client.type || 'Unknown'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <label class="inline-flex items-center cursor-pointer">
-                                <input 
-                                    type="checkbox"
-                                    class="sr-only peer"
-                                    ${client.is_vendor == 1 ? 'checked' : ''}
-                                    onchange="toggleVendor(${client.id}, this)"
-                                >
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
-                                    peer-checked:bg-green-600 
-                                    after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                                    after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                                    peer-checked:after:translate-x-full relative">
-                                </div>
-                            </label>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <a href="show-clients.php?client_id=${client.sys_id}" title="Details">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </td>
-                    `;
-
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        <a href="show-clients.php?client_id=${client.sys_id}" title="Details">
+                            ${client.sys_id || 'No ID'}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        <a href="show-clients.php?client_id=${client.sys_id}" title="Details">
+                            ${client.name || 'No Name'}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${client.type || 'Unknown'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox"
+                                class="sr-only peer"
+                                ${client.is_vendor == 1 ? 'checked' : ''}
+                                onchange="toggleVendor(${client.id}, this)"
+                            >
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
+                                peer-checked:bg-green-600 
+                                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                                peer-checked:after:translate-x-full relative">
+                            </div>
+                        </label>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <a href="show-clients.php?client_id=${client.sys_id}" title="Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </td>
+                `;
+        
                 tableBody.appendChild(tr);
             });
         }
+
 
         function toggleVendor(clientId, checkbox) {
             const url = checkbox.checked ?

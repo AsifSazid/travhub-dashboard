@@ -129,6 +129,22 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
         function renderDropdown(list) {
             // আগের ডাটা মুছে ফেলা
             tableBody.innerHTML = '';
+            
+            if (!list || list.length === 0) {
+                const tr = document.createElement('tr');
+        
+                tr.innerHTML = `
+                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-users-slash text-3xl text-gray-400"></i>
+                            <p class="text-sm">No Vendors Found!</p>
+                        </div>
+                    </td>
+                `;
+        
+                tableBody.appendChild(tr);
+                return;
+            }
 
             list.forEach((vendor, index) => {
                 const phoneObj = JSON.parse(vendor.phone);
