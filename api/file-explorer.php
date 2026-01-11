@@ -232,54 +232,6 @@ class FileExplorerAPI
     }
 
     /* ================= SECURITY ================= */
-<<<<<<< HEAD
-
-    private function safePath(string $relative): string
-    {
-        // Normalize relative path
-        $relative = trim($relative, '/');
-        
-        // Combine base path with relative path
-        $requestedPath = $this->basePath . ($relative ? '/' . $relative : '');
-        
-        // Normalize path separators
-        $requestedPath = str_replace('\\', '/', $requestedPath);
-        $basePathNormalized = str_replace('\\', '/', $this->basePath);
-        
-        // Check if requested path starts with base path
-        if (strpos($requestedPath, $basePathNormalized) !== 0) {
-            $this->sendError('Access denied: Path traversal attempt', 403);
-        }
-        
-        // Clean up path (remove ../, ./ etc.)
-        $requestedPath = $this->normalizePath($requestedPath);
-        
-        // Double check after normalization
-        if (strpos($requestedPath, $basePathNormalized) !== 0) {
-            $this->sendError('Access denied: Invalid path', 403);
-        }
-        
-        return $requestedPath;
-    }
-    
-    private function normalizePath(string $path): string
-    {
-        $parts = explode('/', $path);
-        $result = [];
-        
-        foreach ($parts as $part) {
-            if ($part === '' || $part === '.') continue;
-            if ($part === '..') {
-                array_pop($result);
-                continue;
-            }
-            $result[] = $part;
-        }
-        
-        return implode('/', $result);
-    }
-
-=======
 private function safePath(string $relative): string
 {
     // 1. Clean up the relative path
@@ -323,7 +275,6 @@ private function normalizePathManual(string $path): string
     }
     return (strpos($path, DIRECTORY_SEPARATOR) === 0 ? DIRECTORY_SEPARATOR : '') . implode(DIRECTORY_SEPARATOR, $safe);
 }
->>>>>>> server
     /* ================= HELPERS ================= */
 
     private function deleteDirectory(string $dir): void
