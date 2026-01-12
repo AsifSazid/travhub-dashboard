@@ -301,7 +301,7 @@ $base_ip_path = trim($ip_port, "/");
                 </div>
 
                 <!-- Statement Table -->
-                <div id="statementTableContainer" class="hidden overflow-x-auto">
+                <div id="statementTableContainer" class="hidden h-80 overflow-x-auto overflow-y-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -331,11 +331,15 @@ $base_ip_path = trim($ip_port, "/");
     <script src="../assets/js/script.js"></script>
 
     <script>
+        function closeStatementModal() {
+            statementModal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
         document.addEventListener('DOMContentLoaded', function() {
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_FETCH_URL = `${IP_PATH}/api/fatch_laser_api.php`;
-            const API_POST_URL = `${IP_PATH}/api/fatch_laser_statement_api.php`;
-            const API_STATEMENT_URL = `${IP_PATH}/travhub/api/fetch_account_statement_api.php`;
+            const API_FETCH_URL = `${IP_PATH}/api/ledgers/fetch_ledger_api.php`;
+            const API_POST_URL = `${IP_PATH}/api/accounts/fetch_ledger_statement_api.php`;
+            const API_STATEMENT_URL = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
 
             // UI Elements
             const cardsContainer = document.getElementById('cardsContainer');
@@ -365,6 +369,11 @@ $base_ip_path = trim($ip_port, "/");
             let currentAccountId = null;
             let currentAccountName = null;
             let currentAccountBalance = null;
+            
+            let displayIndex = 0;           // how many rows have been shown
+            const pageSize = 10;             // rows per "page"
+            const maxRows = 100;            // max rows to show
+
 
             // Modal Functions
             function openStatementModal() {
@@ -372,17 +381,12 @@ $base_ip_path = trim($ip_port, "/");
                 document.body.style.overflow = 'hidden';
             }
 
-            function closeStatementModal() {
-                statementModal.classList.remove('active');
-                document.body.style.overflow = 'auto';
-            }
-
-            // Close modal when clicking outside
-            statementModal.addEventListener('click', function(e) {
-                if (e.target === statementModal) {
-                    closeStatementModal();
-                }
-            });
+            // Close modal when clicking outside [Tarek Vai told me to stop this!]
+            // statementModal.addEventListener('click', function(e) {
+            //     if (e.target === statementModal) {
+            //         closeStatementModal();
+            //     }
+            // });
 
             // Close modal with Escape key
             document.addEventListener('keydown', function(e) {
@@ -437,10 +441,13 @@ $base_ip_path = trim($ip_port, "/");
 
                 // Format balance
                 const balance = parseFloat(account.balance || 0);
-                const formattedBalance = balance.toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: 'USD'
-                });
+
+                const formattedBalance =
+                    (balance < 0 ? '(৳ ' : '৳ ') +
+                    Math.abs(balance).toLocaleString('en-BD', {
+                        minimumFractionDigits: 2
+                    }) +
+                    (balance < 0 ? ')' : '');
 
                 // Determine balance color
                 let balanceColor = 'bg-gray-200 text-gray-800';
@@ -450,20 +457,20 @@ $base_ip_path = trim($ip_port, "/");
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-3">
                         <div>
-                            <span class="category-tag">${account.Category || 'Uncategorized'}</span>
+                            <span class="category-tag">${account.category || 'Uncategorized'}</span>
                         </div>
                         <div class="text-right">
-                            <span class="text-xs text-gray-500">${account['Main Type'] || 'General'}</span>
+                            <span class="text-xs text-gray-500">${account['main_type'] || 'General'}</span>
                         </div>
                     </div>
                     
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2 truncate" title="${account.Name}">
-                        ${account.Name}
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2 truncate" title="${account.acc_name}">
+                        ${account.acc_name}
                     </h3>
                     
                     <div class="mb-4">
-                        <p class="text-sm text-gray-600 line-clamp-2" title="${account.Description || 'No description'}">
-                            ${account.Description || 'No description provided'}
+                        <p class="text-sm text-gray-600 line-clamp-2" title="${account.description || 'No description'}">
+                            ${account.description || 'No description provided'}
                         </p>
                     </div>
                     
@@ -476,8 +483,8 @@ $base_ip_path = trim($ip_port, "/");
                         </div>
                         <div class="text-right">
                             <div class="text-xs text-gray-500 mb-1">Type</div>
-                            <span class="text-sm font-medium ${getTransactionTypeColor(account.Transactionable)}">
-                                ${account.Transactionable || 'N/A'}
+                            <span class="text-sm font-medium uppercase ${getTransactionTypeColor(account.is_transactionable)}">
+                                ${account.is_transactionable || 'N/A'}
                             </span>
                         </div>
                     </div>
@@ -493,7 +500,7 @@ $base_ip_path = trim($ip_port, "/");
                 // Add click event to open modal
                 card.addEventListener('click', (e) => {
                     if (!e.target.closest('button')) {
-                        openStatementModalForAccount(account.id, account.Name, account.balance, account.Transactionable);
+                        openStatementModalForAccount(account.sys_id, account.acc_name, account.balance, account.is_transactionable);
                     }
                 });
 
@@ -501,7 +508,7 @@ $base_ip_path = trim($ip_port, "/");
                 const viewBtn = card.querySelector('button');
                 viewBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    openStatementModalForAccount(account.id, account.Name, account.balance, account.Transactionable);
+                    openStatementModalForAccount(account.sys_id, account.acc_name, account.balance, account.is_transactionable);
                 });
 
                 return card;
@@ -529,15 +536,19 @@ $base_ip_path = trim($ip_port, "/");
                 document.getElementById('statementAccountName').textContent = accountName;
 
                 // Update current balance display
-                const formattedBalance = parseFloat(accountBalance || 0).toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: 'USD'
-                });
+                const amount = parseFloat(accountBalance || 0);
+                
+                const formattedBalance =
+                    (amount < 0 ? '(৳ ' : '৳ ') +
+                    Math.abs(amount).toLocaleString('en-BD', {
+                        minimumFractionDigits: 2
+                    }) +
+                    (amount < 0 ? ')' : '');
                 currentBalanceDisplay.textContent = formattedBalance;
 
                 // Update account type badge
                 accountTypeText.textContent = transactionType || 'General';
-                accountTypeBadge.className = `inline-block px-3 py-1 rounded-full text-sm font-medium ${getBadgeColor(transactionType)}`;
+                accountTypeBadge.className = `inline-block px-3 py-1 rounded-full text-sm font-medium uppercase ${getBadgeColor(transactionType)}`;
 
                 // Prepare transaction form
                 prepareTransactionForm(accountId, accountName, accountBalance);
@@ -616,6 +627,18 @@ $base_ip_path = trim($ip_port, "/");
 
                         // Also refresh the account cards to update balances
                         setTimeout(fetchAccounts, 500);
+                        
+                        const newBalance = parseFloat(result.new_balance || 0);
+                
+                        const formattedNewBalance =
+                            (newBalance < 0 ? '(৳ ' : '৳ ') +
+                            Math.abs(newBalance).toLocaleString('en-BD', {
+                                minimumFractionDigits: 2
+                            }) +
+                            (newBalance < 0 ? ')' : '');
+                        
+                        
+                        currentBalanceDisplay.innerHTML = formattedNewBalance;
 
                     } else {
                         const errorMsg = result.error || 'Unknown error occurred on the server.';
@@ -640,7 +663,7 @@ $base_ip_path = trim($ip_port, "/");
                 noStatementData.classList.add('hidden');
                 downloadCsvBtn.disabled = true;
 
-                let url = `${API_STATEMENT_URL}?laser_db_id=${accountId}`;
+                let url = `${API_STATEMENT_URL}?ledger_db_id=${accountId}`;
                 if (fromDate) url += `&from_date=${fromDate}`;
                 if (toDate) url += `&to_date=${toDate}`;
 
@@ -664,15 +687,61 @@ $base_ip_path = trim($ip_port, "/");
                 }
             }
 
+            // function displayStatement(data) {
+            //     currentStatementData = data;
+
+            //     if (data.length === 0) {
+            //         showNoStatementData();
+            //         return;
+            //     }
+
+            //     data.forEach(item => {
+            //         const row = document.createElement('tr');
+            //         row.innerHTML = `
+            //             <td class="px-4 py-3 text-sm text-gray-900">${item.date || ''}</td>
+            //             <td class="px-4 py-3 text-sm text-gray-900">${item.particular || ''}</td>
+            //             <td class="px-4 py-3 text-sm text-red-600 font-medium">${formatCurrency(item.withdraw)}</td>
+            //             <td class="px-4 py-3 text-sm text-green-600 font-medium">${formatCurrency(item.deposit)}</td>
+            //             <td class="px-4 py-3 text-sm text-gray-900 font-semibold">${formatCurrency(item.balance)}</td>
+            //             <td class="px-4 py-3 text-sm text-blue-600">${formatCurrency(item.reconsilation)}</td>
+            //         `;
+            //         statementTableBody.appendChild(row);
+            //     });
+            
+            //     statementTableContainer.classList.remove('hidden');
+            //     downloadCsvBtn.disabled = false;
+            // }
+            
+            
             function displayStatement(data) {
                 currentStatementData = data;
-
+                displayIndex = 0; // reset index
+            
+                // clear old table
+                statementTableBody.innerHTML = '';
+            
                 if (data.length === 0) {
                     showNoStatementData();
                     return;
                 }
-
-                data.forEach(item => {
+            
+                // initially load first page
+                loadNextRows();
+            
+                statementTableContainer.classList.remove('hidden');
+                downloadCsvBtn.disabled = false;
+            
+                // attach scroll listener for lazy loading
+                statementTableContainer.addEventListener('scroll', handleScroll);
+            }
+            
+            function loadNextRows() {
+                // calculate how many rows we can show
+                const remaining = currentStatementData.length - displayIndex;
+                const rowsToLoad = Math.min(pageSize, remaining, maxRows - displayIndex);
+            
+                for (let i = displayIndex; i < displayIndex + rowsToLoad; i++) {
+                    const item = currentStatementData[i];
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td class="px-4 py-3 text-sm text-gray-900">${item.date || ''}</td>
@@ -683,10 +752,25 @@ $base_ip_path = trim($ip_port, "/");
                         <td class="px-4 py-3 text-sm text-blue-600">${formatCurrency(item.reconsilation)}</td>
                     `;
                     statementTableBody.appendChild(row);
-                });
+                }
+            
+                displayIndex += rowsToLoad;
+            }
+            
+            let isLoading = false; // prevent multiple loads at the same time
 
-                statementTableContainer.classList.remove('hidden');
-                downloadCsvBtn.disabled = false;
+            function handleScroll() {
+                const container = statementTableContainer;
+            
+                if (container.scrollTop + container.clientHeight >= container.scrollHeight - 5) {
+                    if (!isLoading && displayIndex < currentStatementData.length && displayIndex < maxRows) {
+                        isLoading = true;
+                        setTimeout(() => {
+                            loadNextRows();
+                            isLoading = false;
+                        }, 200); // 200ms delay, adjust for smoothness
+                    }
+                }
             }
 
             // --- 5. HELPER FUNCTIONS ---

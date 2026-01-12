@@ -240,7 +240,8 @@ function getPromptForCategory($category)
         2. If field is not found, leave empty string
         3. For dates, use format: DDMMMYY (e.g., 16DEC25)
         4. If multiple flights, add to itinerary_information array
-        5. If multiple passengers, add to other_applicants array";
+        5. If multiple passengers, add to other_applicants array
+        6. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
     } elseif ($category == 2) { // Hotel Booking
         return "Extract information from this hotel booking document and return ONLY valid JSON in this exact format:
         {
@@ -313,7 +314,8 @@ function getPromptForCategory($category)
         3. For dates, use format: YYYY-MM-DD
         4. Count should be numbers only
         5. PCN = Portal Confirmation Number
-        6. HCN = Hotel Confirmation Number";
+        6. HCN = Hotel Confirmation Number
+        7. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
     }
 
     return "Extract all relevant information from this document and return as JSON.";
