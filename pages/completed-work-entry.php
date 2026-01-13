@@ -4,7 +4,6 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 $getAllWorksApi = $ip_port . "api/works/all-works.php";
 $storeWorkApi = $ip_port . "api/works/store.php";
 

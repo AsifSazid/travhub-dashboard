@@ -44,7 +44,7 @@ try {
         $params[':to_date'] = $to_date;
     }
 
-    $sql .= " ORDER BY `date` ASC, `id` DESC";
+    $sql .= " ORDER BY `date` DESC, `id` DESC";
 
     /* ---------------- Prepare & Execute ---------------- */
     $stmt = $pdo->prepare($sql);

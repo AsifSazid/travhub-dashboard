@@ -135,726 +135,615 @@ $base_ip_path = trim($ip_port, "/");
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-0 lg:pl-64 transition-all duration-300 h-full">
         <div class="p-4 md:p-6 h-full">
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
-                            <i class="fas fa-journal-whills text-blue-600 mr-3"></i>
-                            Account Laser Records
-                        </h2>
-                        <p class="text-gray-600 mt-1">Click on any account card to view statement and add transactions</p>
-                    </div>
-                    <a href="./create-accounts.php"
-                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                        <i class="fas fa-plus-circle mr-2"></i>
-                        Add New Account
+            <!-- Header Section -->
+            <div class="mb-6">
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Accounting Dashboard</h1>
+                <p class="text-gray-600 mt-2">Monitor all your financial activities in one place</p>
+            </div>
+    
+            <!-- Quick Actions - Top Section -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">Quick Actions</h2>
+                    <button class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+                        <i class="fas fa-history mr-1"></i> Recent Actions
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <!-- Add Income -->
+                    <a href="accounts-received.php" class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                        <div class="bg-green-100 group-hover:bg-green-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fas fa-plus-circle text-green-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-green-800">Received</p>
+                        <p class="text-xs text-green-600 mt-1">Record new received info</p>
                     </a>
+    
+                    <!-- Add Expense -->
+                    <button class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                        <div class="bg-red-100 group-hover:bg-red-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fas fa-minus-circle text-red-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-red-800">Payment</p>
+                        <p class="text-xs text-red-600 mt-1">Record new payment info</p>
+                    </button>
+    
+                    <!-- Create Invoice -->
+                    <a href="index-invoice.php" class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1" target="_blank">
+                        <div class="bg-blue-100 group-hover:bg-blue-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fas fa-file-invoice text-blue-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-blue-800">Invoice Lists</p>
+                        <p class="text-xs text-blue-600 mt-1">Generate new invoice</p>
+                    </a>
+    
+                    <!-- Generate Report -->
+                    <button class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                        <div class="bg-purple-100 group-hover:bg-purple-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fas fa-chart-bar text-purple-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-purple-800">Generate Report</p>
+                        <p class="text-xs text-purple-600 mt-1">Financial reports</p>
+                    </button>
+    
+                    <!-- Transfer Funds -->
+                    <button class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                        <div class="bg-yellow-100 group-hover:bg-yellow-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fas fa-exchange-alt text-yellow-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-yellow-800">Transfer</p>
+                        <p class="text-xs text-yellow-600 mt-1">Funds transfer</p>
+                    </button>
+    
+                    <!-- Quick Payment -->
+                    <button class="group bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-indigo-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                        <div class="bg-indigo-100 group-hover:bg-indigo-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fas fa-credit-card text-indigo-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-indigo-800">PITTY Cash</p>
+                        <p class="text-xs text-indigo-600 mt-1">Make payment</p>
+                    </button>
                 </div>
-
-                <!-- Loading State -->
-                <div id="loader" class="flex flex-col items-center justify-center min-h-[300px]">
-                    <div class="spinner"></div>
-                    <p class="mt-3 text-gray-600">Fetching data from <?php echo htmlspecialchars($base_ip_path); ?>...</p>
-                </div>
-
-                <!-- Error State -->
-                <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        Failed to fetch data from <span id="api-error-url"></span>. Please check the network or API endpoint.
+            </div>
+    
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total Balance -->
+                <div class="account-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Total Balance</p>
+                            <h2 class="text-3xl font-bold mt-2 text-gray-800">৳ 1,25,850</h2>
+                            <div class="flex items-center mt-2">
+                                <span class="text-green-600 text-sm font-medium flex items-center">
+                                    <i class="fas fa-arrow-up mr-1 text-xs"></i> 12.5%
+                                </span>
+                                <span class="text-gray-500 text-sm ml-2">from last month</span>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg">
+                            <i class="fas fa-wallet text-blue-600 text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Cash: ৳ 25,850</span>
+                            <span class="text-gray-600">Bank: ৳ 1,00,000</span>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Cards Grid -->
-                <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden">
-                    <!-- Account cards will be dynamically inserted here -->
+    
+                <!-- Monthly Income -->
+                <div class="account-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Monthly Income</p>
+                            <h2 class="text-3xl font-bold mt-2 text-gray-800">৳ 45,200</h2>
+                            <div class="flex items-center mt-2">
+                                <span class="text-green-600 text-sm font-medium flex items-center">
+                                    <i class="fas fa-arrow-up mr-1 text-xs"></i> 8.2%
+                                </span>
+                                <span class="text-gray-500 text-sm ml-2">from last month</span>
+                            </div>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded-lg">
+                            <i class="fas fa-arrow-down text-green-600 text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Today:</span> ৳ 3,500
+                        </div>
+                    </div>
                 </div>
-
-                <!-- No Data State -->
-                <div id="no-data-message" class="hidden text-center py-12">
-                    <div class="mb-6">
-                        <i class="fas fa-inbox text-gray-400 text-5xl mb-4"></i>
-                        <h3 class="text-xl font-semibold text-gray-500 mb-2">No accounts found</h3>
-                        <p class="text-gray-400 mb-6">No account laser records available at the moment.</p>
-                        <a href="./create-accounts.php"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                            <i class="fas fa-plus-circle mr-2"></i>
-                            Create Your First Account
-                        </a>
+    
+                <!-- Monthly Expense -->
+                <div class="account-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500 hover:shadow-xl transition-all duration-300">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Monthly Expense</p>
+                            <h2 class="text-3xl font-bold mt-2 text-gray-800">৳ 28,750</h2>
+                            <div class="flex items-center mt-2">
+                                <span class="text-red-600 text-sm font-medium flex items-center">
+                                    <i class="fas fa-arrow-down mr-1 text-xs"></i> 3.1%
+                                </span>
+                                <span class="text-gray-500 text-sm ml-2">from last month</span>
+                            </div>
+                        </div>
+                        <div class="bg-red-50 p-3 rounded-lg">
+                            <i class="fas fa-arrow-up text-red-600 text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Today:</span> ৳ 1,200
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Pending Invoices -->
+                <div class="account-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 hover:shadow-xl transition-all duration-300">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Pending Invoices</p>
+                            <h2 class="text-3xl font-bold mt-2 text-gray-800">৳ 15,300</h2>
+                            <div class="flex items-center mt-2">
+                                <span class="text-red-600 text-sm font-medium">5 invoices</span>
+                                <span class="text-gray-500 text-sm ml-2">overdue</span>
+                            </div>
+                        </div>
+                        <div class="bg-purple-50 p-3 rounded-lg">
+                            <i class="fas fa-file-invoice text-purple-600 text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Due Today:</span> ৳ 2,800
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Charts and Recent Transactions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Income vs Expense Chart -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow p-6 h-full">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-semibold text-gray-800">Income vs Expense Trend</h3>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg font-medium">Month</button>
+                                <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg font-medium">Quarter</button>
+                                <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg font-medium">Year</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Simplified Chart -->
+                        <div class="h-64 flex items-end space-x-4">
+                            <!-- January -->
+                            <div class="flex-1">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm text-gray-600">Jan</span>
+                                </div>
+                                <div class="relative h-48">
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-green-400 rounded-t-lg" style="height: 60%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-700">৳45K</div>
+                                    </div>
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-red-400 rounded-t-lg" style="height: 40%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-red-700">৳30K</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- February -->
+                            <div class="flex-1">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm text-gray-600">Feb</span>
+                                </div>
+                                <div class="relative h-48">
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-green-400 rounded-t-lg" style="height: 70%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-700">৳52K</div>
+                                    </div>
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-red-400 rounded-t-lg" style="height: 50%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-red-700">৳38K</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- March -->
+                            <div class="flex-1">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm text-gray-600">Mar</span>
+                                </div>
+                                <div class="relative h-48">
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-green-400 rounded-t-lg" style="height: 80%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-700">৳60K</div>
+                                    </div>
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-red-400 rounded-t-lg" style="height: 45%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-red-700">৳34K</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- April -->
+                            <div class="flex-1">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm text-gray-600">Apr</span>
+                                </div>
+                                <div class="relative h-48">
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-green-400 rounded-t-lg" style="height: 90%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-700">৳68K</div>
+                                    </div>
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-red-400 rounded-t-lg" style="height: 55%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-red-700">৳42K</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- May -->
+                            <div class="flex-1">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm text-gray-600">May</span>
+                                </div>
+                                <div class="relative h-48">
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-green-400 rounded-t-lg" style="height: 85%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-700">৳64K</div>
+                                    </div>
+                                    <div class="absolute bottom-0 left-1/4 w-1/2 bg-red-400 rounded-t-lg" style="height: 60%">
+                                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-red-700">৳48K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-center space-x-8 mt-6">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                                <span class="text-sm text-gray-700">Income</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-red-400 rounded-full mr-2"></div>
+                                <span class="text-sm text-gray-700">Expense</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-blue-400 rounded-full mr-2"></div>
+                                <span class="text-sm text-gray-700">Net Profit</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Upcoming Bills -->
+                <div class="bg-white rounded-xl shadow p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Upcoming Bills</h3>
+                        <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            View All <i class="fas fa-arrow-right ml-1"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Bill 1 -->
+                        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-white border-l-4 border-yellow-500 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="bg-yellow-100 p-3 rounded-lg mr-4">
+                                    <i class="fas fa-bolt text-yellow-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Electricity Bill</p>
+                                    <p class="text-sm text-gray-600">Due in 3 days</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-red-600">৳ 2,800</p>
+                                <p class="text-xs text-gray-500">15 Jun 2024</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Bill 2 -->
+                        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-red-50 to-white border-l-4 border-red-500 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="bg-red-100 p-3 rounded-lg mr-4">
+                                    <i class="fas fa-home text-red-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Rent Payment</p>
+                                    <p class="text-sm text-gray-600">Due in 8 days</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-red-600">৳ 15,000</p>
+                                <p class="text-xs text-gray-500">20 Jun 2024</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Bill 3 -->
+                        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-white border-l-4 border-green-500 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="bg-green-100 p-3 rounded-lg mr-4">
+                                    <i class="fas fa-users text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Salary Payment</p>
+                                    <p class="text-sm text-gray-600">Due in 13 days</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-green-600">+৳ 45,000</p>
+                                <p class="text-xs text-gray-500">25 Jun 2024</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Bill 4 -->
+                        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-white border-l-4 border-blue-500 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-4">
+                                    <i class="fas fa-wifi text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Internet Bill</p>
+                                    <p class="text-sm text-gray-600">Due today</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-red-600">৳ 1,200</p>
+                                <p class="text-xs text-gray-500">12 Jun 2024</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full mt-6 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-lg border-2 border-dashed border-gray-300 transition-colors flex items-center justify-center">
+                        <i class="fas fa-plus mr-2"></i> Add New Bill Reminder
+                    </button>
+                </div>
+            </div>
+    
+            <!-- Recent Transactions -->
+            <div class="bg-white rounded-xl shadow p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">Recent Transactions</h3>
+                        <p class="text-sm text-gray-600 mt-1">Latest 10 transactions from all accounts</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                            <i class="fas fa-download mr-2"></i> Export
+                        </button>
+                        <button class="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors">
+                            Filter <i class="fas fa-filter ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Date & Time</th>
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Transaction</th>
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Category</th>
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Account</th>
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Amount</th>
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Status</th>
+                                <th class="text-left py-3 px-4 text-gray-700 font-semibold">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Transaction 1 -->
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="font-medium text-gray-800">12 Jun 2024</div>
+                                    <div class="text-sm text-gray-500">10:30 AM</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-blue-100 p-2 rounded-lg mr-3">
+                                            <i class="fas fa-shopping-cart text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Office Supplies</p>
+                                            <p class="text-sm text-gray-500">ABC Store - Invoice #INV-0012</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="category-tag">Office Expense</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                        <span class="text-gray-700">City Bank</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="font-bold text-red-600">-৳ 2,500</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Completed</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="text-gray-500 hover:text-blue-600 p-1">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            
+                            <!-- Transaction 2 -->
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="font-medium text-gray-800">10 Jun 2024</div>
+                                    <div class="text-sm text-gray-500">02:15 PM</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-green-100 p-2 rounded-lg mr-3">
+                                            <i class="fas fa-file-invoice-dollar text-green-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Client Payment</p>
+                                            <p class="text-sm text-gray-500">XYZ Corp - Project #PRJ-045</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="category-tag" style="background: #dcfce7; color: #166534;">Revenue</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span class="text-gray-700">Cash</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="font-bold text-green-600">+৳ 25,000</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Completed</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="text-gray-500 hover:text-blue-600 p-1">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            
+                            <!-- Transaction 3 -->
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="font-medium text-gray-800">08 Jun 2024</div>
+                                    <div class="text-sm text-gray-500">11:45 AM</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-purple-100 p-2 rounded-lg mr-3">
+                                            <i class="fas fa-wifi text-purple-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Internet Bill</p>
+                                            <p class="text-sm text-gray-500">Monthly subscription - Jun</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="category-tag" style="background: #f3e8ff; color: #7c3aed;">Utilities</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                                        <span class="text-gray-700">DBBL</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="font-bold text-red-600">-৳ 1,200</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Pending</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="text-gray-500 hover:text-blue-600 p-1">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            
+                            <!-- Transaction 4 -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="font-medium text-gray-800">05 Jun 2024</div>
+                                    <div class="text-sm text-gray-500">09:20 AM</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-yellow-100 p-2 rounded-lg mr-3">
+                                            <i class="fas fa-tools text-yellow-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Equipment Maintenance</p>
+                                            <p class="text-sm text-gray-500">Printer servicing - Tech Solutions</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="category-tag" style="background: #fef3c7; color: #92400e;">Maintenance</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                                        <span class="text-gray-700">Bkash</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="font-bold text-red-600">-৳ 3,500</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Completed</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="text-gray-500 hover:text-blue-600 p-1">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-gray-200 flex justify-between items-center">
+                    <p class="text-sm text-gray-600">Showing 4 of 128 transactions</p>
+                    <button class="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors flex items-center">
+                        Load More <i class="fas fa-arrow-down ml-2"></i>
+                    </button>
+                </div>
+            </div>
+    
+            <!-- Quick Summary Footer -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 font-medium">Total Accounts</p>
+                            <h4 class="text-2xl font-bold mt-1 text-gray-800">8</h4>
+                            <p class="text-sm text-gray-500 mt-1">3 Bank, 3 Digital, 2 Cash</p>
+                        </div>
+                        <div class="text-blue-600 text-4xl">
+                            <i class="fas fa-landmark"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 font-medium">This Month Transactions</p>
+                            <h4 class="text-2xl font-bold mt-1 text-gray-800">42</h4>
+                            <p class="text-sm text-gray-500 mt-1">32 Income, 10 Expense</p>
+                        </div>
+                        <div class="text-green-600 text-4xl">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 font-medium">Active Invoices</p>
+                            <h4 class="text-2xl font-bold mt-1 text-gray-800">12</h4>
+                            <p class="text-sm text-gray-500 mt-1">5 Paid, 7 Pending</p>
+                        </div>
+                        <div class="text-purple-600 text-4xl">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Statement Modal -->
-    <div id="statementModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
-                <h5 class="text-lg font-semibold flex items-center">
-                    <i class="fas fa-file-invoice-dollar mr-2"></i>
-                    Statement for <span id="statementAccountName" class="ml-1"></span>
-                </h5>
-                <button onclick="closeStatementModal()" class="text-white hover:text-gray-200 text-xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <div class="p-4">
-                <!-- Current Balance Display -->
-                <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h6 class="text-sm text-gray-500">Current Balance</h6>
-                            <h3 id="currentBalanceDisplay" class="text-2xl font-bold text-gray-800">$0.00</h3>
-                        </div>
-                        <div class="text-right">
-                            <h6 class="text-sm text-gray-500">Account Type</h6>
-                            <span id="accountTypeBadge" class="inline-block px-3 py-1 rounded-full text-sm font-medium">
-                                <span id="accountTypeText">Loading...</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Transaction Input Section -->
-                <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
-                    <h6 class="text-blue-700 font-semibold mb-3 flex items-center">
-                        <i class="fas fa-plus-circle mr-2"></i> Add New Transaction
-                    </h6>
-                    <form id="transactionForm" class="space-y-4">
-                        <input type="hidden" id="accountId" name="accountId">
-                        <input type="hidden" id="accountName" name="accountName">
-                        <input type="hidden" id="currentAccountBalance" name="currentAccountBalance">
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <label for="paymentType" class="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
-                                <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    id="paymentType" name="paymentType" required>
-                                    <option value="">Select Type</option>
-                                    <option value="Deposit">Deposit</option>
-                                    <option value="Withdraw">Withdraw</option>
-                                    <option value="Reconciliation">Reconciliation</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                                <input type="date"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    id="transactionDate" name="transactionDate" required>
-                            </div>
-                            <div>
-                                <label for="balance" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                                <input type="number" step="0.01"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    id="balance" name="balance" required placeholder="0.00">
-                            </div>
-                            <div>
-                                <label for="particular" class="block text-sm font-medium text-gray-700 mb-1">Particular</label>
-                                <input type="text"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    id="particular" name="particular" required placeholder="Transaction description">
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <button type="button"
-                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-                                id="saveTransactionBtn">
-                                <span id="spinner" class="hidden spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                                <span id="saveButtonText">Save Transaction</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Statement Filters and Actions -->
-                <div class="flex flex-wrap justify-between items-center mb-4 bg-gray-50 p-3 rounded-lg">
-                    <div class="flex flex-wrap items-center space-x-3">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-sm text-gray-600">From:</span>
-                            <input type="date"
-                                class="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                id="fromDateFilter">
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-sm text-gray-600">To:</span>
-                            <input type="date"
-                                class="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                id="toDateFilter">
-                        </div>
-                        <button class="px-4 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                            id="searchStatementBtn">
-                            <i class="fas fa-search mr-1"></i> Search
-                        </button>
-                    </div>
-                    <button class="px-4 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 transition-colors flex items-center"
-                        id="downloadCsvBtn">
-                        <i class="fas fa-download mr-1"></i> Download CSV
-                    </button>
-                </div>
-
-                <!-- Statement Loading -->
-                <div id="statementLoader" class="flex flex-col items-center justify-center py-8 hidden">
-                    <div class="spinner" style="border-top-color: #3b82f6;"></div>
-                    <p class="mt-3 text-gray-600">Loading statement data...</p>
-                </div>
-
-                <!-- Statement Table -->
-                <div id="statementTableContainer" class="hidden h-80 overflow-x-auto overflow-y-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Particular</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Withdraw</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deposit</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reconciliation</th>
-                            </tr>
-                        </thead>
-                        <tbody id="statementTableBody" class="bg-white divide-y divide-gray-200">
-                            <!-- Statement rows will be inserted here -->
-                        </tbody>
-                    </table>
-                    <p id="noStatementData" class="hidden text-center text-gray-500 py-8">
-                        <i class="fas fa-file-alt text-3xl mb-3 block"></i>
-                        No transactions found for this account.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <?php include '../elements/floating-menus.php'; ?>
 
     <script src="../assets/js/script.js"></script>
 
-    <script>
-        function closeStatementModal() {
-            statementModal.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-        document.addEventListener('DOMContentLoaded', function() {
-            const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_FETCH_URL = `${IP_PATH}/api/ledgers/fetch_ledger_api.php`;
-            const API_POST_URL = `${IP_PATH}/api/accounts/fetch_ledger_statement_api.php`;
-            const API_STATEMENT_URL = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
-
-            // UI Elements
-            const cardsContainer = document.getElementById('cardsContainer');
-            const loader = document.getElementById('loader');
-            const errorMessage = document.getElementById('error-message');
-            const noDataMessage = document.getElementById('no-data-message');
-            const statementModal = document.getElementById('statementModal');
-
-            // Statement Modal Elements
-            const statementTableBody = document.getElementById('statementTableBody');
-            const statementLoader = document.getElementById('statementLoader');
-            const statementTableContainer = document.getElementById('statementTableContainer');
-            const noStatementData = document.getElementById('noStatementData');
-            const saveTransactionBtn = document.getElementById('saveTransactionBtn');
-            const transactionForm = document.getElementById('transactionForm');
-            const downloadCsvBtn = document.getElementById('downloadCsvBtn');
-            const searchStatementBtn = document.getElementById('searchStatementBtn');
-            const fromDateFilter = document.getElementById('fromDateFilter');
-            const toDateFilter = document.getElementById('toDateFilter');
-            const spinner = document.getElementById('spinner');
-            const saveButtonText = document.getElementById('saveButtonText');
-            const currentBalanceDisplay = document.getElementById('currentBalanceDisplay');
-            const accountTypeBadge = document.getElementById('accountTypeBadge');
-            const accountTypeText = document.getElementById('accountTypeText');
-
-            let currentStatementData = [];
-            let currentAccountId = null;
-            let currentAccountName = null;
-            let currentAccountBalance = null;
-            
-            let displayIndex = 0;           // how many rows have been shown
-            const pageSize = 10;             // rows per "page"
-            const maxRows = 100;            // max rows to show
-
-
-            // Modal Functions
-            function openStatementModal() {
-                statementModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-
-            // Close modal when clicking outside [Tarek Vai told me to stop this!]
-            // statementModal.addEventListener('click', function(e) {
-            //     if (e.target === statementModal) {
-            //         closeStatementModal();
-            //     }
-            // });
-
-            // Close modal with Escape key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && statementModal.classList.contains('active')) {
-                    closeStatementModal();
-                }
-            });
-
-            // --- 1. FETCH AND DISPLAY ACCOUNT CARDS ---
-            async function fetchAccounts() {
-                try {
-                    const response = await fetch(API_FETCH_URL);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const result = await response.json();
-
-                    if (result.success && Array.isArray(result.data)) {
-                        displayAccountCards(result.data);
-                    } else {
-                        showNoData();
-                    }
-                } catch (error) {
-                    console.error('Fetch error:', error);
-                    showError();
-                } finally {
-                    loader.classList.add('hidden');
-                }
-            }
-
-            function displayAccountCards(accounts) {
-                if (accounts.length === 0) {
-                    showNoData();
-                    return;
-                }
-
-                cardsContainer.classList.remove('hidden');
-
-                accounts.forEach(account => {
-                    const card = createAccountCard(account);
-                    cardsContainer.appendChild(card);
-                });
-            }
-
-            function createAccountCard(account) {
-                const card = document.createElement('div');
-                card.className = 'account-card bg-white rounded-lg shadow p-5 hover:shadow-lg transition-all duration-300';
-
-                // Determine card color based on transaction type
-                const transactionable = account.Transactionable?.toLowerCase();
-                if (transactionable === 'deposit') card.classList.add('deposit');
-                else if (transactionable === 'withdraw') card.classList.add('withdraw');
-                else card.classList.add('neutral');
-
-                // Format balance
-                const balance = parseFloat(account.balance || 0);
-
-                const formattedBalance =
-                    (balance < 0 ? '(৳ ' : '৳ ') +
-                    Math.abs(balance).toLocaleString('en-BD', {
-                        minimumFractionDigits: 2
-                    }) +
-                    (balance < 0 ? ')' : '');
-
-                // Determine balance color
-                let balanceColor = 'bg-gray-200 text-gray-800';
-                if (balance > 0) balanceColor = 'bg-green-100 text-green-800';
-                else if (balance < 0) balanceColor = 'bg-red-100 text-red-800';
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <span class="category-tag">${account.category || 'Uncategorized'}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-500">${account['main_type'] || 'General'}</span>
-                        </div>
-                    </div>
-                    
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2 truncate" title="${account.acc_name}">
-                        ${account.acc_name}
-                    </h3>
-                    
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-600 line-clamp-2" title="${account.description || 'No description'}">
-                            ${account.description || 'No description provided'}
-                        </p>
-                    </div>
-                    
-                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                        <div>
-                            <div class="text-xs text-gray-500 mb-1">Balance</div>
-                            <div class="balance-badge ${balanceColor} rounded-full inline-block">
-                                ${formattedBalance}
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs text-gray-500 mb-1">Type</div>
-                            <span class="text-sm font-medium uppercase ${getTransactionTypeColor(account.is_transactionable)}">
-                                ${account.is_transactionable || 'N/A'}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4 text-center">
-                        <button class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center justify-center w-full">
-                            <i class="fas fa-eye mr-2"></i>
-                            View Statement
-                        </button>
-                    </div>
-                `;
-
-                // Add click event to open modal
-                card.addEventListener('click', (e) => {
-                    if (!e.target.closest('button')) {
-                        openStatementModalForAccount(account.sys_id, account.acc_name, account.balance, account.is_transactionable);
-                    }
-                });
-
-                // View button click
-                const viewBtn = card.querySelector('button');
-                viewBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openStatementModalForAccount(account.sys_id, account.acc_name, account.balance, account.is_transactionable);
-                });
-
-                return card;
-            }
-
-            function getTransactionTypeColor(type) {
-                if (!type) return 'text-gray-600';
-                switch (type.toLowerCase()) {
-                    case 'deposit':
-                        return 'text-green-600';
-                    case 'withdraw':
-                        return 'text-red-600';
-                    default:
-                        return 'text-blue-600';
-                }
-            }
-
-            // --- 2. STATEMENT MODAL FUNCTIONS ---
-            function openStatementModalForAccount(accountId, accountName, accountBalance, transactionType = 'General') {
-                currentAccountId = accountId;
-                currentAccountName = accountName;
-                currentAccountBalance = accountBalance;
-
-                // Update modal header
-                document.getElementById('statementAccountName').textContent = accountName;
-
-                // Update current balance display
-                const amount = parseFloat(accountBalance || 0);
-                
-                const formattedBalance =
-                    (amount < 0 ? '(৳ ' : '৳ ') +
-                    Math.abs(amount).toLocaleString('en-BD', {
-                        minimumFractionDigits: 2
-                    }) +
-                    (amount < 0 ? ')' : '');
-                currentBalanceDisplay.textContent = formattedBalance;
-
-                // Update account type badge
-                accountTypeText.textContent = transactionType || 'General';
-                accountTypeBadge.className = `inline-block px-3 py-1 rounded-full text-sm font-medium uppercase ${getBadgeColor(transactionType)}`;
-
-                // Prepare transaction form
-                prepareTransactionForm(accountId, accountName, accountBalance);
-
-                // Reset filters
-                fromDateFilter.value = '';
-                toDateFilter.value = '';
-
-                // Show modal and fetch statement
-                openStatementModal();
-                fetchStatement(accountId);
-            }
-
-            function getBadgeColor(type) {
-                if (!type) return 'bg-gray-100 text-gray-800';
-                switch (type.toLowerCase()) {
-                    case 'deposit':
-                        return 'bg-green-100 text-green-800';
-                    case 'withdraw':
-                        return 'bg-red-100 text-red-800';
-                    default:
-                        return 'bg-blue-100 text-blue-800';
-                }
-            }
-
-            function prepareTransactionForm(id, name, currentBalance) {
-                document.getElementById('accountId').value = id;
-                document.getElementById('accountName').value = name;
-                document.getElementById('currentAccountBalance').value = currentBalance;
-
-                // Set default date to today
-                document.getElementById('transactionDate').valueAsDate = new Date();
-
-                // Reset form fields
-                document.getElementById('paymentType').value = '';
-                document.getElementById('balance').value = '';
-                document.getElementById('particular').value = '';
-
-                saveTransactionBtn.disabled = false;
-                saveButtonText.textContent = 'Save Transaction';
-            }
-
-            // --- 3. TRANSACTION SUBMISSION ---
-            saveTransactionBtn.addEventListener('click', submitTransaction);
-
-            async function submitTransaction() {
-                if (!transactionForm.checkValidity()) {
-                    transactionForm.reportValidity();
-                    return;
-                }
-
-                const formData = new FormData(transactionForm);
-                const postData = Object.fromEntries(formData.entries());
-
-                saveTransactionBtn.disabled = true;
-                spinner.classList.remove('hidden');
-                saveButtonText.textContent = ' Saving...';
-
-                try {
-                    const response = await fetch(API_POST_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(postData)
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok && result.success) {
-                        alert(`Success! Transaction saved for ${postData.accountName}.`);
-
-                        // Refresh statement and reset form
-                        prepareTransactionForm(currentAccountId, currentAccountName, currentAccountBalance);
-                        fetchStatement(currentAccountId);
-
-                        // Also refresh the account cards to update balances
-                        setTimeout(fetchAccounts, 500);
-                        
-                        const newBalance = parseFloat(result.new_balance || 0);
-                
-                        const formattedNewBalance =
-                            (newBalance < 0 ? '(৳ ' : '৳ ') +
-                            Math.abs(newBalance).toLocaleString('en-BD', {
-                                minimumFractionDigits: 2
-                            }) +
-                            (newBalance < 0 ? ')' : '');
-                        
-                        
-                        currentBalanceDisplay.innerHTML = formattedNewBalance;
-
-                    } else {
-                        const errorMsg = result.error || 'Unknown error occurred on the server.';
-                        alert(`Failed to save transaction: ${errorMsg}`);
-                    }
-
-                } catch (error) {
-                    console.error('Submission error:', error);
-                    alert('Network error or server connection failed. See console for details.');
-                } finally {
-                    saveTransactionBtn.disabled = false;
-                    spinner.classList.add('hidden');
-                    saveButtonText.textContent = 'Save Transaction';
-                }
-            }
-
-            // --- 4. STATEMENT FETCHING AND DISPLAY ---
-            async function fetchStatement(accountId, fromDate = null, toDate = null) {
-                statementLoader.classList.remove('hidden');
-                statementTableBody.innerHTML = '';
-                statementTableContainer.classList.add('hidden');
-                noStatementData.classList.add('hidden');
-                downloadCsvBtn.disabled = true;
-
-                let url = `${API_STATEMENT_URL}?ledger_db_id=${accountId}`;
-                if (fromDate) url += `&from_date=${fromDate}`;
-                if (toDate) url += `&to_date=${toDate}`;
-
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                    const result = await response.json();
-
-                    if (result.success && Array.isArray(result.data)) {
-                        displayStatement(result.data);
-                    } else {
-                        showNoStatementData();
-                    }
-
-                } catch (error) {
-                    console.error('Statement fetch error:', error);
-                    showStatementError();
-                } finally {
-                    statementLoader.classList.add('hidden');
-                }
-            }
-
-            // function displayStatement(data) {
-            //     currentStatementData = data;
-
-            //     if (data.length === 0) {
-            //         showNoStatementData();
-            //         return;
-            //     }
-
-            //     data.forEach(item => {
-            //         const row = document.createElement('tr');
-            //         row.innerHTML = `
-            //             <td class="px-4 py-3 text-sm text-gray-900">${item.date || ''}</td>
-            //             <td class="px-4 py-3 text-sm text-gray-900">${item.particular || ''}</td>
-            //             <td class="px-4 py-3 text-sm text-red-600 font-medium">${formatCurrency(item.withdraw)}</td>
-            //             <td class="px-4 py-3 text-sm text-green-600 font-medium">${formatCurrency(item.deposit)}</td>
-            //             <td class="px-4 py-3 text-sm text-gray-900 font-semibold">${formatCurrency(item.balance)}</td>
-            //             <td class="px-4 py-3 text-sm text-blue-600">${formatCurrency(item.reconsilation)}</td>
-            //         `;
-            //         statementTableBody.appendChild(row);
-            //     });
-            
-            //     statementTableContainer.classList.remove('hidden');
-            //     downloadCsvBtn.disabled = false;
-            // }
-            
-            
-            function displayStatement(data) {
-                currentStatementData = data;
-                displayIndex = 0; // reset index
-            
-                // clear old table
-                statementTableBody.innerHTML = '';
-            
-                if (data.length === 0) {
-                    showNoStatementData();
-                    return;
-                }
-            
-                // initially load first page
-                loadNextRows();
-            
-                statementTableContainer.classList.remove('hidden');
-                downloadCsvBtn.disabled = false;
-            
-                // attach scroll listener for lazy loading
-                statementTableContainer.addEventListener('scroll', handleScroll);
-            }
-            
-            function loadNextRows() {
-                // calculate how many rows we can show
-                const remaining = currentStatementData.length - displayIndex;
-                const rowsToLoad = Math.min(pageSize, remaining, maxRows - displayIndex);
-            
-                for (let i = displayIndex; i < displayIndex + rowsToLoad; i++) {
-                    const item = currentStatementData[i];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="px-4 py-3 text-sm text-gray-900">${item.date || ''}</td>
-                        <td class="px-4 py-3 text-sm text-gray-900">${item.particular || ''}</td>
-                        <td class="px-4 py-3 text-sm text-red-600 font-medium">${formatCurrency(item.withdraw)}</td>
-                        <td class="px-4 py-3 text-sm text-green-600 font-medium">${formatCurrency(item.deposit)}</td>
-                        <td class="px-4 py-3 text-sm text-gray-900 font-semibold">${formatCurrency(item.balance)}</td>
-                        <td class="px-4 py-3 text-sm text-blue-600">${formatCurrency(item.reconsilation)}</td>
-                    `;
-                    statementTableBody.appendChild(row);
-                }
-            
-                displayIndex += rowsToLoad;
-            }
-            
-            let isLoading = false; // prevent multiple loads at the same time
-
-            function handleScroll() {
-                const container = statementTableContainer;
-            
-                if (container.scrollTop + container.clientHeight >= container.scrollHeight - 5) {
-                    if (!isLoading && displayIndex < currentStatementData.length && displayIndex < maxRows) {
-                        isLoading = true;
-                        setTimeout(() => {
-                            loadNextRows();
-                            isLoading = false;
-                        }, 200); // 200ms delay, adjust for smoothness
-                    }
-                }
-            }
-
-            // --- 5. HELPER FUNCTIONS ---
-            function formatCurrency(value) {
-                const num = parseFloat(value || 0);
-                return num.toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: 'USD'
-                });
-            }
-
-            function showStatementError() {
-                statementTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-red-600">
-                            <i class="fas fa-exclamation-triangle mr-2"></i>
-                            Failed to load statement data.
-                        </td>
-                    </tr>
-                `;
-                statementTableContainer.classList.remove('hidden');
-                downloadCsvBtn.disabled = true;
-            }
-
-            function showNoStatementData() {
-                noStatementData.classList.remove('hidden');
-                statementTableContainer.classList.remove('hidden');
-                downloadCsvBtn.disabled = true;
-            }
-
-            function showError() {
-                errorMessage.classList.remove('hidden');
-                cardsContainer.classList.add('hidden');
-            }
-
-            function showNoData() {
-                noDataMessage.classList.remove('hidden');
-                cardsContainer.classList.add('hidden');
-            }
-
-            // --- 6. EVENT LISTENERS ---
-            searchStatementBtn.addEventListener('click', function() {
-                const fromDate = fromDateFilter.value;
-                const toDate = toDateFilter.value;
-                fetchStatement(currentAccountId, fromDate, toDate);
-            });
-
-            downloadCsvBtn.addEventListener('click', function() {
-                if (currentStatementData.length === 0) {
-                    alert('No data to download.');
-                    return;
-                }
-
-                const headers = ['Date', 'Particular', 'Withdraw', 'Deposit', 'Balance', 'Reconciliation'];
-                const rows = currentStatementData.map(item => [
-                    item.date,
-                    item.particular || '',
-                    parseFloat(item.withdraw || 0).toFixed(2),
-                    parseFloat(item.deposit || 0).toFixed(2),
-                    parseFloat(item.balance || 0).toFixed(2),
-                    parseFloat(item.reconsilation || 0).toFixed(2)
-                ]);
-
-                let csvContent = headers.join(',') + '\n';
-                rows.forEach(row => {
-                    csvContent += row.join(',') + '\n';
-                });
-
-                const blob = new Blob([csvContent], {
-                    type: 'text/csv;charset=utf-8;'
-                });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.setAttribute('href', url);
-                link.setAttribute('download', `Statement_${currentAccountName}_${new Date().toISOString().slice(0,10)}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-
-            // Initialize
-            fetchAccounts();
-        });
-    </script>
 </body>
 
 </html>

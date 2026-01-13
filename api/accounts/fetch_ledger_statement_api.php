@@ -32,11 +32,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($data)) {
 // 3. Extract & validate input
 $account_row_id            = $data['accountId'] ?? null; // FIXED naming
 $account_name              = $data['accountName'] ?? null;
-$transaction_date          = $data['transactionDate'] ?? null;
 $particular                = $data['particular'] ?? '';
 $input_amount              = $data['balance'] ?? 0;
 $paymentType               = $data['paymentType'] ?? null;
 $current_account_balance   = $data['currentAccountBalance'] ?? 0;
+$reconciliation_type       = $data['reconciliation_type'] ?? null;
+
+// Time Zone
+$transaction_date = $data['transactionDate'] ?? null;
+
+if ($transaction_date) {
+    $tz = new DateTimeZone('Asia/Dhaka');
+
+    // API date + current time
+    $dateTime = new DateTime($transaction_date, $tz);
+    $currentTime = (new DateTime('now', $tz))->format('H:i:s');
+
+    $dateTime->setTime(
+        ...explode(':', $currentTime)
+    );
+
+    $transaction_date = $dateTime->format('Y-m-d H:i:s');
+}
 
 if (
     !$account_row_id ||
@@ -81,7 +98,11 @@ try {
         case 'Reconciliation':
             // Static behavior (no balance change)
             $reconciliation = $amount;
-            $new_balance    = $current_account_balance;
+            if($reconciliation_type == 0){
+                $new_balance    = $current_account_balance + $reconciliation;
+            }elseif ($reconciliation_type == 1) {
+                $new_balance    = $current_account_balance - $reconciliation;
+            }
             break;
 
         default:
@@ -125,6 +146,7 @@ try {
             deposit,
             balance,
             reconsilation,
+            reconsilation_type,
             meta_data
         )
         VALUES
@@ -139,6 +161,7 @@ try {
             :deposit,
             :balance,
             :reconsilation,
+            :reconsilation_type,
             :meta_data
         )
     ";
@@ -155,6 +178,7 @@ try {
         ':deposit'       => $deposit,
         ':balance'       => $new_balance, // running balance
         ':reconsilation' => $reconciliation,
+        ':reconsilation_type' => $reconciliation_type,
         ':meta_data'     => $stmtMeta
     ]);
 
@@ -168,7 +192,8 @@ try {
         'success'        => true,
         'message'        => 'Transaction successfully recorded',
         'new_id'         => $new_id,
-        'new_balance'    => $new_balance
+        'new_balance'    => $new_balance,
+        'stmt_sys_id'    => $stmtIds['sys_id']
     ]);
 
 } catch (PDOException $e) {

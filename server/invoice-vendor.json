@@ -1,0 +1,32 @@
+{
+    "company_name": "TravHub Global Limited",
+    "logo": "logo.png",
+    "phone": "+ 880 1611 482 773",
+    "email": "accounts@abc.com",
+    "address": {
+        "line1": "House 01, Road 06, Sector 03",
+        "line2": "Uttara Model Town",
+        "city": "Dhaka",
+        "postcode": "1230",
+        "country": "Bangladesh"
+    },
+    "bank": [
+        {
+            "vendor_bank": "DBBL",
+            "vendor_bank_account": "2021100019475",
+            "vendor_bank_branch": "Ashkona (Dhaka North)",
+            "vendor_bank_routing": "090260205"
+        }
+    ],
+    "mfs": [
+        {
+            "vendor_mfs_title": "bkash",
+            "vendor_mfs_type": "Personal",
+            "vendor_mfs_account": [
+                "01611482773",
+                "01687867603"
+            ],
+            "vendor_amount_note": "Please pay BDT 18879 in case of bkash payment"
+        }
+    ]
+}
