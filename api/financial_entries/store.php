@@ -1,5 +1,7 @@
 <?php
-require '../../server/db_connection.php'; // <-- PDO connection
+session_start();
+
+require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 
@@ -11,41 +13,27 @@ header('Access-Control-Allow-Headers: Content-Type');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-function validateInput($data)
+// ------------------ Validator ------------------
+function validateInput(array $data): array
 {
     $errors = [];
 
-    if (empty($data['type']) || !in_array($data['type'], ['credit', 'debit'])) {
-        $errors[] = "Valid type (credit/debit) is required";
+    if (!isset($data['type']) || !in_array($data['type'], ['credit', 'debit'], true)) {
+        $errors[] = 'Valid type (credit/debit) is required';
     }
 
-    if (empty($data['amount']) || !is_numeric($data['amount']) || $data['amount'] <= 0) {
-        $errors[] = "Valid positive amount is required";
+    if (!isset($data['amount']) || !is_numeric($data['amount']) || $data['amount'] <= 0) {
+        $errors[] = 'Valid positive amount is required';
     }
 
-    if (empty($data['purpose'])) {
-        $errors[] = "Purpose is required";
-    }
-
-    if (empty($data['work_id'])) {
-        $errors[] = "Work ID is required";
-    }
-
-    if (empty($data['task_id'])) {
-        $errors[] = "Task ID is required";
-    }
-
-    if ($data['type'] === 'debit' && empty($data['client_id'])) {
-        $errors[] = "Client ID is required for debit transactions";
-    }
-
-    if ($data['type'] === 'credit' && empty($data['vendor_id'])) {
-        $errors[] = "Vendor ID is required for credit transactions";
+    if (empty(trim($data['purpose'] ?? ''))) {
+        $errors[] = 'Purpose is required';
     }
 
     return $errors;
 }
 
+// ------------------ Method Guard ------------------
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -53,13 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input) {
-        $input = $_POST;
-    }
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
     $errors = validateInput($input);
-    if (!empty($errors)) {
+    if ($errors) {
         http_response_code(400);
         echo json_encode([
             'success' => false,
@@ -71,85 +56,57 @@ try {
 
     // ------------------ Extract ------------------
     $type    = $input['type'];
-    $amount  = (float)$input['amount'];
+    $amount  = (float) $input['amount'];
     $purpose = trim($input['purpose']);
-    $workId  = $input['work_id'];
-    $taskId  = $input['task_id'];
     $date    = $input['date'] ?? date('Y-m-d');
+    $ref     = $input['ref'] ?? null;
 
-    $clientId = $clientUuid = $clientName = null;
-    $vendorId = $vendorUuid = $vendorName = null;
-    $taskTitle = $workTitle = null;
+    $clientId = $input['client_id'] ?? null;
+    $vendorId = $input['vendor_id'] ?? null;
+    $workId   = $input['work_id'] ?? null;
+    $taskId   = $input['task_id'] ?? null;
+
+    $clientName = $vendorName = $taskTitle = $workTitle = null;
 
     // ------------------ Work ------------------
-    $stmt = $pdo->prepare("SELECT title FROM works WHERE sys_id = ?");
-    $stmt->execute([$workId]);
-    $work = $stmt->fetch(PDO::FETCH_ASSOC);
-    $workTitle = $work['title'] ?? null;
+    if ($workId) {
+        $stmt = $pdo->prepare("SELECT title FROM works WHERE sys_id = ?");
+        $stmt->execute([$workId]);
+        $workTitle = $stmt->fetchColumn();
+    }
 
     // ------------------ Task ------------------
-    $stmt = $pdo->prepare("SELECT title FROM tasks WHERE sys_id = ?");
-    $stmt->execute([$taskId]);
-    $task = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$task) {
-        throw new Exception("Task not found");
+    if ($taskId) {
+        $stmt = $pdo->prepare("SELECT title FROM tasks WHERE sys_id = ?");
+        $stmt->execute([$taskId]);
+        $taskTitle = $stmt->fetchColumn();
     }
 
-    $taskTitle = $task['title'];
+    // ------------------ Client ------------------
+    if ($clientId) {
+        $stmt = $pdo->prepare("SELECT name FROM clients WHERE sys_id = ?");
+        $stmt->execute([$clientId]);
+        $clientName = $stmt->fetchColumn();
 
-    // ------------------ Debit (Client) ------------------
-    if ($type === 'debit') {
-        $clientId = $input['client_id'];
-
-        $stmt = $pdo->prepare("
-            SELECT c.uuid, c.name
-            FROM clients c
-            INNER JOIN works w ON c.sys_id = w.client_sys_id
-            WHERE w.sys_id = ? AND c.sys_id = ?
-        ");
-        $stmt->execute([$workId, $clientId]);
-        $client = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$client) {
-            // fallback: just get client by sys_id
-            $stmt = $pdo->prepare("SELECT uuid, name FROM clients WHERE sys_id = ?");
-            $stmt->execute([$clientId]);
-            $client = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$client) {
-                throw new Exception("Client not found");
-            }
+        if (!$clientName) {
+            throw new Exception('Client not found');
         }
-
-        $clientUuid = $client['uuid'];
-        $clientName = $client['name'];
     }
 
-    // ------------------ Credit (Vendor) ------------------
-    if ($type === 'credit') {
-        $vendorId = $input['vendor_id'];
-
-        $stmt = $pdo->prepare("SELECT uuid, name FROM vendors WHERE sys_id = ?");
+    // ------------------ Vendor ------------------
+    if ($vendorId) {
+        $stmt = $pdo->prepare("SELECT name FROM vendors WHERE sys_id = ?");
         $stmt->execute([$vendorId]);
-        $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
+        $vendorName = $stmt->fetchColumn();
 
-        if (!$vendor) {
-            throw new Exception("Vendor not found");
+        if (!$vendorName) {
+            throw new Exception('Vendor not found');
         }
-
-        $vendorUuid = $vendor['uuid'];
-        $vendorName = $vendor['name'];
     }
 
     // ------------------ Insert ------------------
     $ids = generateIDs('financial_entries');
-    $uuid = $ids['uuid']; // ensure it's a string
-
-    $metaDataJson = buildMetaData(
-        null,
-        $_SESSION['user_name'] ?? 'system'
-    );
+    $metaDataJson = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
     $stmt = $pdo->prepare("
         INSERT INTO financial_entries (
@@ -158,7 +115,7 @@ try {
             vendor_sys_id, vendor_name,
             task_sys_id, task_title,
             work_sys_id, work_title,
-            date, purpose, type, amount,
+            date, purpose, type, amount, ref,
             meta_data
         ) VALUES (
             :uuid, :sys_id,
@@ -166,13 +123,13 @@ try {
             :vendor_sys_id, :vendor_name,
             :task_sys_id, :task_title,
             :work_sys_id, :work_title,
-            :date, :purpose, :type, :amount,
+            :date, :purpose, :type, :amount, :ref,
             :meta_data
         )
     ");
 
     $stmt->execute([
-        ':uuid' => $uuid,
+        ':uuid' => $ids['uuid'],
         ':sys_id' => $ids['sys_id'],
         ':client_sys_id' => $clientId,
         ':client_name' => $clientName,
@@ -186,6 +143,7 @@ try {
         ':purpose' => $purpose,
         ':type' => $type,
         ':amount' => $amount,
+        ':ref' => $ref,
         ':meta_data' => $metaDataJson
     ]);
 
@@ -194,9 +152,10 @@ try {
         'success' => true,
         'message' => ucfirst($type) . ' transaction recorded successfully',
         'transaction_id' => $pdo->lastInsertId(),
-        'uuid' => $uuid
+        'uuid' => $ids['uuid']
     ]);
-} catch (Exception $e) {
+
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,

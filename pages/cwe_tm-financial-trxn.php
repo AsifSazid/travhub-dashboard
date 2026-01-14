@@ -8,7 +8,6 @@ $workId = $_GET['work_id'];
 $taskId = $_GET['task_id'];
 
 $getClientsApi = $ip_port . "api/clients/get-client.php?work_id=$workId";
-$getAllVendorsApi = $ip_port . "api/vendors/all-vendors.php";
 $getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=$taskId";
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
 $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
@@ -281,19 +280,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     <i class="fas fa-building mr-1"></i> Vendor
                                 </label>
-                                <div class="relative w-full">
-                                    <div class="flex">
-                                        <input
-                                            type="text"
-                                            id="vendorInput"
-                                            placeholder="Search for a vendor..."
-                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-all duration-200"
-                                            autocomplete="off">
-                                    </div>
-                                    <ul id="vendorDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto shadow-lg hidden z-50">
-                                        <!-- JS will populate options here -->
-                                    </ul>
-                                </div>
+                                <?php include('form-selects/vendors.php') ?>
                             </div>
 
                             <div class="space-y-4">
@@ -477,7 +464,6 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
     <script>
         const GET_CLIENT_API = "<?php echo $getClientsApi; ?>";
-        const GET_ALL_VENDOR_API = "<?php echo $getAllVendorsApi; ?>";
         const FINANCIAL_ENTRIES_STORE_API = "<?php echo $storeFinancialEntriesApi; ?>";
         const GET_FINANCIAL_STATEMENT_API = "<?php echo $getTaskFinEntriesApi; ?>";
         const GET_TASK_API = "<?php echo $getTaskApi; ?>";
@@ -485,16 +471,12 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         const WORK_ID = "<?php echo $workId; ?>";
         const TASK_ID = "<?php echo $taskId; ?>";
 
-        let vendorsData = [];
         let allTransactions = [];
         let currentClientId = null;
         let clientName = null;
-        let selectedVendorLi = null;
         let task = null;
 
         // DOM Elements
-        const vendorInput = document.getElementById('vendorInput');
-        const vendorDropdown = document.getElementById('vendorDropdown');
         const taskMetaSection = document.getElementById('taskMetaSection');
         const fileAttachments = document.getElementById('fileAttachments');
         const financialSummary = document.getElementById('financialSummary');
@@ -504,7 +486,6 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         document.addEventListener('DOMContentLoaded', function() {
             loadTaskMetaData();
             loadClientData();
-            loadVendors();
             loadFinancialData();
             setupEventListeners();
         });
@@ -609,6 +590,12 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         }
         
         function loadTaskFiles(task) {
+            
+            if (!task || !clientName || !currentClientId) {
+                console.warn('Task files skipped: client data not ready');
+                return;
+            }
+    
             try {
                 const files = task.all_file_name ? JSON.parse(task.all_file_name) : [];
 
@@ -720,236 +707,12 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     `;
                 }
                 
-                loadTaskFiles(task);
+                if (task) {
+                    loadTaskFiles(task);
+                }
             } catch (error) {
                 console.error('Error loading client data:', error);
             }
-        }
-
-        // Load Vendors
-        function loadVendors() {
-            fetch(GET_ALL_VENDOR_API)
-                .then(res => res.json())
-                .then(data => {
-
-                    if (data.vendors && Array.isArray(data.vendors)) {
-                        vendorsData = data.vendors;
-
-                    } else {
-                        console.error('Invalid vendors data format:', data);
-                        vendorsData = [];
-                    }
-                })
-                .catch(err => {
-                    console.error('Error fetching vendors:', err);
-                    vendorsData = [];
-                });
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadVendors();
-
-            // Setup event listeners
-            setupVendorSearch();
-        });
-
-        function setupVendorSearch() {
-            if (!vendorInput || !vendorDropdown) {
-                console.error('Vendor search elements not found');
-                return;
-            }
-
-            setupOutsideClickHandler();
-
-            // Track tab key press
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Tab') {
-                    isTabKeyPressed = true;
-                    // Add small delay to allow focus to move
-                    setTimeout(() => {
-                        const activeElement = document.activeElement;
-                        const vendorContainer = document.querySelector('.vendor-search-container') ||
-                            vendorInput.closest('.relative.w-full');
-
-                        // If focus moved outside vendor container, hide dropdown
-                        if (vendorContainer && !vendorContainer.contains(activeElement)) {
-                            vendorDropdown.classList.add('hidden');
-                        }
-                        isTabKeyPressed = false;
-                    }, 10);
-                }
-            });
-
-            // Input typing with debounce
-            let typingTimer;
-            vendorInput.addEventListener('input', () => {
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(() => {
-                    const value = vendorInput.value.toLowerCase().trim();
-
-                    if (value === '') {
-                        // Show all vendors when empty
-                        renderDropdown(vendorsData);
-                        vendorDropdown.classList.remove('hidden');
-                        return;
-                    }
-
-                    const filtered = vendorsData.filter(vendor => {
-                        // Get vendor properties safely
-                        const vendorId = vendor.id ? vendor.id.toString() : '';
-                        const vendorName = vendor.name || '';
-                        const vendorPhone = vendor.phone || '';
-
-                        // Check if any property contains the search term
-                        return vendorId.toLowerCase().includes(value) ||
-                            vendorName.toLowerCase().includes(value) ||
-                            vendorPhone.toString().toLowerCase().includes(value);
-                    });
-
-                    renderDropdown(filtered);
-                    vendorDropdown.classList.remove('hidden');
-                }, 300);
-            });
-
-            // Enter key to select first item
-            vendorInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && vendorDropdown.children.length > 0) {
-                    e.preventDefault();
-                    const firstItem = vendorDropdown.children[0];
-                    if (firstItem) {
-                        firstItem.click();
-                    }
-                }
-
-                // Escape to close dropdown
-                if (e.key === 'Escape') {
-                    vendorDropdown.classList.add('hidden');
-                }
-            });
-
-            // Focus to show all vendors
-            vendorInput.addEventListener('focus', () => {
-                if (vendorsData.length > 0) {
-                    renderDropdown(vendorsData);
-                    vendorDropdown.classList.remove('hidden');
-                }
-            });
-        }
-
-        function renderDropdown(list) {
-            vendorDropdown.innerHTML = '';
-
-            if (!list || list.length === 0) {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div class="px-4 py-3 text-center text-gray-500">
-                        <i class="fas fa-search text-gray-400 mb-1"></i>
-                        <p class="text-sm">No vendors found</p>
-                        <p class="text-xs text-gray-400 mt-1">Try a different search term</p>
-                    </div>
-                `;
-                vendorDropdown.appendChild(li);
-                return;
-            }
-
-            list.forEach(vendor => {
-                // Parse vendor data
-                let vendorName = '';
-                let vendorPhone = '';
-                let vendorId = vendor.sys_id || 'N/A';
-
-                try {
-                    if (vendor.name) {
-                        if (typeof vendor.name === 'string' && vendor.name.startsWith('{')) {
-                            const nameObj = JSON.parse(vendor.name);
-                            vendorName = nameObj.primary || 'Unnamed Vendor';
-                        } else {
-                            vendorName = vendor.name.toString();
-                        }
-                    } else {
-                        vendorName = 'Unnamed Vendor';
-                    }
-
-                    // Check if phone is JSON string
-                    if (vendor.phone) {
-                        if (typeof vendor.phone === 'string' && vendor.phone.startsWith('{')) {
-                            const phoneObj = JSON.parse(vendor.phone);
-                            vendorPhone = phoneObj.primary_no || '';
-                        } else {
-                            vendorPhone = vendor.phone.toString();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error parsing vendor data:', error);
-                    vendorName = 'Error parsing data';
-                }
-
-                const li = document.createElement('li');
-                li.className = "px-4 py-3 cursor-pointer hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150";
-                li.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                                ${vendorName.charAt(0).toUpperCase()}
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <div class="font-medium text-gray-900">${vendorName}</div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                <div class="flex items-center">
-                                    <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-2">
-                                        ID: ${vendorId}
-                                    </span>
-                                    ${vendorPhone ? `<span class="flex items-center"><i class="fas fa-phone mr-1 text-xs"></i>${vendorPhone}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-check text-purple-500 text-sm opacity-0 group-hover:opacity-100"></i>
-                        </div>
-                    </div>
-                `;
-
-                li.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent event bubbling
-                    vendorInput.value = `${vendorId} | ${vendorName}`;
-                    vendorDropdown.classList.add('hidden');
-                    li.setAttribute('data-sys-id', vendor.sys_id);
-
-                    // Highlight selected item
-                    const allItems = vendorDropdown.querySelectorAll('li');
-                    allItems.forEach(item => item.classList.remove('bg-purple-100'));
-                    li.classList.add('bg-purple-100');
-
-                    selectedVendorLi = li;
-                });
-
-                // Add hover effect
-                li.addEventListener('mouseenter', () => {
-                    li.classList.add('bg-purple-50');
-                });
-
-                li.addEventListener('mouseleave', () => {
-                    li.classList.remove('bg-purple-50');
-                });
-
-                vendorDropdown.appendChild(li);
-            });
-        }
-
-        // Improved outside click handler
-        function setupOutsideClickHandler() {
-            // Single global click handler
-            document.addEventListener('click', function(e) {
-                // Check if click is outside vendor search area
-                const vendorSearchArea = document.querySelector('.relative.w-full');
-                const isClickInside = vendorSearchArea && vendorSearchArea.contains(e.target);
-
-                if (!isClickInside && !vendorDropdown.classList.contains('hidden')) {
-                    vendorDropdown.classList.add('hidden');
-                }
-            });
         }
 
         // Record Transaction

@@ -366,7 +366,7 @@ $base_ip_path = trim($ip_port, "/");
         document.addEventListener('DOMContentLoaded', function() {
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
             const API_FETCH_URL = `${IP_PATH}/api/ledgers/fetch_ledger_api.php`;
-            const API_POST_URL = `${IP_PATH}/api/accounts/fetch_ledger_statement_api.php`;
+            const API_POST_URL = `${IP_PATH}/api/ledgers/store_ledger_statement.php`;
             const API_STATEMENT_URL = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
 
             // UI Elements

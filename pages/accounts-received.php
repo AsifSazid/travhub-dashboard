@@ -114,14 +114,33 @@ $base_ip_path = trim($ip_port, "/");
                             <input type="hidden" id="accountName" name="accountName">
                             <input type="hidden" id="currentAccountBalance" name="currentAccountBalance">
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <input id="paymentType" name="paymentType" value="Deposit" hidden />
                                 
                                 <div>
                                     <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fa-solid fa-user"></i> Select Type
+                                    </label>
+                                   <select name="select_type" id="select_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                       <option value="client" selected>Client</option>
+                                       <option value="vendor">Vendor</option>
+                                   </select>
+                                </div>
+                                
+                                <!-- Client -->
+                                <div id="client-section">
+                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-user"></i> Client Name
                                     </label>
                                    <?php include('form-selects/clients.php') ?>
+                                </div>
+                                
+                                <!--Vendor-->
+                                <div id="vendor-section" class="hidden">
+                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fa-solid fa-user"></i> Vendor Name
+                                    </label>
+                                   <?php include('form-selects/vendors.php') ?>
                                 </div>
                                 
                                 <div>
@@ -149,7 +168,7 @@ $base_ip_path = trim($ip_port, "/");
                                         id="balance" name="balance" required placeholder="0.00">
                                 </div>
                                 
-                                <div class="md:col-span-2 lg:col-span-4">
+                                <div class="md:col-span-2 lg:col-span-5">
                                     <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fas fa-file-alt mr-1"></i> Particular
                                     </label>
@@ -184,398 +203,223 @@ $base_ip_path = trim($ip_port, "/");
     <script src="../assets/js/script.js"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-        const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-        const API_POST_URL = `${IP_PATH}/api/accounts/fetch_ledger_statement_api.php`;
-        const FINANCIAL_ENTRIES_STORE_API = `${IP_PATH}/api/financial-entries/store.php'; ?>`;
-    
-        // UI Elements
-        const transactionForm = document.getElementById('transactionForm');
-        const saveTransactionBtn = document.getElementById('saveTransactionBtn');
-        const spinner = document.getElementById('spinner');
-        const saveButtonText = document.getElementById('saveButtonText');
-        const clientSelect = document.getElementById('client_id');
-        const accountSelect = document.getElementById('account_name');
-        const transactionDate = document.getElementById('transactionDate');
-        const amountInput = document.getElementById('balance');
-        const particularTextarea = document.getElementById('particular');
+        document.addEventListener('DOMContentLoaded', function () {
         
-        // Variables to store first API response
-        let firstApiResult = null;
+            /* ================= CONFIG ================= */
+            const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
+            const API_POST_URL = `${IP_PATH}/api/ledgers/store_ledger_statement.php`;
+            const FINANCIAL_ENTRIES_STORE_API = `${IP_PATH}/api/financial_entries/store.php`;
+            const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
         
-        // Set today's date as default
-        const today = new Date().toISOString().split('T')[0];
-        transactionDate.value = today;
-    
-        // Reset form function
-        window.resetTransactionForm = function() {
-            transactionForm.reset();
-            transactionDate.value = today;
-            particularTextarea.value = '';
-            // Clear the form draft from localStorage
-            localStorage.removeItem('receivedFormDraft');
-        };
-    
-        // Submit transaction function
-        saveTransactionBtn.addEventListener('click', submitTransaction);
-    
-        async function submitTransaction() {
-            // Validate form
-            if (!validateForm()) {
-                return;
-            }
-    
-            // Get form data
-            const formData = {
-                accountId: document.getElementById('accountId').value,
-                accountName: document.getElementById('accountName').value,
-                currentAccountBalance: document.getElementById('currentAccountBalance').value,
-                paymentType: document.getElementById('paymentType').value,
-                client_id: clientSelect.value,
-                account_name: accountSelect.value,
-                transactionDate: transactionDate.value,
-                balance: amountInput.value,
-                particular: particularTextarea.value
-            };
-    
-            // Check if account is selected from dropdown
-            if (!formData.account_name) {
-                alert('Please select an account from the dropdown');
-                accountSelect.focus();
-                return;
-            }
-    
-            // Check if client is selected
-            if (!formData.client_id) {
-                alert('Please select a client');
-                clientSelect.focus();
-                return;
-            }
-    
-            // Show loading state
-            saveTransactionBtn.disabled = true;
-            spinner.classList.remove('hidden');
-            saveButtonText.textContent = 'Processing...';
-    
-            try {
-                // First API call - Ledger statement
-                const firstResponse = await fetch(API_POST_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-    
-                firstApiResult = await firstResponse.json();
-    
-                if (firstResponse.ok && firstApiResult.success) {
-                    // First API success - now call second API
-                    await callSecondAPI(formData, firstApiResult);
-                    
-                } else {
-                    // First API error handling
-                    const errorMsg = firstApiResult.error || 'Unknown error occurred on the server.';
-                    showErrorMessage(`Failed to save transaction: ${errorMsg}`);
-                }
-    
-            } catch (error) {
-                console.error('Submission error:', error);
-                showErrorMessage('Network error or server connection failed. Please check your connection and try again.');
-            } finally {
-                // Reset button state
-                saveTransactionBtn.disabled = false;
-                spinner.classList.add('hidden');
-                saveButtonText.textContent = 'Received Amount';
-            }
-        }
-    
-        // Call second API function
-        async function callSecondAPI(formData, firstResult) {
-            try {
-                // Prepare data for second API
-                const financialEntryData = {
-                    type: 'credit', // Since this is "Received Amount"
-                    amount: parseFloat(formData.balance),
-                    purpose: formData.particular,
-                    client_id: formData.client_id,
-                    ref: firstResult.sys_id || firstResult.transaction_id || firstResult.id || 'N/A',
-                    date: formData.transactionDate || new Date().toISOString().split('T')[0],
-                    // Additional data if needed
-                    account_name: formData.account_name,
-                    payment_type: formData.paymentType
+            /* ================= ELEMENTS ================= */
+            const transactionForm = document.getElementById('transactionForm');
+            const saveTransactionBtn = document.getElementById('saveTransactionBtn');
+            const spinner = document.getElementById('spinner');
+            const saveButtonText = document.getElementById('saveButtonText');
+        
+            const selectType = document.getElementById('select_type');
+            const clientSection = document.getElementById('client-section');
+            const vendorSection = document.getElementById('vendor-section');
+        
+            const clientInput = document.getElementById('clientInput');
+            const vendorInput = document.getElementById('vendorInput');
+            const accountInput = document.getElementById('accountInput');
+        
+            const transactionDate = document.getElementById('transactionDate');
+            const amountInput = document.getElementById('balance');
+            const particularTextarea = document.getElementById('particular');
+        
+            /* ================= UTILS ================= */
+            function extractIds(value) {
+                if (!value) return null;
+                const parts = value.split('|').map(v => v.trim());
+                return {
+                    id: parts[0] || null,
+                    name: parts[1] || null,
+                    sys_id: parts[parts.length - 1] || null
                 };
-    
-                const secondResponse = await fetch(FINANCIAL_ENTRIES_STORE_API, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(financialEntryData)
-                });
-    
-                const secondResult = await secondResponse.json();
-    
-                if (secondResult.success) {
-                    // Both APIs successful
-                    showSuccessMessage(`Success! Amount received and saved for ${formData.account_name}. Financial entry recorded successfully.`);
-                    
-                    // Reset form after successful submission
-                    resetTransactionForm();
-                    
-                    // If there's a new balance from first API, update the hidden field
-                    if (firstResult.new_balance) {
-                        document.getElementById('currentAccountBalance').value = firstResult.new_balance;
-                    }
-                    
-                    // Optional: Reload financial data or add to recent activity
-                    loadFinancialData();
-                    addRecentActivity(financialEntryData);
-                    
+            }
+        
+            function todayDate() {
+                return new Date().toISOString().split('T')[0];
+            }
+        
+            /* ================= INIT ================= */
+            transactionDate.value = todayDate();
+        
+            function togglePartySection() {
+                const type = selectType.value;
+        
+                if (type === 'vendor') {
+                    vendorSection.classList.remove('hidden');
+                    clientSection.classList.add('hidden');
+                    if (clientInput) clientInput.value = '';
                 } else {
-                    // Second API failed but first succeeded
-                    showWarningMessage(`Transaction saved but financial entry failed: ${secondResult.message || 'Unknown error'}`);
-                    
-                    // Still reset form since first API succeeded
-                    resetTransactionForm();
-                    
-                    // If there's a new balance from first API, update the hidden field
-                    if (firstResult.new_balance) {
-                        document.getElementById('currentAccountBalance').value = firstResult.new_balance;
-                    }
-                }
-    
-            } catch (error) {
-                console.error('Second API error:', error);
-                showWarningMessage('Transaction saved but financial entry network error occurred.');
-                
-                // Still reset form since first API succeeded
-                resetTransactionForm();
-                
-                // If there's a new balance from first API, update the hidden field
-                if (firstResult.new_balance) {
-                    document.getElementById('currentAccountBalance').value = firstResult.new_balance;
+                    clientSection.classList.remove('hidden');
+                    vendorSection.classList.add('hidden');
+                    if (vendorInput) vendorInput.value = '';
                 }
             }
-        }
-    
-        // Form validation function
-        function validateForm() {
-            // Check required fields
-            if (!clientSelect.value) {
-                alert('Please select a client');
-                clientSelect.focus();
-                return false;
-            }
-    
-            if (!accountSelect.value) {
-                alert('Please select an account');
-                accountSelect.focus();
-                return false;
-            }
-    
-            if (!transactionDate.value) {
-                alert('Please select a date');
-                transactionDate.focus();
-                return false;
-            }
-    
-            if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
-                alert('Please enter a valid amount (greater than 0)');
-                amountInput.focus();
-                return false;
-            }
-    
-            if (!particularTextarea.value.trim()) {
-                alert('Please enter transaction details');
-                particularTextarea.focus();
-                return false;
-            }
-    
-            return true;
-        }
-    
-        // Success message function
-        function showSuccessMessage(message) {
-            createNotification(message, 'success');
-        }
-    
-        // Error message function
-        function showErrorMessage(message) {
-            createNotification(message, 'error');
-        }
-    
-        // Warning message function (for partial success)
-        function showWarningMessage(message) {
-            createNotification(message, 'warning');
-        }
-    
-        // Create beautiful notification
-        function createNotification(message, type = 'success') {
-            // Remove existing notification if any
-            const existingNotification = document.getElementById('form-notification');
-            if (existingNotification) {
-                existingNotification.remove();
-            }
-    
-            // Set icon and colors based on type
-            let icon, bgColor, textColor, borderColor, title;
-            
-            switch(type) {
-                case 'success':
-                    icon = 'fa-check-circle';
-                    bgColor = 'bg-green-100';
-                    textColor = 'text-green-800';
-                    borderColor = 'border-green-200';
-                    title = 'Success!';
-                    break;
-                case 'error':
-                    icon = 'fa-exclamation-circle';
-                    bgColor = 'bg-red-100';
-                    textColor = 'text-red-800';
-                    borderColor = 'border-red-200';
-                    title = 'Error!';
-                    break;
-                case 'warning':
-                    icon = 'fa-exclamation-triangle';
-                    bgColor = 'bg-yellow-100';
-                    textColor = 'text-yellow-800';
-                    borderColor = 'border-yellow-200';
-                    title = 'Warning!';
-                    break;
-                default:
-                    icon = 'fa-info-circle';
-                    bgColor = 'bg-blue-100';
-                    textColor = 'text-blue-800';
-                    borderColor = 'border-blue-200';
-                    title = 'Info';
-            }
-    
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.id = 'form-notification';
-            notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} ${textColor} ${borderColor} border`;
-            
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <i class="fas ${icon} mr-3 text-lg"></i>
-                    <div class="flex-1">
-                        <p class="font-medium">${title}</p>
-                        <p class="text-sm mt-1">${message}</p>
-                    </div>
-                    <button onclick="this.parentElement.parentElement.remove()" 
-                        class="ml-4 ${textColor} hover:opacity-75">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-    
-            // Add to body
-            document.body.appendChild(notification);
-    
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.classList.add('removing');
-                    setTimeout(() => {
-                        if (notification.parentElement) {
-                            notification.remove();
-                        }
-                    }, 300);
-                }
-            }, 5000);
-        }
-    
-        // Load financial data function (you need to implement this)
-        function loadFinancialData() {
-            console.log('Loading financial data...');
-            // Implement your financial data loading logic here
-            // Example: fetch latest transactions, update dashboard, etc.
-        }
-    
-        // Add to recent activity function (you need to implement this)
-        function addRecentActivity(data) {
-            console.log('Adding to recent activity:', data);
-            // Implement your recent activity logic here
-            // Example: add to activity log, update sidebar, etc.
-        }
-    
-        // Optional: Add account dropdown change event to set hidden fields
-        if (accountSelect) {
-            accountSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const accountId = selectedOption.getAttribute('data-id');
-                const accountBalance = selectedOption.getAttribute('data-balance');
-                
-                if (accountId) {
-                    document.getElementById('accountId').value = accountId;
-                    document.getElementById('accountName').value = this.value;
-                    
-                    if (accountBalance) {
-                        document.getElementById('currentAccountBalance').value = accountBalance;
-                    }
-                }
-            });
-        }
-    
-        // Optional: Add client dropdown change event
-        if (clientSelect) {
-            clientSelect.addEventListener('change', function() {
-                // You can add additional logic here if needed
-                // For example, fetch client details or pre-fill fields
-            });
-        }
-    
-        // Optional: Auto-save draft on form change
-        let formDraftTimer;
-        transactionForm.addEventListener('input', function() {
-            clearTimeout(formDraftTimer);
-            formDraftTimer = setTimeout(() => {
-                saveFormDraft();
-            }, 1000);
-        });
-    
-        function saveFormDraft() {
-            const formData = {
-                client_id: clientSelect.value,
-                account_name: accountSelect.value,
-                transactionDate: transactionDate.value,
-                balance: amountInput.value,
-                particular: particularTextarea.value
+        
+            togglePartySection();
+            selectType.addEventListener('change', togglePartySection);
+        
+            window.resetTransactionForm = function () {
+                transactionForm.reset();
+                transactionDate.value = todayDate();
+                togglePartySection();
             };
-            
-            // Save to localStorage
-            localStorage.setItem('receivedFormDraft', JSON.stringify(formData));
-        }
-    
-        // Load draft on page load
-        function loadFormDraft() {
-            const draft = localStorage.getItem('receivedFormDraft');
-            if (draft) {
+        
+            saveTransactionBtn.addEventListener('click', submitTransaction);
+        
+            /* ================= VALIDATION ================= */
+            function validateForm() {
+        
+                const type = selectType.value;
+                const client = extractIds(clientInput?.value);
+                const vendor = extractIds(vendorInput?.value);
+                const account = extractIds(accountInput.value);
+        
+                if (!account || !account.sys_id) {
+                    alert('Please select an account');
+                    return false;
+                }
+        
+                if (type === 'client' && (!client || !client.sys_id)) {
+                    alert('Please select a client');
+                    return false;
+                }
+        
+                if (type === 'vendor' && (!vendor || !vendor.sys_id)) {
+                    alert('Please select a vendor');
+                    return false;
+                }
+        
+                if (!transactionDate.value) {
+                    alert('Please select a date');
+                    return false;
+                }
+        
+                if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
+                    alert('Please enter a valid amount');
+                    return false;
+                }
+        
+                if (!particularTextarea.value.trim()) {
+                    alert('Please enter particulars');
+                    return false;
+                }
+        
+                return true;
+            }
+        
+            /* ================= FETCH ACCOUNT ================= */
+            async function fetchAccountInfo(acc_id) {
                 try {
-                    const data = JSON.parse(draft);
-                    if (data.client_id) clientSelect.value = data.client_id;
-                    if (data.account_name) accountSelect.value = data.account_name;
-                    if (data.transactionDate) transactionDate.value = data.transactionDate;
-                    if (data.balance) amountInput.value = data.balance;
-                    if (data.particular) particularTextarea.value = data.particular;
-                    
-                    // Ask user if they want to restore draft
-                    if (confirm('Found a previously saved draft. Do you want to restore it?')) {
-                        // Already restored above
-                    } else {
-                        // Clear the draft
-                        localStorage.removeItem('receivedFormDraft');
-                    }
+                    const res = await fetch(`${FETCH_ACCOUNT}?acc_id=${acc_id}`);
+                    const json = await res.json();
+                    return json.accInfo || null;
                 } catch (e) {
-                    console.error('Error loading draft:', e);
+                    console.error(e);
+                    return null;
                 }
             }
-        }
-    
-        // Load draft on page load
-        loadFormDraft();
-    });
+        
+            /* ================= SUBMIT ================= */
+            async function submitTransaction() {
+        
+                if (!validateForm()) return;
+        
+                const type = selectType.value;
+                const client = extractIds(clientInput?.value);
+                const vendor = extractIds(vendorInput?.value);
+                const account = extractIds(accountInput.value);
+        
+                const accountInfo = await fetchAccountInfo(account.sys_id);
+                if (!accountInfo) {
+                    alert('Account info fetch failed');
+                    return;
+                }
+        
+                const data = {
+                    accountId: account.sys_id,
+                    accountName: account.name,
+                    particular: particularTextarea.value,
+                    balance: parseFloat(amountInput.value),
+                    paymentType: 'Deposit',
+                    currentAccountBalance: parseFloat(accountInfo.balance || 0),
+                    transactionDate: transactionDate.value,
+                    client_id: type === 'client' ? client.sys_id : null,
+                    client_name: type === 'client' ? client.name : null,
+                    vendor_id: type === 'vendor' ? vendor.sys_id : null,
+                    vendor_name: type === 'vendor' ? vendor.name : null
+                };
+        
+                saveTransactionBtn.disabled = true;
+                spinner.classList.remove('hidden');
+                saveButtonText.textContent = 'Processing...';
+        
+                try {
+                    const res = await fetch(API_POST_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+        
+                    const result = await res.json();
+        
+                    if (res.ok && result.success) {
+                        await callSecondAPI(data, result);
+                    } else {
+                        alert(result.error || 'Ledger save failed');
+                    }
+        
+                } catch (e) {
+                    console.error(e);
+                    alert('Network error');
+                } finally {
+                    saveTransactionBtn.disabled = false;
+                    spinner.classList.add('hidden');
+                    saveButtonText.textContent = 'Received Amount';
+                }
+            }
+        
+            /* ================= SECOND API ================= */
+            async function callSecondAPI(data, firstResult) {
+        
+                const payload = {
+                    type: 'credit',
+                    amount: data.balance,
+                    purpose: data.particular,
+                    client_id: data.client_id,
+                    vendor_id: data.vendor_id,
+                    ref: firstResult.stmt_sys_id,
+                    date: data.transactionDate
+                };
+        
+                try {
+                    const res = await fetch(FINANCIAL_ENTRIES_STORE_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+        
+                    const result = await res.json();
+        
+                    if (result.success) {
+                        alert('Transaction saved successfully');
+                        resetTransactionForm();
+                    } else {
+                        alert('Ledger saved but financial entry failed');
+                    }
+        
+                } catch (e) {
+                    console.error(e);
+                    alert('Ledger saved, financial entry error');
+                }
+            }
+        
+        });
     </script>
 
 </body>
