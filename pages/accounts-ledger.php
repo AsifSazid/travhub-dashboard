@@ -210,7 +210,7 @@ $base_ip_path = trim($ip_port, "/");
                         </div>
                         <div class="text-right">
                             <h6 class="text-sm text-gray-500">Account Type</h6>
-                            <span id="accountTypeBadge" class="inline-block px-3 py-1 rounded-full text-sm font-medium">
+                            <span id="accountTypeBadge">
                                 <span id="accountTypeText">Loading...</span>
                             </span>
                         </div>
@@ -218,7 +218,7 @@ $base_ip_path = trim($ip_port, "/");
                 </div>
 
                 <!-- Transaction Input Section -->
-                <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+                <div id="trxnSection" class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
                     <h6 class="text-blue-700 font-semibold mb-3 flex items-center">
                         <i class="fas fa-plus-circle mr-2"></i> Add New Transaction
                     </h6>
@@ -248,8 +248,8 @@ $base_ip_path = trim($ip_port, "/");
                                     id="reconciliation_type" name="reconciliation_type"
                                 >
                                     <option value="">Select</option>
-                                    <option value="0">Add</option>
-                                    <option value="1">Deduct</option>
+                                    <option value="1">Add</option>
+                                    <option value="2">Deduct</option>
                                 </select>
                             </div>
                             <div>
@@ -391,6 +391,7 @@ $base_ip_path = trim($ip_port, "/");
             const currentBalanceDisplay = document.getElementById('currentBalanceDisplay');
             const accountTypeBadge = document.getElementById('accountTypeBadge');
             const accountTypeText = document.getElementById('accountTypeText');
+            const trxnSection = document.getElementById('trxnSection');
 
             let currentStatementData = [];
             let currentAccountId = null;
@@ -576,10 +577,15 @@ $base_ip_path = trim($ip_port, "/");
 
                 // Update account type badge
                 accountTypeText.textContent = transactionType || 'General';
-                accountTypeBadge.className = `inline-block px-3 py-1 rounded-full text-sm font-medium uppercase ${getBadgeColor(transactionType)}`;
+                accountTypeBadge.className = `inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium uppercase ${getBadgeColor(transactionType)}`;
 
                 // Prepare transaction form
-                prepareTransactionForm(accountId, accountName, accountBalance);
+                if(transactionType == 'yes')
+                {
+                    prepareTransactionForm(accountId, accountName, accountBalance);
+                }else {
+                    trxnSection.classList.add('hidden');
+                }
 
                 // Reset filters
                 fromDateFilter.value = '';
