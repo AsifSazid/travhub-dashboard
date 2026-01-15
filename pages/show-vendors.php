@@ -174,9 +174,6 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.p
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
                                     <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
-                                    <p class="text-gray-600">Financial information will be displayed here</p>
-
                                     <?php include('sv-accounting.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>

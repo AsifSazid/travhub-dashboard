@@ -1,7 +1,4 @@
 <?php
-session_start();
-require '../server/db_connection.php';
-
 // Get IP path
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
@@ -22,286 +19,325 @@ $base_ip_path = trim($ip_port, "/");
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        :root {
-            --primary: #10b981;
-            --secondary: #059669;
-            --success: #34d399;
-            --danger: #f87171;
-            --warning: #fbbf24;
-            --light: #f0fdf4;
-            --dark: #064e3b;
-            --gray: #6b7280;
-            --border: #d1fae5;
-            --shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-            --radius: 8px;
-            --transition: all 0.3s ease;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: #f9fafb;
-            color: #1f2937;
-            line-height: 1.6;
-        }
-
-        .form-card {
+        /* Form Container */
+        .form-container {
             background: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            padding: 40px;
+            margin: 20px 0;
         }
         
-        .item-row {
-            transition: all 0.3s ease;
-        }
-        
-        .item-row:hover {
-            background: #f9fafb;
-        }
-
         /* Invoice Number Display */
         .invoice-no-display {
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            padding: 20px;
-            border-radius: var(--radius);
-            border: 2px solid var(--primary);
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+            border: 2px solid #0ea5e9;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 40px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
         }
-
+        
         .invoice-no-label {
-            font-size: 13px;
-            color: var(--gray);
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 600;
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
+        
         .invoice-no-value {
-            font-family: 'Courier New', monospace;
-            font-size: 28px;
+            font-size: 36px;
             font-weight: 700;
-            color: var(--primary);
-            letter-spacing: 1.5px;
-            margin: 10px 0;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+            color: #0ea5e9;
+            margin: 15px 0 25px 0;
         }
-
-        .invoice-format-info {
-            font-size: 12px;
-            color: var(--gray);
-            margin-top: 8px;
-            text-align: center;
-            font-style: italic;
-        }
-
-        .readonly-field {
-            background: #f9fafb;
-            padding: 15px;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            margin-bottom: 15px;
-        }
-
-        .readonly-label {
-            font-size: 12px;
-            color: var(--gray);
-            margin-bottom: 5px;
-        }
-
-        .readonly-value {
-            font-weight: 600;
-            font-size: 15px;
-            color: var(--dark);
-        }
-
-        .bank-mfs-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-top: 15px;
-        }
-
-        .bank-card,
-        .mfs-card {
-            background: var(--light);
-            border-radius: var(--radius);
-            padding: 20px;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-
-        .mfs-card {
-            border-left-color: var(--success);
-        }
-
-        .item-card {
+        
+        /* Form Cards */
+        .form-card {
             background: white;
-            border-radius: var(--radius);
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--success);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            transition: var(--transition);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            padding: 32px;
+            margin-bottom: 32px;
         }
-
-        .item-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        
+        .form-card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
         }
-
-        .amount-display {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--primary);
-            text-align: right;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 2px dashed var(--border);
+        
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 24px;
         }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: var(--radius);
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
+        
+        .form-group label {
+            color: #374151;
+            font-weight: 500;
+            display: flex;
             align-items: center;
-            gap: 8px;
-            text-decoration: none;
+            margin-bottom: 10px;
+            font-size: 15px;
         }
-
-        .btn i {
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            width: 100%;
+            background: #fff;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+            outline: none;
+        }
+        
+        /* Textarea specific */
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+            padding: 14px 32px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            font-weight: 600;
+            padding: 14px 32px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-outline {
+            background: white;
+            color: #374151;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: 10px;
+            border: 2px solid #d1d5db;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        
+        .btn-outline:hover {
+            border-color: #10b981;
+            color: #10b981;
+            background: #f0fdfa;
+        }
+        
+        /* Work Item Cards */
+        .item-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+        }
+        
+        .item-card:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+        
+        /* Amount Display */
+        .amount-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 20px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #374151;
             font-size: 16px;
         }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
+        
+        .amount-display span {
+            font-size: 18px;
+            color: #059669;
         }
-
-        .btn-primary:hover {
-            background: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #10b981;
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #ef4444;
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-
-        .btn-outline:hover {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 13px;
-        }
-
-        .total-section {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            padding: 25px;
-            border-radius: var(--radius);
-            margin: 30px 0;
-        }
-
+        
+        /* Total Grid */
         .total-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 24px;
         }
-
+        
+        @media (min-width: 768px) {
+            .total-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
         .total-item {
-            text-align: center;
-            padding: 20px;
             background: white;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 28px;
+            text-align: center;
         }
-
+        
         .total-label {
             font-size: 14px;
-            color: var(--gray);
-            margin-bottom: 8px;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
         }
-
+        
         .total-value {
-            font-size: 28px;
+            font-size: 36px;
             font-weight: 700;
-            color: var(--primary);
+            color: #059669;
+            margin-top: 10px;
         }
-
+        
         .total-value.due {
-            color: var(--danger);
+            color: #ef4444;
         }
-
-        .total-value.paid {
-            color: var(--success);
+        
+        /* Readonly Fields */
+        .readonly-field {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 28px;
         }
-
-        .info-note {
-            background: #d1fae5;
-            color: var(--dark);
-            padding: 15px;
-            border-radius: var(--radius);
-            margin-top: 20px;
-            font-size: 14px;
+        
+        .readonly-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .readonly-value {
+            font-size: 17px;
+            color: #1f2937;
+            font-weight: 500;
+            margin-top: 5px;
+        }
+        
+        /* Bank/MFS Cards */
+        .bank-card,
+        .mfs-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+        
+        .bank-card {
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .mfs-card {
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        /* MFS Account Items */
+        .mfs-account-item {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            border-left: 4px solid var(--primary);
+            gap: 12px;
+            margin-bottom: 12px;
         }
-
+        
+        /* Info Note */
+        .info-note {
+            background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+            border: 2px solid #fbbf24;
+            border-radius: 12px;
+            padding: 28px;
+            margin: 40px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
         .info-note i {
-            font-size: 18px;
-            color: var(--primary);
+            color: #d97706;
+            font-size: 24px;
+            flex-shrink: 0;
         }
-
+        
+        .info-note div {
+            color: #92400e;
+            line-height: 1.6;
+        }
+        
         /* Modal Styles */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: center;
@@ -309,116 +345,225 @@ $base_ip_path = trim($ip_port, "/");
             z-index: 1000;
             padding: 20px;
         }
-
+        
         .modal {
             background: white;
-            border-radius: var(--radius);
-            width: 100%;
+            border-radius: 16px;
+            width: 90%;
             max-width: 800px;
             max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
-
+        
         .modal-header {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            color: white;
-            padding: 20px;
-            border-radius: var(--radius) var(--radius) 0 0;
+            padding: 28px 32px;
+            border-bottom: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
+        
         .modal-header h3 {
             font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
+        
         .modal-close {
-            background: rgba(255, 255, 255, 0.2);
+            background: none;
             border: none;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
+            font-size: 24px;
+            color: #6b7280;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            transition: var(--transition);
+            transition: color 0.2s;
         }
-
+        
         .modal-close:hover {
-            background: rgba(255, 255, 255, 0.3);
+            color: #374151;
         }
-
+        
         .modal-body {
-            padding: 25px;
+            padding: 32px;
         }
-
+        
         .modal-footer {
-            padding: 20px 25px;
-            background: #f0fdf4;
-            border-top: 1px solid var(--border);
+            padding: 28px 32px;
+            border-top: 1px solid #e5e7eb;
             display: flex;
             justify-content: flex-end;
-            gap: 15px;
-            border-radius: 0 0 var(--radius) var(--radius);
+            gap: 12px;
         }
-
-        .mfs-account-item {
+        
+        /* Section Header */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 40px 0 25px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .section-header div {
+            font-size: 20px;
+            font-weight: 700;
+            color: #374151;
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 10px;
         }
-
-        .remove-account {
-            background: var(--danger);
-            color: white;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        
+        .btn-small {
+            padding: 10px 20px;
+            font-size: 14px;
         }
-
-        .add-account {
-            margin-top: 10px;
+        
+        /* Footer Actions */
+        .footer-actions {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-top: 50px;
+            border-top: 3px solid #e5e7eb;
         }
-
+        
+        /* Grid gap adjustments */
+        .gap-4 {
+            gap: 24px !important;
+        }
+        
+        .gap-6 {
+            gap: 32px !important;
+        }
+        
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .form-grid,
-            .total-grid,
-            .bank-mfs-container {
-                grid-template-columns: 1fr;
+            .form-container {
+                padding: 24px;
+                margin: 10px 0;
             }
-
-            .footer-actions {
-                flex-direction: column;
-                gap: 15px;
+            
+            .form-card {
+                padding: 24px;
+                margin-bottom: 24px;
             }
-
-            .header {
+            
+            .invoice-no-display {
+                padding: 24px;
+                margin-bottom: 30px;
+            }
+            
+            .invoice-no-value {
+                font-size: 28px;
+            }
+            
+            .total-item {
+                padding: 20px;
+            }
+            
+            .total-value {
+                font-size: 28px;
+            }
+            
+            .readonly-field {
+                padding: 20px;
+            }
+            
+            .bank-card,
+            .mfs-card {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .info-note {
+                padding: 20px;
+                margin: 30px 0;
                 flex-direction: column;
-                gap: 15px;
                 text-align: center;
             }
-
-            .invoice-no-value {
-                font-size: 22px;
+            
+            .mfs-account-item {
+                flex-direction: column;
             }
-
+            
             .modal {
-                max-height: 95vh;
+                width: 95%;
+                padding: 0;
             }
+            
+            .modal-body {
+                padding: 24px;
+            }
+            
+            .modal-header {
+                padding: 20px 24px;
+            }
+            
+            .modal-footer {
+                padding: 20px 24px;
+            }
+            
+            .footer-actions {
+                padding: 24px;
+                margin-top: 30px;
+            }
+            
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 12px 14px;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .form-card,
+        .item-card,
+        .modal {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        /* Scrollbar Styling */
+        .modal::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .modal::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .modal::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        
+        /* Input groups inside grids */
+        .grid .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Remove button spacing */
+        .amount-display button {
+            margin-left: 16px;
         }
     </style>
 </head>
@@ -449,90 +594,79 @@ $base_ip_path = trim($ip_port, "/");
     <main id="mainContent" class="pt-16 pl-0 lg:pl-64 transition-all duration-300 h-full">
         <div class="p-4 md:p-6 h-full">
             <!-- Header -->
-            <div class="mb-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="mb-8">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Create New Invoice</h1>
                         <p class="text-gray-600 mt-2">Create professional invoices for visa applications</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <a href="accounting-invoices.php" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 px-5 rounded-lg transition duration-300 flex items-center">
-                            <i class="fas fa-arrow-left mr-2"></i> Back to Invoices
+                        <a href="index-invoice.php" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 px-5 rounded-lg transition duration-300 flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Back to Invoices
                         </a>
                     </div>
                 </div>
             </div>
 
             <!-- Invoice Form -->
-            <div class="container" style="max-width: 1200px; margin: 0 auto;">
-                <div class="form-container" style="padding: 20px;">
+            <div class="max-w-6xl mx-auto">
+                <div class="form-container">
                     <form id="invoiceForm" method="POST" action="./server/invoice-store.php" enctype="multipart/form-data">
 
-                        <!-- Auto Generated Invoice Number / স্বয়ংক্রিয় ইনভয়েস নম্বর -->
+                        <!-- Auto Generated Invoice Number -->
                         <div class="invoice-no-display">
                             <div class="invoice-no-label">Invoice Number</div>
                             <div class="invoice-no-value" id="invoiceNoDisplay">Generating...</div>
                             <input type="hidden" name="invoice_no" id="invoiceNoInput" required>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" style="margin-top: 20px;">
-                                <div class="form-group">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-calendar-alt mr-2"></i> Invoice Date
-                                    </label>
-                                    <input type="date" name="date" id="invoiceDate" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                        value="<?php echo date('Y-m-d'); ?>" required
-                                        onchange="generateInvoiceNumber()">
-                                </div>
-                                <div class="form-group">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-redo mr-2"></i> Regenerate
-                                    </label>
-                                    <button type="button" class="btn-outline w-full py-2.5"
-                                        onclick="generateInvoiceNumber()">
-                                        <i class="fas fa-sync-alt"></i> Generate New Number
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Client Information -->
-                        <div class="form-card p-6 mb-6">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                <i class="fas fa-user-tie mr-2"></i> Client Information
+                            <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                                <i class="fas fa-user-tie"></i> Client Information
                             </h3>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                                 <div class="form-group">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-user mr-2"></i> Client Name *
+                                    <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <i class="fas fa-user"></i> Client Name *
                                     </label>
-                                    <input type="text" name="client_title" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
-                                           placeholder="Enter client name" required>
+                                    <?php include('form-selects/clients.php') ?>
                                 </div>
                                 <div class="form-group">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-phone mr-2"></i> Phone Number
+                                    <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <i class="fas fa-calendar-alt"></i> Invoice Date
                                     </label>
-                                    <input type="text" name="client_phone_no" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                    <input type="date" name="date" id="invoiceDate" 
+                                           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                           value="<?php echo date('Y-m-d'); ?>" required
+                                           onchange="generateInvoiceNumber()">
+                                </div>
+                                <div class="form-group">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <i class="fas fa-phone"></i> Phone Number
+                                    </label>
+                                    <input type="text" name="client_phone_no" 
+                                           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                                            placeholder="01XXXXXXXXX">
                                 </div>
                                 <div class="form-group">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-envelope mr-2"></i> Email / CC
+                                    <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <i class="fas fa-envelope"></i> Email / CC
                                     </label>
-                                    <input type="text" name="client_cc" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                    <input type="text" name="client_cc" 
+                                           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                                            placeholder="example@email.com">
                                 </div>
                             </div>
                         </div>
 
                         <!-- Work Items -->
-                        <div class="form-card p-6 mb-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800">
-                                    <i class="fas fa-tasks mr-2"></i> Work Items
+                        <div class="form-card">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <i class="fas fa-tasks"></i> Work Items
                                 </h3>
-                                <button type="button" class="btn-outline py-2" onclick="addWorkItem()">
+                                <button type="button" class="btn-outline py-2.5 px-4 flex items-center gap-2"
+                                        onclick="addWorkItem()">
                                     <i class="fas fa-plus-circle"></i> Add Work Item
                                 </button>
                             </div>
@@ -541,38 +675,45 @@ $base_ip_path = trim($ip_port, "/");
                         </div>
 
                         <!-- Total Calculation -->
-                        <div class="form-card p-6 mb-6">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                <i class="fas fa-calculator mr-2"></i> Total Calculation
+                        <div class="form-card">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                                <i class="fas fa-calculator"></i> Total Calculation
                             </h3>
                             
                             <div class="total-grid">
                                 <div class="total-item">
-                                    <div class="total-label"><i class="fas fa-receipt"></i> Total Amount</div>
+                                    <div class="total-label">
+                                        <i class="fas fa-receipt"></i> Total Amount
+                                    </div>
                                     <div class="total-value" id="total_amount_display">0.00</div>
                                     <input type="hidden" name="total_amount" id="total_amount" value="0">
                                 </div>
                                 <div class="total-item">
-                                    <div class="total-label"><i class="fas fa-money-bill-wave"></i> Paid Amount</div>
-                                    <input type="number" name="paid_amount" id="paid_amount" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                        value="0" min="0" oninput="calculateDue()">
+                                    <div class="total-label">
+                                        <i class="fas fa-money-bill-wave"></i> Paid Amount
+                                    </div>
+                                    <input type="number" name="paid_amount" id="paid_amount" 
+                                           class="w-full border border-gray-300 rounded-lg px-4 py-3 text-center text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                           value="0" min="0" oninput="calculateDue()">
                                 </div>
                                 <div class="total-item">
-                                    <div class="total-label"><i class="fas fa-clock"></i> Due Amount</div>
+                                    <div class="total-label">
+                                        <i class="fas fa-clock"></i> Due Amount
+                                    </div>
                                     <div class="total-value due" id="due_amount_display">0.00</div>
                                     <input type="hidden" name="due_amount" id="due_amount" value="0">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Vendor Information (Readonly from JSON) -->
-                        <div class="form-card p-6 mb-6">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                <i class="fas fa-building mr-2"></i> Vendor Information (From JSON)
+                        <!-- Vendor Information -->
+                        <div class="form-card">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                                <i class="fas fa-building"></i> Vendor Information
                             </h3>
                             
                             <div class="readonly-field">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <div class="readonly-label">Company Name</div>
                                         <div class="readonly-value" id="vendor_company_name">Loading...</div>
@@ -586,28 +727,27 @@ $base_ip_path = trim($ip_port, "/");
                                         <div class="readonly-value" id="vendor_email">Loading...</div>
                                     </div>
                                 </div>
-                                <div class="mt-4">
+                                <div class="mt-6">
                                     <div class="readonly-label">Address</div>
                                     <div class="readonly-value" id="vendor_address">Loading...</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Bank/MFS Information (Editable) -->
-                        <div class="form-card p-6 mb-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800">
-                                    <i class="fas fa-university mr-2"></i> Bank / MFS Information
+                        <!-- Bank/MFS Information -->
+                        <div class="form-card">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <i class="fas fa-university"></i> Bank / MFS Information
                                 </h3>
-                                <button type="button" class="btn-primary py-2" onclick="openBankMfsModal()">
-                                    <i class="fas fa-edit mr-2"></i> Edit
+                                <button type="button" class="btn-primary py-2.5 px-4 flex items-center gap-2"
+                                        onclick="openBankMfsModal()">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
                             </div>
                             
-                            <div id="bank_mfs_display">
-                                <div class="bank-mfs-container">
-                                    <!-- Bank and MFS info will be loaded here -->
-                                </div>
+                            <div id="bank_mfs_display" class="bank-mfs-container space-y-6">
+                                <!-- Bank and MFS info will be loaded here -->
                             </div>
                         </div>
 
@@ -622,13 +762,16 @@ $base_ip_path = trim($ip_port, "/");
                         </div>
 
                         <!-- Form Actions -->
-                        <div class="footer-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; padding-top: 25px; border-top: 2px solid var(--border);">
-                            <button type="button" class="btn-danger py-3" onclick="clearForm()">
-                                <i class="fas fa-trash-alt"></i> Clear Form
-                            </button>
-                            <button type="submit" class="btn-success py-3 px-6">
-                                <i class="fas fa-save"></i> Save Invoice
-                            </button>
+                        <div class="footer-actions">
+                            <div class="flex flex-col sm:flex-row justify-between items-center gap-6">
+                                <button type="button" class="btn-danger py-3 px-6 flex items-center gap-2"
+                                        onclick="clearForm()">
+                                    <i class="fas fa-trash-alt"></i> Clear Form
+                                </button>
+                                <button type="submit" class="btn-success py-3 px-8 flex items-center gap-2">
+                                    <i class="fas fa-save"></i> Save Invoice
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -637,42 +780,52 @@ $base_ip_path = trim($ip_port, "/");
     </main>
 
     <!-- Bank/MFS Edit Modal -->
-    <div id="bankMfsModal" class="modal-overlay" style="display: none;">
+    <div id="bankMfsModal" class="modal-overlay hidden">
         <div class="modal">
             <div class="modal-header">
-                <h3><i class="fas fa-edit"></i> Edit Bank / MFS Information</h3>
+                <h3 class="flex items-center gap-2">
+                    <i class="fas fa-edit"></i> Edit Bank / MFS Information
+                </h3>
                 <button type="button" class="modal-close" onclick="closeBankMfsModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <!-- Bank Information -->
-                <div class="section-header" style="margin-top: 0;">
-                    <div><i class="fas fa-university"></i> Bank Information</div>
-                    <button type="button" class="btn-primary btn-small" onclick="addBankField()">
+                <div class="section-header">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-university"></i> Bank Information
+                    </div>
+                    <button type="button" class="btn-primary btn-small flex items-center gap-2"
+                            onclick="addBankField()">
                         <i class="fas fa-plus"></i> Add Bank
                     </button>
                 </div>
-                <div id="bank_fields">
+                <div id="bank_fields" class="space-y-6">
                     <!-- Bank fields will be added here -->
                 </div>
 
                 <!-- MFS Information -->
                 <div class="section-header">
-                    <div><i class="fas fa-mobile-alt"></i> MFS Information</div>
-                    <button type="button" class="btn-primary btn-small" onclick="addMfsField()">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-mobile-alt"></i> MFS Information
+                    </div>
+                    <button type="button" class="btn-primary btn-small flex items-center gap-2"
+                            onclick="addMfsField()">
                         <i class="fas fa-plus"></i> Add MFS
                     </button>
                 </div>
-                <div id="mfs_fields">
+                <div id="mfs_fields" class="space-y-6">
                     <!-- MFS fields will be added here -->
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-outline" onclick="closeBankMfsModal()">
+                <button type="button" class="btn-outline py-2.5 px-5 flex items-center gap-2"
+                        onclick="closeBankMfsModal()">
                     <i class="fas fa-times"></i> Cancel
                 </button>
-                <button type="button" class="btn-primary" onclick="saveBankMfsData()">
+                <button type="button" class="btn-primary py-2.5 px-6 flex items-center gap-2"
+                        onclick="saveBankMfsData()">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
             </div>
@@ -682,164 +835,90 @@ $base_ip_path = trim($ip_port, "/");
     <?php include '../elements/floating-menus.php'; ?>
 
     <script src="../assets/js/script.js"></script>
+    
     <script>
+        const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
         const STORAGE_KEY = 'invoice_create_draft';
         const BANK_MFS_KEY = 'bank_mfs_data';
+        const API_INVOICE_STORE = `${IP_PATH}/api/invoices/store.php`;
+    
         let workIndex = 0;
         let vendorData = null;
-
-        // Month abbreviations for invoice format
-        const monthAbbr = {
-            '01': 'JAN',
-            '02': 'FEB',
-            '03': 'MAR',
-            '04': 'APR',
-            '05': 'MAY',
-            '06': 'JUN',
-            '07': 'JUL',
-            '08': 'AUG',
-            '09': 'SEP',
-            '10': 'OCT',
-            '11': 'NOV',
-            '12': 'DEC'
-        };
-
-        /* ---------------- Generate Invoice Number ---------------- */
-        async function generateInvoiceNumber() {
+    
+        /* ---------------- Fetch Invoice Number from API ---------------- */
+        async function fetchInvoiceNumberFromAPI() {
             try {
-                const dateInput = document.getElementById('invoiceDate').value;
-                const dateObj = new Date(dateInput);
-
-                // Get components from date
-                const year = dateObj.getFullYear().toString().slice(-2);
-                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                const day = String(dateObj.getDate()).padStart(2, '0');
-                const monthAbbrText = monthAbbr[month];
-
-                // Get next serial number from server
-                const serialNumber = await getNextSerialNumber(year, month);
-
-                // Format: TIF-MON-YY-XXXX-DD
-                const invoiceNo = `TIF-${monthAbbrText}-${year}-${serialNumber}-${day}`;
-
-                // Update display and input field
-                document.getElementById('invoiceNoDisplay').textContent = invoiceNo;
-                document.getElementById('invoiceNoDisplay').style.color = '#10b981';
-                document.getElementById('invoiceNoInput').value = invoiceNo;
-
-                // Save to localStorage
-                saveDraft();
-
-                return invoiceNo;
-
+                // Show loading state
+                document.getElementById('invoiceNoDisplay').textContent = 'Loading from API...';
+                document.getElementById('invoiceNoDisplay').style.color = '#6b7280';
+    
+                // Call API to get invoice number
+                const response = await fetch('../api/invoices/get-invoice-no.php');
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.invoice_no) {
+                    // Update display
+                    document.getElementById('invoiceNoDisplay').textContent = data.invoice_no;
+                    document.getElementById('invoiceNoDisplay').style.color = '#10b981';
+                    
+                    // Set to hidden input field
+                    document.getElementById('invoiceNoInput').value = data.invoice_no;
+                    
+                    console.log('Invoice number fetched from API:', data.invoice_no);
+                    return data.invoice_no;
+                } else {
+                    throw new Error(data.message || 'Invalid response from API');
+                }
             } catch (error) {
-                console.error('Error generating invoice number:', error);
-                document.getElementById('invoiceNoDisplay').textContent = 'ERROR - Check Date';
+                console.error('Error fetching invoice number from API:', error);
+                
+                // Show error state
+                document.getElementById('invoiceNoDisplay').textContent = 'Error loading from API';
                 document.getElementById('invoiceNoDisplay').style.color = '#f87171';
-                document.getElementById('invoiceNoInput').value = 'ERROR';
+                document.getElementById('invoiceNoInput').value = 'ERROR-API';
+                
+                // Try again after 3 seconds
+                setTimeout(fetchInvoiceNumberFromAPI, 3000);
+                
                 return null;
             }
         }
-
-        /* ---------------- Get Next Serial Number from Server ---------------- */
-        async function getNextSerialNumber(year, month) {
-            try {
-                console.log(`Requesting serial for year: ${year}, month: ${month}`);
-
-                // Send request to server to get next serial
-                const response = await fetch(`server/get-next-serial.php?year=${year}&month=${month}`);
-
-                if (!response.ok) {
-                    console.error('Server response not OK:', response.status);
-                    throw new Error(`Failed to fetch serial number: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Server response:', data);
-
-                if (data.success) {
-                    // Format serial as 4-digit with leading zeros
-                    const serial = String(data.nextSerial).padStart(4, '0');
-                    console.log(`Formatted serial: ${serial}`);
-                    return serial;
-                } else {
-                    console.error('Server reported error:', data.message);
-                    throw new Error(data.message || 'Failed to get serial number');
-                }
-
-            } catch (error) {
-                console.error('Error getting serial number:', error);
-
-                // Fallback: Generate from localStorage if server fails
-                const fallback = await getFallbackSerialNumber(year, month);
-                console.log(`Using fallback serial: ${fallback}`);
-                return fallback;
-            }
-        }
-
-        /* ---------------- Fallback Serial Number Generation ---------------- */
-        async function getFallbackSerialNumber(year, month) {
-            const storageKey = `invoice_serial_${year}_${month}`;
-            const today = new Date().toISOString().split('T')[0];
-
-            // Check if we have stored serial for this month
-            const storedData = localStorage.getItem(storageKey);
-
-            if (storedData) {
-                const data = JSON.parse(storedData);
-
-                // If it's the same day, use same serial
-                if (data.date === today) {
-                    return String(data.serial).padStart(4, '0');
-                } else {
-                    // New day, increment serial
-                    const newSerial = data.serial + 1;
-                    localStorage.setItem(storageKey, JSON.stringify({
-                        date: today,
-                        serial: newSerial
-                    }));
-                    return String(newSerial).padStart(4, '0');
-                }
-            } else {
-                // First invoice of the month
-                localStorage.setItem(storageKey, JSON.stringify({
-                    date: today,
-                    serial: 1
-                }));
-                return '0001';
-            }
-        }
-
+    
         /* ---------------- Load Vendor Data from JSON ---------------- */
         async function loadVendorData() {
             try {
                 const response = await fetch('../server/invoice-vendor.json');
                 vendorData = await response.json();
-
+    
                 // Display vendor info
                 document.getElementById('vendor_company_name').textContent = vendorData.company_name;
                 document.getElementById('vendor_phone').textContent = vendorData.phone;
                 document.getElementById('vendor_email').textContent = vendorData.email;
-
+    
                 // Format address
                 const address = vendorData.address;
                 const addressText = `${address.line1}, ${address.line2}, ${address.city}-${address.postcode}, ${address.country}`;
                 document.getElementById('vendor_address').textContent = addressText;
-
+    
                 // Load bank/mfs data (from localStorage if exists, otherwise from JSON)
                 loadBankMfsData();
-
+    
             } catch (error) {
                 console.error('Error loading vendor data:', error);
                 alert('Error loading vendor data.');
             }
         }
-
+    
         /* ---------------- Bank/MFS Data Management ---------------- */
         function loadBankMfsData() {
             // Try to load from localStorage first
             const savedData = localStorage.getItem(BANK_MFS_KEY);
-
+    
             if (savedData) {
                 displayBankMfsData(JSON.parse(savedData));
             } else if (vendorData) {
@@ -851,11 +930,11 @@ $base_ip_path = trim($ip_port, "/");
                 displayBankMfsData(bankMfsData);
             }
         }
-
+    
         function displayBankMfsData(data) {
             const container = document.querySelector('.bank-mfs-container');
             container.innerHTML = '';
-
+    
             // Display banks
             if (data.banks && data.banks.length > 0) {
                 data.banks.forEach((bank, index) => {
@@ -889,13 +968,13 @@ $base_ip_path = trim($ip_port, "/");
                     container.appendChild(bankCard);
                 });
             }
-
+    
             // Display MFS
             if (data.mfs && data.mfs.length > 0) {
                 data.mfs.forEach((mfs, index) => {
                     const mfsCard = document.createElement('div');
                     mfsCard.className = 'mfs-card';
-
+    
                     let accountsHtml = '';
                     if (Array.isArray(mfs.vendor_mfs_account)) {
                         mfs.vendor_mfs_account.forEach(account => {
@@ -904,7 +983,7 @@ $base_ip_path = trim($ip_port, "/");
                     } else {
                         accountsHtml = `<div class="readonly-value">${mfs.vendor_mfs_account || 'N/A'}</div>`;
                     }
-
+    
                     mfsCard.innerHTML = `
                         <h4 style="margin-bottom: 15px; color: var(--success);">
                             <i class="fas fa-mobile-alt"></i> ${mfs.vendor_mfs_title || 'MFS'} ${index + 1}
@@ -927,18 +1006,18 @@ $base_ip_path = trim($ip_port, "/");
                     container.appendChild(mfsCard);
                 });
             }
-
+    
             // Store in hidden fields for form submission
             storeBankMfsInForm(data);
         }
-
+    
         function storeBankMfsInForm(data) {
             // Remove existing hidden fields
             document.querySelectorAll('[data-bank-mfs-field]').forEach(field => field.remove());
-
+    
             // Add new hidden fields
             const form = document.getElementById('invoiceForm');
-
+    
             if (data.banks) {
                 data.banks.forEach((bank, index) => {
                     Object.keys(bank).forEach(key => {
@@ -951,7 +1030,7 @@ $base_ip_path = trim($ip_port, "/");
                     });
                 });
             }
-
+    
             if (data.mfs) {
                 data.mfs.forEach((mfs, index) => {
                     Object.keys(mfs).forEach(key => {
@@ -976,7 +1055,7 @@ $base_ip_path = trim($ip_port, "/");
                 });
             }
         }
-
+    
         /* ---------------- Modal Functions ---------------- */
         function openBankMfsModal() {
             // Load current data into modal
@@ -985,20 +1064,20 @@ $base_ip_path = trim($ip_port, "/");
                 banks: vendorData?.bank || [],
                 mfs: vendorData?.mfs || []
             };
-
+    
             populateModalFields(currentData);
             document.getElementById('bankMfsModal').style.display = 'flex';
         }
-
+    
         function closeBankMfsModal() {
             document.getElementById('bankMfsModal').style.display = 'none';
         }
-
+    
         function populateModalFields(data) {
             // Clear existing fields
             document.getElementById('bank_fields').innerHTML = '';
             document.getElementById('mfs_fields').innerHTML = '';
-
+    
             // Add bank fields
             if (data.banks && data.banks.length > 0) {
                 data.banks.forEach((bank, index) => {
@@ -1007,7 +1086,7 @@ $base_ip_path = trim($ip_port, "/");
             } else {
                 addBankField();
             }
-
+    
             // Add MFS fields
             if (data.mfs && data.mfs.length > 0) {
                 data.mfs.forEach((mfs, index) => {
@@ -1017,11 +1096,11 @@ $base_ip_path = trim($ip_port, "/");
                 addMfsField();
             }
         }
-
+    
         function addBankField(bankData = {}, index = null) {
             const fieldsDiv = document.getElementById('bank_fields');
             const bankIndex = index !== null ? index : fieldsDiv.children.length;
-
+    
             const bankField = document.createElement('div');
             bankField.className = 'item-card';
             bankField.innerHTML = `
@@ -1060,20 +1139,20 @@ $base_ip_path = trim($ip_port, "/");
             `;
             fieldsDiv.appendChild(bankField);
         }
-
+    
         function addMfsField(mfsData = {}, index = null) {
             const fieldsDiv = document.getElementById('mfs_fields');
             const mfsIndex = index !== null ? index : fieldsDiv.children.length;
-
+    
             const mfsField = document.createElement('div');
             mfsField.className = 'item-card';
-
+    
             // Create accounts HTML
             let accountsHtml = '';
             const accounts = Array.isArray(mfsData.vendor_mfs_account) ?
                 mfsData.vendor_mfs_account :
                 (mfsData.vendor_mfs_account ? [mfsData.vendor_mfs_account] : ['']);
-
+    
             accounts.forEach((account, accIndex) => {
                 accountsHtml += `
                     <div class="mfs-account-item">
@@ -1087,7 +1166,7 @@ $base_ip_path = trim($ip_port, "/");
                     </div>
                 `;
             });
-
+    
             mfsField.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h4 class="text-gray-800 font-semibold">
@@ -1124,7 +1203,7 @@ $base_ip_path = trim($ip_port, "/");
             `;
             fieldsDiv.appendChild(mfsField);
         }
-
+    
         function removeBankField(button) {
             if (confirm('Are you sure you want to remove this bank information?')) {
                 button.closest('.item-card').remove();
@@ -1135,7 +1214,7 @@ $base_ip_path = trim($ip_port, "/");
                 });
             }
         }
-
+    
         function removeMfsField(button) {
             if (confirm('Are you sure you want to remove this MFS information?')) {
                 button.closest('.item-card').remove();
@@ -1146,7 +1225,7 @@ $base_ip_path = trim($ip_port, "/");
                 });
             }
         }
-
+    
         function addMfsAccount(button) {
             const container = button.previousElementSibling;
             const newAccount = document.createElement('div');
@@ -1159,11 +1238,11 @@ $base_ip_path = trim($ip_port, "/");
             `;
             container.appendChild(newAccount);
         }
-
+    
         function removeMfsAccount(button) {
             button.closest('.mfs-account-item').remove();
         }
-
+    
         function saveBankMfsData() {
             // Collect bank data
             const banks = [];
@@ -1176,17 +1255,17 @@ $base_ip_path = trim($ip_port, "/");
                     banks.push(bank);
                 }
             });
-
+    
             // Collect MFS data
             const mfs = [];
             document.querySelectorAll('#mfs_fields .item-card').forEach(card => {
                 const mfsItem = {};
-
+    
                 // Get regular fields
                 card.querySelectorAll('.mfs-field').forEach(input => {
                     mfsItem[input.dataset.field] = input.value;
                 });
-
+    
                 // Get account numbers
                 const accounts = [];
                 card.querySelectorAll('.mfs-account-field').forEach(input => {
@@ -1195,7 +1274,7 @@ $base_ip_path = trim($ip_port, "/");
                     }
                 });
                 mfsItem.vendor_mfs_account = accounts;
-
+    
                 if (Object.values(mfsItem).some(value =>
                         (Array.isArray(value) && value.length > 0) ||
                         (!Array.isArray(value) && value.trim() !== '')
@@ -1203,30 +1282,30 @@ $base_ip_path = trim($ip_port, "/");
                     mfs.push(mfsItem);
                 }
             });
-
+    
             const bankMfsData = {
                 banks,
                 mfs
             };
-
+    
             // Save to localStorage
             localStorage.setItem(BANK_MFS_KEY, JSON.stringify(bankMfsData));
-
+    
             // Update display
             displayBankMfsData(bankMfsData);
-
+    
             // Save to server (AJAX call)
             saveToServer(bankMfsData);
-
+    
             // Close modal
             closeBankMfsModal();
-
+    
             alert('Bank/MFS information saved successfully!');
         }
-
+    
         function saveToServer(data) {
             // AJAX request to save to server
-            fetch('server/save-bank-mfs.php', {
+            fetch('api/server/save-bank-mfs.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1241,13 +1320,13 @@ $base_ip_path = trim($ip_port, "/");
                     console.error('Error saving to server:', error);
                 });
         }
-
+    
         /* ---------------- Work Items Functions ---------------- */
         function addWorkItem(data = {}) {
             const div = document.createElement('div');
             div.className = 'item-card mb-4';
             div.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                     <div class="form-group">
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-heading mr-2"></i> Title
@@ -1275,7 +1354,7 @@ $base_ip_path = trim($ip_port, "/");
                         <i class="fas fa-align-left mr-2"></i> Details
                     </label>
                     <textarea name="work_particular[]" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" 
-                              placeholder="Work details...">${data.work_particular||''}</textarea>
+                              placeholder="Work details..." rows="3">${data.work_particular||''}</textarea>
                 </div>
                 <div class="amount-display">
                     <span>Total: ৳ <span class="amount_text">0.00</span></span>
@@ -1288,14 +1367,14 @@ $base_ip_path = trim($ip_port, "/");
             document.getElementById('work_items').appendChild(div);
             calculateTotal();
         }
-
+    
         function removeWorkItem(btn) {
             if (confirm('Are you sure you want to remove this work item?')) {
                 btn.closest('.item-card').remove();
                 calculateTotal();
             }
         }
-
+    
         /* ---------------- Calculations ---------------- */
         function calcAmount(el) {
             const box = el.closest('.item-card');
@@ -1309,13 +1388,13 @@ $base_ip_path = trim($ip_port, "/");
             box.querySelector('[name="amount[]"]').value = amount.toFixed(2);
             calculateTotal();
         }
-
+    
         function calculateTotal() {
             let total = 0;
             document.querySelectorAll('[name="amount[]"]').forEach(i => {
                 total += parseFloat(i.value) || 0;
             });
-
+    
             document.getElementById('total_amount_display').innerText = total.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -1323,19 +1402,19 @@ $base_ip_path = trim($ip_port, "/");
             document.getElementById('total_amount').value = total.toFixed(2);
             calculateDue();
         }
-
+    
         function calculateDue() {
             const total = parseFloat(document.getElementById('total_amount').value) || 0;
             const paid = parseFloat(document.getElementById('paid_amount').value) || 0;
             const due = Math.max(0, total - paid);
-
+    
             document.getElementById('due_amount_display').innerText = due.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
             document.getElementById('due_amount').value = due.toFixed(2);
         }
-
+    
         /* ---------------- Form Management ---------------- */
         function saveDraft() {
             const data = new FormData(document.getElementById('invoiceForm'));
@@ -1348,12 +1427,12 @@ $base_ip_path = trim($ip_port, "/");
             });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
         }
-
+    
         function loadDraft() {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return;
             const data = JSON.parse(raw);
-
+    
             // Load simple fields
             Object.keys(data).forEach(k => {
                 if (!k.includes('[]') && !k.startsWith('bank[') && !k.startsWith('mfs[')) {
@@ -1361,7 +1440,7 @@ $base_ip_path = trim($ip_port, "/");
                     if (el) el.value = data[k];
                 }
             });
-
+    
             // Load work items
             if (data['work_title[]']) {
                 const workItems = [];
@@ -1369,7 +1448,7 @@ $base_ip_path = trim($ip_port, "/");
                 const qtys = Array.isArray(data['work_qty[]']) ? data['work_qty[]'] : [data['work_qty[]']];
                 const rates = Array.isArray(data['work_rate[]']) ? data['work_rate[]'] : [data['work_rate[]']];
                 const particulars = Array.isArray(data['work_particular[]']) ? data['work_particular[]'] : [data['work_particular[]']];
-
+    
                 for (let i = 0; i < titles.length; i++) {
                     workItems.push({
                         work_title: titles[i] || '',
@@ -1378,44 +1457,46 @@ $base_ip_path = trim($ip_port, "/");
                         work_particular: particulars[i] || ''
                     });
                 }
-
+    
                 document.getElementById('work_items').innerHTML = '';
                 workItems.forEach(item => addWorkItem(item));
             }
-
+    
             calculateTotal();
         }
-
+    
         function clearForm() {
             if (confirm('Are you sure you want to clear the entire form? (Bank/MFS information will remain intact)')) {
                 localStorage.removeItem(STORAGE_KEY);
                 document.getElementById('invoiceForm').reset();
                 document.getElementById('work_items').innerHTML = '';
                 addWorkItem();
-                generateInvoiceNumber();
+                
+                // Fetch new invoice number after clearing form
+                fetchInvoiceNumberFromAPI();
                 calculateTotal();
             }
         }
-
+    
         /* ---------------- Initialize ---------------- */
         document.addEventListener('DOMContentLoaded', async () => {
+            // Fetch invoice number from API first
+            await fetchInvoiceNumberFromAPI();
+            
             // Load vendor data
             await loadVendorData();
-
+    
             // Add initial work item
             addWorkItem();
-
-            // Generate initial invoice number
-            await generateInvoiceNumber();
-
+    
             // Load draft if exists
             loadDraft();
-
+    
             // Auto-save on input
             document.addEventListener('input', () => {
                 setTimeout(saveDraft, 100);
             });
-
+    
             // Close modal on overlay click
             document.getElementById('bankMfsModal').addEventListener('click', (e) => {
                 if (e.target === document.getElementById('bankMfsModal')) {
@@ -1423,19 +1504,28 @@ $base_ip_path = trim($ip_port, "/");
                 }
             });
         });
-
+    
         /* ---------------- Form Submission ---------------- */
-        // Form submission with AJAX - UPDATED VERSION
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-
+    
             // Show loading state
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             submitBtn.disabled = true;
-
+    
             try {
+                // First, get fresh invoice number from API
+                const invoiceNo = await fetchInvoiceNumberFromAPI();
+                
+                if (!invoiceNo || invoiceNo === 'ERROR-API') {
+                    alert('Cannot get invoice number from API. Please try again.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    return;
+                }
+    
                 // Collect all form data
                 const formData = {
                     invoice_no: document.getElementById('invoiceNoInput').value,
@@ -1452,7 +1542,7 @@ $base_ip_path = trim($ip_port, "/");
                     work_particular: [],
                     amount: []
                 };
-
+    
                 // Collect work items
                 document.querySelectorAll('[name="work_title[]"]').forEach((input, index) => {
                     formData.work_title.push(input.value);
@@ -1461,10 +1551,10 @@ $base_ip_path = trim($ip_port, "/");
                     formData.work_particular.push(document.querySelectorAll('[name="work_particular[]"]')[index].value);
                     formData.amount.push(document.querySelectorAll('[name="amount[]"]')[index].value);
                 });
-
+    
                 // Collect bank and MFS data from localStorage
                 const bankMfsData = JSON.parse(localStorage.getItem('bank_mfs_data') || '{"banks":[],"mfs":[]}');
-
+    
                 // Convert bank data to the format PHP expects
                 if (bankMfsData.banks && bankMfsData.banks.length > 0) {
                     formData.bank = bankMfsData.banks.map((bank, index) => ({
@@ -1476,7 +1566,7 @@ $base_ip_path = trim($ip_port, "/");
                 } else {
                     formData.bank = [];
                 }
-
+    
                 // Convert MFS data to the format PHP expects
                 if (bankMfsData.mfs && bankMfsData.mfs.length > 0) {
                     formData.mfs = bankMfsData.mfs.map((mfs, index) => {
@@ -1485,7 +1575,7 @@ $base_ip_path = trim($ip_port, "/");
                             vendor_mfs_type: mfs.vendor_mfs_type || '',
                             vendor_amount_note: mfs.vendor_amount_note || ''
                         };
-
+    
                         // Handle accounts array
                         if (Array.isArray(mfs.vendor_mfs_account)) {
                             mfsItem.vendor_mfs_account = mfs.vendor_mfs_account;
@@ -1494,18 +1584,18 @@ $base_ip_path = trim($ip_port, "/");
                         } else {
                             mfsItem.vendor_mfs_account = [''];
                         }
-
+    
                         return mfsItem;
                     });
                 } else {
                     formData.mfs = [];
                 }
-
+    
                 console.log('Sending form data:', formData);
-
+    
                 // Send form data via AJAX using FormData for proper array handling
                 const postData = new FormData();
-
+    
                 // Add simple fields
                 Object.keys(formData).forEach(key => {
                     if (Array.isArray(formData[key])) {
@@ -1524,36 +1614,36 @@ $base_ip_path = trim($ip_port, "/");
                         postData.append(key, formData[key]);
                     }
                 });
-
+    
                 // Send form data via AJAX
-                const response = await fetch('server/invoice-store.php', {
+                const response = await fetch(API_INVOICE_STORE, {
                     method: 'POST',
                     body: postData
                 });
-
+    
                 const result = await response.json();
-
+    
                 if (result.success) {
                     // Show success message
                     alert(result.message);
-
+    
                     // Clear localStorage
                     localStorage.removeItem('invoice_create_draft');
-
+    
                     // Reset form
                     this.reset();
                     document.getElementById('work_items').innerHTML = '';
                     addWorkItem();
                     calculateTotal();
-
-                    // Generate new invoice number
-                    await generateInvoiceNumber();
-
+    
+                    // Fetch new invoice number for next invoice
+                    await fetchInvoiceNumberFromAPI();
+    
                     console.log('Invoice saved:', result);
-
-                    // Optionally show a success modal or redirect
+    
+                    // Show success modal
                     showSuccessModal(result.invoice_no, result.invoice_id);
-
+    
                 } else {
                     alert('Error: ' + result.message);
                 }
@@ -1566,7 +1656,7 @@ $base_ip_path = trim($ip_port, "/");
                 submitBtn.disabled = false;
             }
         });
-
+    
         function showSuccessModal(invoiceNo, invoiceId) {
             // Create success modal
             const modal = document.createElement('div');
@@ -1582,7 +1672,7 @@ $base_ip_path = trim($ip_port, "/");
                 align-items: center;
                 z-index: 1000;
             `;
-
+    
             modal.innerHTML = `
                 <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
                     <div class="text-center">
@@ -1606,20 +1696,20 @@ $base_ip_path = trim($ip_port, "/");
                     </div>
                 </div>
             `;
-
+    
             document.body.appendChild(modal);
         }
-
+    
         function printInvoice(invoiceId) {
             window.open(`print-invoice.php?id=${invoiceId}`, '_blank');
         }
-
+    
         function createNewInvoice() {
             // Clear form and reload page
             localStorage.removeItem('invoice_create_draft');
             location.reload();
         }
-
+    
         // Calculate on page load
         window.onload = calculateTotal;
     </script>

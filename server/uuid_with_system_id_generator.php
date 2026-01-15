@@ -13,8 +13,6 @@ function generateIDs(string $tag): array
 
 function generateUUID(string $tag): string
 {
-    require 'db_connection.php'; // $pdo
-
     $map = [
         // Core Modules
         'clients'   => ['table' => 'clients',   'column' => 'sys_id', 'short' => 'CL'],
