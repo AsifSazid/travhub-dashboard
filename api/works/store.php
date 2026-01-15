@@ -22,8 +22,7 @@ $rawClient = $input['client'] ?? null;
 $parts = explode('|', $rawClient);
 
 // ID always first part
-$clientId = trim($parts[0]);
-$clientSysID = trim($parts[3]);
+$clientSysID = trim($parts[0]);
 $clientName = trim($parts[1]);
 $workTitle = $input['work_title'] ?? null;
 
@@ -43,8 +42,8 @@ if (!$workTitle) {
 
 try {
     // 1. Get the existing info
-    $gettingClientPreviousWork = $pdo->prepare("SELECT work_name FROM clients WHERE id = ?");
-    $gettingClientPreviousWork->execute([$clientId]);
+    $gettingClientPreviousWork = $pdo->prepare("SELECT work_name FROM clients WHERE sys_id = ?");
+    $gettingClientPreviousWork->execute([$clientSysID]);
     $previousWorks = $gettingClientPreviousWork->fetch(PDO::FETCH_ASSOC);
 
     if ($previousWorks) {
@@ -53,8 +52,8 @@ try {
         $updatedWorkName = empty($oldWork) ? $workTitle : $oldWork . ", " . $workTitle;
 
         // 3. UPDATE the database
-        $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE id = ?");
-        $updateStmt->execute([$updatedWorkName, $clientId]);
+        $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE sys_id = ?");
+        $updateStmt->execute([$updatedWorkName, $clientSysID]);
 
         $uuid = generateIDs('works');
 
