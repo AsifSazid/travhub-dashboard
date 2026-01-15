@@ -13,7 +13,7 @@ $base_ip_path = trim($ip_port, "/");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accounting - Account Statement</title>
+    <title>Accounting - Receive</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -90,7 +90,7 @@ $base_ip_path = trim($ip_port, "/");
                         <div>
                             <h2 class="text-xl font-semibold flex items-center">
                                 <i class="fas fa-file-invoice-dollar mr-2"></i>
-                                Received Amount
+                                Receive
                             </h2>
                         </div>
                         <div class="flex items-center space-x-3">
@@ -188,7 +188,7 @@ $base_ip_path = trim($ip_port, "/");
                                     id="saveTransactionBtn">
                                     <span id="spinner" class="hidden spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
                                     <i class="fas fa-save mr-2"></i>
-                                    <span id="saveButtonText">Received Amount</span>
+                                    <span id="saveButtonText">Receive Amount</span>
                                 </button>
                             </div>
                         </form>
@@ -385,15 +385,8 @@ $base_ip_path = trim($ip_port, "/");
         
             /* ================= SECOND API ================= */
             async function callSecondAPI(data, firstResult) {
-                let payType = '';
-                if(data.client_id){
-                    payType = 'credit';
-                }
-                if(data.vendor_id){
-                    payType = 'debit';
-                }
                 const payload = {
-                    type: payType,
+                    type: 'credit',
                     amount: data.balance,
                     purpose: data.particular,
                     client_id: data.client_id,

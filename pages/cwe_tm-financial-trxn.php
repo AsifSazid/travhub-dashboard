@@ -729,6 +729,16 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 console.error('Error loading client data:', error);
             }
         }
+        
+        function extractIds(value) {
+            if (!value) return null;
+            const parts = value.split('|').map(v => v.trim());
+            return {
+                sys_id: parts[0] || null,
+                name: parts[1] || null,
+            };
+        }
+        
 
         // Record Transaction
         async function recordTransaction(type) {
@@ -764,17 +774,17 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     await saveTransaction(transactionData, 'Debit');
 
                     // Clear form
-                    // document.getElementById('client_purpose').value = '';
-                    // document.getElementById('client_amount').value = '';
+                    document.getElementById('client_purpose').value = '';
+                    document.getElementById('client_amount').value = '';
 
                 } else if (type === 'credit') {
                     const purpose = document.getElementById('vendor_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('vendor_amount').value);
                     const date = document.getElementById('vendor_date').value;
-                    const vendorInputValue = document.getElementById('vendorInput').value;
-
-                    const vendorId = selectedVendorLi.getAttribute('data-sys-id'); // or selectedVendorLi.dataset.sysId
-
+                    
+                    // const vendorId = selectedVendorLi.getAttribute('data-sys-id'); // or selectedVendorLi.dataset.sysId
+                    const vendorId = extractIds(vendorInput?.value);
+                    
                     if (!vendorId) {
                         showNotification('Please select a valid vendor', 'error');
                         return;
@@ -789,7 +799,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         type: 'credit',
                         amount: amount,
                         purpose: purpose,
-                        vendor_id: vendorId,
+                        vendor_id: vendorId.sys_id,
                         work_id: workId,
                         task_id: taskId,
                         date: date || new Date().toISOString().split('T')[0]
@@ -798,9 +808,9 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     await saveTransaction(transactionData, 'Credit');
 
                     // Clear form
-                    // document.getElementById('vendor_purpose').value = '';
-                    // document.getElementById('vendor_amount').value = '';
-                    // document.getElementById('vendorInput').value = '';
+                    document.getElementById('vendor_purpose').value = '';
+                    document.getElementById('vendor_amount').value = '';
+                    document.getElementById('vendorInput').value = '';
                 }
 
             } catch (error) {

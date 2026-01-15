@@ -151,22 +151,22 @@ $base_ip_path = trim($ip_port, "/");
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                     <!-- Add Income -->
-                    <a href="accounts-received.php" class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <a href="accounts-receive.php" class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div class="bg-green-100 group-hover:bg-green-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
                             <i class="fas fa-plus-circle text-green-600 text-xl"></i>
                         </div>
-                        <p class="font-semibold text-green-800">Received</p>
+                        <p class="font-semibold text-green-800">Receive</p>
                         <p class="text-xs text-green-600 mt-1">Record new received info</p>
                     </a>
     
                     <!-- Add Expense -->
-                    <button class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <a href="accounts-payment.php" class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div class="bg-red-100 group-hover:bg-red-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
                             <i class="fas fa-minus-circle text-red-600 text-xl"></i>
                         </div>
                         <p class="font-semibold text-red-800">Payment</p>
                         <p class="text-xs text-red-600 mt-1">Record new payment info</p>
-                    </button>
+                    </a>
     
                     <!-- Create Invoice -->
                     <a href="index-invoice.php" class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1" target="_blank">

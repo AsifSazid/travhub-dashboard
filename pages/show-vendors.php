@@ -109,7 +109,7 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.p
                 <div class="mb-6">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center">
                         <i class="fas fa-user-circle mr-2 text-purple-600"></i>
-                        Client's Profile
+                        Vendor's Profile
                     </h2>
                     <p class="text-sm text-gray-600">Manage traveler information, documents, and related data</p>
                 </div>
