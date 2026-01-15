@@ -1,86 +1,100 @@
 <?php
-    $getAllAccountsApi = $ip_port . "api/accounts/all-accounts.php";
+$getAllAccountsApi = $ip_port . "api/accounts/all-trxnable-accounts.php";
 ?>
 
-<div class="relative w-full">
-    <div class="flex">
-        <input
-            type="text"
-            id="accountInput"
-            placeholder="Search for a account..."
-            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            autocomplete="off">
-        <button
-            id="accountDropdownToggle"
-            class="px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg bg-gray-100 hover:bg-gray-200"
-            type="button">
-            ▼
-        </button>
-    </div>
-    <ul id="accountDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto hidden z-50">
-        <!-- JS will populate options here -->
+<div id="accountSearchContainer" class="relative w-full">
+    <input
+        type="text"
+        id="accountInput"
+        placeholder="Search for an account..."
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+        autocomplete="off">
+
+    <ul id="accountDropdown"
+        class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto shadow-lg hidden z-50">
     </ul>
 </div>
 
-
 <script>
-        // All API's for this Page
-    const API_URL_FOR_ALL_ACCOUNTS = "<?php echo $getAllAccountsApi; ?>";
+const GET_ALL_ACCOUNTS_API = "<?php echo $getAllAccountsApi; ?>";
 
-    // get account's data
-    const accountInput = document.getElementById('accountInput');
-    const accountDropdown = document.getElementById('accountDropdown');
-    const accountDropdownToggle = document.getElementById('accountDropdownToggle');
+let accountsData = [];
+const accountInput = document.getElementById('accountInput');
+const accountDropdown = document.getElementById('accountDropdown');
+const accountContainer = document.getElementById('accountSearchContainer');
 
-    let accountsData = [];
+/* Load accounts */
+fetch(GET_ALL_ACCOUNTS_API)
+    .then(res => res.json())
+    .then(data => {
+        accountsData = Array.isArray(data.accounts) ? data.accounts : [];
+    })
+    .catch(() => accountsData = []);
 
-    fetch(API_URL_FOR_ALL_ACCOUNTS)
-        .then(res => res.json())
-        .then(data => {
-            accountsData = data.accounts;
-            renderAccountDropdown(accountsData);
-        })
-        .catch(err => console.error(err));
+/* Input typing (debounce) */
+let accountTypingTimer;
+accountInput.addEventListener('input', () => {
+    clearTimeout(accountTypingTimer);
+    accountTypingTimer = setTimeout(() => {
+        const value = accountInput.value.toLowerCase().trim();
 
-    function renderAccountDropdown(list) {
-        accountDropdown.innerHTML = '';
-        list.forEach(account => {
+        const filtered = value === ''
+            ? accountsData
+            : accountsData.filter(acc =>
+                (acc.sys_id ?? '').toLowerCase().includes(value) ||
+                (acc.acc_name ?? '').toLowerCase().includes(value)
+            );
 
-            const li = document.createElement('li');
-            li.textContent = `${account.id} | ${account.acc_name}`;
-            li.className = "px-4 py-2 cursor-pointer hover:bg-purple-100";
-            li.addEventListener('click', () => {
-                accountInput.value = li.textContent + ` | ${account.sys_id}`;
-                accountDropdown.classList.add('hidden');
-            });
-            accountDropdown.appendChild(li);
-        });
-    }
-
-    // Filter on typing
-    accountInput.addEventListener('input', () => {
-        const value = accountInput.value.toLowerCase();
-        const filtered = accountsData.filter(c =>
-            `${c.id} | ${c.name} | ${c.phone}`.toLowerCase().includes(value)
-        );
         renderAccountDropdown(filtered);
         accountDropdown.classList.remove('hidden');
-    });
+    }, 300);
+});
 
-    // Toggle button click
-    accountDropdownToggle.addEventListener('click', () => {
-        if (accountDropdown.classList.contains('hidden')) {
-            renderAccountDropdown(accountsData);
-            accountDropdown.classList.remove('hidden');
-        } else {
-            accountDropdown.classList.add('hidden');
-        }
-    });
+/* Focus show */
+accountInput.addEventListener('focus', () => {
+    renderAccountDropdown(accountsData);
+    accountDropdown.classList.remove('hidden');
+});
 
-    // Hide dropdown on outside click
-    document.addEventListener('click', (e) => {
-        if (!accountInput.contains(e.target) && !accountDropdown.contains(e.target) && !accountDropdownToggle.contains(e.target)) {
+function renderAccountDropdown(list) {
+    accountDropdown.innerHTML = '';
+
+    if (!list.length) {
+        accountDropdown.innerHTML =
+            `<li class="px-4 py-3 text-center text-gray-500">No accounts found</li>`;
+        return;
+    }
+
+    list.forEach(acc => {
+        const li = document.createElement('li');
+        li.className =
+            "px-4 py-3 cursor-pointer hover:bg-purple-50 border-b last:border-b-0";
+
+        li.innerHTML = `
+            <div class="flex items-center">
+                <div class="w-8 h-8 bg-purple-600 rounded-full text-white flex items-center justify-center font-semibold">
+                    ${acc.acc_name?.charAt(0).toUpperCase() ?? 'A'}
+                </div>
+                <div class="ml-3">
+                    <div class="font-medium">${acc.acc_name}</div>
+                    <div class="text-xs text-gray-500">ID: ${acc.sys_id}</div>
+                </div>
+            </div>
+        `;
+
+        li.onclick = () => {
+            accountInput.value = `${acc.sys_id} | ${acc.acc_name}`;
             accountDropdown.classList.add('hidden');
-        }
+        };
+
+        accountDropdown.appendChild(li);
     });
+}
+
+/* Outside click */
+document.addEventListener('click', e => {
+    if (!accountContainer.contains(e.target)) {
+        accountDropdown.classList.add('hidden');
+    }
+});
 </script>

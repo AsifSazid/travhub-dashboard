@@ -36,7 +36,7 @@ $particular                = $data['particular'] ?? '';
 $input_amount              = $data['balance'] ?? 0;
 $paymentType               = $data['paymentType'] ?? null;
 $current_account_balance   = $data['currentAccountBalance'] ?? 0;
-$reconciliation_type       = (int) $data['reconciliation_type'] ?? null;
+$reconciliation_type = isset($data['reconciliation_type']) ? (int)$data['reconciliation_type'] : null;
 
 // Time Zone
 $transaction_date = $data['transactionDate'] ?? null;

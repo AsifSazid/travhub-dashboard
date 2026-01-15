@@ -234,9 +234,8 @@ $base_ip_path = trim($ip_port, "/");
                 if (!value) return null;
                 const parts = value.split('|').map(v => v.trim());
                 return {
-                    id: parts[0] || null,
+                    sys_id: parts[0] || null,
                     name: parts[1] || null,
-                    sys_id: parts[parts.length - 1] || null
                 };
             }
         
@@ -386,15 +385,21 @@ $base_ip_path = trim($ip_port, "/");
         
             /* ================= SECOND API ================= */
             async function callSecondAPI(data, firstResult) {
-        
+                let payType = '';
+                if(data.client_id){
+                    payType = 'credit';
+                }
+                if(data.vendor_id){
+                    payType = 'debit';
+                }
                 const payload = {
-                    type: 'credit',
+                    type: payType,
                     amount: data.balance,
                     purpose: data.particular,
                     client_id: data.client_id,
                     vendor_id: data.vendor_id,
                     ref: firstResult.stmt_sys_id,
-                    date: data.transactionDate
+                    date: data.transactionDate,
                 };
         
                 try {

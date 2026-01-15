@@ -67,10 +67,10 @@
             });
 
             // Input logic
-            let typingTimer;
+            let vendorTypingTimer;
             vendorInput.addEventListener('input', () => {
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(() => {
+                clearTimeout(vendorTypingTimer);
+                vendorTypingTimer = setTimeout(() => {
                     const value = vendorInput.value.toLowerCase().trim();
 
                     if (value === '') {
