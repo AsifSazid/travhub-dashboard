@@ -49,7 +49,7 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${work.client_name || 'Unknown'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${work.file_info || 'Folder'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="completed-task-entry.php?work_id=${work.id}" title="Tasks">
+                    <a href="task-entry.php?work_id=${work.sys_id}" title="Tasks">
                         <i class="fas fa-tasks"></i>
                     </a>
                 </td>
