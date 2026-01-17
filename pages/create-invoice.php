@@ -625,7 +625,7 @@ $base_ip_path = trim($ip_port, "/");
                             </h3>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                                <div class="form-group">
+                                <div class="form-group text-left">
                                     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                                         <i class="fas fa-user"></i> Client Name *
                                     </label>

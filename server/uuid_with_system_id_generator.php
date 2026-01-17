@@ -3,7 +3,9 @@ require 'db_connection.php'; // PDO connection
 
 function generateIDs(string $tag): array
 {
-    $sysData = generateUUID($tag); // returns ['uuid' => ..., 'sys_id' => ...]
+    global $pdo;
+    
+    $sysData = generateUUID($pdo, $tag); // returns ['sys_id' => ...]
 
     return [
         'uuid'   => uuidV4(), // ✅ pure UUID v4
@@ -11,7 +13,7 @@ function generateIDs(string $tag): array
     ];
 }
 
-function generateUUID(string $tag): string
+function generateUUID(PDO $pdo, string $tag): string
 {
     $map = [
         // Core Modules

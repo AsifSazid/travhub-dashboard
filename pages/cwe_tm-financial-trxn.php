@@ -237,10 +237,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
                                         <i class="fas fa-bullseye mr-1"></i> Purpose
                                     </label>
-                                    <input type="text"
+                                    <textarea type="text"
                                         id="client_purpose"
-                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="5"
+                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
                                 </div>
 
                                 <div>
@@ -303,10 +303,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
                                         <i class="fas fa-bullseye mr-1"></i> Purpose
                                     </label>
-                                    <input type="text"
+                                    <textarea type="text"
                                         id="vendor_purpose"
-                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee" rows="5"
+                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"></textarea>
                                 </div>
 
                                 <div>

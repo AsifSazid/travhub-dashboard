@@ -230,12 +230,6 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             color: #d1d5db;
             margin-bottom: 1rem;
         }
-        
-        .relative.h-64 canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
     </style>
 </head>
 
@@ -571,30 +565,11 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         function updateStats() {
             const totalInvoices = filteredInvoices.length;
             const totalRevenue = filteredInvoices.reduce((sum, inv) => sum + inv.total_amount, 0);
-            
-            // Calculate PENDING AMOUNT (sum of due_amount for pending and partial invoices)
-            const pendingAmount = filteredInvoices
-                .filter(inv => ['pending', 'partial'].includes(inv.status))
-                .reduce((sum, inv) => sum + inv.due_amount, 0);
-            
-            // Calculate OVERDUE AMOUNT (sum of due_amount for overdue invoices)
-            const overdueAmount = filteredInvoices
-                .filter(inv => inv.status === 'overdue')
-                .reduce((sum, inv) => sum + inv.due_amount, 0);
-            
-            // Calculate PAID AMOUNT
-            const paidAmount = filteredInvoices.reduce((sum, inv) => sum + inv.paid_amount, 0);
-            
-            // Format currency function
-            const formatCurrency = (amount) => {
-                return `৳${amount.toLocaleString('en-IN', { 
-                    minimumFractionDigits: 2, 
-                    maximumFractionDigits: 2 
-                })}`;
-            };
-        
+            const pendingInvoices = filteredInvoices.filter(inv => ['pending', 'partial'].includes(inv.status)).length;
+            const overdueInvoices = filteredInvoices.filter(inv => inv.status === 'overdue').length;
+
             elements.statsCards.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
                     <div class="flex items-center">
                         <div class="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg flex items-center justify-center mr-4">
                             <i class="fas fa-file-invoice text-blue-600 text-xl"></i>
@@ -604,13 +579,9 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             <h3 class="text-2xl font-bold text-gray-800">${totalInvoices}</h3>
                         </div>
                     </div>
-                    <div class="mt-3 text-sm text-gray-600">
-                        <i class="fas fa-money-bill-wave mr-1"></i>
-                        Total Value: ${formatCurrency(totalRevenue)}
-                    </div>
                 </div>
-        
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
                     <div class="flex items-center">
                         <div class="w-12 h-12 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-4">
                             <i class="fas fa-money-bill-wave text-green-600 text-xl"></i>
@@ -618,84 +589,51 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                         <div>
                             <p class="text-sm text-gray-500 font-medium">Total Revenue</p>
                             <h3 class="text-2xl font-bold text-gray-800">
-                                ${formatCurrency(totalRevenue)}
+                                ৳ ${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </h3>
                         </div>
                     </div>
-                    <div class="mt-3 text-sm text-gray-600">
-                        <i class="fas fa-check-circle mr-1"></i>
-                        Paid: ${formatCurrency(paidAmount)}
-                    </div>
                 </div>
-        
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
                     <div class="flex items-center">
                         <div class="w-12 h-12 bg-gradient-to-r from-amber-100 to-amber-200 rounded-lg flex items-center justify-center mr-4">
                             <i class="fas fa-clock text-amber-600 text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">Pending Amount</p>
-                            <h3 class="text-2xl font-bold text-gray-800">
-                                ${formatCurrency(pendingAmount)}
-                            </h3>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Pending Invoices:</span>
-                            <span class="font-medium">${filteredInvoices.filter(inv => inv.status === 'pending').length}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Partial Invoices:</span>
-                            <span class="font-medium">${filteredInvoices.filter(inv => inv.status === 'partial').length}</span>
+                            <p class="text-sm text-gray-500 font-medium">Pending</p>
+                            <h3 class="text-2xl font-bold text-gray-800">${pendingInvoices}</h3>
                         </div>
                     </div>
                 </div>
-        
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
                     <div class="flex items-center">
                         <div class="w-12 h-12 bg-gradient-to-r from-red-100 to-red-200 rounded-lg flex items-center justify-center mr-4">
                             <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">Overdue Amount</p>
-                            <h3 class="text-2xl font-bold text-gray-800">
-                                ${formatCurrency(overdueAmount)}
-                            </h3>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Overdue Invoices:</span>
-                            <span class="font-medium">${filteredInvoices.filter(inv => inv.status === 'overdue').length}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Due Date Passed:</span>
-                            <span class="font-medium">${filteredInvoices.filter(inv => {
-                                const dueDate = new Date(inv.due_date);
-                                const today = new Date();
-                                return dueDate < today && inv.status !== 'paid';
-                            }).length}</span>
+                            <p class="text-sm text-gray-500 font-medium">Overdue</p>
+                            <h3 class="text-2xl font-bold text-gray-800">${overdueInvoices}</h3>
                         </div>
                     </div>
                 </div>
             `;
-        
+
             elements.showingCount.textContent = Math.min(totalInvoices, currentPage * ITEMS_PER_PAGE);
             elements.totalCount.textContent = totalInvoices;
         }
 
         // Render charts
-        // Improved renderCharts function with actual visual charts
         function renderCharts() {
             if (invoices.length === 0) return;
-        
-            // Calculate data properly
+
+            // Calculate data for charts
             const statusData = invoices.reduce((acc, invoice) => {
                 acc[invoice.status] = (acc[invoice.status] || 0) + 1;
                 return acc;
             }, {});
-        
+
             const monthlyData = invoices.reduce((acc, invoice) => {
                 const date = new Date(invoice.created_at);
                 const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -706,141 +644,66 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 acc[monthYear].count += 1;
                 return acc;
             }, {});
-        
-            // Get last 6 months correctly
-            const last6Months = [];
-            const now = new Date();
-            for (let i = 5; i >= 0; i--) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                last6Months.push(`${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`);
-            }
-        
-            // Create actual chart containers
+
+            const last6Months = Array.from({ length: 6 }, (_, i) => {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+            }).reverse();
+
             elements.chartsSection.innerHTML = `
                 <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Invoice Analytics</h3>
-                    
-                    <!-- Stats summary row -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-gradient-to-r from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-clock text-amber-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-amber-800">Pending</p>
-                                    <p class="text-xl font-bold text-amber-900">${statusData.pending || 0}</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-exclamation-triangle text-red-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-red-800">Overdue</p>
-                                    <p class="text-xl font-bold text-red-900">${statusData.overdue || 0}</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-chart-pie text-purple-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-purple-800">Partial</p>
-                                    <p class="text-xl font-bold text-purple-900">${statusData.partial || 0}</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-check-circle text-green-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-green-800">Paid</p>
-                                    <p class="text-xl font-bold text-green-900">${statusData.paid || 0}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Charts row -->
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Invoice Analytics</h3>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Pie Chart Container -->
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="font-medium text-gray-700">Status Distribution</h4>
-                                <span class="text-sm text-gray-500">Total: ${invoices.length}</span>
-                            </div>
-                            <div class="relative h-64">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Status Distribution</h4>
+                            <div class="chart-container">
                                 <canvas id="statusChart"></canvas>
                             </div>
-                            <div class="mt-4 grid grid-cols-2 gap-2" id="statusLegend"></div>
                         </div>
-                        
-                        <!-- Bar Chart Container -->
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="font-medium text-gray-700">Monthly Revenue</h4>
-                                <span class="text-sm text-gray-500">Last 6 months</span>
-                            </div>
-                            <div class="relative h-64">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Monthly Revenue (Last 6 Months)</h4>
+                            <div class="chart-container">
                                 <canvas id="revenueChart"></canvas>
-                            </div>
-                            <div class="mt-4 text-center text-sm text-gray-500">
-                                <i class="fas fa-info-circle mr-1"></i> Hover over bars for details
                             </div>
                         </div>
                     </div>
                 </div>
             `;
-        
-            // Create actual charts after DOM is updated
-            setTimeout(() => {
-                createActualStatusChart(statusData);
-                createActualRevenueChart(monthlyData, last6Months);
-            }, 100);
+
+            // Create charts using canvas (no external libraries)
+            createStatusChart(statusData);
+            createRevenueChart(monthlyData, last6Months);
         }
-        
-        // Create actual pie chart
-        function createActualStatusChart(statusData) {
+
+        // Create status chart
+        function createStatusChart(statusData) {
             const canvas = document.getElementById('statusChart');
-            
-            console.log(canvas);
             if (!canvas) return;
-            
+
             const ctx = canvas.getContext('2d');
             const width = canvas.width = canvas.offsetWidth;
             const height = canvas.height = canvas.offsetHeight;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, width, height);
-            
-            // Colors with proper contrast
-            const colors = {
-                pending: '#f59e0b', // Orange
-                paid: '#10b981',    // Green
-                overdue: '#ef4444', // Red
-                partial: '#8b5cf6'  // Purple
-            };
-            
-            const total = Object.values(statusData).reduce((a, b) => a + b, 0);
             const centerX = width / 2;
             const centerY = height / 2;
-            const radius = Math.min(width, height) / 2 - 20;
-            
+            const radius = Math.min(width, height) * 0.3;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Colors for each status
+            const colors = {
+                pending: '#f59e0b',
+                paid: '#10b981',
+                overdue: '#ef4444',
+                partial: '#8b5cf6'
+            };
+
+            // Calculate total and draw pie chart
+            const total = Object.values(statusData).reduce((a, b) => a + b, 0);
             let startAngle = 0;
-            const entries = Object.entries(statusData);
-            
-            // Draw pie slices
-            entries.forEach(([status, count], index) => {
+
+            for (const [status, count] of Object.entries(statusData)) {
                 const sliceAngle = (count / total) * 2 * Math.PI;
                 
                 // Draw slice
@@ -848,98 +711,69 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 ctx.moveTo(centerX, centerY);
                 ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
                 ctx.closePath();
-                ctx.fillStyle = colors[status];
+                ctx.fillStyle = colors[status] || '#9ca3af';
                 ctx.fill();
+
+                // Draw label
+                const labelAngle = startAngle + sliceAngle / 2;
+                const labelRadius = radius * 0.7;
+                const labelX = centerX + Math.cos(labelAngle) * labelRadius;
+                const labelY = centerY + Math.sin(labelAngle) * labelRadius;
                 
-                // Add border
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Draw percentage in the slice
-                const midAngle = startAngle + sliceAngle / 2;
-                const textRadius = radius * 0.5;
-                const textX = centerX + Math.cos(midAngle) * textRadius;
-                const textY = centerY + Math.sin(midAngle) * textRadius;
-                
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#fff';
                 ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(`${((count / total) * 100).toFixed(0)}%`, textX, textY);
-                
+                ctx.fillText(`${((count / total) * 100).toFixed(1)}%`, labelX, labelY);
+
                 startAngle += sliceAngle;
-            });
+            }
+
+            // Draw legend
+            const legendX = 20;
+            let legendY = 20;
+            const legendSize = 12;
             
-            // Draw center circle with total
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
-            ctx.fillStyle = '#f8fafc';
-            ctx.fill();
-            
-            ctx.fillStyle = '#374151';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Total', centerX, centerY - 10);
-            ctx.font = 'bold 20px Arial';
-            ctx.fillText(total.toString(), centerX, centerY + 10);
-            
-            // Update legend
-            const legendContainer = document.getElementById('statusLegend');
-            if (legendContainer) {
-                let legendHTML = '';
-                entries.forEach(([status, count]) => {
-                    const percentage = ((count / total) * 100).toFixed(1);
-                    legendHTML += `
-                        <div class="flex items-center p-2 bg-white rounded border">
-                            <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${colors[status]}"></div>
-                            <span class="text-sm font-medium text-gray-700 capitalize">${status}</span>
-                            <span class="ml-auto text-sm text-gray-600">${count} (${percentage}%)</span>
-                        </div>
-                    `;
-                });
-                legendContainer.innerHTML = legendHTML;
+            for (const [status, count] of Object.entries(statusData)) {
+                ctx.fillStyle = colors[status] || '#9ca3af';
+                ctx.fillRect(legendX, legendY, legendSize, legendSize);
+                
+                ctx.fillStyle = '#374151';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${status.charAt(0).toUpperCase() + status.slice(1)}: ${count} (${((count / total) * 100).toFixed(1)}%)`, 
+                           legendX + legendSize + 8, legendY + legendSize / 2);
+                
+                legendY += legendSize + 8;
             }
         }
-        
-        // Create actual bar chart
-        function createActualRevenueChart(monthlyData, months) {
+
+        // Create revenue chart
+        function createRevenueChart(monthlyData, months) {
             const canvas = document.getElementById('revenueChart');
             if (!canvas) return;
-            
+
             const ctx = canvas.getContext('2d');
             const width = canvas.width = canvas.offsetWidth;
             const height = canvas.height = canvas.offsetHeight;
-            
+            const padding = { top: 40, right: 40, bottom: 60, left: 60 };
+
             // Clear canvas
             ctx.clearRect(0, 0, width, height);
-            
-            // Setup chart area
-            const padding = { top: 30, right: 20, bottom: 40, left: 50 };
-            const chartWidth = width - padding.left - padding.right;
-            const chartHeight = height - padding.top - padding.bottom;
-            
+
             // Prepare data
             const data = months.map(month => monthlyData[month]?.revenue || 0);
-            const maxRevenue = Math.max(...data, 1000); // Min 1000 for better scale
-            
-            // Format month labels
-            const monthLabels = months.map(month => {
-                const [year, monthNum] = month.split('-');
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                return `${monthNames[parseInt(monthNum) - 1]} '${year.toString().slice(-2)}`;
-            });
-            
-            // Draw grid
+            const maxRevenue = Math.max(...data, 1);
+            const barWidth = (width - padding.left - padding.right) / months.length * 0.6;
+
+            // Draw grid lines
             ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 1;
             
             // Horizontal grid lines
-            const gridLines = 5;
-            for (let i = 0; i <= gridLines; i++) {
-                const y = padding.top + chartHeight * (1 - i / gridLines);
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + (height - padding.top - padding.bottom) * (1 - i / 5);
                 ctx.beginPath();
                 ctx.moveTo(padding.left, y);
                 ctx.lineTo(width - padding.right, y);
@@ -950,109 +784,70 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 ctx.font = '10px Arial';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                
-                const value = (maxRevenue * i / gridLines);
-                let label;
-                if (value >= 1000000) {
-                    label = `৳${(value / 1000000).toFixed(1)}M`;
-                } else if (value >= 1000) {
-                    label = `৳${(value / 1000).toFixed(0)}K`;
-                } else {
-                    label = `৳${value.toFixed(0)}`;
-                }
-                
-                ctx.fillText(label, padding.left - 10, y);
+                ctx.fillText(`৳${(maxRevenue * i / 5).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, 
+                           padding.left - 10, y);
             }
-            
-            // Calculate bar positions
-            const barWidth = chartWidth / months.length * 0.7;
-            const barSpacing = chartWidth / months.length * 0.3;
-            
+
             // Draw bars
             data.forEach((revenue, index) => {
-                if (revenue <= 0) return;
-                
-                const x = padding.left + (index * (barWidth + barSpacing)) + barSpacing / 2;
-                const barHeight = chartHeight * (revenue / maxRevenue);
-                const y = padding.top + chartHeight - barHeight;
-                
-                // Create gradient for bar
-                const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
+                const x = padding.left + (width - padding.left - padding.right) * (index / months.length);
+                const barHeight = (height - padding.top - padding.bottom) * (revenue / maxRevenue);
+                const barY = height - padding.bottom - barHeight;
+
+                // Gradient fill
+                const gradient = ctx.createLinearGradient(x, barY, x, height - padding.bottom);
                 gradient.addColorStop(0, '#10b981');
                 gradient.addColorStop(1, '#059669');
-                
-                // Draw bar
+
                 ctx.fillStyle = gradient;
-                ctx.fillRect(x, y, barWidth, barHeight);
-                
-                // Draw rounded top
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + barWidth, y);
-                ctx.lineTo(x + barWidth, y + barHeight);
-                ctx.lineTo(x, y + barHeight);
-                ctx.closePath();
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                // Draw value on top if enough space
-                if (barHeight > 20) {
+                ctx.fillRect(x + barWidth * 0.2, barY, barWidth * 0.6, barHeight);
+
+                // Value label
+                if (revenue > 0) {
                     ctx.fillStyle = '#374151';
                     ctx.font = 'bold 10px Arial';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
-                    
-                    let displayValue;
-                    if (revenue >= 1000000) {
-                        displayValue = `৳${(revenue / 1000000).toFixed(1)}M`;
-                    } else if (revenue >= 1000) {
-                        displayValue = `৳${(revenue / 1000).toFixed(0)}K`;
-                    } else {
-                        displayValue = `৳${revenue.toFixed(0)}`;
-                    }
-                    
-                    ctx.fillText(displayValue, x + barWidth / 2, y - 5);
+                    ctx.fillText(`৳${revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, 
+                               x + barWidth / 2, barY - 5);
                 }
-            });
-            
-            // Draw month labels
-            data.forEach((revenue, index) => {
-                const x = padding.left + (index * (barWidth + barSpacing)) + barSpacing / 2 + barWidth / 2;
-                const y = height - padding.bottom + 15;
-                
+
+                // Month label
                 ctx.fillStyle = '#6b7280';
-                ctx.font = '11px Arial';
+                ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
-                ctx.fillText(monthLabels[index], x, y);
+                ctx.fillText(months[index].slice(-2), x + barWidth / 2, height - padding.bottom + 10);
             });
-            
-            // Draw chart title
+
+            // Y-axis label
+            ctx.save();
             ctx.fillStyle = '#374151';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.fillText('Revenue Overview (BDT)', width / 2, 10);
+            ctx.textBaseline = 'middle';
+            ctx.translate(20, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Revenue (BDT)', 0, 0);
+            ctx.restore();
         }
 
-        // Render invoices with proper infinite scroll
+        // Render invoices
         function renderInvoices() {
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
             const endIndex = startIndex + ITEMS_PER_PAGE;
             const pageInvoices = filteredInvoices.slice(startIndex, endIndex);
-        
+
             if (pageInvoices.length === 0) {
-                if (currentPage === 1) { // Only show empty state on first page
-                    elements.emptyState.style.display = 'block';
-                    elements.container.innerHTML = '';
-                    elements.container.appendChild(elements.emptyState);
-                }
+                elements.emptyState.style.display = 'block';
+                elements.container.innerHTML = '';
+                elements.container.appendChild(elements.emptyState);
                 return;
             }
-        
+
             elements.emptyState.style.display = 'none';
-        
-            let html = '';
+
+            let html = '<div class="space-y-4">';
             
             pageInvoices.forEach(invoice => {
                 const createdDate = new Date(invoice.created_at);
@@ -1061,7 +856,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 const isOverdue = invoice.status === 'overdue';
                 
                 html += `
-                    <div class="invoice-card bg-white border border-gray-200 rounded-lg p-5 hover:border-green-300 fade-in mb-4">
+                    <div class="invoice-card bg-white border border-gray-200 rounded-lg p-5 hover:border-green-300 fade-in">
                         <div class="flex flex-col md:flex-row justify-between gap-4">
                             <!-- Left Column -->
                             <div class="flex-1">
@@ -1166,17 +961,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 `;
             });
             
-            // Append new invoices instead of replacing
-            if (currentPage === 1) {
-                elements.container.innerHTML = `<div class="space-y-4" id="invoices-list">${html}</div>`;
-            } else {
-                const invoicesList = document.getElementById('invoices-list');
-                if (invoicesList) {
-                    invoicesList.innerHTML += html;
-                } else {
-                    elements.container.innerHTML = `<div class="space-y-4" id="invoices-list">${html}</div>`;
-                }
-            }
+            html += '</div>';
+            elements.container.innerHTML = html;
             
             // Show/hide infinite scroll loader
             const showingCount = Math.min(filteredInvoices.length, currentPage * ITEMS_PER_PAGE);
@@ -1214,22 +1000,19 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 elements.infiniteLoader.style.display = 'none';
                 return;
             }
-        
-            if (isLoading) return;
-            
+
             isLoading = true;
-            elements.infiniteLoader.style.display = 'block';
             elements.infiniteLoader.classList.add('active');
-        
-            // Add a small delay for better UX
-            await new Promise(resolve => setTimeout(resolve, 300));
-        
+
+            // Simulate loading delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             currentPage++;
             renderInvoices();
-        
+
             isLoading = false;
             elements.infiniteLoader.classList.remove('active');
-        }   
+        }
 
         // Escape HTML to prevent XSS
         function escapeHtml(text) {

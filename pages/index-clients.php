@@ -4,7 +4,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeAllClientApi = $ip_port . "api/clients/all-clients.php";
+$allClientApi = $ip_port . "api/clients/all-clients.php";
 $storeVendorApi = $ip_port . "api/vendors/client-store.php";
 $removeClientVendorApi = $ip_port . "api/vendors/edit-client-vendor.php";
 
@@ -106,7 +106,7 @@ $removeClientVendorApi = $ip_port . "api/vendors/edit-client-vendor.php";
     <script src="../assets/js/script.js"></script>
 
     <script>
-        const API_URL_FOR_ALL_CLIENTS = "<?php echo $storeAllClientApi; ?>";
+        const API_URL_FOR_ALL_CLIENTS = "<?php echo $allClientApi; ?>";
         const API_URL_FOR_VENDOR_STORE = "<?php echo $storeVendorApi; ?>";
         const API_URL_FOR_VENDOR_REMOVE = "<?php echo $removeClientVendorApi; ?>";
 
