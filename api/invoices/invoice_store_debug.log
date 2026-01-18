@@ -1,0 +1,264 @@
+[2026-01-18 19:30:12] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary2udXThLMwojq7bMN
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:30:37] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary21GuHnB6rotbu1XB
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:31:04] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryBz86IoAssIPQltuJ
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:31:38] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryj4WsSE5DFyRqKJjp
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:31:38] RAW INPUT:
+
+
+[2026-01-18 19:31:38] ERROR: Invoice Store Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'SELECT' in /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php:131
+Stack Trace:
+#0 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(131): PDO->prepare()
+#1 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(197): getClientInfo()
+#2 {main}
+========================================
+
+[2026-01-18 19:36:40] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarytYA4Nt2uwtHLSA0M
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:36:40] RAW INPUT:
+
+
+[2026-01-18 19:36:40] ERROR: Invoice Store Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'SELECT' in /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php:131
+Stack Trace:
+#0 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(131): PDO->prepare()
+#1 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(197): getClientInfo()
+#2 {main}
+========================================
+
+[2026-01-18 19:37:30] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryySyf6viXsgGeZP0n
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:37:30] RAW INPUT:
+
+
+[2026-01-18 19:38:36] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryMD2YcRdwYZjc1JO4
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:38:36] RAW INPUT:
+
+
+[2026-01-18 17:38:36] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 17
+Invoice No: THR-IN-26-00K017
+Client: Assaduzzaman Porag
+Total Amount: 15000
+========================================
+
