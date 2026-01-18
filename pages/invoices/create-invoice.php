@@ -1767,19 +1767,6 @@ $base_ip_path = trim($ip_port, "/");
         }
     
         /* ========== 9. TASK GROUP MANAGEMENT ========== */
-        async function loadFinancialData(taskId) {
-            try {
-                const response = await fetch(`${GET_FINANCIAL_STATEMENT_API}?client_id=${globalClientState.clientId}&task_id=${taskId}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    return data.stmt;
-                }
-            } catch (error) {
-                console.error('Error loading financial data:', error);
-            }
-        }
-        
         function addTaskGroup(workItemElement, tasks) {
             const workItemId = workItemElement.dataset.workItemId;
             const state = workItemStates.get(workItemId);
@@ -1803,46 +1790,26 @@ $base_ip_path = trim($ip_port, "/");
             // Populate task checkboxes
             const checkboxesContainer = groupElement.querySelector('.task-checkboxes');
             tasks.forEach(task => {
-            
                 const checkboxDiv = document.createElement('div');
                 checkboxDiv.className = 'task-checkbox-container';
-            
                 checkboxDiv.innerHTML = `
-                    <input type="checkbox"
+                    <input type="checkbox" 
                            id="task_${task.sys_id}_${groupId}"
-                           value="${task.sys_id}"
+                           value="${task.task_sys_id}"
                            class="task-checkbox mr-2"
                            data-task-data='${JSON.stringify(task)}'>
-                    <label for="task_${task.sys_id}_${groupId}" class="text-sm cursor-pointer">
+                    <label for="task_${task.task_sys_id}_${groupId}" class="text-sm cursor-pointer">
                         <span class="font-medium">${task.title || 'No Title'}</span>
-                        <span class="text-gray-600 ml-2 rate">Loading...</span>
-                        <span class="text-gray-600 ml-2 purpose">Loading...</span>
+                        <span class="text-gray-600 ml-2">(Rate: ৳${task.rate || 0})</span>
                     </label>
                 `;
-            
                 checkboxesContainer.appendChild(checkboxDiv);
-            
-                loadFinancialData(task.sys_id).then(fin => {
-                    if (!fin || !fin.length) return;
                 
-                    task.rate = fin[0].amount;
-                    task.purpose = fin[0].purpose;
-                
-                    // 🔥 UPDATE DATASET
-                    const checkbox = checkboxDiv.querySelector('.task-checkbox');
-                    checkbox.dataset.taskData = JSON.stringify(task);
-                
-                    checkboxDiv.querySelector('.rate').textContent =
-                        `(Rate: ৳ ${task.rate})`;
-                
-                    checkboxDiv.querySelector('.purpose').textContent =
-                        `(Purpose: ${task.purpose})`;
+                // Add change event listener
+                const checkbox = checkboxDiv.querySelector('.task-checkbox');
+                checkbox.addEventListener('change', function() {
+                    handleTaskSelection(workItemId, task.sys_id, groupId);
                 });
-            
-                checkboxDiv.querySelector('.task-checkbox')
-                    .addEventListener('change', () => {
-                        handleTaskSelection(workItemId, groupId);
-                    });
             });
             
             // Add remove button handler
@@ -1890,7 +1857,21 @@ $base_ip_path = trim($ip_port, "/");
         }
     
         /* ========== 10. TASK SELECTION HANDLER ========== */
-        function handleTaskSelection(workItemId, groupId) {
+        async function loadFinancialData(taskId) {
+            try {
+                const response = await fetch(`${GET_FINANCIAL_STATEMENT_API}?client_id=${globalClientState.clientId}&task_id=${taskId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    return data.stmt;
+                }
+            } catch (error) {
+                console.error('Error loading financial data:', error);
+            }
+        }
+        
+        
+        function handleTaskSelection(workItemId, taskId, groupId) {
             const workItemElement = document.querySelector(`[data-work-item-id="${workItemId}"]`);
             const state = workItemStates.get(workItemId);
             
@@ -1903,8 +1884,16 @@ $base_ip_path = trim($ip_port, "/");
                 data: JSON.parse(cb.dataset.taskData || '{}')
             }));
             
+            let purpose = '';
+            let rate = '';
+            
+            loadFinancialData(taskId).then(taskFinData => {
+                purpose = taskFinData['0'].purpose;
+                rate = taskFinData['0'].amount;
+            });
+            
             // Update state
-            state.taskGroups.set(groupId, selectedTasks);
+            state.taskGroups.set(groupId, selectedTasks, purpose, rate);
             
             // Generate work items
             generateWorkItemsFromTasks(workItemElement);
@@ -1923,7 +1912,9 @@ $base_ip_path = trim($ip_port, "/");
             // Collect all selected tasks from all groups
             const allTasks = [];
             let globalIndex = 0;
+            
             state.taskGroups.forEach((tasks, groupId) => {
+                console.log(tasks)
                 tasks.forEach(task => {
                     allTasks.push({
                         ...task,

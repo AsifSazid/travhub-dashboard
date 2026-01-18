@@ -84,6 +84,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-bangladeshi-taka-sign mr-3"></i>
                         <span class="sidebar-text">Accounting</span>
                     </a>
+                    <a href="invoices/create-invoice.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'invoices/create-invoice.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-bangladeshi-taka-sign mr-3"></i>
+                        <span class="sidebar-text">Create Invoice</span>
+                    </a>
                     <a href="analytics.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'analytics.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
