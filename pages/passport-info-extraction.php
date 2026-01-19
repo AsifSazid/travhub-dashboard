@@ -696,6 +696,7 @@ if (empty($ip_port)) {
         
                     <div class="text-sm space-y-2">
         
+                        ${fieldRow('Country Code', p.country_code)}
                         ${fieldRow('Salutation', p.salutation)}
                         ${fieldRow('Given Name', p.given_name)}
                         ${fieldRow('Sur Name', p.sur_name)}

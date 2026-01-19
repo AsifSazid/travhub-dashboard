@@ -86,6 +86,9 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
 
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
+    
+    <!-- Preview Modal -->
+    <?php include '../elements/preview-model.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">

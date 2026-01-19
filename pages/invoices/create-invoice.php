@@ -14,10 +14,10 @@ $base_ip_path = trim($ip_port, "/");
     <meta charset="UTF-8">
     <title>Create Invoice - Accounting</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="../../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
     <style>
         /* Form Container */
         .form-container {
@@ -747,10 +747,10 @@ $base_ip_path = trim($ip_port, "/");
 
 <body class="bg-gray-50 font-sans">
     <!-- Top Navigation -->
-    <?php include '../elements/header.php'; ?>
+    <?php include '../../elements/header.php'; ?>
 
     <!-- Sidebar -->
-    <?php include '../elements/aside.php'; ?>
+    <?php include '../../elements/aside.php'; ?>
     
     <!-- Preview Modal -->
     <div id="previewModal" class="preview-modal">
@@ -1058,9 +1058,9 @@ $base_ip_path = trim($ip_port, "/");
         </div>
     </template>
 
-    <?php include '../elements/floating-menus.php'; ?>
+    <?php include '../../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../../assets/js/script.js"></script>
     
     <script>
         const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
@@ -1070,6 +1070,7 @@ $base_ip_path = trim($ip_port, "/");
         const FETCH_API_ALL_WORK = `${IP_PATH}/api/works/client-works.php`;
         const FETCH_API_ALL_TASK = `${IP_PATH}/api/tasks/tasks-for-work.php`;
         const GET_ALL_CLIENTS_API = `${IP_PATH}/api/clients/all-clients.php`;
+        const GET_INVOICE_NO_URL = `${IP_PATH}/api/invoices/get-invoice-no.php`;
         const GET_FINANCIAL_STATEMENT_API = `${IP_PATH}/api/financial_entries/client-task-statement.php`;
     
         // Global state management for work items
@@ -1133,7 +1134,7 @@ $base_ip_path = trim($ip_port, "/");
                 document.getElementById('invoiceNoDisplay').textContent = 'Loading from API...';
                 document.getElementById('invoiceNoDisplay').style.color = '#6b7280';
     
-                const response = await fetch('../api/invoices/get-invoice-no.php');
+                const response = await fetch('GET_INVOICE_NO_URL');
                 
                 if (!response.ok) {
                     throw new Error(`API request failed: ${response.status}`);

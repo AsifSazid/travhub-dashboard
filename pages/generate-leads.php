@@ -69,6 +69,9 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
+    
+    <!-- Preview Modal -->
+    <?php include '../elements/preview-model.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
@@ -511,23 +514,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
                                 <!-- Client Search Section -->
                                 <div id="clientSearchSection" class="relative w-full mt-4 mb-2">
-                                    <div class="flex">
-                                        <input
-                                            type="text"
-                                            id="clientInput"
-                                            placeholder="Search for a client..."
-                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                                            autocomplete="off">
-                                        <button
-                                            id="dropdownToggle"
-                                            class="px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg bg-gray-100 hover:bg-gray-200"
-                                            type="button">
-                                            ▼
-                                        </button>
-                                    </div>
-                                    <ul id="clientDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto hidden z-50">
-                                        <!-- JS will populate options here -->
-                                    </ul>
+                                    <?php include('form-selects/clients.php') ?>
                                 </div>
 
                                 <!-- New Client Section -->
