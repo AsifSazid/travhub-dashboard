@@ -63,6 +63,8 @@ try {
 
     $clientId = $input['client_id'] ?? null;
     $vendorId = $input['vendor_id'] ?? null;
+    $vendorType = $input['vendor_type'] ?? null;
+    $accountId = $input['account_id'] ?? null;
     $workId   = $input['work_id'] ?? null;
     $taskId   = $input['task_id'] ?? null;
 
@@ -104,6 +106,19 @@ try {
         }
     }
 
+    // ------------------ Account ------------------
+    if ($accountId) {
+        $stmt = $pdo->prepare("SELECT acc_name, balance FROM ac_banking WHERE sys_id = ?");
+        $stmt->execute([$accountId]);
+        $accountInfo = $stmt->fetch();
+        $accountName = $accountInfo['acc_name'];
+        $oldBalance = $accountInfo['balance'];
+        
+        if (!$accountInfo) {
+            throw new Exception('Vendor not found');
+        }
+    }
+
     // ------------------ Insert ------------------
     $ids = generateIDs('financial_entries');
     $metaDataJson = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
@@ -112,7 +127,7 @@ try {
         INSERT INTO financial_entries (
             uuid, sys_id,
             client_sys_id, client_name,
-            vendor_sys_id, vendor_name,
+            vendor_sys_id, vendor_name, vendor_type,
             task_sys_id, task_title,
             work_sys_id, work_title,
             date, purpose, type, amount, ref,
@@ -120,7 +135,7 @@ try {
         ) VALUES (
             :uuid, :sys_id,
             :client_sys_id, :client_name,
-            :vendor_sys_id, :vendor_name,
+            :vendor_sys_id, :vendor_name, :vendor_type,
             :task_sys_id, :task_title,
             :work_sys_id, :work_title,
             :date, :purpose, :type, :amount, :ref,
@@ -133,8 +148,9 @@ try {
         ':sys_id' => $ids['sys_id'],
         ':client_sys_id' => $clientId,
         ':client_name' => $clientName,
-        ':vendor_sys_id' => $vendorId,
-        ':vendor_name' => $vendorName,
+        ':vendor_sys_id' => $vendorId ?? $accountId ?? null,
+        ':vendor_name' => $vendorName ?? $accountName ?? null,
+        ':vendor_type' => $vendorType ?? null,
         ':task_sys_id' => $taskId,
         ':task_title' => $taskTitle,
         ':work_sys_id' => $workId,
@@ -146,6 +162,143 @@ try {
         ':ref' => $ref,
         ':meta_data' => $metaDataJson
     ]);
+    
+    if($vendorType == 1 && $accountId)
+    {
+        /* ---------------- Generate IDs & Meta ---------------- */
+        $stmtIds = generateIDs('ac_banking_stmts');
+    
+        $user = $_SESSION['user_name'] ?? $data['user'] ?? 'system';
+        $stmtMeta = buildMetaData(null, $user);
+
+        if($type == 'credit'){
+            $withdraw = $amount;
+            $newBalance = $oldBalance - $withdraw;
+            $updateSql = "
+                UPDATE ac_banking
+                SET balance = :balance
+                WHERE sys_id = :account_row_id
+            ";
+    
+            $updateStmt = $pdo->prepare($updateSql);
+            $updateStmt->execute([
+                ':balance'         => $newBalance,
+                ':account_row_id'  => $accountId
+            ]);
+            
+            /* ---------------- Insert Statement ---------------- */
+            $insertSql = "
+                INSERT INTO ac_banking_stmts
+                (
+                    uuid,
+                    sys_id,
+                    ledger_db_id,
+                    name,
+                    date,
+                    particular,
+                    withdraw,
+                    balance,
+                    meta_data,
+                    ref
+                )
+                VALUES
+                (
+                    :uuid,
+                    :sys_id,
+                    :ledger_db_id,
+                    :name,
+                    :date,
+                    :particular,
+                    :withdraw,
+                    :balance,
+                    :meta_data,
+                    :ref
+                )
+            ";
+        
+            $stmt = $pdo->prepare($insertSql);
+            $stmt->execute([
+                ':uuid'          => $stmtIds['uuid'],
+                ':sys_id'        => $stmtIds['sys_id'],
+                ':ledger_db_id'  => $accountId,
+                ':name'          => $accountName,
+                ':date'          => $date,
+                ':particular'    => $purpose,
+                ':withdraw'      => $withdraw,
+                ':balance'       => $newBalance, // running balance
+                ':meta_data'     => $stmtMeta,
+                ':ref'     => $ids['sys_id'],
+            ]);
+            
+            
+        }else if($type == 'debit'){
+            $deposit = $amount;
+            $newBalance = $oldBalance + $deposit;
+            $updateSql = "
+                UPDATE ac_banking
+                SET balance = :balance
+                WHERE sys_id = :account_row_id
+            ";
+    
+            $updateStmt = $pdo->prepare($updateSql);
+            $updateStmt->execute([
+                ':balance'         => $newBalance,
+                ':account_row_id'  => $accountId
+            ]);
+            
+            /* ---------------- Insert Statement ---------------- */
+            $insertSql = "
+                INSERT INTO ac_banking_stmts
+                (
+                    uuid,
+                    sys_id,
+                    ledger_db_id,
+                    name,
+                    date,
+                    particular,
+                    deposit,
+                    balance,
+                    meta_data,
+                    ref
+                )
+                VALUES
+                (
+                    :uuid,
+                    :sys_id,
+                    :ledger_db_id,
+                    :name,
+                    :date,
+                    :particular,
+                    :deposit,
+                    :balance,
+                    :meta_data,
+                    :ref
+                )
+            ";
+        
+            $stmt = $pdo->prepare($insertSql);
+            $stmt->execute([
+                ':uuid'          => $stmtIds['uuid'],
+                ':sys_id'        => $stmtIds['sys_id'],
+                ':ledger_db_id'  => $accountId,
+                ':name'          => $accountName,
+                ':date'          => $date,
+                ':particular'    => $purpose,
+                ':deposit'      => $deposit,
+                ':balance'       => $newBalance, // running balance
+                ':meta_data'     => $stmtMeta,
+                ':ref'     => $ids['sys_id'],
+            ]);
+            
+            
+        }else{
+            echo json_encode([
+                'success' => false,
+                'message' => 'Server error',
+                'error' => "Balance Problem!"
+            ]);
+        }
+    }
 
     http_response_code(201);
     echo json_encode([

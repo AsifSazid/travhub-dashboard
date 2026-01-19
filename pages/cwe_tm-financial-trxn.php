@@ -186,6 +186,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors flex items-center">
                             <i class="fas fa-print mr-2"></i> Print Report
                         </button>
+                        <a href="create-vendor.php"
+                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-plus mr-2"></i> Create a New Vendor
+                        </a>
                     </div>
                 </div>
 
@@ -239,7 +243,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     </label>
                                     <textarea type="text"
                                         id="client_purpose"
-                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="5"
+                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="10"
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
                                 </div>
 
@@ -268,10 +272,16 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                                 </div>
 
-                                <button onclick="recordTransaction('debit')"
-                                    class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                    <i class="fas fa-plus-circle mr-2"></i> Record Debit
-                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button onclick="refundTransaction('credit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Refund
+                                    </button>
+                                    <button onclick="recordTransaction('debit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Record Debit
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -292,10 +302,45 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                         <div class="p-5">
                             <div class="mb-4">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                                        <i class="fa-solid fa-shapes mr-1"></i> Select Type
+                                    </label>
+                                    
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <input type="radio" id="type-vendor" name="account_type" value="vendor" class="hidden peer" checked required>
+                                            <label for="type-vendor" class="flex flex-col items-center justify-center p-4 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                                <i class="fa-solid fa-shop mb-2 text-2xl"></i>
+                                                <span class="text-sm font-semibold">Vendor</span>
+                                            </label>
+                                        </div>
+                                
+                                        <div>
+                                            <input type="radio" id="type-own" name="account_type" value="own" class="hidden peer">
+                                            <label for="type-own" class="flex flex-col items-center justify-center p-4 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                                <i class="fa-solid fa-user mb-2 text-2xl"></i>
+                                                <span class="text-sm font-semibold">Own Account</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Vendor section - visible by default -->
+                            <div id="vendorSection" class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     <i class="fas fa-building mr-1"></i> Vendor
                                 </label>
                                 <?php include('form-selects/vendors.php') ?>
+                            </div>
+                            
+                            <!-- Own Account section - hidden by default -->
+                            <div id="accountSection" class="mb-4 hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-building mr-1"></i> Own Account
+                                </label>
+                                <?php include('form-selects/accounts.php') ?>
                             </div>
 
                             <div class="space-y-4">
@@ -334,10 +379,16 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
                                 </div>
 
-                                <button onclick="recordTransaction('credit')"
-                                    class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                    <i class="fas fa-plus-circle mr-2"></i> Record Credit
-                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button onclick="refundTransaction('debit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Refund
+                                    </button>
+                                    <button onclick="recordTransaction('credit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Record Credit
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -567,10 +618,19 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 </div>
                 
                 <div class="stat-card bg-gradient-to-r from-green-50 to-green-100 border-green-200 p-4 rounded-lg">
-                    <div class="flex items-center justify-between">
+                    <div class="items-center justify-between">
                         <div>
                             <p class="text-sm text-green-600 font-medium">Work Title</p>
-                            <p class="text-lg font-semibold text-green-900 truncate">${task.work_title || 'N/A'}</p>
+                            <div class="relative group">
+                                <p class="text-lg font-semibold text-green-900 truncate">
+                                    ${task.work_title || 'N/A'}
+                                </p>
+                            
+                                <div class="absolute left-0 top-full mt-1 hidden group-hover:block 
+                                            bg-black text-white text-xs px-2 py-1 rounded z-10">
+                                    ${task.work_title || 'N/A'}
+                                </div>
+                            </div>
                         </div>
                         <i class="fas fa-briefcase text-green-400 text-2xl"></i>
                     </div>
@@ -656,6 +716,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                 <i class="${icon} text-${color}-500 mr-1"></i>
                                 <span class="truncate max-w-[150px]">${fileName}</span>
                             </a>
+                            <button class="file-chip cursor-pointer hover:shadow-sm" >
+                                <i class="fas fa-plus mr-1"></i>
+                                <span class="truncate max-w-[150px]">Add New File</span>
+                            </button>
                         `;
                     }).join('');
 
@@ -731,14 +795,61 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         }
         
         function extractIds(value) {
-            if (!value) return null;
+            if (!value || typeof value !== 'string') return null;
+            
+            // Split by pipe and trim
             const parts = value.split('|').map(v => v.trim());
+            
+            // Ensure we have at least 2 parts (ID and Name)
+            if (parts.length < 2) {
+                // Try to extract ID from the beginning if format is different
+                const idMatch = value.match(/^(\d+)/);
+                if (idMatch) {
+                    return {
+                        sys_id: idMatch[1],
+                        name: value.substring(idMatch[1].length).trim()
+                    };
+                }
+                return null;
+            }
+            
             return {
                 sys_id: parts[0] || null,
                 name: parts[1] || null,
             };
         }
         
+        // Toggle between vendor and account sections
+        function setupTypeToggle() {
+            const vendorRadio = document.getElementById('type-vendor');
+            const ownRadio = document.getElementById('type-own');
+            const vendorSection = document.getElementById('vendorSection');
+            const accountSection = document.getElementById('accountSection');
+            
+            // Set initial state
+            if (vendorRadio.checked) {
+                vendorSection.classList.remove('hidden');
+                accountSection.classList.add('hidden');
+            } else {
+                vendorSection.classList.add('hidden');
+                accountSection.classList.remove('hidden');
+            }
+            
+            // Add event listeners for radio buttons
+            vendorRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    vendorSection.classList.remove('hidden');
+                    accountSection.classList.add('hidden');
+                }
+            });
+            
+            ownRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    vendorSection.classList.add('hidden');
+                    accountSection.classList.remove('hidden');
+                }
+            });
+        }
 
         // Record Transaction
         async function recordTransaction(type) {
@@ -781,12 +892,88 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     const purpose = document.getElementById('vendor_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('vendor_amount').value);
                     const date = document.getElementById('vendor_date').value;
+                    const vendorType = document.querySelector('input[name="account_type"]:checked').value;
                     
-                    // const vendorId = selectedVendorLi.getAttribute('data-sys-id'); // or selectedVendorLi.dataset.sysId
-                    const vendorId = extractIds(vendorInput?.value);
+                    let vendorId = null;
+                    let accountId = null;
                     
-                    if (!vendorId) {
-                        showNotification('Please select a valid vendor', 'error');
+                    if (vendorType === 'vendor') {
+                        const vendorValue = document.getElementById('vendorInput').value;
+                        if (!vendorValue) {
+                            showNotification('Please select a vendor', 'error');
+                            return;
+                        }
+                        const vendorData = extractIds(vendorValue);
+                        if (!vendorData || !vendorData.sys_id) {
+                            showNotification('Invalid vendor selected', 'error');
+                            return;
+                        }
+                        vendorId = vendorData.sys_id;
+                    } else if (vendorType === 'own') {
+                        const accountValue = document.getElementById('accountInput').value;
+                        if (!accountValue) {
+                            showNotification('Please select an account', 'error');
+                            return;
+                        }
+                        const accountData = extractIds(accountValue);
+                        if (!accountData || !accountData.sys_id) {
+                            showNotification('Invalid account selected', 'error');
+                            return;
+                        }
+                        accountId = accountData.sys_id;
+                    }
+
+                    if (!purpose || !amount || amount <= 0) {
+                        showNotification('Please enter valid purpose and amount', 'error');
+                        return;
+                    }
+
+                    const transactionData = {
+                        type: 'credit',
+                        amount: amount,
+                        purpose: purpose,
+                        vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
+                        work_id: workId,
+                        task_id: taskId,
+                        date: date || new Date().toISOString().split('T')[0]
+                    };
+
+                    // Add vendor_id or account_id based on type
+                    if (vendorType === 'vendor' && vendorId) {
+                        transactionData.vendor_id = vendorId;
+                    } else if (vendorType === 'own' && accountId) {
+                        transactionData.account_id = accountId;
+                    }
+                    
+                    console.log(transactionData);
+
+                    await saveTransaction(transactionData, 'Credit');
+
+                    // Clear form
+                    document.getElementById('vendor_purpose').value = '';
+                    document.getElementById('vendor_amount').value = '';
+                    document.getElementById('vendorInput').value = '';
+                    document.getElementById('accountInput').value = '';
+                }
+
+            } catch (error) {
+                console.error('Error recording transaction:', error);
+                showNotification('An error occurred while recording the transaction', 'error');
+            }
+        }
+        
+        async function refundTransaction(type) {
+            try {
+                const workId = WORK_ID;
+                const taskId = TASK_ID;
+
+                if (type === 'credit') {
+                    const purpose = document.getElementById('client_purpose').value.trim();
+                    const amount = parseFloat(document.getElementById('client_amount').value);
+                    const date = document.getElementById('client_date').value;
+
+                    if (!currentClientId) {
+                        showNotification('Client ID not found', 'error');
                         return;
                     }
 
@@ -799,7 +986,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         type: 'credit',
                         amount: amount,
                         purpose: purpose,
-                        vendor_id: vendorId.sys_id,
+                        client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
                         date: date || new Date().toISOString().split('T')[0]
@@ -808,9 +995,75 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     await saveTransaction(transactionData, 'Credit');
 
                     // Clear form
+                    document.getElementById('client_purpose').value = '';
+                    document.getElementById('client_amount').value = '';
+
+                } else if (type === 'debit') {
+                    const purpose = document.getElementById('vendor_purpose').value.trim();
+                    const amount = parseFloat(document.getElementById('vendor_amount').value);
+                    const date = document.getElementById('vendor_date').value;
+                    const vendorType = document.querySelector('input[name="account_type"]:checked').value;
+                    
+                    let vendorId = null;
+                    let accountId = null;
+                    
+                    if (vendorType === 'vendor') {
+                        const vendorValue = document.getElementById('vendorInput').value;
+                        if (!vendorValue) {
+                            showNotification('Please select a vendor', 'error');
+                            return;
+                        }
+                        const vendorData = extractIds(vendorValue);
+                        if (!vendorData || !vendorData.sys_id) {
+                            showNotification('Invalid vendor selected', 'error');
+                            return;
+                        }
+                        vendorId = vendorData.sys_id;
+                    } else if (vendorType === 'own') {
+                        const accountValue = document.getElementById('accountInput').value;
+                        if (!accountValue) {
+                            showNotification('Please select an account', 'error');
+                            return;
+                        }
+                        const accountData = extractIds(accountValue);
+                        if (!accountData || !accountData.sys_id) {
+                            showNotification('Invalid account selected', 'error');
+                            return;
+                        }
+                        accountId = accountData.sys_id;
+                    }
+
+                    if (!purpose || !amount || amount <= 0) {
+                        showNotification('Please enter valid purpose and amount', 'error');
+                        return;
+                    }
+
+                    const transactionData = {
+                        type: 'debit',
+                        amount: amount,
+                        purpose: purpose,
+                        vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
+                        work_id: workId,
+                        task_id: taskId,
+                        date: date || new Date().toISOString().split('T')[0]
+                    };
+
+                    // Add vendor_id or account_id based on type
+                    if (vendorType === 'vendor' && vendorId) {
+                        transactionData.vendor_id = vendorId;
+                    } else if (vendorType === 'own' && accountId) {
+                        transactionData.account_id = accountId;
+                    }
+                    
+                    console.log(transactionData);
+
+                    await saveTransaction(transactionData, 'Debit');
+
+                    // Clear form
                     document.getElementById('vendor_purpose').value = '';
                     document.getElementById('vendor_amount').value = '';
                     document.getElementById('vendorInput').value = '';
+                    document.getElementById('accountInput').value = '';
                 }
 
             } catch (error) {
@@ -821,6 +1074,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
         async function saveTransaction(data, type) {
             try {
+                console.log(type);
                 const response = await fetch(FINANCIAL_ENTRIES_STORE_API, {
                     method: 'POST',
                     headers: {
@@ -904,7 +1158,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             <div class="text-sm font-medium text-gray-900">${transaction.purpose || 'No Data'}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${transaction.client_name || transaction.vendor_name || 'Unknown'}</div>
+                            <div class="text-sm text-gray-900">${transaction.client_name || transaction.vendor_name || transaction.account_name || 'Unknown'}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -1076,6 +1330,9 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
             document.getElementById('vendor_amount').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') recordTransaction('credit');
             });
+            
+            // Setup type toggle
+            setupTypeToggle();
         }
 
         function scrollToTop() {

@@ -789,16 +789,16 @@ $base_ip_path = trim($ip_port, "/");
                         <td class="px-4 py-3 text-sm text-green-600 font-medium">${formatCurrency(item.deposit)}</td>
                         <td class="px-4 py-3 text-sm text-gray-900 font-semibold">${formatCurrency(item.balance)}</td>
                         <td class="px-4 py-3 text-sm ${
-                            item.reconsilation_type === 0
+                            item.reconsilation_type === 1
                                 ? 'text-green-600 font-semibold'
-                                : item.reconsilation_type === 1
+                                : item.reconsilation_type === 2
                                 ? 'text-red-600 font-bold'
                                 : 'text-blue-600'
                         }">
                         ${
-                            item.reconsilation_type === 0
+                            item.reconsilation_type === 1
                                 ? '+'
-                                : item.reconsilation_type === 1
+                                : item.reconsilation_type === 2
                                 ? '-'
                                 : ''
                         }
