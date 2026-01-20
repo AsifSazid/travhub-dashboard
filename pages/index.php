@@ -18,7 +18,6 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
     <script src="../assets/tailwind/script.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
@@ -468,7 +467,7 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
 
         // Initialize both when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            UIInteractions.init();
+            // UIInteractions.init();
             DashboardApp.init();
 
             // Optional: Auto-refresh leads every 30 seconds
