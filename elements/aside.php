@@ -48,10 +48,10 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-briefcase mr-3"></i>
                         <span class="font-medium">Working Area</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200"></i>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 transform rotate-0"></i>
                 </button>
 
-                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden max-h-0 transition-all duration-300">
+                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden transition-all duration-300" style="max-height: 0;">
                     <a href="generate-leads.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'generate-leads.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
@@ -74,10 +74,10 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-chart-line mr-3"></i>
                         <span class="font-medium">Finance</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200"></i>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 transform rotate-0"></i>
                 </button>
 
-                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden max-h-0 transition-all duration-300">
+                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden transition-all duration-300" style="max-height: 0;">
                     <a href="accounts.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'accounts.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
@@ -98,6 +98,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </div>
             </div>
+            
             <li>
                 <a href="passport-info-extraction.php"
                     class="flex items-center p-3 rounded-lg 
@@ -139,41 +140,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     .accordion-toggle {
         cursor: pointer;
         outline: none;
-    }
-
-    .accordion-arrow {
-        transition: transform 0.3s ease;
-    }
-
-    .accordion-toggle.active .accordion-arrow {
-        transform: rotate(180deg);
-    }
-
-    .accordion-content {
-        max-height: 0;
-        opacity: 0;
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-
-    .accordion-content.open {
-        max-height: 500px;
-        opacity: 1;
-    }
-
-    /* Active page styles for accordion items */
-    .accordion-content a.active {
-        background-color: rgb(51 65 85);
-        color: white;
-    }
-
-    .accordion-item {
-        position: relative;
-    }
-
-    .accordion-toggle {
-        cursor: pointer;
-        outline: none;
         user-select: none;
         border: none;
         background: none;
@@ -185,9 +151,17 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         font-size: 0.875rem;
     }
 
+    .accordion-toggle.active .accordion-arrow {
+        transform: rotate(180deg);
+    }
+
     .accordion-content {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         overflow: hidden;
+    }
+
+    .accordion-content.open {
+        opacity: 1;
     }
 
     .accordion-content a {
