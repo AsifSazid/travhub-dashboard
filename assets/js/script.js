@@ -1,17 +1,17 @@
 // UI Interactions JavaScript - Handles all UI interactions only
 const UIInteractions = (function () {
     // Private variables
-    let sidebarCollapsed = false;
+    let sidebarCollapsed = true;
     let notificationOpen = false;
     let userMenuOpen = false;
     let mobileMenuOpen = false;
     let mobileSearchOpen = false;
     let activeModal = null;
     
-    // Accordion state - DEFAULT CLOSED
+    // Accordion state
     let accordions = {
-        'working-area': false,
-        'finance': false
+        'working-area': false  // Default open
+        'finance': false       // Default open
     };
 
     // DOM Elements
@@ -214,6 +214,7 @@ const UIInteractions = (function () {
             // Open accordion
             toggleBtn.classList.add('active');
             content.classList.add('open');
+            content.classList.remove('hidden');
             if (arrow) {
                 arrow.style.transform = 'rotate(180deg)';
             }
@@ -221,11 +222,10 @@ const UIInteractions = (function () {
             // Calculate height for smooth animation
             const scrollHeight = content.scrollHeight;
             content.style.maxHeight = scrollHeight + 'px';
-            content.style.opacity = '1';
             
-            // After transition, set auto height if sidebar is expanded
+            // After transition, set auto height
             setTimeout(() => {
-                if (accordions[accordionId] && !sidebarCollapsed) {
+                if (accordions[accordionId]) {
                     content.style.maxHeight = 'none';
                 }
             }, 300);
@@ -233,46 +233,26 @@ const UIInteractions = (function () {
             // Close accordion
             toggleBtn.classList.remove('active');
             content.classList.remove('open');
-            content.style.maxHeight = '0';
-            content.style.opacity = '0';
             if (arrow) {
                 arrow.style.transform = 'rotate(0deg)';
             }
             
-            // Hide after animation if sidebar is collapsed
+            // Set height before closing for smooth animation
+            const scrollHeight = content.scrollHeight;
+            content.style.maxHeight = scrollHeight + 'px';
+            
+            // Force reflow
+            content.offsetHeight;
+            
+            // Start closing animation
+            content.style.maxHeight = '0';
+            
+            // Hide after animation
             setTimeout(() => {
                 if (!accordions[accordionId] && sidebarCollapsed) {
                     content.classList.add('hidden');
                 }
             }, 300);
-        }
-    }
-
-    function openAccordion(accordionId) {
-        if (!accordions[accordionId]) {
-            accordions[accordionId] = true;
-            const item = document.querySelector(`[data-accordion="${accordionId}"]`);
-            if (item) {
-                const toggleBtn = item.querySelector('.accordion-toggle');
-                const content = item.querySelector('.accordion-content');
-                const arrow = item.querySelector('.accordion-arrow');
-                
-                toggleBtn.classList.add('active');
-                content.classList.add('open');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(180deg)';
-                }
-                
-                const scrollHeight = content.scrollHeight;
-                content.style.maxHeight = scrollHeight + 'px';
-                content.style.opacity = '1';
-                
-                setTimeout(() => {
-                    if (accordions[accordionId] && !sidebarCollapsed) {
-                        content.style.maxHeight = 'none';
-                    }
-                }, 300);
-            }
         }
     }
 
@@ -292,7 +272,7 @@ const UIInteractions = (function () {
             });
         });
 
-        // Initially close all accordions
+        // Set initial state based on accordions object
         Object.keys(accordions).forEach(id => {
             const item = document.querySelector(`[data-accordion="${id}"]`);
             if (item) {
@@ -300,14 +280,54 @@ const UIInteractions = (function () {
                 const content = item.querySelector('.accordion-content');
                 const arrow = item.querySelector('.accordion-arrow');
                 
-                // Ensure all are closed initially
-                accordions[id] = false;
-                toggleBtn.classList.remove('active');
-                content.classList.remove('open');
-                content.style.maxHeight = '0';
-                content.style.opacity = '0';
-                if (arrow) {
-                    arrow.style.transform = 'rotate(0deg)';
+                if (accordions[id]) {
+                    // Open accordion
+                    toggleBtn.classList.add('active');
+                    content.classList.add('open');
+                    content.classList.remove('hidden');
+                    if (arrow) {
+                        arrow.style.transform = 'rotate(180deg)';
+                    }
+                    
+                    // Set height
+                    const scrollHeight = content.scrollHeight;
+                    content.style.maxHeight = scrollHeight + 'px';
+                    
+                    // After a moment, set to auto for dynamic content
+                    setTimeout(() => {
+                        if (accordions[id]) {
+                            content.style.maxHeight = 'none';
+                        }
+                    }, 100);
+                } else {
+                    // Close accordion
+                    toggleBtn.classList.remove('active');
+                    content.classList.remove('open');
+                    content.style.maxHeight = '0';
+                    if (arrow) {
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                }
+            }
+        });
+
+        // Highlight active page in accordion and open parent accordion
+        const currentPath = window.location.pathname.split('/').pop() || 'index.php';
+        const currentPage = '<?= isset($currentPage) ? $currentPage : "" ?>' || currentPath;
+        
+        // First check all sidebar links
+        document.querySelectorAll('#sidebar a').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === currentPage || href === currentPath) {
+                link.classList.add('active');
+                
+                // Ensure parent accordion is open
+                const accordionItem = link.closest('.accordion-item');
+                if (accordionItem) {
+                    const accordionId = accordionItem.getAttribute('data-accordion');
+                    if (accordionId && !accordions[accordionId]) {
+                        toggleAccordion(accordionId);
+                    }
                 }
             }
         });
@@ -456,30 +476,20 @@ const UIInteractions = (function () {
 
         // Window resize
         window.addEventListener('resize', checkScreenSize);
-    }
-
-    function highlightActivePage() {
-        // Get current page from URL
-        const currentPath = window.location.pathname;
-        const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1) || 'index.php';
         
-        console.log('Current page:', currentPage); // Debug
-        
-        // First, open parent accordion if current page is inside an accordion
-        document.querySelectorAll('#sidebar a').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPage) {
-                // Find parent accordion
-                const accordionItem = link.closest('.accordion-item');
-                if (accordionItem) {
-                    const accordionId = accordionItem.getAttribute('data-accordion');
-                    if (accordionId) {
-                        console.log('Opening accordion for active page:', accordionId); // Debug
-                        openAccordion(accordionId);
+        // Close accordions when sidebar is collapsed (optional)
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                setTimeout(() => {
+                    if (sidebarCollapsed) {
+                        // When sidebar is collapsed, ensure accordion content is hidden
+                        document.querySelectorAll('.accordion-content').forEach(content => {
+                            content.classList.add('hidden');
+                        });
                     }
-                }
-            }
-        });
+                }, 300);
+            });
+        }
     }
 
     function init() {
@@ -495,10 +505,28 @@ const UIInteractions = (function () {
             });
         }
         
-        // Highlight active page after a short delay to ensure DOM is ready
-        setTimeout(() => {
-            highlightActivePage();
-        }, 100);
+        // Initialize active page highlighting
+        highlightActivePage();
+    }
+    
+    function highlightActivePage() {
+        const currentPath = window.location.pathname.split('/').pop() || 'index.php';
+        const currentPage = '<?= isset($currentPage) ? $currentPage : "" ?>' || currentPath;
+        
+        // Remove all active classes first
+        document.querySelectorAll('#sidebar a').forEach(link => {
+            link.classList.remove('bg-slate-700', 'text-white');
+            link.classList.add('text-gray-300');
+        });
+        
+        // Add active class to current page
+        document.querySelectorAll('#sidebar a').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === currentPage || href === currentPath) {
+                link.classList.remove('text-gray-300');
+                link.classList.add('bg-slate-700', 'text-white');
+            }
+        });
     }
 
     // Public API
@@ -510,26 +538,11 @@ const UIInteractions = (function () {
         toggleNotificationPanel: toggleNotificationPanel,
         toggleUserMenu: toggleUserMenu,
         toggleAccordion: toggleAccordion,
-        openAccordion: openAccordion,
-        highlightActivePage: highlightActivePage,
-        accordions: accordions // Expose for debugging
+        highlightActivePage: highlightActivePage
     };
 })();
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     UIInteractions.init();
-});
-
-// Additional initialization to ensure accordions are closed on page load
-window.addEventListener('load', function() {
-    // Force close all accordions on initial load
-    Object.keys(UIInteractions.accordions).forEach(id => {
-        UIInteractions.accordions[id] = false;
-    });
-    
-    // Then highlight active page (which will open relevant accordion)
-    setTimeout(() => {
-        UIInteractions.highlightActivePage();
-    }, 200);
 });
