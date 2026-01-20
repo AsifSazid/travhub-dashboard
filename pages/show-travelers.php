@@ -1,3 +1,6 @@
+<?php
+include_once('./authenticate.php');
+?>
 <!DOCTYPE html>
 <html lang="en">
 

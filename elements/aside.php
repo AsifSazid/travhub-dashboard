@@ -179,7 +179,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <p class="text-white font-medium">Tarekul Islam</p>
                 <p class="text-gray-400 text-sm">Managing Director</p>
             </div>
-            <a href="#"
+            <a href="../auth/logout.php"
                 class="flex items-center p-3 rounded-lg" title="logout">
                 <i class="fa-solid fa-arrow-right-from-bracket text-xl ml-2"></i>
             </a>

@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 // print-invoice.php
 require_once __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '../server/db_connection.php';
