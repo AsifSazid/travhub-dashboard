@@ -245,7 +245,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     </div>
                                 </div>
                     
-                            <!-- Contact Information -->
+                                <!-- Contact Information -->
                                 <h2 class="section-title flex items-center my-4">
                                     <i class="fas fa-address-book mr-2 text-blue-600"></i>
                                     Contact Information
@@ -520,6 +520,11 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="col-span-2 space-y-6">
+                            <label class="block text-sm font-medium text-gray-700 my-2">Upload or Paste Your Photo/s</label>
+                            <?php include('./form-elements/file-uploader.php') ?>
+                        </div>
                     
                     </div>
 
@@ -555,6 +560,8 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
 
     <script>
         const API_URL_FOR_CLIENT_STORE = "<?php echo $storeEmployeeApi; ?>";
+
+        console.log(droppedFiles);
 
         // Initialize date inputs
         document.addEventListener('DOMContentLoaded', function() {
@@ -678,140 +685,329 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
         }
 
         // Form Submission
-        document.getElementById('employeeForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // document.getElementById('employeeForm').addEventListener('submit', async function(e) {
+        //     e.preventDefault();
         
-            if (!validateForm()) {
-                return;
-            }
-        
-            // Show loading state
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
-            submitBtn.disabled = true;
-        
-            // Collect form data
-            const formData = new FormData(this);
+        //     if (!validateForm()) {
+        //         return;
+        //     }
             
-            // Debug: Log all form data
-            console.log('Form Data:', Object.fromEntries(formData));
+        //     // File validation check
+        //     if (droppedFiles.length === 0) {
+        //         if (!confirm('No files uploaded. Do you want to continue without files?')) {
+        //             return;
+        //         }
+        //     }
+        
+        //     // Show loading state
+        //     const submitBtn = this.querySelector('button[type="submit"]');
+        //     const originalText = submitBtn.innerHTML;
+        //     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
+        //     submitBtn.disabled = true;
+        
+        //     // Collect form data
+        //     const formData = new FormData(this);
             
-            // Prepare data for API
-            const data = {
-                type: formData.get('type') || 'permanent',
-                full_name: formData.get('full_name'),
-                status: 'active',
-                date_of_birth: formData.get('date_of_birth'),
-                created_by: 'current_user', // Replace with actual user from session
-                blood_group: formData.get('blood_group') // Add blood group
-            };
-        
-            // Get department values from hidden fields
-            const departmentId = document.getElementById('selectedDepartmentId').value;
-            const departmentName = document.getElementById('departmentInput').value;
+        //     // Debug: Log all form data
+        //     console.log('Form Data:', Object.fromEntries(formData));
             
-            if (departmentName) {
-                data.department = departmentName;
-                if (departmentId) {
-                    data.department_id = departmentId;
-                }
-            }
+        //     // Prepare data for API
+        //     const data = {
+        //         type: formData.get('type') || 'permanent',
+        //         full_name: formData.get('full_name'),
+        //         status: 'active',
+        //         date_of_birth: formData.get('date_of_birth'),
+        //         created_by: 'current_user', // Replace with actual user from session
+        //         blood_group: formData.get('blood_group') // Add blood group
+        //         files_count: droppedFiles.length // Send file count
+        //     };
         
-            // Prepare company_related_info JSON
-            data.company_related_info = {
-                designation: formData.get('designation'),
-                company_role: formData.get('company_role'),
-                date_of_join: formData.get('date_of_join')
-            };
-        
-            // Prepare phone information
-            data.phone = {
-                primary_no: formData.get('primary_phone')
-            };
-        
-            const secondaryPhoneTypes = formData.getAll('secondary_phone_type[]');
-            const secondaryPhoneNumbers = formData.getAll('secondary_phone_number[]');
+        //     // Get department values from hidden fields
+        //     const departmentId = document.getElementById('selectedDepartmentId').value;
+        //     const departmentName = document.getElementById('departmentInput').value;
             
-            if (secondaryPhoneTypes.length > 0) {
-                data.phone.secondary_no = secondaryPhoneTypes.map((type, index) => ({
-                    type: type,
-                    number: secondaryPhoneNumbers[index] || ''
-                }));
-            }
+        //     if (departmentName) {
+        //         data.department = departmentName;
+        //         if (departmentId) {
+        //             data.department_id = departmentId;
+        //         }
+        //     }
         
-            // Prepare email information
-            data.email = {
-                primary: formData.get('primary_email')
-            };
+        //     // Prepare company_related_info JSON
+        //     data.company_related_info = {
+        //         designation: formData.get('designation'),
+        //         company_role: formData.get('company_role'),
+        //         date_of_join: formData.get('date_of_join')
+        //     };
         
-            const secondaryEmailTypes = formData.getAll('secondary_email_type[]');
-            const secondaryEmailAddresses = formData.getAll('secondary_email_address[]');
+        //     // Prepare phone information
+        //     data.phone = {
+        //         primary_no: formData.get('primary_phone')
+        //     };
+        
+        //     const secondaryPhoneTypes = formData.getAll('secondary_phone_type[]');
+        //     const secondaryPhoneNumbers = formData.getAll('secondary_phone_number[]');
             
-            if (secondaryEmailTypes.length > 0) {
-                data.email.secondary = secondaryEmailTypes.map((type, index) => ({
-                    type: type,
-                    address: secondaryEmailAddresses[index] || ''
-                }));
-            }
+        //     if (secondaryPhoneTypes.length > 0) {
+        //         data.phone.secondary_no = secondaryPhoneTypes.map((type, index) => ({
+        //             type: type,
+        //             number: secondaryPhoneNumbers[index] || ''
+        //         }));
+        //     }
         
-            // Prepare address information
-            data.address = {
-                address_line_1: formData.get('address_line_1') || '',
-                address_line_2: formData.get('address_line_2') || '',
-                city: formData.get('city') || '',
-                state: formData.get('state') || '',
-                zip_code: formData.get('zip_code') || '',
-                country: formData.get('country') || ''
-            };
+        //     // Prepare email information
+        //     data.email = {
+        //         primary: formData.get('primary_email')
+        //     };
         
-            // Prepare emergency contact information
-            data.emergency_contact = {
-                person: formData.get('emergency_contact_person') || '',
-                relation: formData.get('relation') || '',
-                phone: formData.get('emergency_phone') || '',
-                address: {
-                    address_line_1: formData.get('emergency_address_line_1') || '',
-                    address_line_2: formData.get('emergency_address_line_2') || '',
-                    city: formData.get('emergency_city') || '',
-                    state: formData.get('emergency_state') || '',
-                    zip_code: formData.get('emergency_zip_code') || ''
-                }
-            };
+        //     const secondaryEmailTypes = formData.getAll('secondary_email_type[]');
+        //     const secondaryEmailAddresses = formData.getAll('secondary_email_address[]');
+            
+        //     if (secondaryEmailTypes.length > 0) {
+        //         data.email.secondary = secondaryEmailTypes.map((type, index) => ({
+        //             type: type,
+        //             address: secondaryEmailAddresses[index] || ''
+        //         }));
+        //     }
         
-            console.log('Data to send:', data); // For debugging
+        //     // Prepare address information
+        //     data.address = {
+        //         address_line_1: formData.get('address_line_1') || '',
+        //         address_line_2: formData.get('address_line_2') || '',
+        //         city: formData.get('city') || '',
+        //         state: formData.get('state') || '',
+        //         zip_code: formData.get('zip_code') || '',
+        //         country: formData.get('country') || ''
+        //     };
         
-            // Send to server
-            try {
-                const response = await fetch(API_URL_FOR_CLIENT_STORE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
+        //     // Prepare emergency contact information
+        //     data.emergency_contact = {
+        //         person: formData.get('emergency_contact_person') || '',
+        //         relation: formData.get('relation') || '',
+        //         phone: formData.get('emergency_phone') || '',
+        //         address: {
+        //             address_line_1: formData.get('emergency_address_line_1') || '',
+        //             address_line_2: formData.get('emergency_address_line_2') || '',
+        //             city: formData.get('emergency_city') || '',
+        //             state: formData.get('emergency_state') || '',
+        //             zip_code: formData.get('emergency_zip_code') || ''
+        //         }
+        //     };
         
-                const result = await response.json();
-                console.log('API Response:', result); // For debugging
+        //     console.log('Data to send:', data); // For debugging
         
-                if (result.success) {
-                    showMessage('Employee added successfully!', 'success');
-                    // Reset form after successful submission
-                    setTimeout(() => {
-                        resetForm();
-                    }, 2000);
-                } else {
-                    showMessage(result.message || 'Failed to add employee', 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('Network error: ' + error.message, 'error');
-            } finally {
-                // Reset button state
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
+        //     // Send to server
+        //     try {
+        //         const uploadFormData = new FormData();
+                
+        //         // Add all files
+        //         if (droppedFiles.length > 0) {
+        //             droppedFiles.forEach((file, index) => {
+        //                 uploadFormData.append(`files[]`, file);
+        //             });
+        //         }
+                
+        //         // Add other data as JSON
+        //         uploadFormData.append('employee_data', JSON.stringify(data));
+                
+        //         const response = await fetch(API_URL_FOR_CLIENT_STORE, {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //             },
+        //             body: uploadFormData
+        //         });
+        
+        //         const result = await response.json();
+        //         console.log('API Response:', result); // For debugging
+        
+        //         if (result.success) {
+        //             showMessage('Employee added successfully!', 'success');
+        //             // Reset form after successful submission
+        //             setTimeout(() => {
+        //                 resetForm();
+        //             }, 2000);
+        //         } else {
+        //             showMessage(result.message || 'Failed to add employee', 'error');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         showMessage('Network error: ' + error.message, 'error');
+        //     } finally {
+        //         // Reset button state
+        //         submitBtn.innerHTML = originalText;
+        //         submitBtn.disabled = false;
+        //     }
+        // });
+        // create.php এর নিচের অংশে (লাইন ~501) এই ফাংশনটি আপডেট করুন:
+
+// Form Submission
+document.getElementById('employeeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    e.stopPropagation(); // এই লাইনটি যোগ করুন
+    
+    console.log('Form submission started...'); // Debug log
+    
+    if (!validateForm()) {
+        console.log('Form validation failed');
+        return;
+    }
+    
+    // File validation check
+    if (droppedFiles.length === 0) {
+        if (!confirm('No files uploaded. Do you want to continue without files?')) {
+            console.log('User cancelled due to no files');
+            return;
+        }
+    }
+    
+    console.log('Number of files:', droppedFiles.length); // Debug log
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
+    submitBtn.disabled = true;
+    
+    // Collect form data
+    const formData = new FormData(this);
+    
+    // Prepare data for API
+    const data = {
+        type: formData.get('type') || 'permanent',
+        full_name: formData.get('full_name'),
+        status: 'active',
+        date_of_birth: formData.get('date_of_birth'),
+        created_by: 'current_user',
+        blood_group: formData.get('blood_group'),
+        files_count: droppedFiles.length
+    };
+    
+    // Get department values
+    const departmentId = document.getElementById('selectedDepartmentId').value;
+    const departmentName = document.getElementById('departmentInput').value;
+    
+    if (departmentName) {
+        data.department = departmentName;
+        if (departmentId) {
+            data.department_id = departmentId;
+        }
+    }
+    
+    // Prepare company_related_info JSON
+    data.company_related_info = {
+        designation: formData.get('designation'),
+        company_role: formData.get('company_role'),
+        date_of_join: formData.get('date_of_join')
+    };
+    
+    // Prepare phone information
+    data.phone = {
+        primary_no: formData.get('primary_phone')
+    };
+    
+    const secondaryPhoneTypes = formData.getAll('secondary_phone_type[]');
+    const secondaryPhoneNumbers = formData.getAll('secondary_phone_number[]');
+    
+    if (secondaryPhoneTypes.length > 0) {
+        data.phone.secondary_no = secondaryPhoneTypes.map((type, index) => ({
+            type: type,
+            number: secondaryPhoneNumbers[index] || ''
+        }));
+    }
+    
+    // Prepare email information
+    data.email = {
+        primary: formData.get('primary_email')
+    };
+    
+    const secondaryEmailTypes = formData.getAll('secondary_email_type[]');
+    const secondaryEmailAddresses = formData.getAll('secondary_email_address[]');
+    
+    if (secondaryEmailTypes.length > 0) {
+        data.email.secondary = secondaryEmailTypes.map((type, index) => ({
+            type: type,
+            address: secondaryEmailAddresses[index] || ''
+        }));
+    }
+    
+    // Prepare address information
+    data.address = {
+        address_line_1: formData.get('address_line_1') || '',
+        address_line_2: formData.get('address_line_2') || '',
+        city: formData.get('city') || '',
+        state: formData.get('state') || '',
+        zip_code: formData.get('zip_code') || '',
+        country: formData.get('country') || ''
+    };
+    
+    // Prepare emergency contact information
+    data.emergency_contact = {
+        person: formData.get('emergency_contact_person') || '',
+        relation: formData.get('relation') || '',
+        phone: formData.get('emergency_phone') || '',
+        address: {
+            address_line_1: formData.get('emergency_address_line_1') || '',
+            address_line_2: formData.get('emergency_address_line_2') || '',
+            city: formData.get('emergency_city') || '',
+            state: formData.get('emergency_state') || '',
+            zip_code: formData.get('emergency_zip_code') || ''
+        }
+    };
+    
+    console.log('Data to send:', data); // Debug log
+    
+    // Create FormData for file upload
+    const uploadFormData = new FormData();
+    
+    // Add all files
+    if (droppedFiles.length > 0) {
+        console.log('Adding files to FormData...');
+        droppedFiles.forEach((file, index) => {
+            uploadFormData.append(`files[]`, file);
+            console.log(`Added file ${index + 1}:`, file.name);
         });
+    } else {
+        console.log('No files to add');
+    }
+    
+    // Add other data as JSON
+    uploadFormData.append('employee_data', JSON.stringify(data));
+    console.log('Employee data added to FormData');
+    
+    try {
+        console.log('Sending request to:', API_URL_FOR_CLIENT_STORE);
+        
+        const response = await fetch(API_URL_FOR_CLIENT_STORE, {
+            method: 'POST',
+            body: uploadFormData
+            // headers নিষ্ক্রিয় করুন, FormData নিজেই সেট করে দেয়
+        });
+
+        console.log('Response status:', response.status);
+        
+        const result = await response.json();
+        console.log('API Response:', result);
+
+        if (result.success) {
+            showMessage('Employee added successfully!', 'success');
+            // Reset form after successful submission
+            setTimeout(() => {
+                resetForm();
+            }, 2000);
+        } else {
+            showMessage(result.message || 'Failed to add employee', 'error');
+        }
+    } catch (error) {
+        console.error('Fetch Error:', error);
+        showMessage('Network error: ' + error.message, 'error');
+    } finally {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        console.log('Form submission process completed');
+    }
+});
         
         // Show Messages
         function showMessage(message, type) {
