@@ -10,7 +10,7 @@ const UIInteractions = (function () {
     
     // Accordion state
     let accordions = {
-        'working-area': false  // Default open
+        'working-area': false,  // Default open
         'finance': false       // Default open
     };
 

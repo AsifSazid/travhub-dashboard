@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_action'])) {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
         :root {
-            --primary: #4cbc80;
+            --primary: #50bc81;
             --bg: #171f3a;
             --sidebar: #1e293b;
             --accent: #4cbc80;

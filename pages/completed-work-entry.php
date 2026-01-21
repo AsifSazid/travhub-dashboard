@@ -92,7 +92,7 @@ $storeWorkApi = $ip_port . "api/works/store.php";
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
 </body>
 

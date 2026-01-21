@@ -2,21 +2,17 @@
 include_once('./authenticate.php');
 // print-invoice.php
 require_once __DIR__ . '/vendor/autoload.php';
-require __DIR__ . '../server/db_connection.php';
+require __DIR__ . '/../server/db_connection.php';
 
 session_start();
 
 // Get invoice ID from URL
-$invoice_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-
-if ($invoice_id <= 0) {
-    die("Invalid invoice ID");
-}
+$invoice_id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 try {
     // Fetch invoice using PDO (assuming db_connection.php sets up $pdo)
-    $stmt = $pdo->prepare("SELECT * FROM invoices WHERE id = :id");
-    $stmt->execute([':id' => $invoice_id]);
+    $stmt = $pdo->prepare("SELECT * FROM invoices WHERE sys_id = :sys_id");
+    $stmt->execute([':sys_id' => $invoice_id]);
     $invoice = $stmt->fetch();
 
     if (!$invoice) {
@@ -328,7 +324,7 @@ ob_start();
             </tr>
             <tr>
                 <td rowspan="3" style="width: 12%; border:none;">
-                    <img src="./assets/img/travhub.png" width="65" alt="Company Logo">
+                    <img src="../assets/images/logo/round-logo.png" width="65" alt="Company Logo">
                 </td>
                 <td style="width: 30%; border:none;">
                     <div style="font-weight:bold;" class="sub-title">

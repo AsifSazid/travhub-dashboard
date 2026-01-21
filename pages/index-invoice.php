@@ -408,7 +408,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
 
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script>
         // Configuration
         const API_URL = "<?php echo $allInvoice; ?>";
@@ -1060,7 +1060,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 const dueDate = new Date(invoice.due_date);
                 const now = new Date();
                 const isOverdue = invoice.status === 'overdue';
-                
+
                 html += `
                     <div class="invoice-card bg-white border border-gray-200 rounded-lg p-5 hover:border-green-300 fade-in mb-4">
                         <div class="flex flex-col md:flex-row justify-between gap-4">
@@ -1140,23 +1140,23 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             <!-- Action Buttons -->
                             <div class="md:w-48 flex md:flex-col gap-2">
                                 <button class="download-btn bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="downloadInvoice('${invoice.id}')">
+                                        onclick="downloadInvoice('${invoice.invoice_no}')">
                                     <i class="fas fa-download mr-2"></i>
                                     <span>Download</span>
                                 </button>
                                 <button class="edit-btn bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="editInvoice('${invoice.id}')">
+                                        onclick="editInvoice('${invoice.invoice_no}')">
                                     <i class="fas fa-pencil mr-2"></i>
                                     <span>Edit</span>
                                 </button>
                                 <button class="send-btn bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="sendInvoiceOptions('${invoice.id}', '${escapeHtml(invoice.client_email)}', '${escapeHtml(invoice.phone)}')">
+                                        onclick="sendInvoiceOptions('${invoice.invoice_no}', '${escapeHtml(invoice.client_email)}', '${escapeHtml(invoice.phone)}')">
                                     <i class="fas fa-paper-plane mr-2"></i>
                                     <span>Send</span>
                                 </button>
                                 ${invoice.status !== 'paid' ? `
                                     <button class="mark-paid-btn bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                            onclick="markAsPaid('${invoice.id}')">
+                                            onclick="markAsPaid('${invoice.invoice_no}')">
                                         <i class="fas fa-check-circle mr-2"></i>
                                         <span>Mark Paid</span>
                                     </button>

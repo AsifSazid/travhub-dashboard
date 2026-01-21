@@ -120,112 +120,112 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
         <div class="p-6">
-            <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-6 bg-white rounded-lg shadow p-4">
-                    <!-- Header Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                            <div>
-                                <div class="flex items-center mb-2">
-                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h1 class="text-2xl font-bold text-gray-800">Add New Employee</h1>
-                                        <p class="text-gray-600 text-sm mt-1">Fill in the details below to add a new employee to the system</p>
-                                    </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <!-- Header Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div>
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h1 class="text-2xl font-bold text-gray-800">Add New Employee</h1>
+                                    <p class="text-gray-600 text-sm mt-1">Fill in the details below to add a new employee to the system</p>
                                 </div>
                             </div>
-                            <!--<div class="bg-gray-50 p-4 rounded-lg border border-gray-200 min-w-[200px]">-->
-                            <!--    <div class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Employee ID</div>-->
-                            <!--    <div class="text-lg font-semibold text-gray-800" id="previewId">EMP-XXXXXXX</div>-->
-                            <!--</div>-->
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 min-w-[200px]">
+                            <div class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Employee ID</div>
+                            <div class="text-lg font-semibold text-gray-800" id="previewId">EMP-XXXXXXX</div>
                         </div>
                     </div>
-    
-                    <!-- Success/Error Messages -->
-                    <div id="messageContainer" class="hidden mb-6 animate-slide-in">
-                        <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                <span id="successText"></span>
-                            </div>
-                        </div>
-                        <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                </svg>
-                                <span id="errorText"></span>
-                            </div>
+                </div>
+
+                <!-- Success/Error Messages -->
+                <div id="messageContainer" class="hidden my-6 animate-slide-in">
+                    <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="successText"></span>
                         </div>
                     </div>
-    
-                    <!-- Employee Form -->
-                    <form id="employeeForm" class="space-y-6">
-                        <!-- Employee Type Selection -->
-                        <div class="form-section p-5">
-                            <h2 class="section-title">Employment Type</h2>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                                <?php
-                                $employeeTypes = [
-                                    'permanent' => ['label' => 'Permanent', 'icon' => 'fas fa-user-tie', 'color' => 'green'],
-                                    'commission-agent' => ['label' => 'Commission Agent', 'icon' => 'fas fa-file-contract', 'color' => 'blue'],
-                                    'part-time' => ['label' => 'Part Time', 'icon' => 'fas fa-clock', 'color' => 'purple'],
-                                    'provisional' => ['label' => 'Provisional', 'icon' => 'fas fa-hourglass-half', 'color' => 'yellow'],
-                                    'intern' => ['label' => 'Intern', 'icon' => 'fas fa-graduation-cap', 'color' => 'indigo']
-                                ];
-                                
-                                foreach ($employeeTypes as $value => $info):
-                                ?>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="type" value="<?php echo $value; ?>" 
-                                        class="sr-only peer" <?php echo $value === 'permanent' ? 'checked' : ''; ?>>
-                                    <div class="p-4 border border-gray-300 rounded-lg bg-white peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-200 hover:border-gray-400">
-                                        <div class="flex flex-col items-center text-center">
-                                            <div class="w-10 h-10 rounded-full bg-<?php echo $info['color']; ?>-100 flex items-center justify-center mb-2">
-                                                <i class="<?php echo $info['icon']; ?> text-<?php echo $info['color']; ?>-600 text-lg"></i>
+                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="errorText"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employee Form -->
+                <form id="employeeForm" class="space-y-6">
+                    <!-- Employee Type Selection -->
+                    <div class="form-section p-5">
+                        <h2 class="section-title">Employment Type</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4">
+                            <?php
+                            $employeeTypes = [
+                                'permanent' => ['label' => 'Permanent', 'icon' => 'fas fa-user-tie', 'color' => 'green'],
+                                'commission-agent' => ['label' => 'Commission Agent', 'icon' => 'fas fa-file-contract', 'color' => 'blue'],
+                                'part-time' => ['label' => 'Part Time', 'icon' => 'fas fa-clock', 'color' => 'purple'],
+                                'provisional' => ['label' => 'Provisional', 'icon' => 'fas fa-hourglass-half', 'color' => 'yellow'],
+                                'intern' => ['label' => 'Intern', 'icon' => 'fas fa-graduation-cap', 'color' => 'indigo']
+                            ];
+                            
+                            foreach ($employeeTypes as $value => $info):
+                            ?>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="<?php echo $value; ?>" 
+                                    class="sr-only peer" <?php echo $value === 'permanent' ? 'checked' : ''; ?>>
+                                <div class="p-4 border border-gray-300 rounded-lg bg-white peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-200 hover:border-gray-400">
+                                    <div class="flex flex-col items-center text-center">
+                                        <div class="w-10 h-10 rounded-full bg-<?php echo $info['color']; ?>-100 flex items-center justify-center mb-2">
+                                            <i class="<?php echo $info['icon']; ?> text-<?php echo $info['color']; ?>-600 text-lg"></i>
+                                        </div>
+                                        <span class="font-medium text-gray-800 text-sm"><?php echo $info['label']; ?></span>
+                                    </div>
+                                </div>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <!-- Main Form Content -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4">
+                    
+                        <!-- ================= Column 1: Personal & Contact ================= -->
+                        <div class="space-y-6">
+                    
+                            <!-- Personal Information -->
+                            <div class="form-card p-2 lg:p-4">
+                                <h2 class="section-title flex items-center mb-4">
+                                    <i class="fas fa-user-circle mr-2 text-blue-600"></i>
+                                    Personal Information
+                                </h2>
+                    
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label for="fullName" class="form-label mb-1">
+                                            Full Name <span class="required-star">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" id="fullName" name="full_name"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="John Doe" required>
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-user text-gray-400"></i>
                                             </div>
-                                            <span class="font-medium text-gray-800 text-sm"><?php echo $info['label']; ?></span>
                                         </div>
                                     </div>
-                                </label>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-    
-                        <!-- Main Form Content -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        
-                            <!-- ================= Column 1: Personal & Contact ================= -->
-                            <div class="space-y-6">
-                        
-                                <!-- Personal Information -->
-                                <div class="form-card p-5 lg:p-6">
-                                    <h2 class="section-title flex items-center mb-4">
-                                        <i class="fas fa-user-circle mr-2 text-blue-600"></i>
-                                        Personal Information
-                                    </h2>
-                        
-                                    <div class="grid grid-cols-1 gap-4">
-                                        <div>
-                                            <label for="fullName" class="form-label mb-1">
-                                                Full Name <span class="required-star">*</span>
-                                            </label>
-                                            <div class="relative">
-                                                <input type="text" id="fullName" name="full_name"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="John Doe" required>
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <i class="fas fa-user text-gray-400"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                        
+                    
+                                    <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label for="dateOfBirth" class="form-label mb-1">
                                                 Date of Birth
@@ -239,321 +239,321 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                        
-                                <!-- Contact Information -->
-                                <div class="form-card p-5 lg:p-6">
-                                    <h2 class="section-title flex items-center mb-4">
-                                        <i class="fas fa-address-book mr-2 text-blue-600"></i>
-                                        Contact Information
-                                    </h2>
-                        
-                                    <div class="grid grid-cols-1 gap-4">
                                         <div>
-                                            <label class="form-label mb-1">
-                                                Primary Phone <span class="required-star">*</span>
-                                            </label>
-                                            <div class="relative">
-                                                <input type="tel" id="primaryPhone" name="primary_phone"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="+1 (555) 123-4567" required>
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <i class="fas fa-phone text-gray-400"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                        
-                                        <div>
-                                            <label class="form-label mb-1">
-                                                Primary Email <span class="required-star">*</span>
-                                            </label>
-                                            <div class="relative">
-                                                <input type="email" id="primaryEmail" name="primary_email"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="john.doe@company.com" required>
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <i class="fas fa-envelope text-gray-400"></i>
-                                                </div>
-                                            </div>
+                                            <?php include('./form-selects/blood-groups.php') ?>
                                         </div>
                                     </div>
                                 </div>
-                        
+                    
+                            <!-- Contact Information -->
+                                <h2 class="section-title flex items-center my-4">
+                                    <i class="fas fa-address-book mr-2 text-blue-600"></i>
+                                    Contact Information
+                                </h2>
+                    
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="form-label mb-1">
+                                            Primary Phone <span class="required-star">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="tel" id="primaryPhone" name="primary_phone"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="+1 (555) 123-4567" required>
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-phone text-gray-400"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                    
+                                    <div>
+                                        <label class="form-label mb-1">
+                                            Primary Email <span class="required-star">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="email" id="primaryEmail" name="primary_email"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="john.doe@company.com" required>
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-envelope text-gray-400"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        
-                            <!-- ================= Column 2: Company ================= -->
-                            <div class="space-y-6">
-                        
-                                <div class="form-card p-5 lg:p-6">
-                                    <h2 class="section-title flex items-center mb-4">
-                                        <i class="fas fa-building mr-2 text-blue-600"></i>
-                                        Company Information
-                                    </h2>
-                        
-                                    <div class="grid grid-cols-1 gap-4">
-                                        <div>
-                                            <label for="designation" class="form-label mb-1">
-                                                Department <span class="required-star">*</span>
-                                            </label>
-                                            <div id="departmentSearchContainer" class="relative w-full">
-                                                <input
-                                                    type="text"
-                                                    id="departmentInput"
-                                                    placeholder="Search for a department..."
-                                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                                                    autocomplete="off">
-                                            
-                                                <ul id="departmentDropdown"
-                                                    class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto shadow-lg hidden z-50">
-                                                </ul>
+                    
+                        </div>
+                    
+                        <!-- ================= Column 2: Company ================= -->
+                        <div class="space-y-6">
+                    
+                            <div class="form-card p-2 lg:p-4">
+                                <h2 class="section-title flex items-center mb-4">
+                                    <i class="fas fa-building mr-2 text-blue-600"></i>
+                                    Company Information
+                                </h2>
+                    
+                                <div class="grid grid-cols-1 gap-4">
+                                    <?php include('./form-selects/departments.php') ?>
+                                    
+                                    <div>
+                                        <label for="designation" class="form-label mb-1">
+                                            Designation <span class="required-star">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" id="designation" name="designation"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Software Engineer" required>
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-briefcase text-gray-400"></i>
                                             </div>
                                         </div>
-                                        
-                                        <div>
-                                            <label for="designation" class="form-label mb-1">
-                                                Designation <span class="required-star">*</span>
-                                            </label>
-                                            <div class="relative">
-                                                <input type="text" id="designation" name="designation"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="Software Engineer" required>
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <i class="fas fa-briefcase text-gray-400"></i>
-                                                </div>
+                                    </div>
+                    
+                                    <div>
+                                        <label for="companyRole" class="form-label mb-1">
+                                            Company Role <span class="required-star">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <textarea id="companyRole" name="company_role" rows="3"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                                placeholder="Describe the employee's role..." required></textarea>
+                                            <div class="absolute top-3 left-3">
+                                                <i class="fas fa-tasks text-gray-400"></i>
                                             </div>
                                         </div>
-                        
-                                        <div>
-                                            <label for="companyRole" class="form-label mb-1">
-                                                Company Role <span class="required-star">*</span>
-                                            </label>
-                                            <div class="relative">
-                                                <textarea id="companyRole" name="company_role" rows="3"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                                    placeholder="Describe the employee's role..." required></textarea>
-                                                <div class="absolute top-3 left-3">
-                                                    <i class="fas fa-tasks text-gray-400"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                        
-                                        <div>
-                                            <label for="dateOfJoin" class="form-label mb-1">
-                                                Date of Join <span class="required-star">*</span>
-                                            </label>
-                                            <div class="relative">
-                                                <input type="date" id="dateOfJoin" name="date_of_join"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <i class="fas fa-calendar-check text-gray-400"></i>
-                                                </div>
+                                    </div>
+                    
+                                    <div>
+                                        <label for="dateOfJoin" class="form-label mb-1">
+                                            Date of Join <span class="required-star">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="date" id="dateOfJoin" name="date_of_join"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-calendar-check text-gray-400"></i>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                        
                             </div>
-                        
-                            <!-- ================= Column 3: Address & Additional ================= -->
-                            <div class="space-y-6">
-                        
-                                <!-- Address -->
-                                <div class="form-card p-5 lg:p-6">
-                                    <h2 class="section-title flex items-center mb-4">
-                                        <i class="fas fa-map-marker-alt mr-2 text-blue-600"></i>
-                                        Address Information
-                                    </h2>
-                        
-                                    <div class="grid grid-cols-1 gap-4">
+                    
+                        </div>
+                    
+                        <!-- ================= Column 3: Address & Additional ================= -->
+                        <div class="space-y-6">
+                    
+                            <!-- Address -->
+                            <div class="form-card p-2 lg:p-4">
+                                <h2 class="section-title flex items-center mb-4">
+                                    <i class="fas fa-map-marker-alt mr-2 text-blue-600"></i>
+                                    Address Information
+                                </h2>
+                    
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="form-label mb-1">Address Line 1</label>
+                                        <div class="relative">
+                                            <input type="text" name="address_line_1"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Street address">
+                                            <i class="fas fa-road absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                        </div>
+                                    </div>
+                    
+                                    <div>
+                                        <label class="form-label mb-1">Address Line 2</label>
+                                        <div class="relative">
+                                            <input type="text" name="address_line_2"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Apartment, suite">
+                                            <i class="fas fa-home absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                        </div>
+                                        </div>
+                                    </div>
+                    
+                                    <div class="grid grid-cols-2 gap-3 mt-4">
                                         <div>
-                                            <label class="form-label mb-1">Address Line 1</label>
+                                            <label class="form-label mb-1">City</label>
                                             <div class="relative">
-                                                <input type="text" name="address_line_1"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="Street address">
-                                                <i class="fas fa-road absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                                <input type="text" name="city" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <i class="fa-solid fa-city absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                             </div>
-                                        </div>
-                        
-                                        <div>
-                                            <label class="form-label mb-1">Address Line 2</label>
+                                        <div class="mt-4">
+                                            <label class="form-label mb-1">State</label>
                                             <div class="relative">
-                                                <input type="text" name="address_line_2"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="Apartment, suite">
-                                                <i class="fas fa-home absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                                <input type="text" name="state" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <i class="fa-solid fa-globe absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                             </div>
                                         </div>
-                        
-                                        <div class="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label class="form-label mb-1">City</label>
-                                                <input type="text" name="city" class="form-input">
-                                            </div>
-                                            <div>
-                                                <label class="form-label mb-1">State</label>
-                                                <input type="text" name="state" class="form-input">
-                                            </div>
-                                        </div>
-                        
-                                        <div>
-                                            <label class="form-label mb-1">ZIP Code</label>
-                                            <input type="text" name="zip_code" class="form-input">
+                                    </div>
+                    
+                                    <div>
+                                        <label class="form-label mb-1">ZIP Code</label>
+                                        <div class="relative">
+                                            <input type="text" name="zip_code" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <i class="fa-solid fa-signs-post absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                         </div>
                                     </div>
                                 </div>
-                        
+
                                 <!-- Additional Contacts -->
-                                <div class="form-card p-5 lg:p-6">
-                                    <h3 class="text-md font-semibold text-gray-700 mb-3">
-                                        Additional Contacts
-                                    </h3>
-                        
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="form-label text-sm mb-2 block">
+                                <h3 class="text-md font-semibold text-gray-700 mt-4 mb-3">
+                                    Additional Contacts
+                                </h3>
+                    
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="form-label text-sm block mb-0">
                                                 Secondary Phones
                                             </label>
-                                            <div id="secondaryPhoneContainer" class="space-y-2"></div>
-                                            <button type="button"
-                                                class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium inline-flex items-center">
+                                            <button type="button" onclick="addSecondaryPhone()"
+                                                class="text-sm text-blue-600 hover:text-blue-800 font-medium inline-flex items-center">
                                                 <i class="fas fa-plus-circle mr-1"></i> Add Phone
                                             </button>
                                         </div>
-                        
-                                        <div>
+                                        
+                                        <div id="secondaryPhoneContainer" class="space-y-2"></div>
+                                    </div>
+                    
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
                                             <label class="form-label text-sm mb-2 block">
                                                 Secondary Emails
                                             </label>
-                                            <div id="secondaryEmailContainer" class="space-y-2"></div>
-                                            <button type="button"
+                                            <button type="button" onclick="addSecondaryEmail()"
                                                 class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium inline-flex items-center">
                                                 <i class="fas fa-plus-circle mr-1"></i> Add Email
                                             </button>
                                         </div>
+                                        <div id="secondaryEmailContainer" class="space-y-2"></div>
                                     </div>
                                 </div>
-                        
                             </div>
-                        
+                    
                         </div>
+                        
+                        <!-- ================= Column 4: Emergency Contact ================= -->
+                        <div class="space-y-6">
+                    
+                            <!-- Address -->
+                            <div class="form-card p-2 lg:p-4">
+                                <h2 class="section-title flex items-center mb-4">
+                                    <i class="fa-solid fa-circle-exclamation mr-2 text-blue-600"></i>
+                                    Emergency Contact
+                                </h2>
+                    
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="form-label mb-1">Emergency Contact Person</label>
+                                        <div class="relative">
+                                            <input type="text" name="emergency_contact_person"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Emergency Contact Person">
+                                            <i class="fas fa-user absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="form-label mb-1">Relationship</label>
+                                            <div class="relative">
+                                                <input type="text" name="relation" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <i class="fa-solid fa-users absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label mb-1">Phone No</label>
+                                            <div class="relative">
+                                                <input type="text" name="emergency_phone" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <i class="fa-solid fa-phone absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="form-label mb-1">Address Line 1</label>
+                                        <div class="relative">
+                                            <input type="text" name="emergency_address_line_1"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Street address">
+                                            <i class="fas fa-road absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                        </div>
+                                    </div>
+                    
+                                    <div>
+                                        <label class="form-label mb-1">Address Line 2</label>
+                                        <div class="relative">
+                                            <input type="text" name="emergency_address_line_2"
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Apartment, suite">
+                                            <i class="fas fa-home absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="form-label mb-1">City</label>
+                                            <div class="relative">
+                                                <input type="text" name="emergency_city" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <i class="fa-solid fa-city absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label mb-1">State</label>
+                                            <div class="relative">
+                                                <input type="text" name="emergency_state" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <i class="fa-solid fa-globe absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                    
+                                    <div>
+                                        <label class="form-label mb-1">ZIP Code</label>
+                                        <div class="relative">
+                                            <input type="text" name="emergency_zip_code" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <i class="fa-solid fa-signs-post absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                    </div>
 
-    
-                        <!-- Form Actions -->
-                        <div class="space-x-3 pt-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div class="text-sm text-gray-500">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Fields marked with <span class="required-star">*</span> are required
-                            </div>
-                            <div class="flex space-x-3">
-                                <button type="button" onclick="resetForm()"
-                                    class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                    <i class="fas fa-redo mr-2"></i>
-                                    Reset
-                                </button>
-                                <button type="submit"
-                                    class="px-6 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    <i class="fas fa-user-plus mr-2"></i>
-                                    Add Employee
-                                </button>
-                            </div>
+                    <!-- Hidden fields for department and blood group -->
+                    <input type="hidden" id="selectedDepartmentId" name="department_id">
+                    <input type="hidden" id="selectedBloodGroupValue" name="blood_group">
+
+                    <!-- Form Actions -->
+                    <div class="space-x-3 pt-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Fields marked with <span class="required-star">*</span> are required
                         </div>
-                        <!--<div class="form-section p-5 mt-6">-->
-                        <!--    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">-->
-                        <!--    </div>-->
-                        <!--</div>-->
-                    </form>
-                </div>
+                        <div class="flex space-x-3">
+                            <button type="button" onclick="resetForm()"
+                                class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                <i class="fas fa-redo mr-2"></i>
+                                Reset
+                            </button>
+                            <button type="submit"
+                                class="px-6 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-user-plus mr-2"></i>
+                                Add Employee
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </main>
     
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
-        let departmentData = [
-            { id: 1, name: 'Management' },
-            { id: 2, name: 'Visa' },
-            { id: 3, name: 'Package' },
-            { id: 4, name: 'Ticket' },
-            { id: 5, name: 'IT' },
-            { id: 6, name: 'Student' },
-            { id: 7, name: 'Medical' },
-            { id: 8, name: 'Account' }
-        ];
-        const departmentInput = document.getElementById('departmentInput');
-        const departmentDropdown = document.getElementById('departmentDropdown');
-        const departmentContainer = document.getElementById('departmentSearchContainer');
-        
-        /* Typing */
-        let departmentTypingTimer;
-        departmentInput.addEventListener('input', () => {
-            clearTimeout(departmentTypingTimer);
-            departmentTypingTimer = setTimeout(() => {
-                const value = departmentInput.value.toLowerCase().trim();
-        
-                const filtered = value === ''
-                    ? departmentData
-                    : departmentData.filter(d =>
-                        d.name?.toLowerCase().includes(value) ||
-                        d.sys_id?.toLowerCase().includes(value)
-                    );
-        
-                renderDepartmentDropdown(filtered);
-                departmentDropdown.classList.remove('hidden');
-            }, 300);
-        });
-        
-        /* Focus */
-        departmentInput.addEventListener('focus', () => {
-            renderDepartmentDropdown(departmentData);
-            departmentDropdown.classList.remove('hidden');
-        });
-        
-        function renderDepartmentDropdown(list) {
-            departmentDropdown.innerHTML = '';
-        
-            if (!list.length) {
-                departmentDropdown.innerHTML =
-                    `<li class="px-4 py-3 text-center text-gray-500">No clients found</li>`;
-                return;
-            }
-        
-            list.forEach(department => {
-                console.log(department);
-                const li = document.createElement('li');
-                li.className =
-                    "px-4 py-3 cursor-pointer hover:bg-purple-50 border-b last:border-b-0";
-        
-                li.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-purple-600 rounded-full text-white flex items-center justify-center font-semibold">
-                            ${department.name?.charAt(0).toUpperCase() ?? 'C'}
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <div class="font-medium">${department.name}</div>
-                        </div>
-                    </div>
-                `;
-        
-                li.onclick = () => {
-                    departmentInput.value = `${department.id} | ${department.name}`;
-                    departmentDropdown.classList.add('hidden');
-                };
-        
-                departmentDropdown.appendChild(li);
-            });
-        }
-        
-        /* Outside click */
-        document.addEventListener('click', e => {
-            if (!departmentContainer.contains(e.target)) {
-                departmentDropdown.classList.add('hidden');
-            }
-        });
-
-
         const API_URL_FOR_CLIENT_STORE = "<?php echo $storeEmployeeApi; ?>";
 
         // Initialize date inputs
@@ -630,6 +630,8 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
             const designation = document.getElementById('designation').value.trim();
             const companyRole = document.getElementById('companyRole').value.trim();
             const dateOfJoin = document.getElementById('dateOfJoin').value;
+            const department = document.getElementById('departmentInput').value.trim();
+            const bloodGroup = document.getElementById('bloodGroupInput').value.trim();
 
             if (!fullName) {
                 showMessage('Full name is required', 'error');
@@ -646,6 +648,11 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                 document.getElementById('primaryEmail').focus();
                 return false;
             }
+            if (!department) {
+                showMessage('Department is required', 'error');
+                document.getElementById('departmentInput').focus();
+                return false;
+            }
             if (!designation) {
                 showMessage('Designation is required', 'error');
                 document.getElementById('designation').focus();
@@ -659,6 +666,11 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
             if (!dateOfJoin) {
                 showMessage('Date of join is required', 'error');
                 document.getElementById('dateOfJoin').focus();
+                return false;
+            }
+            if (!bloodGroup) {
+                showMessage('Blood group is required', 'error');
+                document.getElementById('bloodGroupInput').focus();
                 return false;
             }
 
@@ -682,19 +694,28 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
             // Collect form data
             const formData = new FormData(this);
             
+            // Debug: Log all form data
+            console.log('Form Data:', Object.fromEntries(formData));
+            
             // Prepare data for API
             const data = {
                 type: formData.get('type') || 'permanent',
                 full_name: formData.get('full_name'),
                 status: 'active',
                 date_of_birth: formData.get('date_of_birth'),
-                created_by: 'current_user' // Replace with actual user from session
+                created_by: 'current_user', // Replace with actual user from session
+                blood_group: formData.get('blood_group') // Add blood group
             };
         
-            // Get department value
-            const departmentInput = document.getElementById('departmentInput').value;
-            if (departmentInput) {
-                data.department = departmentInput;
+            // Get department values from hidden fields
+            const departmentId = document.getElementById('selectedDepartmentId').value;
+            const departmentName = document.getElementById('departmentInput').value;
+            
+            if (departmentName) {
+                data.department = departmentName;
+                if (departmentId) {
+                    data.department_id = departmentId;
+                }
             }
         
             // Prepare company_related_info JSON
@@ -744,6 +765,20 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                 country: formData.get('country') || ''
             };
         
+            // Prepare emergency contact information
+            data.emergency_contact = {
+                person: formData.get('emergency_contact_person') || '',
+                relation: formData.get('relation') || '',
+                phone: formData.get('emergency_phone') || '',
+                address: {
+                    address_line_1: formData.get('emergency_address_line_1') || '',
+                    address_line_2: formData.get('emergency_address_line_2') || '',
+                    city: formData.get('emergency_city') || '',
+                    state: formData.get('emergency_state') || '',
+                    zip_code: formData.get('emergency_zip_code') || ''
+                }
+            };
+        
             console.log('Data to send:', data); // For debugging
         
             // Send to server
@@ -757,7 +792,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                 });
         
                 const result = await response.json();
-                console.log('Response:', result); // For debugging
+                console.log('API Response:', result); // For debugging
         
                 if (result.success) {
                     showMessage('Employee added successfully!', 'success');
@@ -778,55 +813,6 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
             }
         });
         
-        // Form Validation function-এ department validation যোগ করুন
-        function validateForm() {
-            const fullName = document.getElementById('fullName').value.trim();
-            const primaryPhone = document.getElementById('primaryPhone').value.trim();
-            const primaryEmail = document.getElementById('primaryEmail').value.trim();
-            const designation = document.getElementById('designation').value.trim();
-            const companyRole = document.getElementById('companyRole').value.trim();
-            const dateOfJoin = document.getElementById('dateOfJoin').value;
-            const department = document.getElementById('departmentInput').value.trim();
-        
-            if (!fullName) {
-                showMessage('Full name is required', 'error');
-                document.getElementById('fullName').focus();
-                return false;
-            }
-            if (!primaryPhone) {
-                showMessage('Primary phone is required', 'error');
-                document.getElementById('primaryPhone').focus();
-                return false;
-            }
-            if (!primaryEmail) {
-                showMessage('Primary email is required', 'error');
-                document.getElementById('primaryEmail').focus();
-                return false;
-            }
-            if (!department) {
-                showMessage('Department is required', 'error');
-                document.getElementById('departmentInput').focus();
-                return false;
-            }
-            if (!designation) {
-                showMessage('Designation is required', 'error');
-                document.getElementById('designation').focus();
-                return false;
-            }
-            if (!companyRole) {
-                showMessage('Company role is required', 'error');
-                document.getElementById('companyRole').focus();
-                return false;
-            }
-            if (!dateOfJoin) {
-                showMessage('Date of join is required', 'error');
-                document.getElementById('dateOfJoin').focus();
-                return false;
-            }
-        
-            return true;
-        }
-
         // Show Messages
         function showMessage(message, type) {
             const container = document.getElementById('messageContainer');
@@ -867,6 +853,11 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                 
                 // Reset department input
                 document.getElementById('departmentInput').value = '';
+                document.getElementById('selectedDepartmentId').value = '';
+                
+                // Reset blood group input
+                document.getElementById('bloodGroupInput').value = '';
+                document.getElementById('selectedBloodGroupValue').value = '';
                 
                 // Set default employee type to permanent
                 document.querySelector('input[name="type"][value="permanent"]').checked = true;

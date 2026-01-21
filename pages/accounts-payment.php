@@ -201,7 +201,7 @@ $base_ip_path = trim($ip_port, "/");
 
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function () {

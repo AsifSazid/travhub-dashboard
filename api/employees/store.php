@@ -24,6 +24,9 @@ if (!$data) {
     exit;
 }
 
+// Log received data for debugging
+error_log('Received employee data: ' . print_r($data, true));
+
 // Validate required fields
 $requiredFields = ['full_name', 'phone', 'email', 'company_related_info'];
 foreach ($requiredFields as $field) {
@@ -54,10 +57,6 @@ if (!isset($data['email']['primary'])) {
 }
 
 try {
-    // Generate UUID and employee ID
-    $uuid = generateUUID();
-    $sys_id = generateEmployeeId();
-    
     // Get current user from session
     $createdBy = $_SESSION['user_name'] ?? ($_SESSION['username'] ?? 'system');
     
@@ -67,22 +66,22 @@ try {
         $createdBy
     );
     
-    // Extract department info from department input
+    // Extract department info
     $department = null;
     $department_id = null;
-    
+    $dateOfJoin = $data['company_related_info']['date_of_join'];    
+
     if (!empty($data['department'])) {
-        // Check if department input contains ID and name format (e.g., "1 | Management")
-        if (strpos($data['department'], '|') !== false) {
-            $parts = explode('|', $data['department']);
-            if (count($parts) >= 2) {
-                $department_id = trim($parts[0]);
-                $department = trim($parts[1]);
-            }
-        } else {
-            $department = $data['department'];
-        }
+        $department = $data['department'];
     }
+    
+    if (!empty($data['department_id'])) {
+        $department_id = $data['department_id'];
+    }
+    
+    // Generate UUID and employee ID
+    $uuid = generateUUID();
+    $sys_id = generateEmployeeId($department_id, $dateOfJoin);
     
     // Create employee folder
     $cleanSysId = preg_replace('/\s+/u', '', $sys_id);
@@ -108,11 +107,6 @@ try {
         if ($department_id) {
             $companyRelatedInfo['department_id'] = $department_id;
         }
-    }
-    
-    // Add date of birth if provided
-    if (!empty($data['date_of_birth'])) {
-        $companyRelatedInfo['date_of_birth'] = $data['date_of_birth'];
     }
     
     // Prepare phone data for JSON storage
@@ -148,29 +142,45 @@ try {
         ];
     }
     
-    // Prepare basic_info (can include date of birth)
+    // Prepare emergency contact data for JSON storage
+    $emergencyContactData = [];
+    if (!empty($data['emergency_contact'])) {
+        $emergencyContactData = [
+            'person' => $data['emergency_contact']['person'] ?? '',
+            'relation' => $data['emergency_contact']['relation'] ?? '',
+            'phone' => $data['emergency_contact']['phone'] ?? '',
+            'address' => $data['emergency_contact']['address'] ?? []
+        ];
+    }
+    
+    // Prepare basic_info
     $basicInfo = [];
     if (!empty($data['date_of_birth'])) {
         $basicInfo['date_of_birth'] = $data['date_of_birth'];
     }
+    if (!empty($data['blood_group'])) {
+        $basicInfo['blood_group'] = $data['blood_group'];
+    }
     
-    // Prepare SQL
+    // Prepare SQL - REMOVED EXTRA COMMA at the end
     $stmt = $pdo->prepare("
         INSERT INTO employees (
             uuid,
             sys_id, 
             type, 
             department_id,
+            department,
             name, 
             phone, 
             email, 
             address,
             basic_info,
             company_related_info,
+            emergency_contact,
             status, 
-            meta_data,
+            meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Execute
@@ -179,12 +189,14 @@ try {
         $sys_id,
         $data['type'] ?? 'permanent',
         $department_id,
+        $department,
         $data['full_name'],
         json_encode($phoneData, JSON_UNESCAPED_UNICODE),
         json_encode($emailData, JSON_UNESCAPED_UNICODE),
         json_encode($addressData, JSON_UNESCAPED_UNICODE),
         json_encode($basicInfo, JSON_UNESCAPED_UNICODE),
         json_encode($companyRelatedInfo, JSON_UNESCAPED_UNICODE),
+        json_encode($emergencyContactData, JSON_UNESCAPED_UNICODE),
         $data['status'] ?? 'active',
         $metaDataJson
     ]);

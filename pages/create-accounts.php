@@ -528,7 +528,7 @@ include_once('./authenticate.php');
 
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         // Data structure for the dynamic categories

@@ -102,7 +102,7 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const API_URL_FOR_ALL_CLIENTS = "<?php echo $storeAllClientApi; ?>";

@@ -527,7 +527,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         </button>
     </div>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const GET_CLIENT_API = "<?php echo $getClientsApi; ?>";

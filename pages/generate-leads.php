@@ -716,7 +716,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
         </div>
     </div>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <!-- Custom JavaScript -->
     <script>
         const API_LEAD_STORE = "<?php echo $leadStore; ?>";

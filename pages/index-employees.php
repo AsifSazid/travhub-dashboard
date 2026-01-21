@@ -85,6 +85,7 @@ $allEmployee = $ip_port . "api/employees/all-employees.php";
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Name</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone No</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
@@ -97,17 +98,39 @@ $allEmployee = $ip_port . "api/employees/all-employees.php";
             </div>
         </div>
     </main>
+    
+    <!-- Modal Template -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 hidden modal-overlay">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 modal-slide-in">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Add New Item</h3>
+                    <button id="modalClose" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="mb-6" id="modalContent">
+                    <!-- Modal content will be inserted here -->
+                    <p>Modal content goes here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const API_URL_FOR_ALL_CLIENTS = "<?php echo $allEmployee; ?>";
 
         // Employee
         const tableBody = document.getElementById('employeeTableBody');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        const modalClose = document.getElementById('modalClose');
 
         let employeesData = [];
         fetch(API_URL_FOR_ALL_CLIENTS)
@@ -163,48 +186,56 @@ $allEmployee = $ip_port . "api/employees/all-employees.php";
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${employee.department_name || 'Unknown'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${employee.type || 'Unknown'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <a href="show-employees.php?employee_id=${employee.sys_id}" title="Details">
                             <i class="fas fa-eye"></i>
                         </a>
+                        <button onclick='viewFirstCredentials(${JSON.stringify(employee)})' title="Details">
+                            <i class="fa-solid fa-key ml-3"></i>
+                        </button>
                     </td>
                 `;
         
                 tableBody.appendChild(tr);
             });
         }
-
-
-        function toggleVendor(employeeId, checkbox) {
-            const url = checkbox.checked ?
-                API_URL_FOR_VENDOR_STORE :
-                API_URL_FOR_VENDOR_REMOVE;
-
-            fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        employee_id: employeeId
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Vendor added successfully');
-                    } else {
-                        alert('Failed to add vendor');
-                        checkbox.checked = false;
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    checkbox.checked = false;
-                    alert('Something went wrong');
-                });
+        
+        function viewFirstCredentials(employee) {
+            modalOverlay.classList.remove('hidden'); // 🔥 THIS
+            modalOverlay.classList.add('flex');
+        
+            const emailObj = JSON.parse(employee.email || '{}');
+            const primaryEmail = emailObj.primary || 'N/A';
+            
+            modalTitle.innerHTML = "First Time Credentials"
+        
+            modalContent.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Employee ID</p>
+                        <p class="text-lg font-semibold text-gray-800">${employee.sys_id}</p>
+                    </div>
+        
+                    <div>
+                        <p class="text-sm text-gray-500">Email</p>
+                        <p class="text-lg font-semibold text-gray-800">${primaryEmail}</p>
+                    </div>
+        
+                    <div class="pt-3 border-t">
+                        <p class="text-xs text-red-500">
+                            ⚠️ Password security reasons এর জন্য দেখানো হচ্ছে না
+                        </p>
+                    </div>
+                </div>
+            `;
         }
+
+        modalClose.addEventListener('click', () => {
+            modalOverlay.classList.add('hidden');
+            modalOverlay.classList.remove('flex');
+        });
     </script>
 </body>
 

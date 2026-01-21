@@ -457,14 +457,14 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
 
     <!-- Custom JavaScript Library -->
     <script>
-        const API_URL_FOR_ALL_LEADS  = "<?php echo $getAllLeadsApi; ?>";           
+        const API_URL_FOR_ALL_LEADS  = "<?php echo $getAllLeadsApi; ?>";         
+        const time = Date.now();
     </script>
         
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script src="../assets/js/functional/dashboard.js"></script>
 
     <script>
-
         // Initialize both when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // UIInteractions.init();

@@ -278,7 +278,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
         </div>
     </main>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const API_URL_FOR_TASK_STORE = "<?php echo $storeTasksApi; ?>";

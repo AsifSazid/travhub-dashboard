@@ -128,7 +128,7 @@ if (empty($ip_port)) {
         </div>
     </main>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const URL_FOR_EXTRACTION = "<?php echo $ip_port; ?>"+`api/passports/extracted_data.php`;
