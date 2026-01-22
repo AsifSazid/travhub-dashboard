@@ -1,613 +1,715 @@
+<?php
+include_once('./authenticate.php');
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$employeeId = $_GET['employee_id'];
+
+
+// $showEmployeeApi = $ip_port . "api/employees/show.php";
+$getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employeeId";
+
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Profile - TravHub Dashboard</title>
+    <title>Employee Portfolio - <?php echo htmlspecialchars($employeeId ?? 'Employee'); ?></title>
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        /* Custom styles for portfolio */
+        .portfolio-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.75rem;
             overflow: hidden;
         }
-
-        .header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 30px;
-            position: relative;
+        
+        .info-card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
         }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
+        
+        .info-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-
-        .employee-id {
-            background-color: rgba(255, 255, 255, 0.15);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 500;
+        
+        .info-card.contact {
+            border-left-color: #4299e1;
         }
-
+        
+        .info-card.company {
+            border-left-color: #48bb78;
+        }
+        
+        .info-card.personal {
+            border-left-color: #ed8936;
+        }
+        
+        .info-card.emergency {
+            border-left-color: #f56565;
+        }
+        
+        .profile-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            object-fit: cover;
+            background-color: #f7fafc;
+        }
+        
         .status-badge {
             display: inline-block;
-            padding: 6px 15px;
-            border-radius: 20px;
-            font-size: 14px;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.05em;
         }
-
+        
         .status-active {
-            background-color: #2ecc71;
-            color: white;
+            background-color: #c6f6d5;
+            color: #22543d;
         }
-
-        .profile-section {
-            display: flex;
-            align-items: center;
-            gap: 25px;
+        
+        .status-inactive {
+            background-color: #fed7d7;
+            color: #742a2a;
         }
-
-        .profile-photo-container {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 5px solid rgba(255, 255, 255, 0.2);
-            background-color: #f1f1f1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        
+        .detail-label {
+            font-size: 0.75rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
         }
-
-        .profile-photo {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        
+        .detail-value {
+            color: #2d3748;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
-
-        .profile-photo-placeholder {
-            font-size: 60px;
-            color: #bbb;
-        }
-
-        .profile-info h1 {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-
-        .profile-info .designation {
-            font-size: 18px;
-            opacity: 0.9;
-            margin-bottom: 5px;
-        }
-
-        .profile-info .department {
-            font-size: 16px;
-            opacity: 0.8;
-            margin-bottom: 15px;
-        }
-
-        .contact-info {
-            display: flex;
-            gap: 20px;
-            font-size: 14px;
-        }
-
-        .contact-info i {
-            margin-right: 8px;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
+        
         .section-title {
-            font-size: 20px;
-            color: #1e3c72;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            color: #4a5568;
+            font-weight: 700;
+            font-size: 1.25rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
         }
-
-        .section-title i {
-            color: #2a5298;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .info-card {
-            background-color: #f9fafc;
-            border-radius: 10px;
-            padding: 20px;
-            border-left: 4px solid #2a5298;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease;
-        }
-
-        .info-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .info-card h3 {
-            color: #2a5298;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-
-        .info-item {
-            margin-bottom: 12px;
-            display: flex;
-            flex-wrap: wrap;
-        }
-
-        .info-label {
+        
+        .skill-tag {
+            display: inline-block;
+            background-color: #ebf4ff;
+            color: #4c51bf;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
             font-weight: 600;
-            min-width: 160px;
-            color: #555;
-            margin-bottom: 3px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
         }
-
-        .info-value {
-            color: #333;
-            flex: 1;
+        
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 100px auto;
         }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            font-size: 18px;
-            color: #666;
-        }
-
-        .loading i {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #2a5298;
-        }
-
-        .error {
-            text-align: center;
-            padding: 40px;
-            color: #e74c3c;
-            font-size: 18px;
-        }
-
-        .error i {
-            font-size: 40px;
-            margin-bottom: 15px;
-        }
-
-        .meta-info {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            font-size: 14px;
-            color: #666;
-            margin-top: 30px;
-        }
-
-        .meta-item {
-            margin-bottom: 8px;
-        }
-
-        .btn-edit {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 20px;
-            transition: background-color 0.3s;
-        }
-
-        .btn-edit:hover {
-            background-color: #2980b9;
-        }
-
-        @media (max-width: 768px) {
-            .profile-section {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .contact-info {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header-top {
-                flex-direction: column;
-                gap: 15px;
-            }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="header-top">
-                <div class="employee-id" id="employee-id">Loading...</div>
-                <div class="status-badge status-active" id="employee-status">Active</div>
-            </div>
-            
-            <div class="profile-section">
-                <div class="profile-photo-container">
-                    <div class="profile-photo-placeholder" id="profile-photo-placeholder">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <img id="profile-photo" class="profile-photo" alt="Profile Photo" style="display: none;">
-                </div>
-                
-                <div class="profile-info">
-                    <h1 id="employee-name">Loading...</h1>
-                    <div class="designation" id="employee-designation">Software Developer</div>
-                    <div class="department" id="employee-department">IT Department</div>
-                    
-                    <div class="contact-info">
-                        <div><i class="fas fa-envelope"></i> <span id="employee-email">travhub.asif@gmail.com</span></div>
-                        <div><i class="fas fa-phone"></i> <span id="employee-phone">+8801751906710</span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="content">
-            <div class="loading" id="loading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Loading employee profile...</p>
-            </div>
-            
-            <div class="error" id="error" style="display: none;">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Error loading employee data. Please try again later.</p>
-            </div>
-            
-            <div id="profile-content" style="display: none;">
-                <div class="info-grid">
-                    <div class="info-card">
-                        <h3><i class="fas fa-user-circle"></i> Basic Information</h3>
-                        <div class="info-item">
-                            <span class="info-label">Date of Birth:</span>
-                            <span class="info-value" id="dob">2000-03-08</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Blood Group:</span>
-                            <span class="info-value" id="blood-group">B+</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Employee Type:</span>
-                            <span class="info-value" id="employee-type">Permanent</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Date of Joining:</span>
-                            <span class="info-value" id="joining-date">2025-10-21</span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-card">
-                        <h3><i class="fas fa-home"></i> Address</h3>
-                        <div class="info-item">
-                            <span class="info-label">Address Line 1:</span>
-                            <span class="info-value" id="address-line-1">492/C-44, Amaya Road, Borobari</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Address Line 2:</span>
-                            <span class="info-value" id="address-line-2">Kanchkura, Uttarkhan</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">City:</span>
-                            <span class="info-value" id="city">Dhaka</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">ZIP Code:</span>
-                            <span class="info-value" id="zip-code">1230</span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-card">
-                        <h3><i class="fas fa-users"></i> Emergency Contact</h3>
-                        <div class="info-item">
-                            <span class="info-label">Contact Person:</span>
-                            <span class="info-value" id="emergency-person">Hazi Md. Rofiqul Islam</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Relationship:</span>
-                            <span class="info-value" id="emergency-relation">Father</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Phone:</span>
-                            <span class="info-value" id="emergency-phone">01714445709</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Emergency Address:</span>
-                            <span class="info-value" id="emergency-address">Same as employee address</span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-card">
-                        <h3><i class="fas fa-building"></i> Company Information</h3>
-                        <div class="info-item">
-                            <span class="info-label">Department:</span>
-                            <span class="info-value" id="company-department">IT</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Designation:</span>
-                            <span class="info-value" id="company-designation">Software Developer</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Employment Type:</span>
-                            <span class="info-value" id="company-employment-type">Permanent</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Status:</span>
-                            <span class="info-value" id="company-status">Active</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="meta-info">
-                    <h3><i class="fas fa-history"></i> Record Information</h3>
-                    <div class="info-item">
-                        <span class="info-label">Created By:</span>
-                        <span class="info-value" id="created-by">system_admin</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Created Date:</span>
-                        <span class="info-value" id="created-date">21-01-2026 20:46</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Last Updated:</span>
-                        <span class="info-value" id="last-updated">Not updated yet</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Employee ID:</span>
-                        <span class="info-value" id="full-employee-id">EMP-5102501</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">UUID:</span>
-                        <span class="info-value" id="employee-uuid">874aa904-3618-498b-93cb-28b8b66c7497</span>
-                    </div>
-                </div>
-                
-                <button class="btn-edit" id="edit-profile">
-                    <i class="fas fa-edit"></i> Edit Profile
+
+<body class="bg-gray-50 font-sans">
+    <!-- Top Navigation -->
+    <?php include '../elements/header.php'; ?>
+
+    <!-- Sidebar -->
+    <?php include '../elements/aside.php'; ?>
+    
+        <!-- Preview Modal -->
+    <div id="previewModal" class="preview-modal">
+        <div class="preview-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
+                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
                 </button>
+            </div>
+            <div id="modalPreviewContent" class="p-4">
+                <!-- Preview content will be loaded here -->
             </div>
         </div>
     </div>
 
+    <!-- Main Content -->
+    <main id="mainContent" class="pl-64 transition-all duration-300">
+        <div class="p-6">
+            <!-- Loading State -->
+            <div id="loadingContainer" class="bg-white rounded-lg shadow p-8 text-center">
+                <div class="loading-spinner"></div>
+                <p class="mt-4 text-gray-600">Loading employee information...</p>
+            </div>
+            
+            <!-- Portfolio Content (Initially hidden) -->
+            <div id="portfolioContainer" class="hidden">
+                <!-- Portfolio Header -->
+                <div class="portfolio-header mb-6 p-8 relative">
+                    <div class="flex flex-col md:flex-row items-center md:items-start">
+                        <!-- Profile Image -->
+                        <div class="mb-6 md:mb-0 md:mr-8 relative">
+                            <img id="profilePhoto" src="../assets/images/placeholder-profile.png" alt="Profile" class="profile-image">
+                            <div id="statusBadge" class="status-badge status-active mt-4"></div>
+                        </div>
+                        
+                        <!-- Employee Info -->
+                        <div class="flex-1 text-center md:text-left">
+                            <h1 id="employeeName" class="text-3xl md:text-4xl font-bold mb-2">Employee Name</h1>
+                            <h2 id="employeeDesignation" class="text-xl md:text-2xl text-blue-100 mb-3">Designation</h2>
+                            <div class="flex flex-wrap justify-center md:justify-start gap-4 text-blue-100 mb-6">
+                                <div class="flex items-center">
+                                    <i class="fas fa-id-card mr-2"></i>
+                                    <span id="employeeId">EMP-0000000</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-building mr-2"></i>
+                                    <span id="employeeDepartment">Department</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-calendar-alt mr-2"></i>
+                                    <span id="employeeJoinDate">Join Date</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Contact Info -->
+                            <div class="flex flex-wrap justify-center md:justify-start gap-4">
+                                <a id="employeeEmail" href="#" class="flex items-center bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
+                                    <i class="fas fa-envelope mr-2"></i>
+                                    <span>Email</span>
+                                </a>
+                                <a id="employeePhone" href="#" class="flex items-center bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
+                                    <i class="fas fa-phone mr-2"></i>
+                                    <span>Phone</span>
+                                </a>
+                                <a id="employeeLocation" href="#" class="flex items-center bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
+                                    <i class="fas fa-map-marker-alt mr-2"></i>
+                                    <span>Location</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main Content Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- About / Bio Section -->
+                        <div class="info-card personal p-6">
+                            <h3 class="section-title">About</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <div class="detail-label">Employee ID</div>
+                                    <div id="sysId" class="detail-value text-lg font-bold">EMP-0000000</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Date of Birth</div>
+                                    <div id="dateOfBirth" class="detail-value">Not available</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Blood Group</div>
+                                    <div id="bloodGroup" class="detail-value">Not available</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Employee Type</div>
+                                    <div id="employeeType" class="detail-value">Not available</div>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <div class="detail-label">Additional Information</div>
+                                <p id="additionalInfo" class="detail-value text-gray-600">No additional information available.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Company Information -->
+                        <div class="info-card company p-6">
+                            <h3 class="section-title">Company Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <div class="detail-label">Department</div>
+                                    <div id="companyDepartment" class="detail-value text-lg font-semibold">Department</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Designation</div>
+                                    <div id="companyDesignation" class="detail-value text-lg font-semibold">Designation</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Employment Type</div>
+                                    <div id="employmentType" class="detail-value">Not available</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Date of Joining</div>
+                                    <div id="dateOfJoining" class="detail-value">Not available</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Company Role</div>
+                                    <div id="companyRole" class="detail-value">Not available</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Status</div>
+                                    <div id="companyStatus" class="detail-value">Not available</div>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <div class="detail-label">Created Information</div>
+                                <div class="flex items-center mt-2">
+                                    <div class="bg-blue-50 p-3 rounded-lg">
+                                        <i class="fas fa-user-circle text-blue-500 text-lg"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-value" id="createdBy">System Admin</div>
+                                        <div class="text-sm text-gray-500" id="createdDate">21-01-2026 20:46</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Skills / Expertise Section -->
+                        <div class="info-card p-6">
+                            <h3 class="section-title">Skills & Expertise</h3>
+                            <div id="skillsContainer">
+                                <!-- Skills will be dynamically added here -->
+                                <div class="text-center py-8 text-gray-500">
+                                    <i class="fas fa-code text-4xl mb-3 text-gray-300"></i>
+                                    <p>Skills information not available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column -->
+                    <div class="space-y-6">
+                        <!-- Contact Information -->
+                        <div class="info-card contact p-6">
+                            <h3 class="section-title">Contact Information</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center">
+                                    <div class="bg-blue-100 p-3 rounded-lg">
+                                        <i class="fas fa-envelope text-blue-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-label">Email</div>
+                                        <a id="contactEmail" href="#" class="detail-value hover:text-blue-600 transition">email@example.com</a>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <div class="bg-blue-100 p-3 rounded-lg">
+                                        <i class="fas fa-phone text-blue-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-label">Phone</div>
+                                        <a id="contactPhone" href="#" class="detail-value hover:text-blue-600 transition">+880 0000 000000</a>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <div class="bg-blue-100 p-3 rounded-lg">
+                                        <i class="fas fa-map-marker-alt text-blue-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-label">Address</div>
+                                        <div id="contactAddress" class="detail-value">Address not available</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Emergency Contact -->
+                        <div class="info-card emergency p-6">
+                            <h3 class="section-title">Emergency Contact</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center">
+                                    <div class="bg-red-100 p-3 rounded-lg">
+                                        <i class="fas fa-user text-red-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-label">Contact Person</div>
+                                        <div id="emergencyPerson" class="detail-value">Not available</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <div class="bg-red-100 p-3 rounded-lg">
+                                        <i class="fas fa-users text-red-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-label">Relationship</div>
+                                        <div id="emergencyRelation" class="detail-value">Not available</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <div class="bg-red-100 p-3 rounded-lg">
+                                        <i class="fas fa-phone text-red-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-label">Emergency Phone</div>
+                                        <a id="emergencyPhone" href="#" class="detail-value hover:text-red-600 transition">Not available</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Activity / Notes -->
+                        <div class="info-card p-6">
+                            <h3 class="section-title">Recent Activity</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-start">
+                                    <div class="bg-green-100 p-2 rounded-full mt-1">
+                                        <i class="fas fa-user-plus text-green-600 text-sm"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-value">Employee Created</div>
+                                        <div class="text-sm text-gray-500" id="activityDate">21-01-2026 20:46</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start">
+                                    <div class="bg-purple-100 p-2 rounded-full mt-1">
+                                        <i class="fas fa-id-card text-purple-600 text-sm"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="detail-value">Profile Information Updated</div>
+                                        <div class="text-sm text-gray-500">No recent updates</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-center pt-4">
+                                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                        <i class="fas fa-history mr-1"></i> View Full Activity Log
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer Action Buttons -->
+                <div class="mt-8 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        Last updated: <span id="lastUpdated">Today</span>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button id="printButton" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition">
+                            <i class="fas fa-print mr-2"></i> Print Profile
+                        </button>
+                        <button id="editButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                            <i class="fas fa-edit mr-2"></i> Edit Information
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Error State -->
+            <div id="errorContainer" class="bg-white rounded-lg shadow p-8 text-center hidden">
+                <div class="bg-red-100 p-4 rounded-full inline-block">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mt-4">Error Loading Employee Data</h3>
+                <p id="errorMessage" class="text-gray-600 mt-2">Could not load employee information. Please try again.</p>
+                <button id="retryButton" class="mt-6 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                    <i class="fas fa-redo mr-2"></i> Retry Loading
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Floating Quick Access Tab -->
+    <?php include '../elements/floating-menus.php'; ?>
+
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script>
-        // API endpoint - replace with your actual API endpoint
-        const API_URL = 'https://api.example.com/employees/EMP-5102501';
-        // For demo purposes, we'll use the data from your SQL file directly
-        const DEMO_DATA = {
-            "id": 2,
-            "uuid": "874aa904-3618-498b-93cb-28b8b66c7497",
-            "sys_id": "EMP-5102501",
-            "type": "permanent",
-            "name": "Asif M Sazid",
-            "email": {"primary": "travhub.asif@gmail.com"},
-            "phone": {"primary_no": "+8801751906710"},
-            "address": {
-                "address_line_1": "492/C-44, Amaya Road, Borobari",
-                "address_line_2": "Kanchkura, Uttarkhan",
-                "city": "Dhaka",
-                "state": "Bangladesh",
-                "zip_code": "1230",
-                "country": ""
-            },
-            "basic_info": {
-                "date_of_birth": "2000-03-08",
-                "blood_group": "b+"
-            },
-            "emergency_contact": {
-                "person": "Hazi Md. Rofiqul Islam",
-                "relation": "Father",
-                "phone": "01714445709",
-                "address": {
-                    "address_line_1": "492/C-44, Amaya Road, Borobari",
-                    "address_line_2": "Kanchkura, Uttarkhan",
-                    "city": "Dhaka",
-                    "state": "Bangladesh",
-                    "zip_code": "1230"
+        const GET_EMPLOYEE_INFO_API = "<?php echo $getEmployeeApi; ?>";
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const portfolioContainer = document.getElementById('portfolioContainer');
+            const loadingContainer = document.getElementById('loadingContainer');
+            const errorContainer = document.getElementById('errorContainer');
+            const errorMessage = document.getElementById('errorMessage');
+            const retryButton = document.getElementById('retryButton');
+            const printContent = document.getElementById('mainContent');
+            
+            // Function to parse JSON strings from the API response
+            function parseJsonField(field) {
+                if (!field) return null;
+                try {
+                    return JSON.parse(field);
+                } catch (e) {
+                    console.error('Error parsing JSON field:', e);
+                    return null;
                 }
-            },
-            "contact_n_communication_details": null,
-            "department_id": 5,
-            "department_name": "IT",
-            "company_related_info": {
-                "designation": "Software Developer",
-                "company_role": "NA",
-                "date_of_join": "2025-10-21",
-                "employment_type": "permanent",
-                "status": "active",
-                "created_at": "2026-01-21 20:46:14",
-                "created_by": "system_admin",
-                "created_by_id": 0,
-                "department": "IT",
-                "department_id": "5"
-            },
-            "previous_job_details": null,
-            "status": "active",
-            "emp_path": null,
-            "image_name": [{
-                "original_name": "Cover_Pic-removebg-preview.png",
-                "stored_name": "6970e6b6ebf54_20260121_204614.png",
-                "file_type": "image/png",
-                "file_size": 136881,
-                "file_path": "employees/EMP-5102501_AsifMSazid/6970e6b6ebf54_20260121_204614.png",
-                "upload_date": "2026-01-21 20:46:14"
-            }],
-            "profile_photo": null,
-            "meta_data": {
-                "created_by_date": {
-                    "user": "system_admin",
-                    "date": "21-01-2026 20:46"
-                },
-                "updated_by_date": []
             }
-        };
-
-        // Function to fetch employee data from API
-        async function fetchEmployeeData() {
-            try {
-                // In a real application, you would fetch from your API
-                // const response = await fetch(API_URL);
-                // if (!response.ok) throw new Error('Failed to fetch employee data');
-                // const data = await response.json();
-                
-                // For demo purposes, we'll use the demo data with a simulated delay
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        resolve(DEMO_DATA);
-                    }, 1000);
+            
+            // Function to format date
+            function formatDate(dateString) {
+                if (!dateString) return 'Not available';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 });
-            } catch (error) {
-                console.error('Error fetching employee data:', error);
-                throw error;
-            }
-        }
-
-        // Function to display employee data
-        function displayEmployeeData(employee) {
-            // Hide loading, show content
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('profile-content').style.display = 'block';
-            
-            // Set basic profile information
-            document.getElementById('employee-id').textContent = employee.sys_id;
-            document.getElementById('employee-status').textContent = employee.status;
-            document.getElementById('employee-name').textContent = employee.name;
-            document.getElementById('employee-designation').textContent = employee.company_related_info.designation;
-            document.getElementById('employee-department').textContent = `${employee.department_name} Department`;
-            document.getElementById('employee-email').textContent = employee.email.primary;
-            document.getElementById('employee-phone').textContent = employee.phone.primary_no;
-            
-            // Set basic information
-            document.getElementById('dob').textContent = formatDate(employee.basic_info.date_of_birth);
-            document.getElementById('blood-group').textContent = employee.basic_info.blood_group.toUpperCase();
-            document.getElementById('employee-type').textContent = employee.type.charAt(0).toUpperCase() + employee.type.slice(1);
-            document.getElementById('joining-date').textContent = formatDate(employee.company_related_info.date_of_join);
-            
-            // Set address information
-            document.getElementById('address-line-1').textContent = employee.address.address_line_1;
-            document.getElementById('address-line-2').textContent = employee.address.address_line_2;
-            document.getElementById('city').textContent = employee.address.city;
-            document.getElementById('zip-code').textContent = employee.address.zip_code;
-            
-            // Set emergency contact information
-            document.getElementById('emergency-person').textContent = employee.emergency_contact.person;
-            document.getElementById('emergency-relation').textContent = employee.emergency_contact.relation;
-            document.getElementById('emergency-phone').textContent = employee.emergency_contact.phone;
-            document.getElementById('emergency-address').textContent = "Same as employee address";
-            
-            // Set company information
-            document.getElementById('company-department').textContent = employee.department_name;
-            document.getElementById('company-designation').textContent = employee.company_related_info.designation;
-            document.getElementById('company-employment-type').textContent = employee.company_related_info.employment_type.charAt(0).toUpperCase() + employee.company_related_info.employment_type.slice(1);
-            document.getElementById('company-status').textContent = employee.company_related_info.status.charAt(0).toUpperCase() + employee.company_related_info.status.slice(1);
-            
-            // Set meta information
-            document.getElementById('created-by').textContent = employee.meta_data.created_by_date.user;
-            document.getElementById('created-date').textContent = employee.meta_data.created_by_date.date;
-            document.getElementById('last-updated').textContent = employee.meta_data.updated_by_date.length > 0 ? "Recently updated" : "Not updated yet";
-            document.getElementById('full-employee-id').textContent = employee.sys_id;
-            document.getElementById('employee-uuid').textContent = employee.uuid;
-            
-            // Check if profile photo is available
-            if (employee.image_name && employee.image_name.length > 0) {
-                // In a real application, you would use the actual image URL
-                // document.getElementById('profile-photo').src = employee.image_name[0].file_path;
-                // document.getElementById('profile-photo').style.display = 'block';
-                // document.getElementById('profile-photo-placeholder').style.display = 'none';
-                
-                // For demo, we'll just show the placeholder
-                document.getElementById('profile-photo-placeholder').innerHTML = '<i class="fas fa-user"></i>';
             }
             
-            // Update status badge color based on status
-            const statusBadge = document.getElementById('employee-status');
-            if (employee.status === 'active') {
-                statusBadge.className = 'status-badge status-active';
-            } else {
-                statusBadge.className = 'status-badge status-inactive';
-                statusBadge.textContent = 'Inactive';
-                statusBadge.style.backgroundColor = '#e74c3c';
+            // Function to format phone number
+            function formatPhoneNumber(phone) {
+                if (!phone) return 'Not available';
+                return phone.replace(/(\+\d{3})(\d{3})(\d{4})(\d{3})/, '$1 $2 $3 $4');
             }
-        }
-
-        // Helper function to format date
-        function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+            
+            // Function to fetch and display employee data
+            async function loadEmployeeData() {
+                try {
+                    // Show loading, hide other containers
+                    loadingContainer.classList.remove('hidden');
+                    portfolioContainer.classList.add('hidden');
+                    errorContainer.classList.add('hidden');
+                    
+                    // Fetch employee data from API
+                    const response = await fetch(GET_EMPLOYEE_INFO_API);
+                    const data = await response.json();
+                    
+                    if (data.success && data.employee) {
+                        const employee = data.employee;
+                        
+                        // Parse JSON fields
+                        const emailData = parseJsonField(employee.email) || {};
+                        const phoneData = parseJsonField(employee.phone) || {};
+                        const addressData = parseJsonField(employee.address) || {};
+                        const basicInfoData = parseJsonField(employee.basic_info) || {};
+                        const emergencyContactData = parseJsonField(employee.emergency_contact) || {};
+                        const companyInfoData = parseJsonField(employee.company_related_info) || {};
+                        const metaData = parseJsonField(employee.meta_data) || {};
+                        
+                        // Set profile photo (if available)
+                        const profilePhoto = document.getElementById('profilePhoto');
+                        if (employee.image_name) {
+                            try {
+                                const imageData = JSON.parse(employee.image_name);
+                                if (imageData.length > 0 && imageData[0].file_path) {
+                                    // Construct full image URL - adjust based on your actual image path
+                                    const imageUrl = `<?php echo $ip_port; ?>/${imageData[0].file_path}`;
+                                    profilePhoto.src = imageUrl;
+                                }
+                            } catch (e) {
+                                console.error('Error parsing image data:', e);
+                            }
+                        }
+                        
+                        // Employee status
+                        const statusBadge = document.getElementById('statusBadge');
+                        statusBadge.textContent = employee.status || 'Unknown';
+                        statusBadge.className = `status-badge ${employee.status === 'active' ? 'status-active' : 'status-inactive'}`;
+                        
+                        // Header section
+                        document.getElementById('employeeName').textContent = employee.name || 'Unknown';
+                        document.getElementById('employeeId').textContent = employee.sys_id || 'EMP-0000000';
+                        document.getElementById('employeeDepartment').textContent = employee.department_name || 'Unknown';
+                        document.getElementById('employeeJoinDate').textContent = companyInfoData.date_of_join ? formatDate(companyInfoData.date_of_join) : 'Unknown';
+                        
+                        // Designation
+                        const designation = companyInfoData.designation || 'Unknown';
+                        document.getElementById('employeeDesignation').textContent = designation;
+                        document.getElementById('companyDesignation').textContent = designation;
+                        
+                        // Contact links in header
+                        const emailLink = document.getElementById('employeeEmail');
+                        const primaryEmail = emailData.primary || '';
+                        if (primaryEmail) {
+                            emailLink.href = `mailto:${primaryEmail}`;
+                            emailLink.innerHTML = `<i class="fas fa-envelope mr-2"></i><span>${primaryEmail}</span>`;
+                        }
+                        
+                        const phoneLink = document.getElementById('employeePhone');
+                        const primaryPhone = phoneData.primary_no || '';
+                        if (primaryPhone) {
+                            phoneLink.href = `tel:${primaryPhone}`;
+                            phoneLink.innerHTML = `<i class="fas fa-phone mr-2"></i><span>${formatPhoneNumber(primaryPhone)}</span>`;
+                        }
+                        
+                        const locationLink = document.getElementById('employeeLocation');
+                        const city = addressData.city || '';
+                        const country = addressData.country || '';
+                        const locationText = city && country ? `${city}, ${country}` : (city || country || 'Unknown');
+                        locationLink.innerHTML = `<i class="fas fa-map-marker-alt mr-2"></i><span>${locationText}</span>`;
+                        
+                        // About section
+                        document.getElementById('sysId').textContent = employee.sys_id || 'EMP-0000000';
+                        document.getElementById('dateOfBirth').textContent = basicInfoData.date_of_birth ? formatDate(basicInfoData.date_of_birth) : 'Not available';
+                        document.getElementById('bloodGroup').textContent = basicInfoData.blood_group ? basicInfoData.blood_group.toUpperCase() : 'Not available';
+                        document.getElementById('employeeType').textContent = employee.type ? employee.type.charAt(0).toUpperCase() + employee.type.slice(1) : 'Not available';
+                        
+                        // Company Information
+                        document.getElementById('companyDepartment').textContent = employee.department_name || 'Not available';
+                        document.getElementById('employmentType').textContent = companyInfoData.employment_type ? companyInfoData.employment_type.charAt(0).toUpperCase() + companyInfoData.employment_type.slice(1) : 'Not available';
+                        document.getElementById('dateOfJoining').textContent = companyInfoData.date_of_join ? formatDate(companyInfoData.date_of_join) : 'Not available';
+                        document.getElementById('companyRole').textContent = companyInfoData.company_role || 'Not available';
+                        document.getElementById('companyStatus').textContent = companyInfoData.status ? companyInfoData.status.charAt(0).toUpperCase() + companyInfoData.status.slice(1) : 'Not available';
+                        
+                        // Contact Information
+                        const contactEmail = document.getElementById('contactEmail');
+                        if (primaryEmail) {
+                            contactEmail.href = `mailto:${primaryEmail}`;
+                            contactEmail.textContent = primaryEmail;
+                        } else {
+                            contactEmail.textContent = 'Not available';
+                            contactEmail.removeAttribute('href');
+                        }
+                        
+                        const contactPhone = document.getElementById('contactPhone');
+                        if (primaryPhone) {
+                            contactPhone.href = `tel:${primaryPhone}`;
+                            contactPhone.textContent = formatPhoneNumber(primaryPhone);
+                        } else {
+                            contactPhone.textContent = 'Not available';
+                            contactPhone.removeAttribute('href');
+                        }
+                        
+                        // Address
+                        const addressLines = [];
+                        if (addressData.address_line_1) addressLines.push(addressData.address_line_1);
+                        if (addressData.address_line_2) addressLines.push(addressData.address_line_2);
+                        if (addressData.city) addressLines.push(addressData.city);
+                        if (addressData.state) addressLines.push(addressData.state);
+                        if (addressData.zip_code) addressLines.push(addressData.zip_code);
+                        if (addressData.country) addressLines.push(addressData.country);
+                        
+                        document.getElementById('contactAddress').textContent = addressLines.length > 0 ? addressLines.join(', ') : 'Not available';
+                        
+                        // Emergency Contact
+                        document.getElementById('emergencyPerson').textContent = emergencyContactData.person || 'Not available';
+                        document.getElementById('emergencyRelation').textContent = emergencyContactData.relation || 'Not available';
+                        
+                        const emergencyPhone = document.getElementById('emergencyPhone');
+                        if (emergencyContactData.phone) {
+                            emergencyPhone.href = `tel:${emergencyContactData.phone}`;
+                            emergencyPhone.textContent = formatPhoneNumber(emergencyContactData.phone);
+                        } else {
+                            emergencyPhone.textContent = 'Not available';
+                            emergencyPhone.removeAttribute('href');
+                        }
+                        
+                        // Meta data
+                        if (metaData.created_by_date) {
+                            document.getElementById('createdBy').textContent = metaData.created_by_date.user || 'System';
+                            document.getElementById('createdDate').textContent = metaData.created_by_date.date || 'Unknown';
+                            document.getElementById('activityDate').textContent = metaData.created_by_date.date || 'Unknown';
+                        }
+                        
+                        // Skills section - you can customize this based on your data
+                        const skillsContainer = document.getElementById('skillsContainer');
+                        const defaultSkills = ['Software Development', 'Problem Solving', 'Team Collaboration', 'Project Management'];
+                        
+                        if (employee.department_name) {
+                            skillsContainer.innerHTML = '';
+                            // Add department-specific skills
+                            let skills = [];
+                            
+                            if (employee.department_name === 'IT') {
+                                skills = ['Software Development', 'System Analysis', 'Database Management', 'Web Technologies', 'Problem Solving'];
+                            } else if (employee.department_name === 'HR') {
+                                skills = ['Recruitment', 'Employee Relations', 'Training & Development', 'HR Policies', 'Communication'];
+                            } else if (employee.department_name === 'Finance') {
+                                skills = ['Financial Analysis', 'Budgeting', 'Accounting', 'Financial Reporting', 'Auditing'];
+                            } else {
+                                skills = defaultSkills;
+                            }
+                            
+                            // Add designation-based skill
+                            if (designation.toLowerCase().includes('manager')) {
+                                skills.push('Leadership', 'Strategic Planning');
+                            } else if (designation.toLowerCase().includes('developer')) {
+                                skills.push('Coding', 'Software Architecture');
+                            }
+                            
+                            skills.forEach(skill => {
+                                const skillTag = document.createElement('div');
+                                skillTag.className = 'skill-tag';
+                                skillTag.textContent = skill;
+                                skillsContainer.appendChild(skillTag);
+                            });
+                        }
+                        
+                        // Last updated
+                        const lastUpdated = document.getElementById('lastUpdated');
+                        if (metaData.updated_by_date && metaData.updated_by_date.length > 0) {
+                            const latestUpdate = metaData.updated_by_date[metaData.updated_by_date.length - 1];
+                            lastUpdated.textContent = latestUpdate.date || 'Today';
+                        } else if (metaData.created_by_date) {
+                            lastUpdated.textContent = metaData.created_by_date.date || 'Today';
+                        }
+                        
+                        // Hide loading, show portfolio
+                        loadingContainer.classList.add('hidden');
+                        portfolioContainer.classList.remove('hidden');
+                        
+                    } else {
+                        throw new Error('Invalid employee data received');
+                    }
+                } catch (error) {
+                    console.error('Error loading employee data:', error);
+                    loadingContainer.classList.add('hidden');
+                    errorMessage.textContent = `Error: ${error.message}`;
+                    errorContainer.classList.remove('hidden');
+                }
+            }
+            
+            // Load employee data on page load
+            loadEmployeeData();
+            
+            // Retry button functionality
+            retryButton.addEventListener('click', loadEmployeeData);
+            
+            // Print button functionality
+            document.getElementById('printButton').addEventListener('click', function() {
+                window.print();
             });
-        }
-
-        // Initialize the page
-        async function init() {
-            try {
-                const employeeData = await fetchEmployeeData();
-                displayEmployeeData(employeeData);
-            } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                console.error('Failed to load employee data:', error);
-            }
-        }
-
-        // Add event listener for edit button
-        document.getElementById('edit-profile').addEventListener('click', function() {
-            alert('Edit functionality would open a form to update employee details. This feature would be implemented in a real application.');
+            
+            // Edit button functionality (placeholder)
+            document.getElementById('editButton').addEventListener('click', function() {
+                alert('Edit functionality would open a form to update employee information.');
+                // In a real application, this would redirect to an edit page or open a modal
+            });
         });
-
-        // Initialize the page when DOM is loaded
-        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
+
 </html>

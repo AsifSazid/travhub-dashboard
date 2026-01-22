@@ -4,26 +4,18 @@ require '../../server/db_connection.php';
 
 header('Content-Type: application/json'); // Tell the client this is JSON
 
-$workId = $_GET['work_id'];
+$employeeId = $_GET['employee_id'];
 
 try {
-    $stmtForWork = $pdo->prepare("
-        SELECT * FROM works
-        WHERE sys_id =?
-        ORDER BY id ASC
-    ");
-    $stmtForWork->execute([$workId]);
-    $work = $stmtForWork->fetch(PDO::FETCH_ASSOC);
-
     $stmt = $pdo->prepare("
-        SELECT * FROM clients
+        SELECT * FROM employees
         WHERE sys_id =?
         ORDER BY id ASC
     ");
-    $stmt->execute([$work['client_sys_id']]);
-    $client = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([$employeeId]);
+    $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    echo json_encode(['client' => $client, 'work' => $work,  'success' => true]); // Send JSON to the client
+    echo json_encode(['employee' => $employee,  'success' => true]); // Send JSON to the client
 } catch (Exception $e) {
     // Return error as JSON too
     echo json_encode([
