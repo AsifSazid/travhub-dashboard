@@ -41,7 +41,8 @@ try {
         $invoices[] = [
             "id" => (int)$row['id'],
             "invoice_no" => $row['sys_id'],
-            "client_name" => $client_info['title'] ?? 'Unknown Client',
+            "client_sys_id" => $row['client_sys_id'] ?? 'Unknown Client System ID',
+            "client_name" => $row['client_name'] ?? $client_info['title'] ?? 'Unknown Client',
             "client_email" => $client_info['cc'] ?? '',
             "phone" => $client_info['phone_no'] ?? '',
             "total_amount" => floatval($row['total_amount']),

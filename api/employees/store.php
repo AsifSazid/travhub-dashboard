@@ -92,68 +92,85 @@ function handleFormDataRequest() {
     $files = $_FILES['files'];
     
     if (isset($files['name'][0]) && !empty($files['name'][0])) {
+
         // Ensure employee directory exists
         if (!file_exists($employeeFolderPath)) {
             mkdir($employeeFolderPath, 0777, true);
         }
-        
+    
         // Allowed file types
         $allowedTypes = [
             'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/gif' => 'gif',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
             'image/webp' => 'webp',
             'application/pdf' => 'pdf',
             'application/msword' => 'doc',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx'
         ];
-        
+    
         // Maximum file size (5MB)
         $maxFileSize = 5 * 1024 * 1024;
-        
+    
         // Process each file
         for ($i = 0; $i < count($files['name']); $i++) {
-            $fileName = $files['name'][$i];
-            $fileTmp = $files['tmp_name'][$i];
-            $fileSize = $files['size'][$i];
-            $fileType = $files['type'][$i];
+    
+            $fileName  = $files['name'][$i];
+            $fileTmp   = $files['tmp_name'][$i];
+            $fileSize  = $files['size'][$i];
+            $fileType  = $files['type'][$i];
             $fileError = $files['error'][$i];
-            
+    
             // Skip if error
             if ($fileError !== UPLOAD_ERR_OK) {
                 continue;
             }
-            
+    
             // Validate file type
             if (!isset($allowedTypes[$fileType])) {
                 continue;
             }
-            
+    
             // Validate file size
             if ($fileSize > $maxFileSize) {
                 continue;
             }
-            
-            // Generate unique filename
-            $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
-            $uniqueFileName = uniqid() . '_' . date('Ymd_His') . '.' . $fileExtension;
-            
-            // Destination path
-            $destination = $employeeFolderPath . '/' . $uniqueFileName;
-            
+    
+            // Get file extension
+            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    
+            // Filename rule
+            if ($i === 0) {
+                $baseName = 'profile-pic';
+            } else {
+                $baseName = 'image-' . $i;
+            }
+    
+            // Handle duplicate filenames
+            $counter = 1;
+            $finalName = $baseName . '.' . $fileExtension;
+            $destination = $employeeFolderPath . '/' . $finalName;
+    
+            while (file_exists($destination)) {
+                $counter++;
+                $finalName = $baseName . '-' . $counter . '.' . $fileExtension;
+                $destination = $employeeFolderPath . '/' . $finalName;
+            }
+    
             // Move uploaded file
             if (move_uploaded_file($fileTmp, $destination)) {
                 $uploadedFiles[] = [
                     'original_name' => $fileName,
-                    'stored_name' => $uniqueFileName,
-                    'file_type' => $fileType,
-                    'file_size' => $fileSize,
-                    'file_path' => "employees/{$employeeFolderName}/{$uniqueFileName}",
-                    'upload_date' => date('Y-m-d H:i:s')
+                    'stored_name'   => $finalName,
+                    'file_type'     => $fileType,
+                    'file_size'     => $fileSize,
+                    'file_path'     => "employees/{$employeeFolderName}/{$finalName}",
+                    'upload_date'   => date('Y-m-d H:i:s')
                 ];
             }
         }
     }
+
     
     // Prepare company_related_info JSON
     $companyRelatedInfo = [

@@ -25,7 +25,15 @@ try {
     $vendor_payment_methods = json_decode($invoice['vendor_payment_methods'], true);
 
     // Load vendor data from JSON file
-    $vendor_json_path = __DIR__ . '/server/vendor.json';
+    $vendor_json_path = __DIR__ . '/../server/invoice-vendor.json';
+
+    $clientStmt = $pdo->prepare("SELECT * FROM clients WHERE sys_id = :sys_id");
+    $clientStmt->execute([':sys_id' => $client_info['title']]);
+    $clientDbInfo = $clientStmt->fetch();
+    
+    $clientPhone = json_decode($clientDbInfo['phone'] ?? '{}', true);
+    $clientAddress = json_decode($clientDbInfo['address'] ?? '{}', true);
+    
     $vendor_data = [];
     if (file_exists($vendor_json_path)) {
         $vendor_json = file_get_contents($vendor_json_path);
@@ -229,7 +237,7 @@ try {
         'vendor_logo' => $vendor_data['logo'] ?? '',
         'vendor_title' => $vendor_data['company_name'] ?? 'TravHub Global Limited',
         'vendor_phone_no' => $vendor_data['phone'] ?? '+ 880 1611 482 773',
-        'vendor_email' => $vendor_data['email'] ?? 'accounts@abc.com',
+        'vendor_email' => $vendor_data['email'] ?? 'accounts@travhub.com.bd',
         'vendor_address_line_01' => $vendor_data['address']['line1'] ?? '',
         'vendor_address_line_02' => $vendor_data['address']['line2'] ?? '',
         'vendor_address_city' => $vendor_data['address']['city'] ?? '',
@@ -237,8 +245,17 @@ try {
         'vendor_address_country' => $vendor_data['address']['country'] ?? '',
 
         // Client data from database
+        'client_name' => $invoice['client_name'] ?? '',
         'client_title' => $client_info['title'] ?? '',
-        'client_phone_no' => $client_info['phone_no'] ?? '',
+        'client_phone_no' => $clientPhone['primary_no'] ?? ($client_info['phone_no'] ?? ''),
+        'client_address_line_1' => $clientAddress['address_line_1'] ?? '',
+        'client_address_line_2' =>
+            trim(
+                ($clientAddress['address_line_2'] ?? '') . ', ' .
+                ($clientAddress['city'] ?? '') . ', ' .
+                ($clientAddress['city'] ?? '') . '-' .
+                ($clientAddress['zip_code'] ?? '')
+            ),        
         'client_cc' => $client_info['cc'] ?? '',
 
         // Work items from database
@@ -396,7 +413,10 @@ ob_start();
             <tr>
                 <td style="width: 45%">
                     <h3 style="margin: 5px 0 10px 0;">Bill To:</h3>
-                    <div class="text-bold"><?php echo htmlspecialchars($form_data['client_title']); ?></div>
+                    <div class="text-bold"><?php echo htmlspecialchars($form_data['client_name']); ?></div>
+                    <div class="text-bold"><?php echo htmlspecialchars($form_data['client_address_line_1']); ?></div>
+                    <div class="text-bold"><?php echo htmlspecialchars($form_data['client_address_line_2']); ?></div>
+                    <!--<div class="text-bold"><?php echo htmlspecialchars($form_data['client_title']); ?></div>-->
                     <?php if (!empty($form_data['client_cc'])): ?>
                         <div>CC: <?php echo htmlspecialchars($form_data['client_cc']); ?></div>
                     <?php endif; ?>

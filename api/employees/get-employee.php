@@ -14,7 +14,6 @@ try {
     ");
     $stmt->execute([$employeeId]);
     $employee = $stmt->fetch(PDO::FETCH_ASSOC);
-
     echo json_encode(['employee' => $employee,  'success' => true]); // Send JSON to the client
 } catch (Exception $e) {
     // Return error as JSON too

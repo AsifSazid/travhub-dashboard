@@ -1060,7 +1060,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 const dueDate = new Date(invoice.due_date);
                 const now = new Date();
                 const isOverdue = invoice.status === 'overdue';
-
+                
                 html += `
                     <div class="invoice-card bg-white border border-gray-200 rounded-lg p-5 hover:border-green-300 fade-in mb-4">
                         <div class="flex flex-col md:flex-row justify-between gap-4">
@@ -1075,6 +1075,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                                             <div>
                                                 <h3 class="font-bold text-gray-800 text-lg">
                                                     ${escapeHtml(invoice.client_name)}
+                                                    ${invoice.client_sys_id ? ` || ${escapeHtml(invoice.client_sys_id)}` : ''}
                                                 </h3>
                                                 <div class="flex items-center mt-1 space-x-4">
                                                     <span class="text-gray-600 text-sm">
@@ -1092,9 +1093,6 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                                         <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
                                             <span class="flex items-center bg-gray-100 px-3 py-1 rounded-full">
                                                 <i class="fas fa-hashtag mr-2"></i> ${escapeHtml(invoice.invoice_no)}
-                                            </span>
-                                            <span class="invoice-type-badge type-service">
-                                                Visa Service
                                             </span>
                                             ${invoice.phone ? `
                                                 <span class="flex items-center bg-gray-100 px-3 py-1 rounded-full">

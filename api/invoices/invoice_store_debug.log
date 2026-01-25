@@ -262,3 +262,51 @@ Client: Assaduzzaman Porag
 Total Amount: 15000
 ========================================
 
+[2026-01-25 15:10:30] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarygM6vybnbgiV4SB0A
+POST Data: {
+    "invoice_no": "THR-IN-26-00K018",
+    "date": "2026-01-25",
+    "client_title": "THR-CL-26-00K006",
+    "client_phone_no": "",
+    "client_cc": "Pintu Ranjan Bhowmik",
+    "total_amount": "76200.00",
+    "paid_amount": "0",
+    "due_amount": "76200.00",
+    "work_title": [
+        "Dhaka - Kolkata by Indigo Air",
+        "Kolkata - Delhi by Indigo Air"
+    ],
+    "work_qty": [
+        "2",
+        "2"
+    ],
+    "work_rate": [
+        "17800",
+        "20300"
+    ],
+    "work_particular": [
+        "Travelers: M SHAHID HOSSAIN, MAIMUNA HOSSAIN \r\nTravel Date: 27 Jan 2026 \r\nIncluded: Seat - Extra Legroom | Meal \r\nItinerary: 27 JAN DAC – CCU 18:15 PM – 19:00 PM",
+        "Travelers: M SHAHID HOSSAIN, MAIMUNA HOSSAIN \r\nItinerary: 30 JAN CCU – DEL 12:00 PM – 14:30 PM \r\nIncluded: Seat - Business | Extra Legroom | Meal"
+    ],
+    "amount": [
+        "35600.00",
+        "40600.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-25 15:10:30] RAW INPUT:
+
+
+[2026-01-25 13:10:30] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 18
+Invoice No: THR-IN-26-00K018
+Client: Dekko Isho Group
+Total Amount: 76200
+========================================
+
