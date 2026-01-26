@@ -1166,6 +1166,7 @@ $base_ip_path = trim($ip_port, "/");
         }
     
         /* ========== 2. LOAD VENDOR DATA FROM JSON ========== */
+        let vendorData = null;
         async function loadVendorData() {
             try {
                 const response = await fetch('../server/invoice-vendor.json');
@@ -1193,12 +1194,12 @@ $base_ip_path = trim($ip_port, "/");
         /* ========== 3. BANK/MFS DATA MANAGEMENT ========== */
         function loadBankMfsData() {
             const savedData = localStorage.getItem(BANK_MFS_KEY);
-    
+        
             if (savedData) {
                 displayBankMfsData(JSON.parse(savedData));
             } else if (vendorData) {
                 const bankMfsData = {
-                    banks: vendorData.bank || [],
+                    banks: vendorData.banks || [],
                     mfs: vendorData.mfs || []
                 };
                 displayBankMfsData(bankMfsData);
@@ -1208,7 +1209,7 @@ $base_ip_path = trim($ip_port, "/");
         function displayBankMfsData(data) {
             const container = document.querySelector('.bank-mfs-container');
             container.innerHTML = '';
-    
+        
             // Display banks
             if (data.banks && data.banks.length > 0) {
                 data.banks.forEach((bank, index) => {
@@ -1242,13 +1243,13 @@ $base_ip_path = trim($ip_port, "/");
                     container.appendChild(bankCard);
                 });
             }
-    
+        
             // Display MFS
             if (data.mfs && data.mfs.length > 0) {
                 data.mfs.forEach((mfs, index) => {
                     const mfsCard = document.createElement('div');
                     mfsCard.className = 'mfs-card';
-    
+        
                     let accountsHtml = '';
                     if (Array.isArray(mfs.vendor_mfs_account)) {
                         mfs.vendor_mfs_account.forEach(account => {
@@ -1257,7 +1258,7 @@ $base_ip_path = trim($ip_port, "/");
                     } else {
                         accountsHtml = `<div class="readonly-value">${mfs.vendor_mfs_account || 'N/A'}</div>`;
                     }
-    
+        
                     mfsCard.innerHTML = `
                         <h4 style="margin-bottom: 15px; color: var(--success);">
                             <i class="fas fa-mobile-alt"></i> ${mfs.vendor_mfs_title || 'MFS'} ${index + 1}
@@ -1280,53 +1281,82 @@ $base_ip_path = trim($ip_port, "/");
                     container.appendChild(mfsCard);
                 });
             }
-    
-            // Store in hidden fields for form submission
-            storeBankMfsInForm(data);
         }
     
-        function storeBankMfsInForm(data) {
-            document.querySelectorAll('[data-bank-mfs-field]').forEach(field => field.remove());
-    
-            const form = document.getElementById('invoiceForm');
-    
-            if (data.banks) {
-                data.banks.forEach((bank, index) => {
-                    Object.keys(bank).forEach(key => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = `bank[${index}][${key}]`;
-                        input.value = bank[key];
-                        input.setAttribute('data-bank-mfs-field', 'true');
-                        form.appendChild(input);
-                    });
-                });
-            }
-    
-            if (data.mfs) {
-                data.mfs.forEach((mfs, index) => {
-                    Object.keys(mfs).forEach(key => {
-                        if (Array.isArray(mfs[key])) {
-                            mfs[key].forEach((value, i) => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = `mfs[${index}][${key}][]`;
-                                input.value = value;
-                                input.setAttribute('data-bank-mfs-field', 'true');
-                                form.appendChild(input);
-                            });
-                        } else {
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = `mfs[${index}][${key}]`;
-                            input.value = mfs[key];
-                            input.setAttribute('data-bank-mfs-field', 'true');
-                            form.appendChild(input);
-                        }
-                    });
-                });
-            }
-        }
+        // function storeBankMfsInForm(data) {
+        //     // প্রথমে সব পুরোনো fields রিমুভ করুন
+        //     document.querySelectorAll('[data-bank-mfs-field]').forEach(field => field.remove());
+            
+        //     const form = document.getElementById('invoiceForm');
+            
+        //     // Debug: দেখুন কি ডেটা আসছে
+        //     console.log('Storing Bank/MFS data:', data);
+            
+        //     // Clear any existing bank/mfs inputs
+        //     document.querySelectorAll('input[name^="bank["], input[name^="mfs["]').forEach(input => input.remove());
+            
+        //     // Bank data প্রসেস করুন
+        //     if (data.banks && Array.isArray(data.banks)) {
+        //         data.banks.forEach((bank, index) => {
+        //             if (bank && typeof bank === 'object') {
+        //                 // প্রতিটি বাঙ্কের জন্য আলাদা hidden inputs তৈরি করুন
+        //                 Object.keys(bank).forEach(key => {
+        //                     if (bank[key]) {
+        //                         const input = document.createElement('input');
+        //                         input.type = 'hidden';
+        //                         input.name = `bank[${index}][${key}]`;
+        //                         input.value = bank[key];
+        //                         input.setAttribute('data-bank-mfs-field', 'true');
+        //                         form.appendChild(input);
+        //                     }
+        //                 });
+        //             }
+        //         });
+        //     }
+            
+        //     // MFS data প্রসেস করুন
+        //     if (data.mfs && Array.isArray(data.mfs)) {
+        //         data.mfs.forEach((mfs, index) => {
+        //             if (mfs && typeof mfs === 'object') {
+        //                 // Regular MFS fields
+        //                 Object.keys(mfs).forEach(key => {
+        //                     if (key === 'vendor_mfs_account') {
+        //                         // Handle MFS account array
+        //                         if (Array.isArray(mfs[key])) {
+        //                             mfs[key].forEach((account, accIndex) => {
+        //                                 if (account && account.trim() !== '') {
+        //                                     const input = document.createElement('input');
+        //                                     input.type = 'hidden';
+        //                                     input.name = `mfs[${index}][vendor_mfs_account][]`;
+        //                                     input.value = account;
+        //                                     input.setAttribute('data-bank-mfs-field', 'true');
+        //                                     form.appendChild(input);
+        //                                 }
+        //                             });
+        //                         } else if (mfs[key] && mfs[key].trim() !== '') {
+        //                             const input = document.createElement('input');
+        //                             input.type = 'hidden';
+        //                             input.name = `mfs[${index}][vendor_mfs_account][]`;
+        //                             input.value = mfs[key];
+        //                             input.setAttribute('data-bank-mfs-field', 'true');
+        //                             form.appendChild(input);
+        //                         }
+        //                     } else if (mfs[key] && mfs[key].trim() !== '') {
+        //                         // Other MFS fields
+        //                         const input = document.createElement('input');
+        //                         input.type = 'hidden';
+        //                         input.name = `mfs[${index}][${key}]`;
+        //                         input.value = mfs[key];
+        //                         input.setAttribute('data-bank-mfs-field', 'true');
+        //                         form.appendChild(input);
+        //                     }
+        //                 });
+        //             }
+        //         });
+        //     }
+            
+        //     console.log('Added bank/mfs hidden inputs to form');
+        // }
     
         /* ========== CUSTOM WORK ITEM CALCULATION ========== */
         function updateCustomWorkItemCalculation(workItemElement) {
@@ -1444,7 +1474,7 @@ $base_ip_path = trim($ip_port, "/");
             // Hide dropdown
             clientDropdown.classList.add('hidden');
             
-            console.log('Client selected:', client);
+            // console.log('Client selected:', client);
         }
 
         /* Outside click */
@@ -1705,7 +1735,7 @@ $base_ip_path = trim($ip_port, "/");
                 data: workData
             };
             
-            console.log('Work selected:', state.selectedWork);
+            // console.log('Work selected:', state.selectedWork);
             
             // Hide client change warning
             const warning = systemContainer.querySelector('.client-change-warning');
@@ -1721,7 +1751,7 @@ $base_ip_path = trim($ip_port, "/");
             
             // Fetch tasks for this work
             state.availableTasks = await fetchTasksForWork(workId);
-            console.log('Available tasks:', state.availableTasks);
+            // console.log('Available tasks:', state.availableTasks);
             
             // Clear task groups state
             state.taskGroups.clear();
@@ -1970,7 +2000,6 @@ $base_ip_path = trim($ip_port, "/");
                                    name="work_qty[]"
                                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50"
                                    value="1"
-                                   readonly
                                    data-generated="true">
                         </div>
                         <div class="form-group">
@@ -2007,20 +2036,27 @@ $base_ip_path = trim($ip_port, "/");
                 generatedContainer.appendChild(itemDiv);
                 
                 // Add event listener for rate changes
-                const rateInput = itemDiv.querySelector('[name="work_rate[]"]');
-                rateInput.addEventListener('input', function() {
-                    const amountSpan = this.closest('.generated-item').querySelector('.calculated-amount');
-                    const amountInput = this.closest('.generated-item').querySelector('[name="amount[]"]');
-                    const qty = 1; // Fixed quantity
-                    const rate = parseFloat(this.value) || 0;
-                    const amount = qty * rate;
-                    
-                    amountSpan.textContent = amount.toFixed(2);
-                    amountInput.value = amount.toFixed(2);
-                    
-                    // Update total
+                const item = itemDiv;
+                
+                const rateInput   = item.querySelector('[name="work_rate[]"]');
+                const qtyInput    = item.querySelector('[name="work_qty[]"]');
+                const amountSpan  = item.querySelector('.calculated-amount');
+                const amountInput = item.querySelector('[name="amount[]"]');
+                
+                const handler = function () {
+                    const rate = parseFloat(rateInput.value) || 0;
+                    const qty  = parseFloat(qtyInput.value) || 0;
+                    const amount = rate * qty;
+                
+                    const formatted = amount.toFixed(2);
+                    amountSpan.textContent = formatted;
+                    amountInput.value = formatted;
+                
                     calculateTotal();
-                });
+                };
+                
+                rateInput.addEventListener('input', handler);
+                qtyInput.addEventListener('input', handler);
             });
             
             // Update the main totals
@@ -2036,32 +2072,6 @@ $base_ip_path = trim($ip_port, "/");
             if (generatedContainer) {
                 generatedContainer.innerHTML = '';
             }
-        }
-    
-        /* ========== 13. UPDATE CLIENT INFO ========== */
-        function updateClientInfo(workItemElement) {
-            const clientSelect = document.querySelector('[name="client_title"]');
-            if (!clientSelect) return;
-            
-            // Get the selected option
-            const selectedOption = clientSelect.options[clientSelect.selectedIndex];
-            const clientName = selectedOption ? selectedOption.text : 'Not selected';
-            const clientId = clientSelect.value;
-            
-            const clientNameSpan = workItemElement.querySelector('.selected-client-name');
-            if (clientNameSpan) {
-                clientNameSpan.textContent = clientName;
-                
-                // If client is not selected, show warning
-                if (!clientId) {
-                    clientNameSpan.textContent = 'Please select a client first';
-                    clientNameSpan.style.color = '#ef4444'; // Red color for warning
-                } else {
-                    clientNameSpan.style.color = '#3b82f6'; // Blue color for normal
-                }
-            }
-            
-            return clientId;
         }
     
         /* ========== 14. MODIFIED ADD WORK ITEM FUNCTION ========== */
@@ -2220,7 +2230,17 @@ $base_ip_path = trim($ip_port, "/");
     
         function calculateTotal() {
             let total = 0;
-            document.querySelectorAll('[name="amount[]"]').forEach(i => {
+            
+            // Calculate from custom mode work items
+            document.querySelectorAll('.custom-form-container [name="amount[]"]').forEach(i => {
+                const container = i.closest('.custom-form-container');
+                if (container && container.style.display !== 'none') {
+                    total += parseFloat(i.value) || 0;
+                }
+            });
+            
+            // Calculate from system mode generated items
+            document.querySelectorAll('.generated-item [name="amount[]"]').forEach(i => {
                 total += parseFloat(i.value) || 0;
             });
     
@@ -2338,7 +2358,7 @@ $base_ip_path = trim($ip_port, "/");
         function openBankMfsModal() {
             const savedData = localStorage.getItem(BANK_MFS_KEY);
             const currentData = savedData ? JSON.parse(savedData) : {
-                banks: vendorData?.bank || [],
+                banks: vendorData?.banks || [],
                 mfs: vendorData?.mfs || []
             };
     
@@ -2568,7 +2588,7 @@ $base_ip_path = trim($ip_port, "/");
                 })
                 .then(response => response.json())
                 .then(result => {
-                    console.log('Server save result:', result);
+                    // console.log('Server save result:', result);
                 })
                 .catch(error => {
                     console.error('Error saving to server:', error);
@@ -2579,6 +2599,7 @@ $base_ip_path = trim($ip_port, "/");
         }
     
         /* ========== 18. FORM SUBMISSION HANDLER ========== */
+        
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -2588,13 +2609,13 @@ $base_ip_path = trim($ip_port, "/");
                 document.getElementById('clientInput').focus();
                 return;
             }
-
+        
             // Show loading state
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             submitBtn.disabled = true;
-    
+        
             try {
                 // First, get fresh invoice number from API
                 const invoiceNo = await fetchInvoiceNumberFromAPI();
@@ -2605,121 +2626,90 @@ $base_ip_path = trim($ip_port, "/");
                     submitBtn.disabled = false;
                     return;
                 }
-    
-                // Collect all form data
-                const formData = {
-                    invoice_no: document.getElementById('invoiceNoInput').value,
-                    date: document.querySelector('[name="date"]').value,
-                    client_title: globalClientState.clientId, // Use the hidden input value
-                    client_phone_no: document.querySelector('[name="client_phone_no"]').value || '',
-                    client_cc: document.querySelector('[name="client_cc"]').value || '',
-                    total_amount: document.getElementById('total_amount').value,
-                    paid_amount: document.getElementById('paid_amount').value,
-                    due_amount: document.getElementById('due_amount').value,
-                    work_title: [],
-                    work_qty: [],
-                    work_rate: [],
-                    work_particular: [],
-                    amount: []
-                };
-    
-                // Collect ALL work items (both custom and system-generated)
-                document.querySelectorAll('[name="work_title[]"]').forEach((input, index) => {
-                    // Skip system-generated inputs that are in hidden containers
-                    if (input.closest('.system-work-container') && input.closest('.system-work-container').style.display !== 'none') {
-                        return;
-                    }
-                    
-                    formData.work_title.push(input.value);
-                    
-                    const qtyInputs = document.querySelectorAll('[name="work_qty[]"]');
-                    const rateInputs = document.querySelectorAll('[name="work_rate[]"]');
-                    const particularInputs = document.querySelectorAll('[name="work_particular[]"]');
-                    const amountInputs = document.querySelectorAll('[name="amount[]"]');
-                    
-                    if (qtyInputs[index]) formData.work_qty.push(qtyInputs[index].value);
-                    if (rateInputs[index]) formData.work_rate.push(rateInputs[index].value);
-                    if (particularInputs[index]) formData.work_particular.push(particularInputs[index].value);
-                    if (amountInputs[index]) formData.amount.push(amountInputs[index].value);
-                });
-    
-                // Collect bank and MFS data from localStorage
+        
+                // Update invoice number input
+                document.getElementById('invoiceNoInput').value = invoiceNo;
+                
+                // Get bank/mfs data from localStorage
                 const bankMfsData = JSON.parse(localStorage.getItem('bank_mfs_data') || '{"banks":[],"mfs":[]}');
-    
-                // Convert bank data to the format PHP expects
-                if (bankMfsData.banks && bankMfsData.banks.length > 0) {
-                    formData.bank = bankMfsData.banks.map((bank, index) => ({
-                        vendor_bank: bank.vendor_bank || '',
-                        vendor_bank_account: bank.vendor_bank_account || '',
-                        vendor_bank_branch: bank.vendor_bank_branch || '',
-                        vendor_bank_routing: bank.vendor_bank_routing || ''
-                    }));
-                } else {
-                    formData.bank = [];
-                }
-    
-                // Convert MFS data to the format PHP expects
-                if (bankMfsData.mfs && bankMfsData.mfs.length > 0) {
-                    formData.mfs = bankMfsData.mfs.map((mfs, index) => {
-                        const mfsItem = {
-                            vendor_mfs_title: mfs.vendor_mfs_title || '',
-                            vendor_mfs_type: mfs.vendor_mfs_type || '',
-                            vendor_amount_note: mfs.vendor_amount_note || ''
-                        };
-    
-                        if (Array.isArray(mfs.vendor_mfs_account)) {
-                            mfsItem.vendor_mfs_account = mfs.vendor_mfs_account;
-                        } else if (mfs.vendor_mfs_account) {
-                            mfsItem.vendor_mfs_account = [mfs.vendor_mfs_account];
-                        } else {
-                            mfsItem.vendor_mfs_account = [''];
+                
+                // Create FormData from the form
+                const formData = new FormData(this);
+                
+                // MANUALLY ADD BANK/MFS DATA TO FORM DATA
+                // Add bank data
+                if (bankMfsData.banks && Array.isArray(bankMfsData.banks)) {
+                    bankMfsData.banks.forEach((bank, bankIndex) => {
+                        if (bank && typeof bank === 'object') {
+                            if (bank.vendor_bank) {
+                                formData.append(`bank[${bankIndex}][vendor_bank]`, bank.vendor_bank);
+                            }
+                            if (bank.vendor_bank_account) {
+                                formData.append(`bank[${bankIndex}][vendor_bank_account]`, bank.vendor_bank_account);
+                            }
+                            if (bank.vendor_bank_branch) {
+                                formData.append(`bank[${bankIndex}][vendor_bank_branch]`, bank.vendor_bank_branch);
+                            }
+                            if (bank.vendor_bank_routing) {
+                                formData.append(`bank[${bankIndex}][vendor_bank_routing]`, bank.vendor_bank_routing);
+                            }
                         }
-    
-                        return mfsItem;
                     });
-                } else {
-                    formData.mfs = [];
                 }
-    
-                console.log('Sending form data:', formData);
-    
-                // Send form data via AJAX using FormData for proper array handling
-                const postData = new FormData();
-    
-                // Add simple fields
-                Object.keys(formData).forEach(key => {
-                    if (Array.isArray(formData[key])) {
-                        // Handle arrays (work items)
-                        if (key === 'bank' || key === 'mfs') {
-                            // JSON encode bank and mfs arrays
-                            postData.append(key, JSON.stringify(formData[key]));
-                        } else if (key.startsWith('work_') || key === 'amount') {
-                            // Handle work item arrays individually
-                            formData[key].forEach((value, index) => {
-                                postData.append(`${key}[]`, value);
-                            });
+                
+                // Add MFS data
+                if (bankMfsData.mfs && Array.isArray(bankMfsData.mfs)) {
+                    bankMfsData.mfs.forEach((mfs, mfsIndex) => {
+                        if (mfs && typeof mfs === 'object') {
+                            if (mfs.vendor_mfs_title) {
+                                formData.append(`mfs[${mfsIndex}][vendor_mfs_title]`, mfs.vendor_mfs_title);
+                            }
+                            if (mfs.vendor_mfs_type) {
+                                formData.append(`mfs[${mfsIndex}][vendor_mfs_type]`, mfs.vendor_mfs_type);
+                            }
+                            if (mfs.vendor_amount_note) {
+                                formData.append(`mfs[${mfsIndex}][vendor_amount_note]`, mfs.vendor_amount_note);
+                            }
+                            
+                            // Handle MFS accounts
+                            if (mfs.vendor_mfs_account) {
+                                const accounts = Array.isArray(mfs.vendor_mfs_account) 
+                                    ? mfs.vendor_mfs_account 
+                                    : [mfs.vendor_mfs_account];
+                                
+                                accounts.forEach((account, accIndex) => {
+                                    if (account) {
+                                        formData.append(`mfs[${mfsIndex}][vendor_mfs_account][]`, account);
+                                    }
+                                });
+                            }
                         }
-                    } else {
-                        // Handle simple values
-                        postData.append(key, formData[key]);
-                    }
-                });
-    
+                    });
+                }
+                
+                // Debug: Check what data is being sent
+                console.log('FormData entries before sending:');
+                console.log('Bank/MFS Data from localStorage:', bankMfsData);
+                
+                for (let pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);
+                }
+        
                 // Send form data via AJAX
                 const response = await fetch(API_INVOICE_STORE, {
                     method: 'POST',
-                    body: postData
+                    body: formData
                 });
-    
+        
                 const result = await response.json();
-    
+        
                 if (result.success) {
                     // Show success message
                     alert(result.message);
-    
+        
                     // Clear localStorage
                     localStorage.removeItem('invoice_create_draft');
-    
+        
                     // Reset form
                     this.reset();
                     document.getElementById('work_items').innerHTML = '';
@@ -2735,15 +2725,15 @@ $base_ip_path = trim($ip_port, "/");
                     // Add initial work item
                     addWorkItem();
                     calculateTotal();
-    
+        
                     // Fetch new invoice number for next invoice
                     await fetchInvoiceNumberFromAPI();
-    
+        
                     console.log('Invoice saved:', result);
-    
+        
                     // Show success modal
                     showSuccessModal(result.invoice_no, result.invoice_id);
-    
+        
                 } else {
                     alert('Error: ' + result.message);
                 }

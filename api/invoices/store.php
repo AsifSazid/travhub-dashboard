@@ -9,15 +9,22 @@ ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/invoice_store_errors.log');
 
 // Log incoming request
-file_put_contents(__DIR__ . '/invoice_store_debug.log', 
-    "[" . date('Y-m-d H:i:s') . "] INVOICE STORE REQUEST START\n" .
+$logData = "[" . date('Y-m-d H:i:s') . "] INVOICE STORE REQUEST START\n" .
     "========================================\n" .
     "Method: " . $_SERVER['REQUEST_METHOD'] . "\n" .
     "Content Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'Not set') . "\n" .
-    "POST Data: " . json_encode($_POST, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n" .
-    "========================================\n\n",
-    FILE_APPEND
-);
+    "POST Data:\n";
+    
+foreach ($_POST as $key => $value) {
+    if (is_array($value)) {
+        $logData .= "$key: " . print_r($value, true) . "\n";
+    } else {
+        $logData .= "$key: " . substr($value, 0, 100) . "...\n";
+    }
+}
+$logData .= "========================================\n\n";
+
+file_put_contents(__DIR__ . '/invoice_store_debug.log', $logData, FILE_APPEND);
 
 // Include required files
 require '../../server/db_connection.php';
@@ -158,9 +165,97 @@ function getClientInfo($pdo, $clientIdentifier) {
     ];
 }
 
+// Function to process bank/mfs data from form array format
+function processFormBankMfsData() {
+    $result = ['banks' => [], 'mfs' => []];
+    
+    // Process Bank Data
+    $bankIndex = 0;
+    while (isset($_POST["bank[$bankIndex][vendor_bank]"])) {
+        $bank = [
+            'vendor_bank' => $_POST["bank[$bankIndex][vendor_bank]"] ?? '',
+            'vendor_bank_account' => $_POST["bank[$bankIndex][vendor_bank_account]"] ?? '',
+            'vendor_bank_branch' => $_POST["bank[$bankIndex][vendor_bank_branch]"] ?? '',
+            'vendor_bank_routing' => $_POST["bank[$bankIndex][vendor_bank_routing]"] ?? ''
+        ];
+        
+        // Only add if at least one field has value
+        if (!empty(array_filter(array_values($bank)))) {
+            $result['banks'][] = $bank;
+        }
+        $bankIndex++;
+    }
+    
+    // Also check for JSON format bank data
+    if (isset($_POST['bank']) && is_string($_POST['bank'])) {
+        $jsonData = json_decode($_POST['bank'], true);
+        if (is_array($jsonData)) {
+            foreach ($jsonData as $bank) {
+                if (!empty(array_filter(array_values($bank)))) {
+                    $result['banks'][] = $bank;
+                }
+            }
+        }
+    }
+    
+    // Process MFS Data
+    $mfsIndex = 0;
+    while (isset($_POST["mfs[$mfsIndex][vendor_mfs_title]"])) {
+        $mfs = [
+            'vendor_mfs_title' => $_POST["mfs[$mfsIndex][vendor_mfs_title]"] ?? '',
+            'vendor_mfs_type' => $_POST["mfs[$mfsIndex][vendor_mfs_type]"] ?? '',
+            'vendor_amount_note' => $_POST["mfs[$mfsIndex][vendor_amount_note]"] ?? '',
+            'vendor_mfs_account' => []
+        ];
+        
+        // Process MFS Accounts (they come as array)
+        $accountIndex = 0;
+        while (isset($_POST["mfs[$mfsIndex][vendor_mfs_account][$accountIndex]"])) {
+            $account = $_POST["mfs[$mfsIndex][vendor_mfs_account][$accountIndex]"] ?? '';
+            if (!empty(trim($account))) {
+                $mfs['vendor_mfs_account'][] = $account;
+            }
+            $accountIndex++;
+        }
+        
+        // Also check for single account
+        if (isset($_POST["mfs[$mfsIndex][vendor_mfs_account]"]) && 
+            is_string($_POST["mfs[$mfsIndex][vendor_mfs_account]"]) &&
+            !empty(trim($_POST["mfs[$mfsIndex][vendor_mfs_account]"]))) {
+            $mfs['vendor_mfs_account'][] = $_POST["mfs[$mfsIndex][vendor_mfs_account]"];
+        }
+        
+        // Only add if at least one field has value
+        if (!empty(array_filter(array_values($mfs)))) {
+            $result['mfs'][] = $mfs;
+        }
+        $mfsIndex++;
+    }
+    
+    // Also check for JSON format mfs data
+    if (isset($_POST['mfs']) && is_string($_POST['mfs'])) {
+        $jsonData = json_decode($_POST['mfs'], true);
+        if (is_array($jsonData)) {
+            foreach ($jsonData as $mfs) {
+                if (!empty(array_filter(array_values($mfs)))) {
+                    $result['mfs'][] = $mfs;
+                }
+            }
+        }
+    }
+    
+    return $result;
+}
+
 // Process POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        
+
+        var_dump($_POST);
+        die;
+
+
         // Get raw POST data for debugging
         $rawInput = file_get_contents('php://input');
         file_put_contents(__DIR__ . '/invoice_store_debug.log', 
@@ -232,71 +327,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $work_items_json = json_encode($work_items, JSON_UNESCAPED_UNICODE);
 
         // ==================== VENDOR PAYMENT METHODS ====================
-        $vendor_payment_methods = ['banks' => [], 'mfs' => []];
-
-        // Process bank data
-        if (isset($_POST['bank'])) {
-            $bankData = $_POST['bank'];
-            
-            // Handle JSON string
-            if (is_string($bankData)) {
-                $bankData = json_decode($bankData, true);
-            }
-            
-            // Handle array
-            if (is_array($bankData)) {
-                foreach ($bankData as $bank) {
-                    if (is_array($bank) && !empty(array_filter($bank))) {
-                        $vendor_payment_methods['banks'][] = [
-                            'title' => sanitize($bank['vendor_bank'] ?? ''),
-                            'account_no' => sanitize($bank['vendor_bank_account'] ?? ''),
-                            'branch' => sanitize($bank['vendor_bank_branch'] ?? ''),
-                            'routing_no' => sanitize($bank['vendor_bank_routing'] ?? '')
-                        ];
-                    }
-                }
-            }
-        }
-
-        // Process MFS data
-        if (isset($_POST['mfs'])) {
-            $mfsData = $_POST['mfs'];
-            
-            // Handle JSON string
-            if (is_string($mfsData)) {
-                $mfsData = json_decode($mfsData, true);
-            }
-            
-            // Handle array
-            if (is_array($mfsData)) {
-                foreach ($mfsData as $mfs) {
-                    if (is_array($mfs) && !empty(array_filter($mfs))) {
-                        $accounts = [];
-                        
-                        // Process accounts
-                        if (isset($mfs['vendor_mfs_account'])) {
-                            $accData = $mfs['vendor_mfs_account'];
-                            if (is_array($accData)) {
-                                foreach ($accData as $acc) {
-                                    if (!empty(trim($acc))) {
-                                        $accounts[] = sanitize($acc);
-                                    }
-                                }
-                            } elseif (!empty(trim($accData))) {
-                                $accounts[] = sanitize($accData);
-                            }
-                        }
-
-                        $vendor_payment_methods['mfs'][] = [
-                            'title' => sanitize($mfs['vendor_mfs_title'] ?? ''),
-                            'mfs_type' => sanitize($mfs['vendor_mfs_type'] ?? ''),
-                            'mfs_account' => $accounts,
-                            'note' => sanitize($mfs['vendor_amount_note'] ?? '')
-                        ];
-                    }
-                }
-            }
-        }
+        $vendor_payment_methods = processFormBankMfsData();
+        
+        // Debug log for bank/mfs data
+        file_put_contents(__DIR__ . '/invoice_store_debug.log', 
+            "[" . date('Y-m-d H:i:s') . "] PROCESSED BANK/MFS DATA:\n" . 
+            print_r($vendor_payment_methods, true) . "\n\n",
+            FILE_APPEND
+        );
 
         $vendor_payment_methods_json = json_encode($vendor_payment_methods, JSON_UNESCAPED_UNICODE);
 
@@ -394,6 +432,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             "Invoice No: $invoice_no\n" .
             "Client: $client_name\n" .
             "Total Amount: $total_amount\n" .
+            "Bank Count: " . count($vendor_payment_methods['banks']) . "\n" .
+            "MFS Count: " . count($vendor_payment_methods['mfs']) . "\n" .
             "========================================\n\n",
             FILE_APPEND
         );
@@ -409,7 +449,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'client_name' => $client_name,
                 'total_amount' => $total_amount,
                 'total_in_words' => $total_amount_in_words,
-                'work_items_count' => count($work_items)
+                'work_items_count' => count($work_items),
+                'banks_count' => count($vendor_payment_methods['banks']),
+                'mfs_count' => count($vendor_payment_methods['mfs'])
             ]
         ], JSON_UNESCAPED_UNICODE);
 

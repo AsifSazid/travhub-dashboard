@@ -1259,7 +1259,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         }
 
         function editInvoice(invoiceId) {
-            window.open(`edit-invoice.php?id=${invoiceId}`, '_blank');
+            window.open(`edit-invoice.php?invoice=${invoiceId}`, '_blank');
         }
 
         function sendInvoiceOptions(invoiceId, email, phone) {
