@@ -310,3 +310,46 @@ Client: Dekko Isho Group
 Total Amount: 76200
 ========================================
 
+[2026-01-26 16:36:24] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryTVMVXIJ93N29fate
+POST Data: {
+    "invoice_no": "THR-IN-26-00K019",
+    "date": "2026-01-26",
+    "client_title": "THR-CL-26-00K004",
+    "client_phone_no": "",
+    "client_cc": "Sadikuz Zaman",
+    "total_amount": "222999.98",
+    "paid_amount": "0",
+    "due_amount": "222999.98",
+    "work_title": [
+        ""
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "0"
+    ],
+    "work_particular": [
+        ""
+    ],
+    "amount": [
+        "0.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-26 16:36:24] RAW INPUT:
+
+
+[2026-01-26 14:36:24] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 19
+Invoice No: THR-IN-26-00K019
+Client: BONAFIDE KNITTING MILLS LTD
+Total Amount: 222999.98
+========================================
+

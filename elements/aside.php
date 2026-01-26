@@ -155,6 +155,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-passport mr-3"></i>
                         <span class="sidebar-text">Passport Info Extraction</span>
                     </a>
+                    <a href="hotel-info-extraction.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'hotel-info-extraction.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-hotel mr-3"></i>
+                        <span class="sidebar-text">Hotel Info Extraction</span>
+                    </a>
                 </div>
             </div>
             

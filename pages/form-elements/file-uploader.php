@@ -103,7 +103,7 @@
             }
 
             const fileItem = document.createElement('div');
-            fileItem.className = 'file-item bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition duration-200 cursor-pointer';
+            fileItem.className = 'file-item bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition duration-200 cursor-pointer my-2 overflow-hidden';
             fileItem.dataset.fileName = file.name;
             fileItem.dataset.fileSize = file.size;
             fileItem.dataset.fileType = file.type;
@@ -113,10 +113,14 @@
 
             fileItem.innerHTML = `
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center flex-1">
+                    <div class="flex items-center flex-1 min-w-0">
                         <i class="${fileIcon} text-xl mr-3 ${isImage ? 'text-blue-500' : 'text-gray-500'}"></i>
                         <div class="flex-1 min-w-0">
-                            <div class="font-medium text-gray-800 truncate" title="${file.name}">${file.name}</div>
+                            <div class="relative group">
+                                <p class="font-medium text-gray-800 truncate" title="${file.name}">
+                                    ${file.name || 'N/A'}
+                                </p>
+                            </div>
                             <div class="text-xs text-gray-500">${formatFileSize(file.size)} • ${file.type || 'Unknown type'}</div>
                         </div>
                     </div>
