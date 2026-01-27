@@ -185,8 +185,8 @@ try {
     }
 
     // Add bank info from vendor.json (if available)
-    if (!empty($vendor_data['bank']) && is_array($vendor_data['bank'])) {
-        foreach ($vendor_data['bank'] as $bank) {
+    if (!empty($vendor_data['banks']) && is_array($vendor_data['banks'])) {
+        foreach ($vendor_data['banks'] as $bank) {
             $merged_bank_items[] = [
                 'title' => $bank['vendor_bank'] ?? '',
                 'account_no' => $bank['vendor_bank_account'] ?? '',

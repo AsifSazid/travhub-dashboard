@@ -744,6 +744,27 @@ $base_ip_path = trim($ip_port, "/");
             height: 0;
             width: 0;
         }
+        
+        /* Add to your CSS styles */
+        .generated-input {
+            transition: all 0.3s ease;
+        }
+        
+        .generated-input:disabled {
+            background-color: #f3f4f6;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .input-submission-active {
+            border-color: #10b981;
+            background-color: #f0fdfa;
+        }
+        
+        .input-submission-inactive {
+            opacity: 0.5;
+            background-color: #f9fafb;
+        }
     </style>
 </head>
 
@@ -1559,31 +1580,111 @@ $base_ip_path = trim($ip_port, "/");
                 updateCustomWorkItemCalculation(workItemElement);
             });
             
-            // Mode toggle
+            // Mode toggle - CUSTOM MODE
             customBtn.addEventListener('click', function() {
-                // Switch to custom mode
+                // Switch to custom mode UI
                 customBtn.classList.add('bg-green-600', 'text-white', 'border-green-600');
                 customBtn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
                 
                 systemBtn.classList.remove('bg-green-600', 'text-white', 'border-green-600');
                 systemBtn.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
                 
+                // Show custom form, hide system form
                 customForm.style.display = 'block';
                 systemForm.style.display = 'none';
                 
+                // ENABLE custom form inputs for submission
+                customForm.querySelectorAll('input, textarea, select').forEach(input => {
+                    input.disabled = false;
+                    // Ensure they have names for form submission
+                    if (input.hasAttribute('data-original-name')) {
+                        input.name = input.getAttribute('data-original-name');
+                        input.removeAttribute('data-original-name');
+                    }
+                });
+                
+                // DISABLE/REMOVE system form inputs from submission
+                const generatedItems = systemForm.querySelectorAll('.generated-item input, .generated-item textarea, .generated-item select');
+                generatedItems.forEach(input => {
+                    input.disabled = true;
+                    // Store original name and remove from submission
+                    if (input.name && !input.hasAttribute('data-original-name')) {
+                        input.setAttribute('data-original-name', input.name);
+                    }
+                    input.removeAttribute('name'); // Remove name so it's not submitted
+                });
+                
+                // Clear system generated items display (optional)
+                const generatedContainer = systemForm.querySelector('.generated-items-list');
+                if (generatedContainer && state.mode === 'system') {
+                    generatedContainer.innerHTML = `
+                        <div class="text-center py-6 text-gray-500">
+                            <i class="fas fa-inbox text-3xl mb-3"></i>
+                            <p>No tasks selected yet. Select tasks above to generate work items.</p>
+                        </div>
+                    `;
+                }
+                
+                // Clear system work selection
+                const workSelect = systemForm.querySelector('.system-work-select');
+                if (workSelect) {
+                    workSelect.value = '';
+                    workSelect.innerHTML = '<option value="">-- Select a Work --</option>';
+                }
+                
+                // Clear task groups
+                const groupsContainer = systemForm.querySelector('.task-groups-container');
+                if (groupsContainer) {
+                    groupsContainer.innerHTML = `
+                        <div class="text-center py-4 text-gray-500">
+                            <i class="fas fa-info-circle text-lg mb-2"></i>
+                            <p>Select a client and then select a work to see tasks</p>
+                        </div>
+                    `;
+                }
+                
+                // Clear task groups state
+                state.taskGroups.clear();
+                
                 state.mode = 'custom';
+                
+                // Recalculate total (since we removed system items)
+                calculateTotal();
             });
             
+            // Mode toggle - SYSTEM MODE
             systemBtn.addEventListener('click', function() {
-                // Switch to system mode
+                // Switch to system mode UI
                 systemBtn.classList.add('bg-green-600', 'text-white', 'border-green-600');
                 systemBtn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
                 
                 customBtn.classList.remove('bg-green-600', 'text-white', 'border-green-600');
                 customBtn.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
                 
+                // Show system form, hide custom form
                 customForm.style.display = 'none';
                 systemForm.style.display = 'block';
+                
+                // DISABLE/REMOVE custom form inputs from submission
+                customForm.querySelectorAll('input, textarea, select').forEach(input => {
+                    input.disabled = true;
+                    // Store original name and remove from submission
+                    if (input.name && !input.hasAttribute('data-original-name')) {
+                        input.setAttribute('data-original-name', input.name);
+                    }
+                    input.removeAttribute('name'); // Remove name so it's not submitted
+                });
+                
+                // ENABLE system-generated inputs for submission
+                const generatedItems = systemForm.querySelectorAll('.generated-item input, .generated-item textarea, .generated-item select');
+                generatedItems.forEach(input => {
+                    input.disabled = false;
+                    // Restore original name if stored
+                    if (input.hasAttribute('data-original-name')) {
+                        input.name = input.getAttribute('data-original-name');
+                        input.removeAttribute('data-original-name');
+                    }
+                });
                 
                 state.mode = 'system';
                 
@@ -1943,6 +2044,7 @@ $base_ip_path = trim($ip_port, "/");
         }
     
         /* ========== 11. GENERATE WORK ITEMS FROM TASKS ========== */
+        /* ========== MODIFIED: generateWorkItemsFromTasks ========== */
         function generateWorkItemsFromTasks(workItemElement) {
             const workItemId = workItemElement.dataset.workItemId;
             const state = workItemStates.get(workItemId);
@@ -1982,14 +2084,14 @@ $base_ip_path = trim($ip_port, "/");
                 
                 // Create the work item form element
                 const itemDiv = document.createElement('div');
-                itemDiv.className = 'generated-item bg-white border rounded-lg p-4';
+                itemDiv.className = 'generated-item bg-white border rounded-lg p-4 mb-3';
                 itemDiv.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                         <div class="form-group">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
                             <input type="text" 
                                    name="work_title[]"
-                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
                                    value="${taskData.title || ''}"
                                    data-generated="true"
                                    data-task-id="${task.id}">
@@ -1998,7 +2100,7 @@ $base_ip_path = trim($ip_port, "/");
                             <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                             <input type="number" 
                                    name="work_qty[]"
-                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50"
+                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
                                    value="1"
                                    data-generated="true">
                         </div>
@@ -2006,7 +2108,7 @@ $base_ip_path = trim($ip_port, "/");
                             <label class="block text-sm font-medium text-gray-700 mb-1">Rate</label>
                             <input type="number" 
                                    name="work_rate[]"
-                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
                                    value="${taskData.rate || 0}"
                                    data-generated="true"
                                    step="0.01">
@@ -2015,7 +2117,7 @@ $base_ip_path = trim($ip_port, "/");
                     <div class="form-group mb-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Details</label>
                         <textarea name="work_particular[]"
-                                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
                                   rows="2"
                                   data-generated="true">${taskData.purpose || ''}</textarea>
                     </div>
@@ -2030,7 +2132,8 @@ $base_ip_path = trim($ip_port, "/");
                     <input type="hidden" 
                            name="amount[]" 
                            value="${taskData.rate || 0}"
-                           data-generated="true">
+                           data-generated="true"
+                           class="generated-input">
                 `;
                 
                 generatedContainer.appendChild(itemDiv);
@@ -2057,6 +2160,9 @@ $base_ip_path = trim($ip_port, "/");
                 
                 rateInput.addEventListener('input', handler);
                 qtyInput.addEventListener('input', handler);
+                
+                // Initial calculation
+                handler();
             });
             
             // Update the main totals
@@ -2072,6 +2178,58 @@ $base_ip_path = trim($ip_port, "/");
             if (generatedContainer) {
                 generatedContainer.innerHTML = '';
             }
+        }
+        
+        /* ========== NEW: Clean up form inputs before submission ========== */
+        function cleanupFormInputsBeforeSubmit() {
+            // Find all work items
+            document.querySelectorAll('.item-card').forEach(itemCard => {
+                const workItemId = itemCard.dataset.workItemId;
+                const state = workItemStates.get(workItemId);
+                
+                if (!state) return;
+                
+                if (state.mode === 'custom') {
+                    // Enable custom inputs, disable system inputs
+                    const customInputs = itemCard.querySelectorAll('.custom-form-container input, .custom-form-container textarea, .custom-form-container select');
+                    const systemInputs = itemCard.querySelectorAll('.generated-input');
+                    
+                    customInputs.forEach(input => {
+                        input.disabled = false;
+                        if (input.hasAttribute('data-original-name')) {
+                            input.name = input.getAttribute('data-original-name');
+                        }
+                    });
+                    
+                    systemInputs.forEach(input => {
+                        input.disabled = true;
+                        if (input.name) {
+                            input.setAttribute('data-original-name', input.name);
+                            input.removeAttribute('name');
+                        }
+                    });
+                    
+                } else if (state.mode === 'system') {
+                    // Enable system inputs, disable custom inputs
+                    const customInputs = itemCard.querySelectorAll('.custom-form-container input, .custom-form-container textarea, .custom-form-container select');
+                    const systemInputs = itemCard.querySelectorAll('.generated-input');
+                    
+                    customInputs.forEach(input => {
+                        input.disabled = true;
+                        if (input.name) {
+                            input.setAttribute('data-original-name', input.name);
+                            input.removeAttribute('name');
+                        }
+                    });
+                    
+                    systemInputs.forEach(input => {
+                        input.disabled = false;
+                        if (input.hasAttribute('data-original-name')) {
+                            input.name = input.getAttribute('data-original-name');
+                        }
+                    });
+                }
+            });
         }
     
         /* ========== 14. MODIFIED ADD WORK ITEM FUNCTION ========== */
@@ -2603,6 +2761,9 @@ $base_ip_path = trim($ip_port, "/");
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // ========== ADD THIS: Clean up inputs before submission ==========
+            cleanupFormInputsBeforeSubmit();
+            
             // Validate client selection
             if (!globalClientState.clientId) {
                 alert('Please select a client first.');
@@ -2688,12 +2849,12 @@ $base_ip_path = trim($ip_port, "/");
                 }
                 
                 // Debug: Check what data is being sent
-                console.log('FormData entries before sending:');
-                console.log('Bank/MFS Data from localStorage:', bankMfsData);
+                // console.log('FormData entries before sending:');
+                // console.log('Bank/MFS Data from localStorage:', bankMfsData);
                 
-                for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
-                }
+                // for (let pair of formData.entries()) {
+                //     console.log(pair[0] + ': ' + pair[1]);
+                // }
         
                 // Send form data via AJAX
                 const response = await fetch(API_INVOICE_STORE, {
@@ -2732,7 +2893,8 @@ $base_ip_path = trim($ip_port, "/");
                     console.log('Invoice saved:', result);
         
                     // Show success modal
-                    showSuccessModal(result.invoice_no, result.invoice_id);
+                    // showSuccessModal(result.invoice_no, result.invoice_id);
+                    printInvoice(result.invoice_no)
         
                 } else {
                     alert('Error: ' + result.message);

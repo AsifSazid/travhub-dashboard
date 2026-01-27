@@ -645,7 +645,7 @@ if ($http_code == 200 && !empty($response)) {
                             <?php if (!empty($work_items) && is_array($work_items)): ?>
                                 <?php foreach ($work_items as $index => $item): ?>
                                     <div class="item-card" data-index="<?php echo $index; ?>">
-                                        <input type="hidden" name="work_item_id[]" value="">
+                                        <input type="hidden" name="work_item_id[]" value="<?php echo htmlspecialchars($item['id'] ?? ''); ?>">
                                         <div class="form-grid">
                                             <div class="form-group">
                                                 <label class="form-label"><i class="fas fa-heading"></i> Title</label>
@@ -1085,6 +1085,9 @@ if ($http_code == 200 && !empty($response)) {
         function addWorkItem(data = {}) {
             const workItemsDiv = document.getElementById('work_items');
             const nextIndex = workItemsDiv.querySelectorAll('.item-card').length;
+            
+            const itemId = data.id || 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
 
             const div = document.createElement('div');
             div.className = 'item-card';

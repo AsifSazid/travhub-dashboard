@@ -250,12 +250,6 @@ function processFormBankMfsData() {
 // Process POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        
-
-        var_dump($_POST);
-        die;
-
-
         // Get raw POST data for debugging
         $rawInput = file_get_contents('php://input');
         file_put_contents(__DIR__ . '/invoice_store_debug.log', 
