@@ -91,11 +91,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-bangladeshi-taka-sign mr-3"></i>
                         <span class="sidebar-text">Accounting</span>
                     </a>
-                    <a href="create-invoice.php"
+                    <a href="index-invoice.php"
                         class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'create-invoice.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'index-invoice.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-receipt mr-3"></i>
-                        <span class="sidebar-text">Create Invoice</span>
+                        <span class="sidebar-text">Invoice Lists</span>
                     </a>
                     <a href="analytics.php"
                         class="flex items-center p-3 rounded-lg 

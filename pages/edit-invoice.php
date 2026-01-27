@@ -16,15 +16,10 @@ $vendor_json_path = './../server/invoice-vendor.json';
 // Fetch invoice data from API
 $ch = curl_init($getInvoice);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
-
-// Debug - check response
-// var_dump($response);
-// exit();
 
 if ($http_code == 200 && !empty($response)) {
     $data = json_decode($response, true);
@@ -38,23 +33,138 @@ if ($http_code == 200 && !empty($response)) {
         $vendor_data = $data['data']['vendor_data'] ?? [];
         $vendor_payment_methods = $data['data']['vendor_payment_methods'] ?? [];
         
-        if (file_exists($vendor_json_path)) {
+        // শুধুমাত্র API থেকে ডাটা না পেলে JSON ফাইল থেকে নেবে
+        if (empty($vendor_payment_methods) && file_exists($vendor_json_path)) {
             $vendor_json = file_get_contents($vendor_json_path);
             $vendor_payment_methods = json_decode($vendor_json, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $vendor_payment_methods = ['banks' => [], 'mfs' => []];
+            }
         }
         
+        // ডিফল্ট ভ্যালু সেট করুন
+        $vendor_payment_methods = array_merge(
+            ['banks' => [], 'mfs' => []],
+            $vendor_payment_methods
+        );
         
         // Set invoice number properly
         $invoice_no = is_array($invoice['invoice_no']) ? 
                      (isset($invoice['invoice_no']['invoice_no']) ? $invoice['invoice_no']['invoice_no'] : 'N/A') : 
                      $invoice['invoice_no'];
-        $banks = $vendor_payment_methods['banks'];
+        $banks = $vendor_payment_methods['banks'] ?? [];
     } else {
         die("Failed to decode API response. JSON error: " . json_last_error_msg());
     }
 } else {
-    die("No Data Found...! Failed to fetch invoice data. HTTP Code: $http_code");
-}
+    ?>
+    <!DOCTYPE html>
+    <html lang="bn">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Error - Invoice Not Found</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            .error-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            }
+            .error-card {
+                background: white;
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                text-align: center;
+                max-width: 500px;
+                width: 90%;
+            }
+            .error-icon {
+                font-size: 64px;
+                color: #f59e0b;
+                margin-bottom: 20px;
+            }
+            .error-title {
+                color: #064e3b;
+                font-size: 24px;
+                margin-bottom: 15px;
+            }
+            .error-message {
+                color: #6b7280;
+                margin-bottom: 25px;
+                line-height: 1.6;
+            }
+            .error-actions {
+                display: flex;
+                gap: 15px;
+                justify-content: center;
+            }
+            .btn {
+                padding: 12px 24px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                transition: all 0.3s ease;
+            }
+            .btn-primary {
+                background: #10b981;
+                color: white;
+            }
+            .btn-primary:hover {
+                background: #059669;
+            }
+            .btn-outline {
+                background: transparent;
+                color: #10b981;
+                border: 2px solid #10b981;
+            }
+            .btn-outline:hover {
+                background: #10b981;
+                color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="error-container">
+            <div class="error-card">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h1 class="error-title">Invoice Not Found</h1>
+                <p class="error-message">
+                    <?php
+                    if ($http_code == 404) {
+                        echo "The invoice you're looking for doesn't exist or has been deleted.";
+                    } elseif ($http_code == 500) {
+                        echo "Server error occurred. Please try again later.";
+                    } elseif ($http_code == 0) {
+                        echo "Unable to connect to the server. Please check your internet connection.";
+                    } else {
+                        echo "Sorry, we couldn't load the invoice data. Error Code: $http_code";
+                    }
+                    ?>
+                </p>
+                <div class="error-actions">
+                    <a href="index.php" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Back to Home
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i> Go Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+        exit();
+    }
 ?>
 
 <!DOCTYPE html>
@@ -622,8 +732,15 @@ if ($http_code == 200 && !empty($response)) {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label"><i class="fas fa-user"></i> Client Name</label>
-                                <input type="text" name="client_title" class="form-control"
-                                    value="<?php echo htmlspecialchars($invoice['client_name'] ?? $client_info['title'] ?? ''); echo ' || '; echo htmlspecialchars($client_info['title'] ?? ''); ?>" required readonly>
+                                <div class="readonly-field">
+                                    <div class="readonly-label">Client Information (System Generated)</div>
+                                    <div class="readonly-value">
+                                        <?php 
+                                        $client_name_display = $invoice['client_name'] ?? $client_info['title'] ?? 'N/A';
+                                        echo htmlspecialchars($client_name_display);
+                                        ?>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label"><i class="fas fa-phone"></i> Phone Number</label>
@@ -642,72 +759,82 @@ if ($http_code == 200 && !empty($response)) {
                             <i class="fas fa-tasks"></i> Work Items
                         </div>
                         <div id="work_items">
-                            <?php if (!empty($work_items) && is_array($work_items)): ?>
-                                <?php foreach ($work_items as $index => $item): ?>
+                            <?php 
+                            $work_item_count = 0;
+                            if (!empty($work_items) && is_array($work_items)):
+                                foreach ($work_items as $index => $item):
+                                    $work_item_count++;
+                            ?>
                                     <div class="item-card" data-index="<?php echo $index; ?>">
-                                        <input type="hidden" name="work_item_id[]" value="<?php echo htmlspecialchars($item['id'] ?? ''); ?>">
+                                        <input type="hidden" name="work_items[<?php echo $index; ?>][id]" 
+                                               value="<?php echo htmlspecialchars($item['id'] ?? ''); ?>">
+                                        <input type="hidden" name="work_items[<?php echo $index; ?>][action]" value="update">
                                         <div class="form-grid">
                                             <div class="form-group">
                                                 <label class="form-label"><i class="fas fa-heading"></i> Title</label>
-                                                <input type="text" name="work_title[]" class="form-control"
+                                                <input type="text" name="work_items[<?php echo $index; ?>][title]" class="form-control"
                                                     value="<?php echo htmlspecialchars($item['title'] ?? ''); ?>" placeholder="Work title">
                                             </div>
                                             <div class="form-group">
                                                 <label class="form-label"><i class="fas fa-box"></i> Quantity</label>
-                                                <input type="number" name="work_qty[]" class="form-control"
+                                                <input type="number" name="work_items[<?php echo $index; ?>][qty]" class="form-control"
                                                     value="<?php echo htmlspecialchars($item['qty'] ?? 1); ?>" min="1" oninput="calcAmount(this)" placeholder="0">
                                             </div>
                                             <div class="form-group">
                                                 <label class="form-label"><i class="fas fa-tag"></i> Rate (per unit)</label>
-                                                <input type="number" name="work_rate[]" class="form-control"
+                                                <input type="number" name="work_items[<?php echo $index; ?>][rate]" class="form-control"
                                                     value="<?php echo htmlspecialchars($item['rate'] ?? 0); ?>" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
                                             </div>
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label"><i class="fas fa-align-left"></i> Details</label>
-                                            <textarea name="work_particular[]" class="form-control" placeholder="Work details..."><?php echo htmlspecialchars($item['particular'] ?? ''); ?></textarea>
+                                            <textarea name="work_items[<?php echo $index; ?>][particular]" class="form-control" placeholder="Work details..."><?php echo htmlspecialchars($item['particular'] ?? ''); ?></textarea>
                                         </div>
                                         <div class="amount-display">
                                             <span>Total: ৳ <span class="amount_text">
-                                                    <?php
-                                                    $item_qty = floatval($item['qty'] ?? 0);
-                                                    $item_rate = floatval($item['rate'] ?? 0);
-                                                    echo number_format($item_qty * $item_rate, 2);
-                                                    ?>
-                                                </span></span>
-                                            <input type="hidden" name="amount[]" value="<?php echo $item_qty * $item_rate; ?>">
-                                            <button type="button" class="btn btn-danger btn-small" onclick="removeWorkItem(this)">
+                                                <?php
+                                                $item_qty = floatval($item['qty'] ?? 0);
+                                                $item_rate = floatval($item['rate'] ?? 0);
+                                                echo number_format($item_qty * $item_rate, 2);
+                                                ?>
+                                            </span></span>
+                                            <input type="hidden" name="work_items[<?php echo $index; ?>][amount]" value="<?php echo $item_qty * $item_rate; ?>">
+                                            <button type="button" class="btn btn-danger btn-small" onclick="removeWorkItem(this, <?php echo $index; ?>)">
                                                 <i class="fas fa-trash"></i> Remove
                                             </button>
                                         </div>
                                     </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <!-- Default work item if none exists -->
+                            <?php 
+                                endforeach;
+                            else: 
+                                $work_item_count = 0;
+                            ?>
+                                <!-- শুধুমাত্র যখন কোন item নেই তখন default item দেখাবে -->
                                 <div class="item-card" data-index="0">
-                                    <input type="hidden" name="work_item_id[]" value="">
+                                    <input type="hidden" name="work_items[0][id]" value="">
+                                    <input type="hidden" name="work_items[0][action]" value="new">
                                     <div class="form-grid">
                                         <div class="form-group">
                                             <label class="form-label"><i class="fas fa-heading"></i> Title</label>
-                                            <input type="text" name="work_title[]" class="form-control" placeholder="Work title">
+                                            <input type="text" name="work_items[0][title]" class="form-control" placeholder="Work title">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label"><i class="fas fa-box"></i> Quantity</label>
-                                            <input type="number" name="work_qty[]" class="form-control" value="1" min="1" oninput="calcAmount(this)" placeholder="0">
+                                            <input type="number" name="work_items[0][qty]" class="form-control" value="1" min="1" oninput="calcAmount(this)" placeholder="0">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label"><i class="fas fa-tag"></i> Rate (per unit)</label>
-                                            <input type="number" name="work_rate[]" class="form-control" value="0" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
+                                            <input type="number" name="work_items[0][rate]" class="form-control" value="0" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
                                         </div>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label"><i class="fas fa-align-left"></i> Details</label>
-                                        <textarea name="work_particular[]" class="form-control" placeholder="Work details..."></textarea>
+                                        <textarea name="work_items[0][particular]" class="form-control" placeholder="Work details..."></textarea>
                                     </div>
                                     <div class="amount-display">
                                         <span>Total: ৳ <span class="amount_text">0.00</span></span>
-                                        <input type="hidden" name="amount[]" value="0">
-                                        <button type="button" class="btn btn-danger btn-small" onclick="removeWorkItem(this)">
+                                        <input type="hidden" name="work_items[0][amount]" value="0">
+                                        <button type="button" class="btn btn-danger btn-small" onclick="removeWorkItem(this, 0)">
                                             <i class="fas fa-trash"></i> Remove
                                         </button>
                                     </div>
@@ -715,7 +842,7 @@ if ($http_code == 200 && !empty($response)) {
                             <?php endif; ?>
                         </div>
         
-                        <button type="button" class="btn btn-outline" onclick="addWorkItem()">
+                        <button type="button" class="btn btn-outline" onclick="addNewWorkItem()">
                             <i class="fas fa-plus-circle"></i> Add Work Item
                         </button>
         
@@ -943,7 +1070,6 @@ if ($http_code == 200 && !empty($response)) {
                     </div>
                     <div id="bank_fields">
                         <?php
-                        // $banks = $vendor_payment_methods['bank'] ?? [];
                         if (!empty($banks) && is_array($banks)):
                             foreach ($banks as $index => $bank):
                         ?>
@@ -960,24 +1086,24 @@ if ($http_code == 200 && !empty($response)) {
                                         <div class="form-group">
                                             <label class="form-label">Bank Name</label>
                                             <input type="text" class="form-control bank-field" data-field="title"
-                                                value="<?php echo htmlspecialchars($bank['vendor_bank'] ?? ''); ?>" placeholder="DBBL, BRAC Bank, etc.">
+                                                value="<?php echo htmlspecialchars($bank['title'] ?? ''); ?>" placeholder="DBBL, BRAC Bank, etc.">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Account Number</label>
                                             <input type="text" class="form-control bank-field" data-field="account_no"
-                                                value="<?php echo htmlspecialchars($bank['vendor_bank_account'] ?? ''); ?>" placeholder="2021100019475">
+                                                value="<?php echo htmlspecialchars($bank['account_no'] ?? ''); ?>" placeholder="2021100019475">
                                         </div>
                                     </div>
                                     <div class="form-grid">
                                         <div class="form-group">
                                             <label class="form-label">Branch</label>
                                             <input type="text" class="form-control bank-field" data-field="branch"
-                                                value="<?php echo htmlspecialchars($bank['vendor_bank_branch'] ?? ''); ?>" placeholder="Ashkona (Dhaka North)">
+                                                value="<?php echo htmlspecialchars($bank['branch'] ?? ''); ?>" placeholder="Ashkona (Dhaka North)">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Routing Number</label>
                                             <input type="text" class="form-control bank-field" data-field="routing_no"
-                                                value="<?php echo htmlspecialchars($bank['vendor_bank_routing'] ?? ''); ?>" placeholder="090260205">
+                                                value="<?php echo htmlspecialchars($bank['routing_no'] ?? ''); ?>" placeholder="090260205">
                                         </div>
                                     </div>
                                 </div>
@@ -1011,12 +1137,12 @@ if ($http_code == 200 && !empty($response)) {
                                         <div class="form-group">
                                             <label class="form-label">Service Name</label>
                                             <input type="text" class="form-control mfs-field" data-field="title"
-                                                value="<?php echo htmlspecialchars($mfs['vendor_mfs_title'] ?? ''); ?>" placeholder="bkash, Nagad, Rocket">
+                                                value="<?php echo htmlspecialchars($mfs['title'] ?? ''); ?>" placeholder="bkash, Nagad, Rocket">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Type</label>
                                             <input type="text" class="form-control mfs-field" data-field="mfs_type"
-                                                value="<?php echo htmlspecialchars($mfs['vendor_mfs_type'] ?? ''); ?>" placeholder="Personal, Merchant">
+                                                value="<?php echo htmlspecialchars($mfs['mfs_type'] ?? ''); ?>" placeholder="Personal, Merchant">
                                         </div>
                                     </div>
                                     <div class="form-group">
@@ -1038,7 +1164,7 @@ if ($http_code == 200 && !empty($response)) {
                                         else: ?>
                                             <div class="mfs-account-item">
                                                 <input type="text" class="form-control mfs-account-field"
-                                                    value="<?php echo htmlspecialchars(vendor_mfs_account); ?>" placeholder="01XXXXXXXXX">
+                                                    value="<?php echo htmlspecialchars($mfs['mfs_account'] ?? ''); ?>" placeholder="01XXXXXXXXX">
                                             </div>
                                         <?php endif; ?>
                                         <button type="button" class="btn btn-outline btn-small add-account" onclick="addMfsAccount(this)">
@@ -1074,59 +1200,72 @@ if ($http_code == 200 && !empty($response)) {
     <script>
         const BANK_MFS_KEY = 'bank_mfs_data_edit_<?php echo $invoice_id; ?>';
         const GET_INVOICE = '<?php echo $getInvoice; ?>';
-        const UPDATE_INVOICE_API = '<?php echo $updateInvoiceApi; ?>'
-        
+        const UPDATE_INVOICE_API = '<?php echo $base_ip_path . "/api/invoices/update.php?invoice=" . $invoice_id; ?>';
+
         let bankMfsData = {
             banks: <?php echo json_encode($vendor_payment_methods['banks'] ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>,
             mfs: <?php echo json_encode($vendor_payment_methods['mfs'] ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>
         };
 
+        let workItemCounter = <?php echo $work_item_count; ?>;
+        let deletedItems = [];
+
         /* ---------------- Work Items Functions ---------------- */
-        function addWorkItem(data = {}) {
+        function addNewWorkItem() {
+            workItemCounter++;
             const workItemsDiv = document.getElementById('work_items');
-            const nextIndex = workItemsDiv.querySelectorAll('.item-card').length;
             
-            const itemId = data.id || 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-
             const div = document.createElement('div');
             div.className = 'item-card';
-            div.dataset.index = nextIndex;
+            div.dataset.index = workItemCounter;
+            
             div.innerHTML = `
-                <input type="hidden" name="work_item_id[]" value="${data.id || ''}">
+                <input type="hidden" name="work_items[${workItemCounter}][id]" value="">
+                <input type="hidden" name="work_items[${workItemCounter}][action]" value="new">
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-heading"></i> Title</label>
-                        <input type="text" name="work_title[]" class="form-control" value="${data.title||''}" placeholder="Work title">
+                        <input type="text" name="work_items[${workItemCounter}][title]" class="form-control" placeholder="Work title">
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-box"></i> Quantity</label>
-                        <input type="number" name="work_qty[]" class="form-control" value="${data.qty||1}" min="1" oninput="calcAmount(this)" placeholder="0">
+                        <input type="number" name="work_items[${workItemCounter}][qty]" class="form-control" value="1" min="1" oninput="calcAmount(this)" placeholder="0">
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-tag"></i> Rate (per unit)</label>
-                        <input type="number" name="work_rate[]" class="form-control" value="${data.rate||0}" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
+                        <input type="number" name="work_items[${workItemCounter}][rate]" class="form-control" value="0" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-align-left"></i> Details</label>
-                    <textarea name="work_particular[]" class="form-control" placeholder="Work details...">${data.particular||''}</textarea>
+                    <textarea name="work_items[${workItemCounter}][particular]" class="form-control" placeholder="Work details..."></textarea>
                 </div>
                 <div class="amount-display">
-                    <span>Total: ৳ <span class="amount_text">${((data.qty||0) * (data.rate||0)).toFixed(2)}</span></span>
-                    <input type="hidden" name="amount[]" value="${(data.qty||0) * (data.rate||0)}">
-                    <button type="button" class="btn btn-danger btn-small" onclick="removeWorkItem(this)">
+                    <span>Total: ৳ <span class="amount_text">0.00</span></span>
+                    <input type="hidden" name="work_items[${workItemCounter}][amount]" value="0">
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeWorkItem(this, ${workItemCounter})">
                         <i class="fas fa-trash"></i> Remove
                     </button>
                 </div>
             `;
             workItemsDiv.appendChild(div);
-            calculateTotal();
         }
 
-        function removeWorkItem(btn) {
+        function removeWorkItem(btn, itemIndex) {
             if (confirm('Are you sure you want to remove this work item?')) {
-                btn.closest('.item-card').remove();
+                const card = btn.closest('.item-card');
+                const actionInput = card.querySelector('input[name^="work_items["][name$="[action]"]');
+                const itemId = card.querySelector('input[name^="work_items["][name$="[id]"]').value;
+                
+                if (actionInput.value === 'update' && itemId) {
+                    // এক্সিস্টিং আইটেম ডিলিট করার জন্য
+                    actionInput.value = 'delete';
+                    deletedItems.push(itemId);
+                    card.style.display = 'none'; // শুধু hide করছি
+                } else {
+                    // নতুন আইটেম ডিলিট করা
+                    card.remove();
+                }
                 calculateTotal();
             }
         }
@@ -1134,18 +1273,28 @@ if ($http_code == 200 && !empty($response)) {
         /* ---------------- Calculations ---------------- */
         function calcAmount(el) {
             const box = el.closest('.item-card');
-            const qty = parseFloat(box.querySelector('[name="work_qty[]"]').value) || 0;
-            const rate = parseFloat(box.querySelector('[name="work_rate[]"]').value) || 0;
+            const qtyInput = box.querySelector('input[name^="work_items["][name$="[qty]"]');
+            const rateInput = box.querySelector('input[name^="work_items["][name$="[rate]"]');
+            const amountInput = box.querySelector('input[name^="work_items["][name$="[amount]"]');
+            
+            const qty = parseFloat(qtyInput.value) || 0;
+            const rate = parseFloat(rateInput.value) || 0;
             const amount = qty * rate;
+            
             box.querySelector('.amount_text').innerText = amount.toFixed(2);
-            box.querySelector('[name="amount[]"]').value = amount.toFixed(2);
+            amountInput.value = amount.toFixed(2);
             calculateTotal();
         }
 
         function calculateTotal() {
             let total = 0;
-            document.querySelectorAll('[name="amount[]"]').forEach(i => {
-                total += parseFloat(i.value) || 0;
+            
+            // শুধুমাত্র visible items calculate করবে
+            document.querySelectorAll('#work_items .item-card').forEach(card => {
+                if (card.style.display !== 'none') {
+                    const amountInput = card.querySelector('input[name^="work_items["][name$="[amount]"]');
+                    total += parseFloat(amountInput.value) || 0;
+                }
             });
 
             document.getElementById('total_amount_display').innerText = '৳ ' + total.toFixed(2);
@@ -1172,10 +1321,6 @@ if ($http_code == 200 && !empty($response)) {
 
         function closeBankMfsModal() {
             document.getElementById('bankMfsModal').style.display = 'none';
-        }
-
-        function populateModalFields(data) {
-            // Already populated by PHP
         }
 
         function addBankField(bankData = {}, index = null) {
@@ -1365,22 +1510,6 @@ if ($http_code == 200 && !empty($response)) {
             alert('Bank/MFS information saved! Changes will be applied when you update the invoice.');
         }
 
-        function storeBankMfsInForm(data) {
-            // Remove existing hidden fields
-            document.querySelectorAll('[data-bank-mfs-field]').forEach(field => field.remove());
-
-            // Add new hidden fields
-            const form = document.getElementById('invoiceForm');
-
-            // Create a hidden input for bank/MFS data
-            const bankMfsInput = document.createElement('input');
-            bankMfsInput.type = 'hidden';
-            bankMfsInput.name = 'vendor_payment_methods';
-            bankMfsInput.value = JSON.stringify(data);
-            bankMfsInput.setAttribute('data-bank-mfs-field', 'true');
-            form.appendChild(bankMfsInput);
-        }
-
         /* ---------------- Form Submission ---------------- */
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -1390,31 +1519,36 @@ if ($http_code == 200 && !empty($response)) {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
             submitBtn.disabled = true;
 
+            // Get bank/mfs data from localStorage or use initial data
+            const savedData = localStorage.getItem(BANK_MFS_KEY);
+            let bankMfsData = savedData ? JSON.parse(savedData) : window.bankMfsData;
+
+            // Create FormData object
+            const formData = new FormData(this);
+            
+            // Add vendor payment methods as JSON string
+            formData.append('vendor_payment_methods', JSON.stringify(bankMfsData));
+            
+            // Add deleted items
+            if (deletedItems.length > 0) {
+                formData.append('deleted_work_items', JSON.stringify(deletedItems));
+            }
+
             try {
-                // Get bank/mfs data from localStorage or use initial data
-                const savedData = localStorage.getItem(BANK_MFS_KEY);
-                let bankMfsData = savedData ? JSON.parse(savedData) : window.bankMfsData;
-
-                // Create FormData object
-                const formData = new FormData(this);
-                
-                // Add vendor payment methods as JSON string
-                formData.append('vendor_payment_methods', JSON.stringify(bankMfsData));
-
-                // Send form data via AJAX
                 const response = await fetch(UPDATE_INVOICE_API, {
                     method: 'POST',
                     body: formData
                 });
-
+                
                 const result = await response.json();
-
+                
                 if (result.success) {
-                    alert('Invoice updated successfully!');
-                    localStorage.removeItem(BANK_MFS_KEY);
-                    window.location.href = `index-invoice.php`;
+                    showSuccessNotification('Invoice updated successfully!');
+                    setTimeout(() => {
+                        window.location.href = 'index-invoice.php';
+                    }, 1500);
                 } else {
-                    alert('Error: ' + result.message);
+                    showErrorNotification(result.message || 'Update failed');
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -1432,10 +1566,14 @@ if ($http_code == 200 && !empty($response)) {
             calculateDue();
 
             // Auto-calculate on input changes
-            document.querySelectorAll('[name="work_qty[]"], [name="work_rate[]"]').forEach(input => {
-                input.addEventListener('input', function() {
-                    calcAmount(this);
-                });
+            document.querySelectorAll('#work_items .item-card').forEach(card => {
+                if (card.style.display !== 'none') {
+                    const qtyInput = card.querySelector('input[name^="work_items["][name$="[qty]"]');
+                    const rateInput = card.querySelector('input[name^="work_items["][name$="[rate]"]');
+                    
+                    if (qtyInput) qtyInput.addEventListener('input', function() { calcAmount(this); });
+                    if (rateInput) rateInput.addEventListener('input', function() { calcAmount(this); });
+                }
             });
 
             // Close modal on overlay click
