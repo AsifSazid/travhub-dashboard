@@ -1543,12 +1543,12 @@ if ($http_code == 200 && !empty($response)) {
                 const result = await response.json();
                 
                 if (result.success) {
-                    showSuccessNotification('Invoice updated successfully!');
+                    // showSuccessNotification('Invoice updated successfully!');
                     setTimeout(() => {
                         window.location.href = 'index-invoice.php';
                     }, 1500);
                 } else {
-                    showErrorNotification(result.message || 'Update failed');
+                    // showErrorNotification(result.message || 'Update failed');
                 }
             } catch (error) {
                 console.error('Error:', error);
