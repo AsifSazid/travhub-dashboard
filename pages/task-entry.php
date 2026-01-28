@@ -127,7 +127,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                                                     onclick="document.getElementById('fileInput').click()"
                                                     class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
                                                     Browse Files
-                                                     <i class="fas fa-folder-open mr-1"></i>  
+                                                     <!--<i class="fas fa-folder-open mr-1"></i>  -->
                                                 </button>
                                             </div>
 
