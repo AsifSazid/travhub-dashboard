@@ -95,6 +95,12 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                             </p>
 
                             <form id="taskForm">
+                                <div class="">
+                                    <label for="taskTitle" class="block text-sm font-medium text-gray-700 my-2">
+                                        Task Title
+                                    </label>
+                                    <input type="text" id="taskTitle" name="taskTitle" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <!-- Left -->
                                     <div>
@@ -136,7 +142,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                                     <!-- Right -->
                                     <div>
                                         <label for="infoFileName" class="block text-sm font-medium text-gray-700 my-2">
-                                            Information File
+                                            Information File Name
                                         </label>
                                         <input type="text" id="infoFileName" name="infoFileName" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                         <label for="infoArea" class="block text-sm font-medium text-gray-700 mb-2">
@@ -734,6 +740,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             const formData = new FormData();
 
             // Get values
+            const taskTitle = document.getElementById('taskTitle').value;
             const taskCategory = document.getElementById('taskCategory').value;
             const infoFileName = document.getElementById('infoFileName').value;
             const infoArea = document.getElementById('infoArea').value;
@@ -747,6 +754,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             }
 
             // Append normal fields
+            formData.append('task_title', taskTitle);
             formData.append('task_category', taskCategory);
             formData.append('info_file_name', infoFileName);
             formData.append('information', infoArea);
@@ -934,7 +942,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                     
                     <!-- Task Title -->
                     <h3 class="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate task-title">
-                        ${task.sys_id || 'No Title'}
+                        ${task.title || 'No Title'}
                     </h3>
                 </div>
 

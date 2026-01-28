@@ -18,6 +18,7 @@ $GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 // ---------------- GET DATA ----------------
 $uuid           = generateIDs('tasks');
+$taskTitle       = $_POST['task_title'] ?? "No Title Entry";
 $category       = $_POST['task_category'] ?? null;
 $infoFileName   = $_POST['info_file_name'] ?? null;
 $infoDetails    = $_POST['information'] ?? null;
@@ -351,6 +352,7 @@ try {
         INSERT INTO tasks (
             uuid, 
             sys_id, 
+            title, 
             category, 
             info_file_name, 
             info_details, 
@@ -362,7 +364,7 @@ try {
             status, 
             meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     if ($category == 1) {
@@ -376,6 +378,7 @@ try {
     $stmt->execute([
         $uuid['uuid'],
         $uuid['sys_id'],
+        $taskTitle,
         $category,
         $infoFileName,
         $infoDetails,
