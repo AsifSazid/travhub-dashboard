@@ -1,7 +1,7 @@
 <?php
 require '../../server/db_connection.php';
 require '../../server/uuid_generator.php';
-require '../../server/employee_id_generator.php';
+require '../../server/director_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
 
@@ -46,16 +46,16 @@ function handleRequest() {
 function handleFormDataRequest() {
     global $pdo;
     
-    // Get employee data from POST
-    $employeeData = json_decode($_POST['employee_data'], true);
+    // Get director data from POST
+    $directorData = json_decode($_POST['director_data'], true);
     
-    if (!$employeeData) {
-        sendError('No employee data received', 400);
+    if (!$directorData) {
+        sendError('No director data received', 400);
         return;
     }
     
     // Validate required fields
-    validateRequiredFields($employeeData);
+    validateRequiredFields($directorData);
     
     // Use default user since no authentication needed
     $createdBy = 'system_admin';
@@ -64,28 +64,24 @@ function handleFormDataRequest() {
     // Generate meta data
     $metaDataJson = buildMetaData(null, $createdBy);
     
-    // Extract department info
-    $department = $employeeData['department'] ?? null;
-    $department_id = $employeeData['department_id'] ?? null;
-    $dateOfJoin = $employeeData['company_related_info']['date_of_join'];
-    $fullName = $employeeData['full_name'];
-    $phone = $employeeData['phone']['primary_no'];
-    $email = $employeeData['email']['primary'];
+    $fullName = $directorData['full_name'];
+    $phone = $directorData['phone']['primary_no'];
+    $email = $directorData['email']['primary'];
     
-    // Generate UUID and employee ID
+    // Generate UUID and director ID
     $uuid = generateUUID();
-    $sys_id = generateEmployeeId($department_id, $dateOfJoin);
+    $sys_id = generateDirectorId();
     
-    // Create employee folder
+    // Create director folder
     $cleanSysId = preg_replace('/\s+/u', '', $sys_id);
     $cleanFullName = preg_replace('/\s+/u', '', $fullName);
-    $employeeFolderName = $cleanSysId . '_' . $cleanFullName;
+    $directorFolderName = $cleanSysId . '_' . $cleanFullName;
     
     // Create directory structure
-    $basePath = "../../uploads/employees/";
-    $employeeFolderPath = $basePath . $employeeFolderName;
+    $basePath = "../../uploads/directors/";
+    $directorFolderPath = $basePath . $directorFolderName;
     
-    makeDir('employees', $employeeFolderName);
+    makeDir('directors', $directorFolderName);
     
     // Handle file uploads
     $uploadedFiles = [];
@@ -93,9 +89,9 @@ function handleFormDataRequest() {
     
     if (isset($files['name'][0]) && !empty($files['name'][0])) {
 
-        // Ensure employee directory exists
-        if (!file_exists($employeeFolderPath)) {
-            mkdir($employeeFolderPath, 0777, true);
+        // Ensure director directory exists
+        if (!file_exists($directorFolderPath)) {
+            mkdir($directorFolderPath, 0777, true);
         }
     
         // Allowed file types
@@ -149,12 +145,12 @@ function handleFormDataRequest() {
             // Handle duplicate filenames
             $counter = 1;
             $finalName = $baseName . '.' . $fileExtension;
-            $destination = $employeeFolderPath . '/' . $finalName;
+            $destination = $directorFolderPath . '/' . $finalName;
     
             while (file_exists($destination)) {
                 $counter++;
                 $finalName = $baseName . '-' . $counter . '.' . $fileExtension;
-                $destination = $employeeFolderPath . '/' . $finalName;
+                $destination = $directorFolderPath . '/' . $finalName;
             }
     
             // Move uploaded file
@@ -164,42 +160,21 @@ function handleFormDataRequest() {
                     'stored_name'   => $finalName,
                     'file_type'     => $fileType,
                     'file_size'     => $fileSize,
-                    'file_path'     => "employees/{$employeeFolderName}/{$finalName}",
+                    'file_path'     => "directors/{$directorFolderName}/{$finalName}",
                     'upload_date'   => date('Y-m-d H:i:s')
                 ];
             }
         }
     }
 
-    
-    // Prepare company_related_info JSON
-    $companyRelatedInfo = [
-        'designation' => $employeeData['company_related_info']['designation'],
-        'company_role' => $employeeData['company_related_info']['company_role'],
-        'date_of_join' => $dateOfJoin,
-        'employment_type' => $employeeData['type'] ?? 'permanent',
-        'status' => $employeeData['status'] ?? 'active',
-        'created_at' => date('Y-m-d H:i:s'),
-        'created_by' => $createdBy,
-        'created_by_id' => $createdById
-    ];
-    
-    // Add department to company_related_info if available
-    if ($department) {
-        $companyRelatedInfo['department'] = $department;
-        if ($department_id) {
-            $companyRelatedInfo['department_id'] = $department_id;
-        }
-    }
-    
     // Prepare phone data for JSON storage
     $phoneData = [
         'primary_no' => $phone
     ];
     
     // Add secondary phones if exists
-    if (!empty($employeeData['phone']['secondary_no'])) {
-        $phoneData['secondary_no'] = $employeeData['phone']['secondary_no'];
+    if (!empty($directorData['phone']['secondary_no'])) {
+        $phoneData['secondary_no'] = $directorData['phone']['secondary_no'];
     }
     
     // Prepare email data for JSON storage
@@ -208,67 +183,63 @@ function handleFormDataRequest() {
     ];
     
     // Add secondary emails if exists
-    if (!empty($employeeData['email']['secondary'])) {
-        $emailData['secondary'] = $employeeData['email']['secondary'];
+    if (!empty($directorData['email']['secondary'])) {
+        $emailData['secondary'] = $directorData['email']['secondary'];
     }
     
     // Prepare address data for JSON storage
     $addressData = [];
-    if (!empty($employeeData['address'])) {
+    if (!empty($directorData['address'])) {
         $addressData = [
-            'address_line_1' => $employeeData['address']['address_line_1'] ?? '',
-            'address_line_2' => $employeeData['address']['address_line_2'] ?? '',
-            'city' => $employeeData['address']['city'] ?? '',
-            'state' => $employeeData['address']['state'] ?? '',
-            'zip_code' => $employeeData['address']['zip_code'] ?? '',
-            'country' => $employeeData['address']['country'] ?? ''
+            'address_line_1' => $directorData['address']['address_line_1'] ?? '',
+            'address_line_2' => $directorData['address']['address_line_2'] ?? '',
+            'city' => $directorData['address']['city'] ?? '',
+            'state' => $directorData['address']['state'] ?? '',
+            'zip_code' => $directorData['address']['zip_code'] ?? '',
+            'country' => $directorData['address']['country'] ?? ''
         ];
     }
     
     // Prepare emergency contact data for JSON storage
     $emergencyContactData = [];
-    if (!empty($employeeData['emergency_contact'])) {
+    if (!empty($directorData['emergency_contact'])) {
         $emergencyContactData = [
-            'person' => $employeeData['emergency_contact']['person'] ?? '',
-            'relation' => $employeeData['emergency_contact']['relation'] ?? '',
-            'phone' => $employeeData['emergency_contact']['phone'] ?? '',
-            'address' => $employeeData['emergency_contact']['address'] ?? []
+            'person' => $directorData['emergency_contact']['person'] ?? '',
+            'relation' => $directorData['emergency_contact']['relation'] ?? '',
+            'phone' => $directorData['emergency_contact']['phone'] ?? '',
+            'address' => $directorData['emergency_contact']['address'] ?? []
         ];
     }
     
     // Prepare basic_info
     $basicInfo = [];
-    if (!empty($employeeData['date_of_birth'])) {
-        $basicInfo['date_of_birth'] = $employeeData['date_of_birth'];
+    if (!empty($directorData['date_of_birth'])) {
+        $basicInfo['date_of_birth'] = $directorData['date_of_birth'];
     }
-    if (!empty($employeeData['blood_group'])) {
-        $basicInfo['blood_group'] = $employeeData['blood_group'];
+    if (!empty($directorData['blood_group'])) {
+        $basicInfo['blood_group'] = $directorData['blood_group'];
     }
     
     // Start transaction
     $pdo->beginTransaction();
     
     try {
-        // Insert employee data
+        // Insert director data
         $stmt = $pdo->prepare("
-            INSERT INTO employees (
+            INSERT INTO directors (
                 uuid,
-                sys_id, 
-                type, 
-                department_id,
-                department_name,
+                sys_id,
                 name, 
                 phone, 
                 email, 
                 address,
                 basic_info,
-                company_related_info,
                 emergency_contact,
                 image_name,
                 status, 
                 meta_data
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $imageNamesJson = !empty($uploadedFiles) ? json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE) : null;
@@ -276,22 +247,18 @@ function handleFormDataRequest() {
         $stmt->execute([
             $uuid,
             $sys_id,
-            $employeeData['type'] ?? 'permanent',
-            $department_id,
-            $department,
             $fullName,
             json_encode($phoneData, JSON_UNESCAPED_UNICODE),
             json_encode($emailData, JSON_UNESCAPED_UNICODE),
             json_encode($addressData, JSON_UNESCAPED_UNICODE),
             json_encode($basicInfo, JSON_UNESCAPED_UNICODE),
-            json_encode($companyRelatedInfo, JSON_UNESCAPED_UNICODE),
             json_encode($emergencyContactData, JSON_UNESCAPED_UNICODE),
             $imageNamesJson,
-            $employeeData['status'] ?? 'active',
+            $directorData['status'] ?? 'active',
             $metaDataJson
         ]);
         
-        $employeeId = $pdo->lastInsertId();
+        $directorId = $pdo->lastInsertId();
         
         // Check if email already exists in login table
         $stmt = $pdo->prepare("SELECT 1 FROM login WHERE email = ? LIMIT 1");
@@ -330,22 +297,19 @@ function handleFormDataRequest() {
         // Prepare success response
         $response = [
             'success' => true,
-            'message' => 'Employee added and system account created successfully',
-            'employee_id' => $employeeId,
+            'message' => 'Director added and system account created successfully',
+            'director_id' => $directorId,
             'login_id' => $loginId,
-            'employee_uuid' => $uuid,
+            'director_uuid' => $uuid,
             'sys_id' => $sys_id,
-            'folder_name' => $employeeFolderName,
+            'folder_name' => $directorFolderName,
             'files_uploaded' => count($uploadedFiles),
             'data' => [
                 'full_name' => $fullName,
-                'designation' => $employeeData['company_related_info']['designation'],
-                'department' => $department,
-                'date_of_join' => $dateOfJoin,
                 'system_credentials' => [
                     'email' => $email,
                     'default_password' => $sys_id,
-                    'note' => 'Employee should change password on first login'
+                    'note' => 'Director should change password on first login'
                 ]
             ],
             'timestamp' => date('Y-m-d H:i:s')
@@ -383,44 +347,20 @@ function handleJsonRequest() {
     // Generate meta data
     $metaDataJson = buildMetaData(null, $createdBy);
     
-    // Extract department info
-    $department = $data['department'] ?? null;
-    $department_id = $data['department_id'] ?? null;
-    $dateOfJoin = $data['company_related_info']['date_of_join'];
     $fullName = $data['full_name'];
     $phone = $data['phone']['primary_no'];
     $email = $data['email']['primary'];
     
-    // Generate UUID and employee ID
+    // Generate UUID and director ID
     $uuid = generateUUID();
-    $sys_id = generateEmployeeId($department_id, $dateOfJoin);
+    $sys_id = generateDirectorId();
     
-    // Create employee folder
+    // Create director folder
     $cleanSysId = preg_replace('/\s+/u', '', $sys_id);
     $cleanFullName = preg_replace('/\s+/u', '', $fullName);
-    $employeeFolderName = $cleanSysId . '_' . $cleanFullName;
+    $directorFolderName = $cleanSysId . '_' . $cleanFullName;
     
-    makeDir('employees', $employeeFolderName);
-    
-    // Prepare company_related_info JSON
-    $companyRelatedInfo = [
-        'designation' => $data['company_related_info']['designation'],
-        'company_role' => $data['company_related_info']['company_role'],
-        'date_of_join' => $dateOfJoin,
-        'employment_type' => $data['type'] ?? 'permanent',
-        'status' => $data['status'] ?? 'active',
-        'created_at' => date('Y-m-d H:i:s'),
-        'created_by' => $createdBy,
-        'created_by_id' => $createdById
-    ];
-    
-    // Add department to company_related_info if available
-    if ($department) {
-        $companyRelatedInfo['department'] = $department;
-        if ($department_id) {
-            $companyRelatedInfo['department_id'] = $department_id;
-        }
-    }
+    makeDir('directors', $directorFolderName);
     
     // Prepare phone data for JSON storage
     $phoneData = [
@@ -478,33 +418,29 @@ function handleJsonRequest() {
     // Handle uploaded files from base64 (if any)
     $uploadedFiles = [];
     if (!empty($data['uploaded_files']) && is_array($data['uploaded_files'])) {
-        $uploadedFiles = saveBase64Files($data['uploaded_files'], $employeeFolderName);
+        $uploadedFiles = saveBase64Files($data['uploaded_files'], $directorFolderName);
     }
     
     // Start transaction
     $pdo->beginTransaction();
     
     try {
-        // Insert employee data
+        // Insert director data
         $stmt = $pdo->prepare("
-            INSERT INTO employees (
+            INSERT INTO directors (
                 uuid,
                 sys_id, 
-                type, 
-                department_id,
-                department_name,
                 name, 
                 phone, 
                 email, 
                 address,
                 basic_info,
-                company_related_info,
                 emergency_contact,
                 image_name,
                 status, 
                 meta_data
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $imageNamesJson = !empty($uploadedFiles) ? json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE) : null;
@@ -512,22 +448,18 @@ function handleJsonRequest() {
         $stmt->execute([
             $uuid,
             $sys_id,
-            $data['type'] ?? 'permanent',
-            $department_id,
-            $department,
             $fullName,
             json_encode($phoneData, JSON_UNESCAPED_UNICODE),
             json_encode($emailData, JSON_UNESCAPED_UNICODE),
             json_encode($addressData, JSON_UNESCAPED_UNICODE),
             json_encode($basicInfo, JSON_UNESCAPED_UNICODE),
-            json_encode($companyRelatedInfo, JSON_UNESCAPED_UNICODE),
             json_encode($emergencyContactData, JSON_UNESCAPED_UNICODE),
             $imageNamesJson,
             $data['status'] ?? 'active',
             $metaDataJson
         ]);
         
-        $employeeId = $pdo->lastInsertId();
+        $directorId = $pdo->lastInsertId();
         
         // Check if email already exists in login table
         $stmt = $pdo->prepare("SELECT 1 FROM login WHERE email = ? LIMIT 1");
@@ -566,22 +498,19 @@ function handleJsonRequest() {
         // Prepare success response
         $response = [
             'success' => true,
-            'message' => 'Employee added and system account created successfully',
-            'employee_id' => $employeeId,
+            'message' => 'Director added and system account created successfully',
+            'director_id' => $directorId,
             'login_id' => $loginId,
-            'employee_uuid' => $uuid,
+            'director_uuid' => $uuid,
             'sys_id' => $sys_id,
-            'folder_name' => $employeeFolderName,
+            'folder_name' => $directorFolderName,
             'files_uploaded' => count($uploadedFiles),
             'data' => [
                 'full_name' => $fullName,
-                'designation' => $data['company_related_info']['designation'],
-                'department' => $department,
-                'date_of_join' => $dateOfJoin,
                 'system_credentials' => [
                     'email' => $email,
                     'default_password' => $sys_id,
-                    'note' => 'Employee should change password on first login'
+                    'note' => 'Director should change password on first login'
                 ]
             ],
             'timestamp' => date('Y-m-d H:i:s')
@@ -597,14 +526,14 @@ function handleJsonRequest() {
 }
 
 // Function to save base64 files
-function saveBase64Files($files, $employeeFolderName) {
+function saveBase64Files($files, $directorFolderName) {
     $uploadedFiles = [];
-    $basePath = "../../uploads/employees/";
-    $employeeFolderPath = $basePath . $employeeFolderName;
+    $basePath = "../../uploads/directors/";
+    $directorFolderPath = $basePath . $directorFolderName;
     
     // Create directory if not exists
-    if (!file_exists($employeeFolderPath)) {
-        mkdir($employeeFolderPath, 0777, true);
+    if (!file_exists($directorFolderPath)) {
+        mkdir($directorFolderPath, 0777, true);
     }
     
     foreach ($files as $file) {
@@ -627,7 +556,7 @@ function saveBase64Files($files, $employeeFolderName) {
                 $uniqueFileName = uniqid() . '_' . date('Ymd_His') . '.' . $fileExtension;
                 
                 // Save file
-                $destination = $employeeFolderPath . '/' . $uniqueFileName;
+                $destination = $directorFolderPath . '/' . $uniqueFileName;
                 
                 if (file_put_contents($destination, $fileData)) {
                     $uploadedFiles[] = [
@@ -635,7 +564,7 @@ function saveBase64Files($files, $employeeFolderName) {
                         'stored_name' => $uniqueFileName,
                         'file_type' => $fileType,
                         'file_size' => strlen($fileData),
-                        'file_path' => "employees/{$employeeFolderName}/{$uniqueFileName}",
+                        'file_path' => "directors/{$directorFolderName}/{$uniqueFileName}",
                         'upload_date' => date('Y-m-d H:i:s')
                     ];
                 }
@@ -648,19 +577,12 @@ function saveBase64Files($files, $employeeFolderName) {
 
 // Function to validate required fields
 function validateRequiredFields($data) {
-    $requiredFields = ['full_name', 'phone', 'email', 'company_related_info'];
+    $requiredFields = ['full_name', 'phone', 'email'];
     
     foreach ($requiredFields as $field) {
         if (empty($data[$field])) {
             throw new Exception(ucfirst(str_replace('_', ' ', $field)) . ' is required');
         }
-    }
-    
-    // Validate specific company_related_info fields
-    if (empty($data['company_related_info']['designation']) || 
-        empty($data['company_related_info']['company_role']) || 
-        empty($data['company_related_info']['date_of_join'])) {
-        throw new Exception('Designation, company role, and date of join are required');
     }
     
     // Validate phone structure

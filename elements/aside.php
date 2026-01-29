@@ -164,6 +164,32 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </div>
             </div>
             
+            <!-- Managements Accordion -->
+            <div class="accordion-item mt-4" data-accordion="managements">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-users-gear mr-3"></i>
+                        <span class="font-medium">Managements</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200"></i>
+                </button>
+
+                <div class="accordion-content ml-7 mt-1 space-y-1 overflow-hidden max-h-0 transition-all duration-300">
+                    <a href="index-directors.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'index-directors.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-chess-knight mr-3"></i>
+                        <span class="sidebar-text">Directors</span>
+                    </a>
+                    <a href="index-investors.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'index-investors.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-hand-holding-dollar mr-3"></i>
+                        <span class="sidebar-text">Investors</span>
+                    </a>
+                </div>
+            </div>
+            
             <li>
                 <a href="settings.php"
                     class="flex items-center p-3 rounded-lg 

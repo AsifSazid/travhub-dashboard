@@ -1,7 +1,7 @@
 <?php
 require '../../server/db_connection.php';
 require '../../server/uuid_generator.php';
-require '../../server/employee_id_generator.php';
+require '../../server/investor_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
 
@@ -46,16 +46,16 @@ function handleRequest() {
 function handleFormDataRequest() {
     global $pdo;
     
-    // Get employee data from POST
-    $employeeData = json_decode($_POST['employee_data'], true);
+    // Get investor data from POST
+    $investorData = json_decode($_POST['investor_data'], true);
     
-    if (!$employeeData) {
-        sendError('No employee data received', 400);
+    if (!$investorData) {
+        sendError('No investor data received', 400);
         return;
     }
     
     // Validate required fields
-    validateRequiredFields($employeeData);
+    validateRequiredFields($investorData);
     
     // Use default user since no authentication needed
     $createdBy = 'system_admin';
@@ -64,28 +64,27 @@ function handleFormDataRequest() {
     // Generate meta data
     $metaDataJson = buildMetaData(null, $createdBy);
     
-    // Extract department info
-    $department = $employeeData['department'] ?? null;
-    $department_id = $employeeData['department_id'] ?? null;
-    $dateOfJoin = $employeeData['company_related_info']['date_of_join'];
-    $fullName = $employeeData['full_name'];
-    $phone = $employeeData['phone']['primary_no'];
-    $email = $employeeData['email']['primary'];
+    // Extract investor info with defaults
+    $dateOfInvesting = $investorData['date_of_investing'] ?? date('Y-m-d');
+    $percentage = $investorData['percentage'] ?? 0;
+    $fullName = $investorData['full_name'] ?? '';
+    $phone = $investorData['phone']['primary_no'] ?? '';
+    $email = $investorData['email']['primary'] ?? '';
     
-    // Generate UUID and employee ID
+    // Generate UUID and investor ID
     $uuid = generateUUID();
-    $sys_id = generateEmployeeId($department_id, $dateOfJoin);
+    $sys_id = generateInvestorId($dateOfInvesting);
     
-    // Create employee folder
+    // Create investor folder
     $cleanSysId = preg_replace('/\s+/u', '', $sys_id);
     $cleanFullName = preg_replace('/\s+/u', '', $fullName);
-    $employeeFolderName = $cleanSysId . '_' . $cleanFullName;
+    $investorFolderName = $cleanSysId . '_' . $cleanFullName;
     
     // Create directory structure
-    $basePath = "../../uploads/employees/";
-    $employeeFolderPath = $basePath . $employeeFolderName;
+    $basePath = "../../uploads/investors/";
+    $investorFolderPath = $basePath . $investorFolderName;
     
-    makeDir('employees', $employeeFolderName);
+    makeDir('investors', $investorFolderName);
     
     // Handle file uploads
     $uploadedFiles = [];
@@ -93,9 +92,9 @@ function handleFormDataRequest() {
     
     if (isset($files['name'][0]) && !empty($files['name'][0])) {
 
-        // Ensure employee directory exists
-        if (!file_exists($employeeFolderPath)) {
-            mkdir($employeeFolderPath, 0777, true);
+        // Ensure investor directory exists
+        if (!file_exists($investorFolderPath)) {
+            mkdir($investorFolderPath, 0777, true);
         }
     
         // Allowed file types
@@ -149,12 +148,12 @@ function handleFormDataRequest() {
             // Handle duplicate filenames
             $counter = 1;
             $finalName = $baseName . '.' . $fileExtension;
-            $destination = $employeeFolderPath . '/' . $finalName;
+            $destination = $investorFolderPath . '/' . $finalName;
     
             while (file_exists($destination)) {
                 $counter++;
                 $finalName = $baseName . '-' . $counter . '.' . $fileExtension;
-                $destination = $employeeFolderPath . '/' . $finalName;
+                $destination = $investorFolderPath . '/' . $finalName;
             }
     
             // Move uploaded file
@@ -164,31 +163,10 @@ function handleFormDataRequest() {
                     'stored_name'   => $finalName,
                     'file_type'     => $fileType,
                     'file_size'     => $fileSize,
-                    'file_path'     => "employees/{$employeeFolderName}/{$finalName}",
+                    'file_path'     => "investors/{$investorFolderName}/{$finalName}",
                     'upload_date'   => date('Y-m-d H:i:s')
                 ];
             }
-        }
-    }
-
-    
-    // Prepare company_related_info JSON
-    $companyRelatedInfo = [
-        'designation' => $employeeData['company_related_info']['designation'],
-        'company_role' => $employeeData['company_related_info']['company_role'],
-        'date_of_join' => $dateOfJoin,
-        'employment_type' => $employeeData['type'] ?? 'permanent',
-        'status' => $employeeData['status'] ?? 'active',
-        'created_at' => date('Y-m-d H:i:s'),
-        'created_by' => $createdBy,
-        'created_by_id' => $createdById
-    ];
-    
-    // Add department to company_related_info if available
-    if ($department) {
-        $companyRelatedInfo['department'] = $department;
-        if ($department_id) {
-            $companyRelatedInfo['department_id'] = $department_id;
         }
     }
     
@@ -198,8 +176,8 @@ function handleFormDataRequest() {
     ];
     
     // Add secondary phones if exists
-    if (!empty($employeeData['phone']['secondary_no'])) {
-        $phoneData['secondary_no'] = $employeeData['phone']['secondary_no'];
+    if (!empty($investorData['phone']['secondary_no'])) {
+        $phoneData['secondary_no'] = $investorData['phone']['secondary_no'];
     }
     
     // Prepare email data for JSON storage
@@ -208,67 +186,66 @@ function handleFormDataRequest() {
     ];
     
     // Add secondary emails if exists
-    if (!empty($employeeData['email']['secondary'])) {
-        $emailData['secondary'] = $employeeData['email']['secondary'];
+    if (!empty($investorData['email']['secondary'])) {
+        $emailData['secondary'] = $investorData['email']['secondary'];
     }
     
     // Prepare address data for JSON storage
     $addressData = [];
-    if (!empty($employeeData['address'])) {
+    if (!empty($investorData['address'])) {
         $addressData = [
-            'address_line_1' => $employeeData['address']['address_line_1'] ?? '',
-            'address_line_2' => $employeeData['address']['address_line_2'] ?? '',
-            'city' => $employeeData['address']['city'] ?? '',
-            'state' => $employeeData['address']['state'] ?? '',
-            'zip_code' => $employeeData['address']['zip_code'] ?? '',
-            'country' => $employeeData['address']['country'] ?? ''
+            'address_line_1' => $investorData['address']['address_line_1'] ?? '',
+            'address_line_2' => $investorData['address']['address_line_2'] ?? '',
+            'city' => $investorData['address']['city'] ?? '',
+            'state' => $investorData['address']['state'] ?? '',
+            'zip_code' => $investorData['address']['zip_code'] ?? '',
+            'country' => $investorData['address']['country'] ?? ''
         ];
     }
     
     // Prepare emergency contact data for JSON storage
     $emergencyContactData = [];
-    if (!empty($employeeData['emergency_contact'])) {
+    if (!empty($investorData['emergency_contact'])) {
         $emergencyContactData = [
-            'person' => $employeeData['emergency_contact']['person'] ?? '',
-            'relation' => $employeeData['emergency_contact']['relation'] ?? '',
-            'phone' => $employeeData['emergency_contact']['phone'] ?? '',
-            'address' => $employeeData['emergency_contact']['address'] ?? []
+            'person' => $investorData['emergency_contact']['person'] ?? '',
+            'relation' => $investorData['emergency_contact']['relation'] ?? '',
+            'phone' => $investorData['emergency_contact']['phone'] ?? '',
+            'address' => $investorData['emergency_contact']['address'] ?? []
         ];
     }
     
     // Prepare basic_info
     $basicInfo = [];
-    if (!empty($employeeData['date_of_birth'])) {
-        $basicInfo['date_of_birth'] = $employeeData['date_of_birth'];
+    if (!empty($investorData['date_of_birth'])) {
+        $basicInfo['date_of_birth'] = $investorData['date_of_birth'];
     }
-    if (!empty($employeeData['blood_group'])) {
-        $basicInfo['blood_group'] = $employeeData['blood_group'];
+    if (!empty($investorData['blood_group'])) {
+        $basicInfo['blood_group'] = $investorData['blood_group'];
     }
     
     // Start transaction
     $pdo->beginTransaction();
     
     try {
-        // Insert employee data
+        // Insert investor data
         $stmt = $pdo->prepare("
-            INSERT INTO employees (
+            INSERT INTO investors (
                 uuid,
                 sys_id, 
-                type, 
-                department_id,
-                department_name,
+                type,
                 name, 
                 phone, 
                 email, 
                 address,
                 basic_info,
-                company_related_info,
+                percentage,
+                date_of_investing,
                 emergency_contact,
                 image_name,
                 status, 
                 meta_data
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $imageNamesJson = !empty($uploadedFiles) ? json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE) : null;
@@ -276,22 +253,21 @@ function handleFormDataRequest() {
         $stmt->execute([
             $uuid,
             $sys_id,
-            $employeeData['type'] ?? 'permanent',
-            $department_id,
-            $department,
+            $investorData['type'] ?? 'permanent',
             $fullName,
             json_encode($phoneData, JSON_UNESCAPED_UNICODE),
             json_encode($emailData, JSON_UNESCAPED_UNICODE),
             json_encode($addressData, JSON_UNESCAPED_UNICODE),
             json_encode($basicInfo, JSON_UNESCAPED_UNICODE),
-            json_encode($companyRelatedInfo, JSON_UNESCAPED_UNICODE),
+            $percentage,
+            $dateOfInvesting,
             json_encode($emergencyContactData, JSON_UNESCAPED_UNICODE),
             $imageNamesJson,
-            $employeeData['status'] ?? 'active',
+            $investorData['status'] ?? 'active',
             $metaDataJson
         ]);
         
-        $employeeId = $pdo->lastInsertId();
+        $investorId = $pdo->lastInsertId();
         
         // Check if email already exists in login table
         $stmt = $pdo->prepare("SELECT 1 FROM login WHERE email = ? LIMIT 1");
@@ -330,22 +306,20 @@ function handleFormDataRequest() {
         // Prepare success response
         $response = [
             'success' => true,
-            'message' => 'Employee added and system account created successfully',
-            'employee_id' => $employeeId,
+            'message' => 'Investor added and system account created successfully',
+            'investor_id' => $investorId,
             'login_id' => $loginId,
-            'employee_uuid' => $uuid,
+            'investor_uuid' => $uuid,
             'sys_id' => $sys_id,
-            'folder_name' => $employeeFolderName,
+            'folder_name' => $investorFolderName,
             'files_uploaded' => count($uploadedFiles),
             'data' => [
                 'full_name' => $fullName,
-                'designation' => $employeeData['company_related_info']['designation'],
-                'department' => $department,
-                'date_of_join' => $dateOfJoin,
+                'date_of_investing' => $dateOfInvesting,
                 'system_credentials' => [
                     'email' => $email,
                     'default_password' => $sys_id,
-                    'note' => 'Employee should change password on first login'
+                    'note' => 'Investor should change password on first login'
                 ]
             ],
             'timestamp' => date('Y-m-d H:i:s')
@@ -383,64 +357,23 @@ function handleJsonRequest() {
     // Generate meta data
     $metaDataJson = buildMetaData(null, $createdBy);
     
-    // Extract department info
-    $department = $data['department'] ?? null;
-    $department_id = $data['department_id'] ?? null;
-    $dateOfJoin = $data['company_related_info']['date_of_join'];
-    $fullName = $data['full_name'];
-    $phone = $data['phone']['primary_no'];
-    $email = $data['email']['primary'];
+    // Extract investor info with defaults
+    $dateOfInvesting = $data['date_of_investing'] ?? date('Y-m-d');
+    $percentage = $data['percentage'] ?? 0;
+    $fullName = $data['full_name'] ?? '';
+    $phone = $data['phone'] ?? '';
+    $email = $data['email'] ?? '';
     
-    // Generate UUID and employee ID
+    // Generate UUID and investor ID
     $uuid = generateUUID();
-    $sys_id = generateEmployeeId($department_id, $dateOfJoin);
+    $sys_id = generateInvestorId($dateOfInvesting);
     
-    // Create employee folder
+    // Create investor folder
     $cleanSysId = preg_replace('/\s+/u', '', $sys_id);
     $cleanFullName = preg_replace('/\s+/u', '', $fullName);
-    $employeeFolderName = $cleanSysId . '_' . $cleanFullName;
+    $investorFolderName = $cleanSysId . '_' . $cleanFullName;
     
-    makeDir('employees', $employeeFolderName);
-    
-    // Prepare company_related_info JSON
-    $companyRelatedInfo = [
-        'designation' => $data['company_related_info']['designation'],
-        'company_role' => $data['company_related_info']['company_role'],
-        'date_of_join' => $dateOfJoin,
-        'employment_type' => $data['type'] ?? 'permanent',
-        'status' => $data['status'] ?? 'active',
-        'created_at' => date('Y-m-d H:i:s'),
-        'created_by' => $createdBy,
-        'created_by_id' => $createdById
-    ];
-    
-    // Add department to company_related_info if available
-    if ($department) {
-        $companyRelatedInfo['department'] = $department;
-        if ($department_id) {
-            $companyRelatedInfo['department_id'] = $department_id;
-        }
-    }
-    
-    // Prepare phone data for JSON storage
-    $phoneData = [
-        'primary_no' => $phone
-    ];
-    
-    // Add secondary phones if exists
-    if (!empty($data['phone']['secondary_no'])) {
-        $phoneData['secondary_no'] = $data['phone']['secondary_no'];
-    }
-    
-    // Prepare email data for JSON storage
-    $emailData = [
-        'primary' => $email
-    ];
-    
-    // Add secondary emails if exists
-    if (!empty($data['email']['secondary'])) {
-        $emailData['secondary'] = $data['email']['secondary'];
-    }
+    makeDir('investors', $investorFolderName);
     
     // Prepare address data for JSON storage
     $addressData = [];
@@ -478,33 +411,32 @@ function handleJsonRequest() {
     // Handle uploaded files from base64 (if any)
     $uploadedFiles = [];
     if (!empty($data['uploaded_files']) && is_array($data['uploaded_files'])) {
-        $uploadedFiles = saveBase64Files($data['uploaded_files'], $employeeFolderName);
+        $uploadedFiles = saveBase64Files($data['uploaded_files'], $investorFolderName);
     }
     
     // Start transaction
     $pdo->beginTransaction();
     
     try {
-        // Insert employee data
+        // Insert investor data
         $stmt = $pdo->prepare("
-            INSERT INTO employees (
+            INSERT INTO investors (
                 uuid,
                 sys_id, 
-                type, 
-                department_id,
-                department_name,
+                type,
                 name, 
                 phone, 
                 email, 
                 address,
                 basic_info,
-                company_related_info,
+                percentage,
+                date_of_investing,
                 emergency_contact,
                 image_name,
                 status, 
                 meta_data
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $imageNamesJson = !empty($uploadedFiles) ? json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE) : null;
@@ -513,21 +445,20 @@ function handleJsonRequest() {
             $uuid,
             $sys_id,
             $data['type'] ?? 'permanent',
-            $department_id,
-            $department,
             $fullName,
             json_encode($phoneData, JSON_UNESCAPED_UNICODE),
             json_encode($emailData, JSON_UNESCAPED_UNICODE),
             json_encode($addressData, JSON_UNESCAPED_UNICODE),
             json_encode($basicInfo, JSON_UNESCAPED_UNICODE),
-            json_encode($companyRelatedInfo, JSON_UNESCAPED_UNICODE),
+            $percentage,
+            $dateOfInvesting,
             json_encode($emergencyContactData, JSON_UNESCAPED_UNICODE),
             $imageNamesJson,
             $data['status'] ?? 'active',
             $metaDataJson
         ]);
         
-        $employeeId = $pdo->lastInsertId();
+        $investorId = $pdo->lastInsertId();
         
         // Check if email already exists in login table
         $stmt = $pdo->prepare("SELECT 1 FROM login WHERE email = ? LIMIT 1");
@@ -566,22 +497,20 @@ function handleJsonRequest() {
         // Prepare success response
         $response = [
             'success' => true,
-            'message' => 'Employee added and system account created successfully',
-            'employee_id' => $employeeId,
+            'message' => 'Investor added and system account created successfully',
+            'investor_id' => $investorId,
             'login_id' => $loginId,
-            'employee_uuid' => $uuid,
+            'investor_uuid' => $uuid,
             'sys_id' => $sys_id,
-            'folder_name' => $employeeFolderName,
+            'folder_name' => $investorFolderName,
             'files_uploaded' => count($uploadedFiles),
             'data' => [
                 'full_name' => $fullName,
-                'designation' => $data['company_related_info']['designation'],
-                'department' => $department,
-                'date_of_join' => $dateOfJoin,
+                'date_of_investing' => $dateOfInvesting,
                 'system_credentials' => [
                     'email' => $email,
                     'default_password' => $sys_id,
-                    'note' => 'Employee should change password on first login'
+                    'note' => 'Investor should change password on first login'
                 ]
             ],
             'timestamp' => date('Y-m-d H:i:s')
@@ -597,14 +526,20 @@ function handleJsonRequest() {
 }
 
 // Function to save base64 files
-function saveBase64Files($files, $employeeFolderName) {
+function saveBase64Files($files, $investorFolderName) {
     $uploadedFiles = [];
-    $basePath = "../../uploads/employees/";
-    $employeeFolderPath = $basePath . $employeeFolderName;
+    $basePath = "../../uploads/investors/";
+    $investorFolderPath = $basePath . $investorFolderName;
     
     // Create directory if not exists
-    if (!file_exists($employeeFolderPath)) {
-        mkdir($employeeFolderPath, 0777, true);
+    if (!file_exists($investorFolderPath)) {
+        if (!mkdir($investorFolderPath, 0777, true)) {
+            throw new Exception('Failed to create investor directory');
+        }
+    }
+    
+    if (!is_array($files) || empty($files)) {
+        return $uploadedFiles;
     }
     
     foreach ($files as $file) {
@@ -627,7 +562,7 @@ function saveBase64Files($files, $employeeFolderName) {
                 $uniqueFileName = uniqid() . '_' . date('Ymd_His') . '.' . $fileExtension;
                 
                 // Save file
-                $destination = $employeeFolderPath . '/' . $uniqueFileName;
+                $destination = $investorFolderPath . '/' . $uniqueFileName;
                 
                 if (file_put_contents($destination, $fileData)) {
                     $uploadedFiles[] = [
@@ -635,7 +570,7 @@ function saveBase64Files($files, $employeeFolderName) {
                         'stored_name' => $uniqueFileName,
                         'file_type' => $fileType,
                         'file_size' => strlen($fileData),
-                        'file_path' => "employees/{$employeeFolderName}/{$uniqueFileName}",
+                        'file_path' => "investors/{$investorFolderName}/{$uniqueFileName}",
                         'upload_date' => date('Y-m-d H:i:s')
                     ];
                 }
@@ -648,29 +583,32 @@ function saveBase64Files($files, $employeeFolderName) {
 
 // Function to validate required fields
 function validateRequiredFields($data) {
-    $requiredFields = ['full_name', 'phone', 'email', 'company_related_info'];
+    $requiredFields = ['full_name', 'phone', 'email'];
     
     foreach ($requiredFields as $field) {
         if (empty($data[$field])) {
             throw new Exception(ucfirst(str_replace('_', ' ', $field)) . ' is required');
         }
     }
-    
-    // Validate specific company_related_info fields
-    if (empty($data['company_related_info']['designation']) || 
-        empty($data['company_related_info']['company_role']) || 
-        empty($data['company_related_info']['date_of_join'])) {
-        throw new Exception('Designation, company role, and date of join are required');
-    }
-    
+
     // Validate phone structure
-    if (!isset($data['phone']['primary_no'])) {
+    if (!isset($data['phone'])) {
         throw new Exception('Primary phone number is required');
     }
     
     // Validate email structure
     if (!isset($data['email']['primary'])) {
         throw new Exception('Primary email is required');
+    }
+    
+    // Add validation for date_of_investing
+    if (empty($data['date_of_investing'])) {
+        throw new Exception('Date of investing is required');
+    }
+    
+    // Validate percentage (allow 0 but must be set)
+    if (!isset($data['percentage'])) {
+        throw new Exception('Percentage is required');
     }
 }
 
