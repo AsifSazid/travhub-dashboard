@@ -1181,3 +1181,74 @@ Bank Count: 0
 MFS Count: 0
 ========================================
 
+[2026-01-31 21:05:42] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarySlR9nX5FqgBB30wy
+POST Data:
+invoice_no: THR-IN-26-00K020...
+client_title: THR-CL-26-00K001...
+date: 2026-01-31...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Air Ticket Issue
+    [1] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 416500.00
+    [1] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [1] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 416500.00
+    [1] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-31 21:05:42] RAW INPUT:
+
+
+[2026-01-31 21:05:42] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-31 19:05:42] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 30
+Invoice No: THR-IN-26-00K020
+Client: Major Mehedi Hasan
+Total Amount: 440500
+Bank Count: 0
+MFS Count: 0
+========================================
+

@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_action'])) {
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['branch_id'] = $user['brunch_id'];
+            $_SESSION['user_id'] = $user['user_id'];
             header("Location: ../pages/index.php");
             exit();
         } else {

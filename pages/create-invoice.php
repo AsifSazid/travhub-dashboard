@@ -895,6 +895,14 @@ $base_ip_path = trim($ip_port, "/");
                             </div>
                             
                             <div id="work_items"></div>
+                            
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <div></div>
+                                <button type="button" class="btn-outline py-2.5 px-4 flex items-center gap-2"
+                                        onclick="addWorkItem()">
+                                    <i class="fas fa-plus-circle"></i> Add Work Item
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Total Calculation -->

@@ -411,7 +411,9 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script>
         // Configuration
+        const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
         const API_URL = "<?php echo $allInvoice; ?>";
+        const UPDATE_STATUS_API = `${IP_PATH}/api/invoices/update-invoice-status.php`;
         const ITEMS_PER_PAGE = 10;
         const INFINITE_SCROLL_THRESHOLD = 100; // pixels from bottom
         const DEBOUNCE_DELAY = 300; // milliseconds
@@ -814,7 +816,6 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         function createActualStatusChart(statusData) {
             const canvas = document.getElementById('statusChart');
             
-            console.log(canvas);
             if (!canvas) return;
             
             const ctx = canvas.getContext('2d');
@@ -1142,11 +1143,13 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                                     <i class="fas fa-download mr-2"></i>
                                     <span>Download</span>
                                 </button>
-                                <button class="edit-btn bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="editInvoice('${invoice.invoice_no}')">
-                                    <i class="fas fa-pencil mr-2"></i>
-                                    <span>Edit</span>
-                                </button>
+                                ${invoice.status !== 'paid' ? `
+                                    <button class="edit-btn bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
+                                            onclick="editInvoice('${invoice.invoice_no}')">
+                                        <i class="fas fa-pencil mr-2"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                ` : ''}
                                 <button class="send-btn bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
                                         onclick="sendInvoiceOptions('${invoice.invoice_no}', '${escapeHtml(invoice.client_email)}', '${escapeHtml(invoice.phone)}')">
                                     <i class="fas fa-paper-plane mr-2"></i>
@@ -1375,15 +1378,13 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         async function markAsPaid(invoiceId) {
             if (confirm('Mark this invoice as paid?')) {
                 try {
-                    const response = await fetch('update-invoice-status.php', {
+                    const response = await fetch(UPDATE_STATUS_API, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            id: invoiceId,
-                            status: 'paid',
-                            paid_amount: 'full'
+                            invoice_id: invoiceId
                         })
                     });
                     

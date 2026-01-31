@@ -536,9 +536,11 @@ include_once('./authenticate.php');
             'Assets (DR)>B/L': [
                 'Accounts Receivable/Debtors',
                 'Current Assets',
-                'Cash at bank and in hand',
+                'Cash in Hand',
+                'Bank Account',
+                'MFS - Mobile Financial Services',
                 'Fixed Assets',
-                'Non-current assets'
+                'Non-current Assets'
             ],
             'Liabilities(CR)>B/L': [
                 'Creditors',

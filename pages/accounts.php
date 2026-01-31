@@ -150,7 +150,7 @@ $base_ip_path = trim($ip_port, "/");
                         <i class="fas fa-history mr-1"></i> Recent Actions
                     </button>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <!-- Add Income -->
                     <a href="accounts-receive.php" class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div class="bg-green-100 group-hover:bg-green-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
@@ -197,13 +197,13 @@ $base_ip_path = trim($ip_port, "/");
                     </button>
     
                     <!-- Quick Payment -->
-                    <button class="group bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-indigo-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                        <div class="bg-indigo-100 group-hover:bg-indigo-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
-                            <i class="fas fa-credit-card text-indigo-600 text-xl"></i>
-                        </div>
-                        <p class="font-semibold text-indigo-800">PITTY Cash</p>
-                        <p class="text-xs text-indigo-600 mt-1">Make payment</p>
-                    </button>
+                    <!--<button class="group bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-indigo-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">-->
+                    <!--    <div class="bg-indigo-100 group-hover:bg-indigo-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">-->
+                    <!--        <i class="fas fa-credit-card text-indigo-600 text-xl"></i>-->
+                    <!--    </div>-->
+                    <!--    <p class="font-semibold text-indigo-800">PITTY Cash</p>-->
+                    <!--    <p class="text-xs text-indigo-600 mt-1">Make payment</p>-->
+                    <!--</button>-->
                     
                     <!-- Ledger List -->
                     <a href="accounts-ledger.php" class="group bg-gradient-to-br from-teal-50 to-teal-100 border border-teal-200 hover:border-teal-400 hover:from-teal-100 hover:to-teal-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1" target="_blank">
