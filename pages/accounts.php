@@ -188,13 +188,13 @@ $base_ip_path = trim($ip_port, "/");
                     </button>
     
                     <!-- Transfer Funds -->
-                    <button class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <a href="accounts-transfer.php" class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div class="bg-yellow-100 group-hover:bg-yellow-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
                             <i class="fas fa-exchange-alt text-yellow-600 text-xl"></i>
                         </div>
                         <p class="font-semibold text-yellow-800">Transfer</p>
                         <p class="text-xs text-yellow-600 mt-1">Funds transfer</p>
-                    </button>
+                    </a>
     
                     <!-- Quick Payment -->
                     <!--<button class="group bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-indigo-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">-->

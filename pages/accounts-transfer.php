@@ -14,7 +14,7 @@ $base_ip_path = trim($ip_port, "/");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accounting - Receive</title>
+    <title>Accounting - Transfer</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -54,6 +54,10 @@ $base_ip_path = trim($ip_port, "/");
         ::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+        
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -75,8 +79,8 @@ $base_ip_path = trim($ip_port, "/");
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
                         <div>
                             <h2 class="text-xl font-semibold flex items-center">
-                                <i class="fas fa-file-invoice-dollar mr-2"></i>
-                                Receive
+                                <i class="fas fa-exchange-alt mr-2"></i>
+                                Transfer
                             </h2>
                         </div>
                         <div class="flex items-center space-x-3">
@@ -93,50 +97,59 @@ $base_ip_path = trim($ip_port, "/");
                     <!-- Transaction Input Section -->
                     <div class="bg-blue-50 p-4 md:p-6 rounded-lg mb-6 border border-blue-200">
                         <h6 class="text-blue-700 font-semibold mb-4 flex items-center text-lg">
-                            <i class="fas fa-plus-circle mr-2"></i> Add New Transaction
+                            <i class="fas fa-exchange-alt mr-2"></i> Make Transfer
                         </h6>
                         <form id="transactionForm" class="space-y-6">
-                            <input type="hidden" id="accountId" name="accountId">
-                            <input type="hidden" id="accountName" name="accountName">
-                            <input type="hidden" id="currentAccountBalance" name="currentAccountBalance">
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                                <input id="paymentType" name="paymentType" value="Deposit" hidden />
-                                
-                                <div>
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fa-solid fa-user"></i> Select Type
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="col-span-1">
+                                    <label for="select_type" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-random mr-1"></i> Transfer Type
                                     </label>
-                                   <select name="select_type" id="select_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                       <option value="client" selected>Client</option>
-                                       <option value="vendor">Vendor</option>
+                                   <select name="select_type" id="select_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                       <option value="a2a" selected>Account to Account</option>
+                                       <option value="a2p">Account to Person</option>
                                    </select>
                                 </div>
                                 
-                                <!-- Client -->
-                                <div id="client-section">
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fa-solid fa-user"></i> Client Name
-                                    </label>
-                                   <?php include('form-selects/clients.php') ?>
-                                </div>
-                                
-                                <!--Vendor-->
-                                <div id="vendor-section" class="hidden">
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fa-solid fa-user"></i> Vendor Name
-                                    </label>
-                                   <?php include('form-selects/vendors.php') ?>
-                                </div>
-                                
-                                <div>
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fa-solid fa-receipt"></i> Account Name
+                                <!-- From Account -->
+                                <div id="from-account-section" class="col-span-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-wallet mr-1"></i> From Account
                                     </label>
                                    <?php include('form-selects/accounts.php') ?>
                                 </div>
                                 
-                                <div>
+                                <!-- To Employee -->
+                                <div id="employee-section" class="hidden col-span-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-user-tie mr-1"></i> To Employee
+                                    </label>
+                                   <?php include('form-selects/employees.php') ?>
+                                </div>
+                                
+                                <!-- To Account -->
+                                <div id="to-account-section" class="col-span-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-wallet mr-1"></i> To Account
+                                    </label>
+                                   <?php include('form-selects/to-accounts.php') ?>
+                                </div>
+                                
+                                <!-- Transfer Method -->
+                                <div class="col-span-1">
+                                    <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-money-check-alt mr-1"></i> Transfer Method
+                                    </label>
+                                   <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                       <option value="cash" selected>Cash</option>
+                                       <option value="cheque">Cheque</option>
+                                       <option value="npsb-rtgs">NPSB/RTGS</option>
+                                       <option value="bftn-eft">BFTN/EFT</option>
+                                   </select>
+                                </div>
+                                
+                                <!-- Date -->
+                                <div class="col-span-1">
                                     <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-1"></i> Date
                                     </label>
@@ -145,22 +158,24 @@ $base_ip_path = trim($ip_port, "/");
                                         id="transactionDate" name="transactionDate" required>
                                 </div>
                                 
-                                <div>
+                                <!-- Amount -->
+                                <div class="col-span-1">
                                     <label for="balance" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fas fa-dollar-sign mr-1"></i> Amount
                                     </label>
-                                    <input type="number" step="0.01"
+                                    <input type="number" step="0.01" min="0"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                         id="balance" name="balance" required placeholder="0.00">
                                 </div>
                                 
-                                <div class="md:col-span-2 lg:col-span-5">
+                                <!-- Particular -->
+                                <div class="md:col-span-2 lg:col-span-3">
                                     <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fas fa-file-alt mr-1"></i> Particular
                                     </label>
                                     <textarea
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" rows="5"
-                                        id="particular" name="particular" placeholder="Enter transaction description"></textarea>
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" rows="3"
+                                        id="particular" name="particular" placeholder="Enter transfer description"></textarea>
                                 </div>
                             </div>
                             
@@ -172,9 +187,9 @@ $base_ip_path = trim($ip_port, "/");
                                 <button type="button"
                                     class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center"
                                     id="saveTransactionBtn">
-                                    <span id="spinner" class="hidden spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                                    <i class="fas fa-save mr-2"></i>
-                                    <span id="saveButtonText">Receive Amount</span>
+                                    <div id="spinner" class="hidden spinner mr-2"></div>
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    <span id="saveButtonText">Transfer Amount</span>
                                 </button>
                             </div>
                         </form>
@@ -193,24 +208,23 @@ $base_ip_path = trim($ip_port, "/");
         
             /* ================= CONFIG ================= */
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_POST_URL = `${IP_PATH}/api/ledgers/store_ledger_statement.php`;
-            const FINANCIAL_ENTRIES_STORE_API = `${IP_PATH}/api/financial_entries/store.php`;
-            const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
-        
+            const API_TRANSFER_STORE = `${IP_PATH}/api/accounts/transfer-accounts.php`;
+
             /* ================= ELEMENTS ================= */
             const transactionForm = document.getElementById('transactionForm');
             const saveTransactionBtn = document.getElementById('saveTransactionBtn');
             const spinner = document.getElementById('spinner');
             const saveButtonText = document.getElementById('saveButtonText');
-        
+
             const selectType = document.getElementById('select_type');
-            const clientSection = document.getElementById('client-section');
-            const vendorSection = document.getElementById('vendor-section');
-        
-            const clientInput = document.getElementById('clientInput');
-            const vendorInput = document.getElementById('vendorInput');
-            const accountInput = document.getElementById('accountInput');
-        
+            const employeeSection = document.getElementById('employee-section');
+            const toAccountSection = document.getElementById('to-account-section');
+            
+            const fromAccountInput = document.getElementById('accountInput');
+            const toAccountInput = document.getElementById('toAccountInput');
+            const employeeInput = document.getElementById('employeeInput');
+            
+            const transferMethod = document.getElementById('transfer_method');
             const transactionDate = document.getElementById('transactionDate');
             const amountInput = document.getElementById('balance');
             const particularTextarea = document.getElementById('particular');
@@ -228,178 +242,158 @@ $base_ip_path = trim($ip_port, "/");
             function todayDate() {
                 return new Date().toISOString().split('T')[0];
             }
-        
+
             /* ================= INIT ================= */
             transactionDate.value = todayDate();
+            transactionDate.max = todayDate(); // Can't select future date
         
-            function togglePartySection() {
+            function toggleTransferSections() {
                 const type = selectType.value;
         
-                if (type === 'vendor') {
-                    vendorSection.classList.remove('hidden');
-                    clientSection.classList.add('hidden');
-                    if (clientInput) clientInput.value = '';
+                if (type === 'a2p') {
+                    employeeSection.classList.remove('hidden');
+                    toAccountSection.classList.add('hidden');
+                    if (toAccountInput) toAccountInput.value = '';
                 } else {
-                    clientSection.classList.remove('hidden');
-                    vendorSection.classList.add('hidden');
-                    if (vendorInput) vendorInput.value = '';
+                    toAccountSection.classList.remove('hidden');
+                    employeeSection.classList.add('hidden');
+                    if (employeeInput) employeeInput.value = '';
                 }
             }
         
-            togglePartySection();
-            selectType.addEventListener('change', togglePartySection);
+            toggleTransferSections();
+            selectType.addEventListener('change', toggleTransferSections);
         
             window.resetTransactionForm = function () {
                 transactionForm.reset();
                 transactionDate.value = todayDate();
-                togglePartySection();
+                transactionDate.max = todayDate();
+                toggleTransferSections();
             };
         
-            saveTransactionBtn.addEventListener('click', submitTransaction);
+            saveTransactionBtn.addEventListener('click', submitTransfer);
         
             /* ================= VALIDATION ================= */
             function validateForm() {
-        
                 const type = selectType.value;
-                const client = extractIds(clientInput?.value);
-                const vendor = extractIds(vendorInput?.value);
-                const account = extractIds(accountInput.value);
+                const fromAccount = extractIds(fromAccountInput?.value);
+                const toAccount = extractIds(toAccountInput?.value);
+                const employee = extractIds(employeeInput?.value);
         
-                if (!account || !account.sys_id) {
-                    alert('Please select an account');
+                // Validate From Account
+                if (!fromAccount || !fromAccount.sys_id) {
+                    alert('Please select From Account');
+                    fromAccountInput?.focus();
                     return false;
                 }
         
-                if (type === 'client' && (!client || !client.sys_id)) {
-                    alert('Please select a client');
-                    return false;
+                // Validate To based on type
+                if (type === 'a2a') {
+                    if (!toAccount || !toAccount.sys_id) {
+                        alert('Please select To Account');
+                        toAccountInput?.focus();
+                        return false;
+                    }
+                    
+                    // Check if same account
+                    if (fromAccount.sys_id === toAccount.sys_id) {
+                        alert('From Account and To Account cannot be the same');
+                        return false;
+                    }
+                } else if (type === 'a2p') {
+                    if (!employee || !employee.sys_id) {
+                        alert('Please select Employee');
+                        employeeInput?.focus();
+                        return false;
+                    }
                 }
         
-                if (type === 'vendor' && (!vendor || !vendor.sys_id)) {
-                    alert('Please select a vendor');
-                    return false;
-                }
-        
+                // Validate Date
                 if (!transactionDate.value) {
                     alert('Please select a date');
+                    transactionDate.focus();
                     return false;
                 }
         
-                if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
-                    alert('Please enter a valid amount');
+                // Validate Amount
+                const amount = parseFloat(amountInput.value);
+                if (!amountInput.value || isNaN(amount) || amount <= 0) {
+                    alert('Please enter a valid amount (greater than 0)');
+                    amountInput.focus();
                     return false;
                 }
         
+                // Validate Particular
                 if (!particularTextarea.value.trim()) {
-                    alert('Please enter particulars');
+                    alert('Please enter transfer particulars');
+                    particularTextarea.focus();
                     return false;
                 }
         
                 return true;
             }
         
-            /* ================= FETCH ACCOUNT ================= */
-            async function fetchAccountInfo(acc_id) {
-                try {
-                    const res = await fetch(`${FETCH_ACCOUNT}?acc_id=${acc_id}`);
-                    const json = await res.json();
-                    return json.accInfo || null;
-                } catch (e) {
-                    console.error(e);
-                    return null;
-                }
-            }
-        
-            /* ================= SUBMIT ================= */
-            async function submitTransaction() {
-        
+            /* ================= SUBMIT TRANSFER ================= */
+            async function submitTransfer() {
                 if (!validateForm()) return;
         
                 const type = selectType.value;
-                const client = extractIds(clientInput?.value);
-                const vendor = extractIds(vendorInput?.value);
-                const account = extractIds(accountInput.value);
-        
-                const accountInfo = await fetchAccountInfo(account.sys_id);
-                if (!accountInfo) {
-                    alert('Account info fetch failed');
-                    return;
-                }
+                const fromAccount = extractIds(accountInput.value);
+                const toAccount = type === 'a2a' ? extractIds(toAccountInput.value) : null;
+                const employee = type === 'a2p' ? extractIds(employeeInput.value) : null;
         
                 const data = {
-                    accountId: account.sys_id,
-                    accountName: account.name,
-                    particular: particularTextarea.value,
-                    balance: parseFloat(amountInput.value),
-                    paymentType: 'Deposit',
-                    currentAccountBalance: parseFloat(accountInfo.balance || 0),
-                    transactionDate: transactionDate.value,
-                    client_id: type === 'client' ? client.sys_id : null,
-                    client_name: type === 'client' ? client.name : null,
-                    vendor_id: type === 'vendor' ? vendor.sys_id : null,
-                    vendor_name: type === 'vendor' ? vendor.name : null
+                    fromAccountId: fromAccount?.sys_id || null,
+                    fromAccountName: fromAccount?.name || null,
+                    toAccountId: toAccount?.sys_id || null,
+                    toAccountName: toAccount?.name || null,
+                    employeeId: employee?.sys_id || null,
+                    employeeName: employee?.name || null,
+                    transferType: type,
+                    transferMethod: transferMethod.value,
+                    amount: amountInput.value,
+                    particular: particularTextarea.value.trim(),
+                    transactionDate: transactionDate.value
                 };
+                
+                console.log(data);
         
+                // Disable button and show spinner
                 saveTransactionBtn.disabled = true;
                 spinner.classList.remove('hidden');
                 saveButtonText.textContent = 'Processing...';
         
                 try {
-                    const res = await fetch(API_POST_URL, {
+                    const response = await fetch(API_TRANSFER_STORE, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify(data)
                     });
         
-                    const result = await res.json();
+                    const result = await response.json();
         
-                    if (res.ok && result.success) {
-                        await callSecondAPI(data, result);
+                    if (response.ok && result.success) {
+                        alert('Transfer completed successfully!');
+                        resetTransactionForm();
+                        
+                        // Reload page or update UI as needed
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
-                        alert(result.error || 'Ledger save failed');
+                        alert(result.error || 'Transfer failed. Please try again.');
                     }
         
-                } catch (e) {
-                    console.error(e);
-                    alert('Network error');
+                } catch (error) {
+                    console.error('Transfer error:', error);
+                    alert('Network error. Please check your connection.');
                 } finally {
+                    // Re-enable button
                     saveTransactionBtn.disabled = false;
                     spinner.classList.add('hidden');
-                    saveButtonText.textContent = 'Received Amount';
-                }
-            }
-        
-            /* ================= SECOND API ================= */
-            async function callSecondAPI(data, firstResult) {
-                const payload = {
-                    type: 'credit',
-                    amount: data.balance,
-                    purpose: data.particular,
-                    client_id: data.client_id,
-                    vendor_id: data.vendor_id,
-                    ref: firstResult.stmt_sys_id,
-                    date: data.transactionDate,
-                };
-        
-                try {
-                    const res = await fetch(FINANCIAL_ENTRIES_STORE_API, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-        
-                    const result = await res.json();
-        
-                    if (result.success) {
-                        alert('Transaction saved successfully');
-                        resetTransactionForm();
-                    } else {
-                        alert('Ledger saved but financial entry failed');
-                    }
-        
-                } catch (e) {
-                    console.error(e);
-                    alert('Ledger saved, financial entry error');
+                    saveButtonText.textContent = 'Transfer Amount';
                 }
             }
         
