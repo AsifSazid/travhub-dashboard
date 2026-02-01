@@ -30,7 +30,7 @@
 
 <hr class="my-4 mt-6">
 
-<h3 class="text-xl font-semibold mb-2">Accounts Section</h3>
+<h3 class="text-xl font-semibold mb-2">Attendence Section</h3>
 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
     <!-- Add Income -->
     <a href="accounts-receive.php" class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">

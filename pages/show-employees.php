@@ -261,7 +261,7 @@ if ($response) {
                 <!-- Tabs Navigation -->
                 <div class="border-b border-gray-200 mb-6">
                     <div class="flex space-x-1 overflow-x-auto custom-scrollbar">
-                        <button class="tab-button flex items-center active" data-tab="details">
+                        <button class="tab-button flex items-center" data-tab="details">
                             <i class="fa-solid fa-circle-info mr-2"></i>
                             Details & Information
                         </button>
@@ -286,7 +286,7 @@ if ($response) {
                             Performance
                         </button>
                     
-                        <button class="tab-button flex items-center" data-tab="accounting">
+                        <button class="tab-button flex items-center active" data-tab="accounting">
                             <i class="fa-solid fa-calculator mr-2"></i>
                             Accounting
                         </button>
@@ -311,7 +311,7 @@ if ($response) {
                 <!-- Tab Content Area -->
                 <div class="flex-1 overflow-y-auto">
                     <!-- Details Tab -->
-                    <div id="details" class="tab-content active">
+                    <div id="details" class="tab-content">
                         <!-- Loading State -->
                         <div id="loadingContainer" class="bg-white rounded-lg shadow p-8 text-center">
                             <div class="loading-spinner"></div>
@@ -366,7 +366,7 @@ if ($response) {
                     </div>
 
                     <!-- Accounting Tab -->
-                    <div id="accounting" class="tab-content">
+                    <div id="accounting" class="tab-content active">
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
@@ -443,7 +443,7 @@ if ($response) {
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                const firstTabId = tabButtons[5].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

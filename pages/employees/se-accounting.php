@@ -50,8 +50,26 @@
                 </div>
             </div>
         </div>
-        <div class="col-span-1 flex items-center justify-center h-full border-l border-gray-400">
+        <div class="col-span-1 h-full border-l border-gray-400">
             <h3 class="text-xl font-semibold mb-2">Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 m-8">
+                <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <p id="total-trnx" class="font-semibold text-purple-800">1</p>
+                    <p class="text-xs text-purple-600 mt-1">Total Trnx</p>
+                </div>
+                <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <p id="total-credit" class="font-semibold text-green-800">1</p>
+                    <p class="text-xs text-green-600 mt-1">Total Credit</p>
+                </div>
+                <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <p id="total-debit" class="font-semibold text-red-800">1</p>
+                    <p class="text-xs text-red-600 mt-1">Total Debit</p>
+                </div>
+                <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <p id="total-outstanding" class="font-semibold text-yellow-800">1</p>
+                    <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -66,10 +84,44 @@
                     const finStmts = data.finStmts;
 
                     renderFinTable(finStmts);
+                    updateSummary(finStmts);
                 })
         }
 
         const finTableBody = document.getElementById('finTableBody');
+        
+        function updateSummary(list) {
+            // initializing
+            const totalTrnx = document.getElementById('total-trnx'); 
+            const totalCredit = document.getElementById('total-credit'); 
+            const totalDebit = document.getElementById('total-debit'); 
+            const totalOutstanding = document.getElementById('total-outstanding'); 
+            
+            // getting value
+            let totalTrnxCount = list.length;
+            let totalCreditAmount = 0;
+            let totalDebitAmount = 0;
+            let totalOutstandingAmount = 0;
+    
+            list.forEach(finSingleEntry => {
+                const type = (finSingleEntry.type || '').toLowerCase();
+                const amount = Number(finSingleEntry.amount) || 0;
+                
+                if (type === 'credit') {
+                    totalCreditAmount += amount;
+                }
+                if (type === 'debit') {
+                    totalDebitAmount += amount;
+                }
+            });
+            
+            totalOutstandingAmount = totalCreditAmount - totalDebitAmount;
+            
+            totalTrnx.textContent = totalTrnxCount;
+            totalCredit.textContent = totalCreditAmount.toFixed(2);
+            totalDebit.textContent = totalDebitAmount.toFixed(2);
+            totalOutstanding.textContent = totalOutstandingAmount.toFixed(2);
+        }
 
         function renderFinTable(list) {
             // আগের ডাটা মুছে ফেলা

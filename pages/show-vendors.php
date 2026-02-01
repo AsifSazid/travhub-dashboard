@@ -174,7 +174,7 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
-                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
+                                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions</h2>
                                     <?php include('sv-accounting.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
