@@ -126,14 +126,16 @@ try {
     $stmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
-            user_sys_id, user_name, vendor_type,
+            client_sys_id, client_name,
+            vendor_sys_id, vendor_name, vendor_type,
             task_sys_id, task_title,
             work_sys_id, work_title,
             date, purpose, type, amount, ref,
             meta_data
         ) VALUES (
             :uuid, :sys_id,
-            :user_sys_id, :user_name, :vendor_type,
+            :client_sys_id, :client_name,
+            :vendor_sys_id, :vendor_name, :vendor_type,
             :task_sys_id, :task_title,
             :work_sys_id, :work_title,
             :date, :purpose, :type, :amount, :ref,
@@ -144,8 +146,10 @@ try {
     $stmt->execute([
         ':uuid' => $ids['uuid'],
         ':sys_id' => $ids['sys_id'],
-        ':vendor_sys_id' => $clientId ?? $vendorId ?? $accountId ?? null,
-        ':vendor_name' => $clientName ?? $vendorName ?? $accountName ?? null,
+        ':client_sys_id' => $clientId,
+        ':client_name' => $clientName,
+        ':vendor_sys_id' => $vendorId ?? $accountId ?? null,
+        ':vendor_name' => $vendorName ?? $accountName ?? null,
         ':vendor_type' => $vendorType ?? null,
         ':task_sys_id' => $taskId,
         ':task_title' => $taskTitle,

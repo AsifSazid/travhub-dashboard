@@ -8,7 +8,7 @@ if (empty($ip_port)) {
 $vendorId = $_GET['vendor_id'];
 
 
-$getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.php?vendor_id=$vendorId";
+$getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$vendorId";
 
 ?>
 

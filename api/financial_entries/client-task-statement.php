@@ -10,7 +10,7 @@ $taskId = $_GET['task_id'];
 try {
     $stmt = $pdo->prepare("
         SELECT purpose, amount FROM financial_entries
-        WHERE client_sys_id = ? AND task_sys_id = ?
+        WHERE user_sys_id = ? AND task_sys_id = ?
         ORDER BY id DESC
     ");
     $stmt->execute([$clientId, $taskId]);

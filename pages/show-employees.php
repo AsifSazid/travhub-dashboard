@@ -7,9 +7,32 @@ if (empty($ip_port)) {
 
 $employeeId = $_GET['employee_id'];
 
-
 // $showEmployeeApi = $ip_port . "api/employees/show.php";
 $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employeeId";
+$getEmployeeFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$employeeId";
+
+$API_BASE = "https://travhub.com.bd/travhub-admin/";
+$getEmployeeApi = $API_BASE . "api/employees/get-employee.php?employee_id=" . urlencode($employeeId);
+
+// Server-side API call (for OG meta)
+$response = @file_get_contents($getEmployeeApi);
+if ($response) {
+    $json = json_decode($response, true);
+    if (!empty($json['success']) && !empty($json['employee'])) {
+        $emp = $json['employee'];
+
+        $employeeName = $emp['name'] ?? $employeeName;
+        $department   = $emp['department_name'] ?? $department;
+
+        $companyInfo  = json_decode($emp['company_related_info'] ?? '{}', true);
+        $designation  = $companyInfo['designation'] ?? $designation;
+
+        $imageData = json_decode($emp['image_name'] ?? '[]', true);
+        if (!empty($imageData[0]['file_path'])) {
+            $ogImage = $API_BASE . "uploads/" . $imageData[0]['file_path'];
+        }
+    }
+}
 
 ?>
 
@@ -64,14 +87,29 @@ $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employ
             border-left-color: #f56565;
         }
         
-        .profile-image {
+        .profile-wrapper {
             width: 150px;
             height: 150px;
             border-radius: 50%;
             border: 5px solid white;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            object-fit: cover;
             background-color: #f7fafc;
+            overflow: hidden;          /* 🔑 must */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .profile-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scale(0.9);     /* 👈 image zoom only */
+            border-radius: 50%;        /* 🔑 add this */
+        }
+        
+        .profile-image:hover {
+            transform: scale(1);
         }
         
         .status-badge {
@@ -144,6 +182,59 @@ $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employ
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Tab Styles */
+        .tab-button {
+            padding: 12px 20px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        .tab-button.active {
+            color: #3b82f6;
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #3b82f6;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -153,301 +244,158 @@ $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employ
 
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
-    
-        <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
-        </div>
-    </div>
 
     <!-- Main Content -->
-    <main id="mainContent" class="pl-64 transition-all duration-300">
+    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300">
         <div class="p-6">
-            <!-- Loading State -->
-            <div id="loadingContainer" class="bg-white rounded-lg shadow p-8 text-center">
-                <div class="loading-spinner"></div>
-                <p class="mt-4 text-gray-600">Loading employee information...</p>
-            </div>
-            
-            <!-- Portfolio Content (Initially hidden) -->
-            <div id="portfolioContainer" class="hidden">
-                <!-- Portfolio Header -->
-                <div class="portfolio-header mb-6 p-8 relative">
-                    <div class="flex flex-col md:flex-row items-center md:items-start">
-                        <!-- Profile Image -->
-                        <div class="mb-6 md:mb-0 md:mr-8 relative">
-                            <img id="profilePhoto" src="../assets/images/placeholder-profile.png" alt="Profile" class="profile-image">
-                            <div id="statusBadge" class="status-badge status-active mt-4"></div>
-                        </div>
-                        
-                        <!-- Employee Info -->
-                        <div class="flex-1 text-center md:text-left">
-                            <h1 id="employeeName" class="text-3xl md:text-4xl font-bold mb-2">Employee Name</h1>
-                            <h2 id="employeeDesignation" class="text-xl md:text-2xl text-blue-100 mb-3">Designation</h2>
-                            <div class="flex flex-wrap justify-center md:justify-start gap-4 text-blue-100 mb-6">
-                                <div class="flex items-center">
-                                    <i class="fas fa-id-card mr-2"></i>
-                                    <span id="employeeId">EMP-0000000</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-building mr-2"></i>
-                                    <span id="employeeDepartment">Department</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-calendar-alt mr-2"></i>
-                                    <span id="employeeJoinDate">Join Date</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Contact Info -->
-                            <div class="flex flex-wrap justify-center md:justify-start gap-4">
-                                <a id="employeeEmail" href="#" class="flex items-center bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
-                                    <i class="fas fa-envelope mr-2"></i>
-                                    <span>Email</span>
-                                </a>
-                                <a id="employeePhone" href="#" class="flex items-center bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
-                                    <i class="fas fa-phone mr-2"></i>
-                                    <span>Phone</span>
-                                </a>
-                                <a id="employeeLocation" href="#" class="flex items-center bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
-                                    <i class="fas fa-map-marker-alt mr-2"></i>
-                                    <span>Location</span>
-                                </a>
-                            </div>
-                        </div>
+            <div class="bg-white rounded-lg shadow p-4 flex flex-col h-[400px] md:h-[calc(100vh-8rem)]">
+                <!-- Header -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-user-circle mr-2 text-purple-600"></i>
+                        Employee's Profile
+                    </h2>
+                    <p class="text-sm text-gray-600">Manage traveler information, documents, and related data</p>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div class="border-b border-gray-200 mb-6">
+                    <div class="flex space-x-1 overflow-x-auto custom-scrollbar">
+                        <button class="tab-button flex items-center active" data-tab="details">
+                            <i class="fa-solid fa-circle-info mr-2"></i>
+                            Details & Information
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="documents">
+                            <i class="fa-solid fa-file-lines mr-2"></i>
+                            Documents
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="attendence">
+                            <i class="fa-solid fa-calendar-check mr-2"></i>
+                            Attendance & Leave Management
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="payroll">
+                            <i class="fa-solid fa-money-check-dollar mr-2"></i>
+                            Payroll
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="work-board">
+                            <i class="fa-solid fa-chart-line mr-2"></i>
+                            Performance
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="accounting">
+                            <i class="fa-solid fa-calculator mr-2"></i>
+                            Accounting
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="notifications">
+                            <i class="fas fa-bell mr-2"></i>
+                            Notifications
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="credentials">
+                            <i class="fa-solid fa-key mr-2"></i>
+                            Credentials
+                        </button>
+                    
+                        <button class="tab-button flex items-center" data-tab="explore">
+                            <i class="fa-solid fa-compass mr-2"></i>
+                            Explore All
+                        </button>
                     </div>
                 </div>
                 
-                <!-- Main Content Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Left Column -->
-                    <div class="lg:col-span-2 space-y-6">
-                        <!-- About / Bio Section -->
-                        <div class="info-card personal p-6">
-                            <h3 class="section-title">About</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <div class="detail-label">Employee ID</div>
-                                    <div id="sysId" class="detail-value text-lg font-bold">EMP-0000000</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Date of Birth</div>
-                                    <div id="dateOfBirth" class="detail-value">Not available</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Blood Group</div>
-                                    <div id="bloodGroup" class="detail-value">Not available</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Employee Type</div>
-                                    <div id="employeeType" class="detail-value">Not available</div>
-                                </div>
-                            </div>
-                            <div class="mt-6">
-                                <div class="detail-label">Additional Information</div>
-                                <p id="additionalInfo" class="detail-value text-gray-600">No additional information available.</p>
-                            </div>
+                <!-- Tab Content Area -->
+                <div class="flex-1 overflow-y-auto">
+                    <!-- Details Tab -->
+                    <div id="details" class="tab-content active">
+                        <!-- Loading State -->
+                        <div id="loadingContainer" class="bg-white rounded-lg shadow p-8 text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-4 text-gray-600">Loading employee information...</p>
                         </div>
                         
-                        <!-- Company Information -->
-                        <div class="info-card company p-6">
-                            <h3 class="section-title">Company Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <div class="detail-label">Department</div>
-                                    <div id="companyDepartment" class="detail-value text-lg font-semibold">Department</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Designation</div>
-                                    <div id="companyDesignation" class="detail-value text-lg font-semibold">Designation</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Employment Type</div>
-                                    <div id="employmentType" class="detail-value">Not available</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Date of Joining</div>
-                                    <div id="dateOfJoining" class="detail-value">Not available</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Company Role</div>
-                                    <div id="companyRole" class="detail-value">Not available</div>
-                                </div>
-                                <div>
-                                    <div class="detail-label">Status</div>
-                                    <div id="companyStatus" class="detail-value">Not available</div>
-                                </div>
-                            </div>
-                            <div class="mt-6">
-                                <div class="detail-label">Created Information</div>
-                                <div class="flex items-center mt-2">
-                                    <div class="bg-blue-50 p-3 rounded-lg">
-                                        <i class="fas fa-user-circle text-blue-500 text-lg"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-value" id="createdBy">System Admin</div>
-                                        <div class="text-sm text-gray-500" id="createdDate">21-01-2026 20:46</div>
-                                    </div>
+                        <?php include('./employees/se-details.php') ?> <!-- sc means show Employee -->
+                    </div>
+
+                    <!-- Documents Tab -->
+                    <div id="documents" class="tab-content active">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Skills / Expertise Section -->
-                        <div class="info-card p-6">
-                            <h3 class="section-title">Skills & Expertise</h3>
-                            <div id="skillsContainer">
-                                <!-- Skills will be dynamically added here -->
-                                <div class="text-center py-8 text-gray-500">
-                                    <i class="fas fa-code text-4xl mb-3 text-gray-300"></i>
-                                    <p>Skills information not available</p>
+                    </div>
+
+                    <!-- Attendence & Leave Management Tab -->
+                    <div id="attendence" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Right Column -->
-                    <div class="space-y-6">
-                        <!-- Contact Information -->
-                        <div class="info-card contact p-6">
-                            <h3 class="section-title">Contact Information</h3>
-                            <div class="space-y-4">
-                                <div class="flex items-center">
-                                    <div class="bg-blue-100 p-3 rounded-lg">
-                                        <i class="fas fa-envelope text-blue-600"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-label">Email</div>
-                                        <a id="contactEmail" href="#" class="detail-value hover:text-blue-600 transition">email@example.com</a>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-center">
-                                    <div class="bg-blue-100 p-3 rounded-lg">
-                                        <i class="fas fa-phone text-blue-600"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-label">Phone</div>
-                                        <a id="contactPhone" href="#" class="detail-value hover:text-blue-600 transition">+880 0000 000000</a>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-center">
-                                    <div class="bg-blue-100 p-3 rounded-lg">
-                                        <i class="fas fa-map-marker-alt text-blue-600"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-label">Address</div>
-                                        <div id="contactAddress" class="detail-value">Address not available</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Emergency Contact -->
-                        <div class="info-card emergency p-6">
-                            <h3 class="section-title">Emergency Contact</h3>
-                            <div class="space-y-4">
-                                <div class="flex items-center">
-                                    <div class="bg-red-100 p-3 rounded-lg">
-                                        <i class="fas fa-user text-red-600"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-label">Contact Person</div>
-                                        <div id="emergencyPerson" class="detail-value">Not available</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-center">
-                                    <div class="bg-red-100 p-3 rounded-lg">
-                                        <i class="fas fa-users text-red-600"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-label">Relationship</div>
-                                        <div id="emergencyRelation" class="detail-value">Not available</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-center">
-                                    <div class="bg-red-100 p-3 rounded-lg">
-                                        <i class="fas fa-phone text-red-600"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-label">Emergency Phone</div>
-                                        <a id="emergencyPhone" href="#" class="detail-value hover:text-red-600 transition">Not available</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Recent Activity / Notes -->
-                        <div class="info-card p-6">
-                            <h3 class="section-title">Recent Activity</h3>
-                            <div class="space-y-4">
-                                <div class="flex items-start">
-                                    <div class="bg-green-100 p-2 rounded-full mt-1">
-                                        <i class="fas fa-user-plus text-green-600 text-sm"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-value">Employee Created</div>
-                                        <div class="text-sm text-gray-500" id="activityDate">21-01-2026 20:46</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start">
-                                    <div class="bg-purple-100 p-2 rounded-full mt-1">
-                                        <i class="fas fa-id-card text-purple-600 text-sm"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="detail-value">Profile Information Updated</div>
-                                        <div class="text-sm text-gray-500">No recent updates</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="text-center pt-4">
-                                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                        <i class="fas fa-history mr-1"></i> View Full Activity Log
-                                    </button>
+                    <!-- Payroll Tab -->
+                    <div id="payroll" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Footer Action Buttons -->
-                <div class="mt-8 flex justify-between items-center">
-                    <div class="text-sm text-gray-500">
-                        Last updated: <span id="lastUpdated">Today</span>
+                    
+                    <!-- Performance Tab -->
+                    <div id="performance" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex space-x-4">
-                        <button id="printButton" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition">
-                            <i class="fas fa-print mr-2"></i> Print Profile
-                        </button>
-                        <button id="editButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
-                            <i class="fas fa-edit mr-2"></i> Edit Information
-                        </button>
+
+                    <!-- Accounting Tab -->
+                    <div id="accounting" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 justify-center h-full w-full">
+                                <div class="text-center">
+                                    <?php include('./employees/se-accounting.php') ?> <!-- sc means show Employee -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Tab -->
+                    <div id="notifications" class="tab-content">
+                        <div class="h-full w-full">
+                        </div>
+                    </div>
+
+                    <!-- Credentials Tab -->
+                    <div id="credentials" class="tab-content">
+                        <div class="h-full w-full">
+                            <?php include('credentials.php') ?> <!-- sc means show Employee -->
+                        </div>
+                    </div>
+
+                    <!-- Explore All Tab -->
+                    <div id="explore" class="tab-content">
+                        <div class="h-full w-full">
+                            <?php include('./employees/se-explore.php') ?> <!-- sc means show Employee -->
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Error State -->
-            <div id="errorContainer" class="bg-white rounded-lg shadow p-8 text-center hidden">
-                <div class="bg-red-100 p-4 rounded-full inline-block">
-                    <i class="fas fa-exclamation-triangle text-red-600 text-3xl"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mt-4">Error Loading Employee Data</h3>
-                <p id="errorMessage" class="text-gray-600 mt-2">Could not load employee information. Please try again.</p>
-                <button id="retryButton" class="mt-6 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
-                    <i class="fas fa-redo mr-2"></i> Retry Loading
-                </button>
             </div>
         </div>
     </main>
@@ -458,6 +406,47 @@ $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employ
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script>
         const GET_EMPLOYEE_INFO_API = "<?php echo $getEmployeeApi; ?>";
+        
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            // Function to switch tabs
+            function switchTab(tabId) {
+                // Remove active class from all tabs
+                tabButtons.forEach(button => {
+                    button.classList.remove('active');
+                });
+
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+
+                // Add active class to clicked tab
+                const activeButton = document.querySelector(`[data-tab="${tabId}"]`);
+                const activeContent = document.getElementById(tabId);
+
+                if (activeButton && activeContent) {
+                    activeButton.classList.add('active');
+                    activeContent.classList.add('active');
+                }
+            }
+
+            // Add click event to tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    switchTab(tabId);
+                });
+            });
+
+            // Initialize first tab as active
+            if (tabButtons.length > 0) {
+                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                switchTab(firstTabId);
+            }
+        });
         
         document.addEventListener('DOMContentLoaded', function() {
             const portfolioContainer = document.getElementById('portfolioContainer');
@@ -524,9 +513,9 @@ $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employ
                         if (employee.image_name) {
                             try {
                                 const imageData = JSON.parse(employee.image_name);
-                                if (imageData.length > 0 && imageData[0].file_path) {
-                                    // Construct full image URL - adjust based on your actual image path
-                                    const imageUrl = `<?php echo $ip_port; ?>/${imageData[0].file_path}`;
+                        
+                                if (Array.isArray(imageData) && imageData.length > 0 && imageData[0].file_path) {
+                                    const imageUrl = `<?php echo $API_BASE; ?>uploads/${imageData[0].file_path}?time=<?php echo time(); ?>`;
                                     profilePhoto.src = imageUrl;
                                 }
                             } catch (e) {

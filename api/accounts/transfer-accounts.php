@@ -43,10 +43,13 @@ $transferMethod  = $data['transferMethod']  ?? '';
 $transferMethodStatus = $data['transferMethodStatus'] ?? '';
 $amount          = $data['amount']          ?? 0;
 $particular      = $data['particular']      ?? '';
-$transactionDate = $data['transactionDate'] ?? date('Y-m-d');
+$transactionDate = $data['transactionDate'] ?? date('Y-m-d h:m:s');
+$methodStatus = ''; 
 
 /* ================= VALIDATION ================= */
-if ($transferType !== 'a2a') {
+$allowedTypes = ['a2a', 'a2p'];
+
+if (!in_array($transferType, $allowedTypes, true)) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
@@ -62,6 +65,30 @@ if (!is_numeric($amount) || $amount <= 0) {
         'message' => 'Invalid amount'
     ]);
     exit;
+}
+
+if ($transferMethod === 'cheque')
+{
+    $methodStatus = json_encode([
+        "trnx_ref"     => "",
+        "trnx_date"   => "",
+        "trnx_status" => "waiting2submit"
+    ]);
+    // waiting2submit = Waiting to Submit;
+    // submitted2bank = Submitted to Bank;
+    // cleared = Bank Cleared the Cheque;
+    // bounced = Cheque Bounced;
+}
+
+if ($transferMethod === 'bftn-eft') {
+    $methodStatus = json_encode([
+        "trnx_id"     => "",
+        "trnx_date"   => "",
+        "trnx_status" => "pending"
+    ]);
+    // pending = trnx kora hoiche kintu ekhono kono action hoy nai 
+    // successful = trnx hoiche and trnx id pawya geche 
+    // unsuccessful = trnx successful hoy nai
 }
 
 try {
@@ -99,21 +126,22 @@ try {
     ]);
 
     /* -------- FROM ACCOUNT STATEMENT -------- */
-    $fromUUIDs = generateIDs('ac_banking');
+    $fromUUIDs = generateIDs('ac_banking_stmts');
     $fromMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    $ref = $toAccountId ?? $employeeId;
 
     $stmtInsert = $pdo->prepare("
         INSERT INTO ac_banking_stmts
         (
             uuid, sys_id, ledger_db_id, name, date,
-            particular, withdraw, deposit, balance,
-            reconsilation, reconsilation_type, meta_data
+            particular, withdraw, deposit, balance, method_status,
+            reconsilation, reconsilation_type, ref, meta_data
         )
         VALUES
         (
             :uuid, :sys_id, :ledger_db_id, :name, :date,
-            :particular, :withdraw, :deposit, :balance,
-            0, 0, :meta_data
+            :particular, :withdraw, :deposit, :balance, :method_status,
+            0, 0, :ref, :meta_data
         )
     ");
 
@@ -127,52 +155,97 @@ try {
         ':withdraw'     => $amount,
         ':deposit'      => 0,
         ':balance'      => $newFromBalance,
+        ':method_status'=> $methodStatus,
+        ':ref'          => $ref,
         ':meta_data'    => $fromMeta
     ]);
-    
-    /* ================= COMMIT ================= */
-    $pdo->commit();
-    
-    /* ================= START TRANSACTION ================= */
-    $pdo->beginTransaction();
 
     /* ================= TO ACCOUNT ================= */
-    $toAccStmt = $pdo->prepare("
-        SELECT balance 
-        FROM ac_banking 
-        WHERE sys_id = ?
-        FOR UPDATE
-    ");
-    $toAccStmt->execute([$toAccountId]);
-    $toAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$toAccount) {
-        throw new Exception('To account not found');
+    if($transferType === 'a2a'){
+        $toAccStmt = $pdo->prepare("
+            SELECT balance 
+            FROM ac_banking 
+            WHERE sys_id = ?
+            FOR UPDATE
+        ");
+        $toAccStmt->execute([$toAccountId]);
+        $toAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$toAccount) {
+            throw new Exception('To account not found');
+        }
+    
+        $newToBalance = $toAccount['balance'] + $amount;
+    
+        $updateStmt->execute([
+            ':balance' => $newToBalance,
+            ':id'      => $toAccountId
+        ]);
+    
+        /* -------- TO ACCOUNT STATEMENT -------- */
+        $toUUIDs = generateIDs('ac_banking_stmts');
+        $toMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    
+        $stmtInsert->execute([
+            ':uuid'         => $toUUIDs['uuid'],
+            ':sys_id'       => $toUUIDs['sys_id'],
+            ':ledger_db_id' => $toAccountId,
+            ':name'         => $toAccountName,
+            ':date'         => $transactionDate,
+            ':particular'   => $particular,
+            ':withdraw'     => 0,
+            ':deposit'      => $amount,
+            ':balance'      => $newToBalance,
+            ':method_status'=> $methodStatus,
+            ':ref'          => $fromAccountId,
+            ':meta_data'    => $toMeta
+        ]);
     }
-
-    $newToBalance = $toAccount['balance'] + $amount;
-
-    $updateStmt->execute([
-        ':balance' => $newToBalance,
-        ':id'      => $toAccountId
-    ]);
-
-    /* -------- TO ACCOUNT STATEMENT -------- */
-    $toUUIDs = generateIDs('ac_banking');
-    $toMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
-
-    $stmtInsert->execute([
-        ':uuid'         => $toUUIDs['uuid'],
-        ':sys_id'       => $toUUIDs['sys_id'],
-        ':ledger_db_id' => $toAccountId,
-        ':name'         => $toAccountName,
-        ':date'         => $transactionDate,
-        ':particular'   => $particular,
-        ':withdraw'     => 0,
-        ':deposit'      => $amount,
-        ':balance'      => $newToBalance,
-        ':meta_data'    => $toMeta
-    ]);
+    
+    
+    /* ================= TO EMPLOYEE ================= */
+    if ($transferType === 'a2p') {
+        
+        if (!$employeeId || !$employeeName) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Employee Not Found'
+            ]);
+            exit;
+        }
+    
+        /* -------- TO EMPLOYEE STATEMENT -------- */
+        $empSysIds = generateIDs('financial_entries');
+        $employeeMetaDataJson = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    
+        $stmt = $pdo->prepare("
+            INSERT INTO financial_entries (
+                uuid, sys_id,
+                user_sys_id, user_name,
+                date, purpose, type, amount, ref,
+                meta_data
+            ) VALUES (
+                :uuid, :sys_id,
+                :user_sys_id, :user_name,
+                :date, :purpose, :type, :amount, :ref,
+                :meta_data
+            )
+        ");
+    
+        $stmt->execute([
+            ':uuid' => $empSysIds['uuid'],
+            ':sys_id' => $empSysIds['sys_id'],
+            ':user_sys_id' => $employeeId ?? null,
+            ':user_name' => $employeeName ?? null,
+            ':date' => $transactionDate,
+            ':purpose' => $particular,
+            ':type' => 'credit',
+            ':amount' => $amount,
+            ':ref' => 'Petty Cash' . '-' . $fromUUIDs['sys_id'],
+            ':meta_data' => $employeeMetaDataJson
+        ]);
+    }
 
     /* ================= COMMIT ================= */
     $pdo->commit();

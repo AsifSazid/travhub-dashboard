@@ -4,7 +4,7 @@ require '../../server/db_connection.php';
 
 header('Content-Type: application/json'); // Tell the client this is JSON
 
-$clientId = $_GET['client_id'];
+$userId = $_GET['id'];
 
 try {
     $stmt = $pdo->prepare("
@@ -12,7 +12,7 @@ try {
         WHERE user_sys_id =?
         ORDER BY id DESC
     ");
-    $stmt->execute([$clientId]);
+    $stmt->execute([$userId]);
     $finStmts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['finStmts' => $finStmts, 'success' => true]); // Send JSON to the client

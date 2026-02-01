@@ -851,6 +851,17 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 }
             });
         }
+        
+        function buildDateTime(dateOnly) {
+            const now = new Date();
+        
+            const time =
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+        
+            return `${dateOnly} ${time}`;
+        }
 
         // Record Transaction
         async function recordTransaction(type) {
@@ -880,7 +891,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
-                        date: date || new Date().toISOString().split('T')[0]
+                        date: buildDateTime(date)
                     };
 
                     await saveTransaction(transactionData, 'Debit');
@@ -936,7 +947,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
                         work_id: workId,
                         task_id: taskId,
-                        date: date || new Date().toISOString().split('T')[0]
+                        date: buildDateTime(date)
                     };
 
                     // Add vendor_id or account_id based on type
@@ -990,7 +1001,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
-                        date: date || new Date().toISOString().split('T')[0]
+                        date: buildDateTime(date)
                     };
 
                     await saveTransaction(transactionData, 'Credit');
@@ -1046,7 +1057,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
                         work_id: workId,
                         task_id: taskId,
-                        date: date || new Date().toISOString().split('T')[0]
+                        date: buildDateTime(date)
                     };
 
                     // Add vendor_id or account_id based on type

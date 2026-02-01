@@ -858,7 +858,7 @@
         },
         
         // Smart copy function that handles different file types
-        async smartCopyFileToClipboard() {
+     /*   async smartCopyFileToClipboard() {
             const file = this.state.contextItem;
             if (!file) return;
             
@@ -880,7 +880,47 @@
                 // For other files, show unsupported modal
                 this.showUnsupportedFileModal(file);
             }
-        },
+        },   */ 
+        
+        
+        
+       // estiak created //
+async smartCopyFileToClipboard() {
+    const file = this.state.contextItem;
+    if (!file) return;
+    
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension);
+    
+    // Extensions that should only copy the URL
+    const isDocument = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv'].includes(fileExtension);
+
+    if (isImage) {
+        // KEEP PREVIOUS MODEL FOR IMAGES: Copy image data directly
+        await this.copyImageToClipboard(file);
+    } else if (isDocument) {
+        // FOR PDF/DOC/EXCEL: Directly copy the live URL only
+        const fileUrl = this.getFullFilePath(file);
+        const absoluteUrl = window.location.origin + fileUrl;
+        
+        try {
+            await navigator.clipboard.writeText(absoluteUrl);
+            this.showToast('File link copied to clipboard!', 'success');
+            // This ensures any open context menu or modal is closed immediately
+            this.hideContextMenu();
+        } catch (err) {
+            console.error('Failed to copy link:', err);
+            this.showToast('Failed to copy link', 'error');
+        }
+    } else {
+        // For other files, maintain your current unsupported logic or copy link as fallback
+        const fileUrl = this.getFullFilePath(file);
+        const absoluteUrl = window.location.origin + fileUrl;
+        await navigator.clipboard.writeText(absoluteUrl);
+        this.showToast('Link copied to clipboard', 'success');
+    }
+},
+    // estiak created  stop //
         
         async copyImageToClipboard(file) {
             this.showClipboardModal('Loading image...');

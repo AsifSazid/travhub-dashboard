@@ -52,7 +52,7 @@
                     </td>
                 `;
         
-                tableBody.appendChild(tr);
+                finTableBody.appendChild(tr);
                 return;
             }
 

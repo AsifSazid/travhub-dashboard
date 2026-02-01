@@ -80,6 +80,11 @@
                     <i class="fas fa-user mr-3 text-gray-400"></i>
                     <span>Profile</span>
                 </a>
+                <a href="../auth/logout.php"
+                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" title="logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket mr-3 text-gray-400"></i>
+                    <span>Logout</span>
+                </a>
                 <!-- More items... -->
             </div>
         </div>

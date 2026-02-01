@@ -242,10 +242,28 @@ $base_ip_path = trim($ip_port, "/");
             function todayDate() {
                 return new Date().toISOString().split('T')[0];
             }
+            
+            function buildDateTime(dateOnly) {
+                const now = new Date();
+            
+                const time =
+                    String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+            
+                return `${dateOnly} ${time}`;
+            }
 
             /* ================= INIT ================= */
             transactionDate.value = todayDate();
             transactionDate.max = todayDate(); // Can't select future date
+                    
+            window.resetTransactionForm = function () {
+                transactionForm.reset();
+                transactionDate.value = todayDate();
+                transactionDate.max = todayDate();
+                toggleTransferSections();
+            };
         
             function toggleTransferSections() {
                 const type = selectType.value;
@@ -263,14 +281,7 @@ $base_ip_path = trim($ip_port, "/");
         
             toggleTransferSections();
             selectType.addEventListener('change', toggleTransferSections);
-        
-            window.resetTransactionForm = function () {
-                transactionForm.reset();
-                transactionDate.value = todayDate();
-                transactionDate.max = todayDate();
-                toggleTransferSections();
-            };
-        
+
             saveTransactionBtn.addEventListener('click', submitTransfer);
         
             /* ================= VALIDATION ================= */
@@ -353,7 +364,7 @@ $base_ip_path = trim($ip_port, "/");
                     transferMethod: transferMethod.value,
                     amount: amountInput.value,
                     particular: particularTextarea.value.trim(),
-                    transactionDate: transactionDate.value
+                    transactionDate: buildDateTime(transactionDate.value)
                 };
                 
                 console.log(data);
