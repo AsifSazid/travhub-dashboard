@@ -185,7 +185,7 @@ $allEps = $ip_port . "api/eps/all-eps.php";
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${eps.department_name || 'Unknown'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <a href="show-epss.php?eps_id=${eps.sys_id}" title="Details">
+                        <a href="show-eps.php?eps_id=${eps.sys_id}" title="Details">
                             <i class="fas fa-eye"></i>
                         </a>
                         <button onclick='viewFirstCredentials(${JSON.stringify(eps)})' title="Details">
