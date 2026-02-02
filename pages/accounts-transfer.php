@@ -204,211 +204,266 @@ $base_ip_path = trim($ip_port, "/");
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        // API URL from PHP variable
+        const storeEpsApi = "<?php echo $storeEpsApi; ?>";
         
-            /* ================= CONFIG ================= */
-            const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_TRANSFER_STORE = `${IP_PATH}/api/accounts/transfer-accounts.php`;
-
-            /* ================= ELEMENTS ================= */
-            const transactionForm = document.getElementById('transactionForm');
-            const saveTransactionBtn = document.getElementById('saveTransactionBtn');
-            const spinner = document.getElementById('spinner');
-            const saveButtonText = document.getElementById('saveButtonText');
-
-            const selectType = document.getElementById('select_type');
-            const employeeSection = document.getElementById('employee-section');
-            const toAccountSection = document.getElementById('to-account-section');
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set today's date as default for effective date
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="effective_date"]').value = today;
             
-            const fromAccountInput = document.getElementById('accountInput');
-            const toAccountInput = document.getElementById('toAccountInput');
-            const employeeInput = document.getElementById('employeeInput');
+            // Add form submit event listener
+            document.getElementById('epsForm').addEventListener('submit', handleFormSubmit);
             
-            const transferMethod = document.getElementById('transfer_method');
-            const transactionDate = document.getElementById('transactionDate');
-            const amountInput = document.getElementById('balance');
-            const particularTextarea = document.getElementById('particular');
-        
-            /* ================= UTILS ================= */
-            function extractIds(value) {
-                if (!value) return null;
-                const parts = value.split('|').map(v => v.trim());
-                return {
-                    sys_id: parts[0] || null,
-                    name: parts[1] || null,
-                };
-            }
-        
-            function todayDate() {
-                return new Date().toISOString().split('T')[0];
-            }
+            // Initial calculation
+            calculateSalary();
             
-            function buildDateTime(dateOnly) {
-                const now = new Date();
+            // Add input listeners for salary calculation
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                input.addEventListener('input', calculateSalary);
+            });
             
-                const time =
-                    String(now.getHours()).padStart(2, '0') + ':' +
-                    String(now.getMinutes()).padStart(2, '0') + ':' +
-                    String(now.getSeconds()).padStart(2, '0');
-            
-                return `${dateOnly} ${time}`;
-            }
-
-            /* ================= INIT ================= */
-            transactionDate.value = todayDate();
-            transactionDate.max = todayDate(); // Can't select future date
-                    
-            window.resetTransactionForm = function () {
-                transactionForm.reset();
-                transactionDate.value = todayDate();
-                transactionDate.max = todayDate();
-                toggleTransferSections();
-            };
-        
-            function toggleTransferSections() {
-                const type = selectType.value;
-        
-                if (type === 'a2p') {
-                    employeeSection.classList.remove('hidden');
-                    toAccountSection.classList.add('hidden');
-                    if (toAccountInput) toAccountInput.value = '';
-                } else {
-                    toAccountSection.classList.remove('hidden');
-                    employeeSection.classList.add('hidden');
-                    if (employeeInput) employeeInput.value = '';
-                }
-            }
-        
-            toggleTransferSections();
-            selectType.addEventListener('change', toggleTransferSections);
-
-            saveTransactionBtn.addEventListener('click', submitTransfer);
-        
-            /* ================= VALIDATION ================= */
-            function validateForm() {
-                const type = selectType.value;
-                const fromAccount = extractIds(fromAccountInput?.value);
-                const toAccount = extractIds(toAccountInput?.value);
-                const employee = extractIds(employeeInput?.value);
-        
-                // Validate From Account
-                if (!fromAccount || !fromAccount.sys_id) {
-                    alert('Please select From Account');
-                    fromAccountInput?.focus();
-                    return false;
-                }
-        
-                // Validate To based on type
-                if (type === 'a2a') {
-                    if (!toAccount || !toAccount.sys_id) {
-                        alert('Please select To Account');
-                        toAccountInput?.focus();
-                        return false;
-                    }
-                    
-                    // Check if same account
-                    if (fromAccount.sys_id === toAccount.sys_id) {
-                        alert('From Account and To Account cannot be the same');
-                        return false;
-                    }
-                } else if (type === 'a2p') {
-                    if (!employee || !employee.sys_id) {
-                        alert('Please select Employee');
-                        employeeInput?.focus();
-                        return false;
-                    }
-                }
-        
-                // Validate Date
-                if (!transactionDate.value) {
-                    alert('Please select a date');
-                    transactionDate.focus();
-                    return false;
-                }
-        
-                // Validate Amount
-                const amount = parseFloat(amountInput.value);
-                if (!amountInput.value || isNaN(amount) || amount <= 0) {
-                    alert('Please enter a valid amount (greater than 0)');
-                    amountInput.focus();
-                    return false;
-                }
-        
-                // Validate Particular
-                if (!particularTextarea.value.trim()) {
-                    alert('Please enter transfer particulars');
-                    particularTextarea.focus();
-                    return false;
-                }
-        
-                return true;
-            }
-        
-            /* ================= SUBMIT TRANSFER ================= */
-            async function submitTransfer() {
-                if (!validateForm()) return;
-        
-                const type = selectType.value;
-                const fromAccount = extractIds(accountInput.value);
-                const toAccount = type === 'a2a' ? extractIds(toAccountInput.value) : null;
-                const employee = type === 'a2p' ? extractIds(employeeInput.value) : null;
-        
-                const data = {
-                    fromAccountId: fromAccount?.sys_id || null,
-                    fromAccountName: fromAccount?.name || null,
-                    toAccountId: toAccount?.sys_id || null,
-                    toAccountName: toAccount?.name || null,
-                    employeeId: employee?.sys_id || null,
-                    employeeName: employee?.name || null,
-                    transferType: type,
-                    transferMethod: transferMethod.value,
-                    amount: amountInput.value,
-                    particular: particularTextarea.value.trim(),
-                    transactionDate: buildDateTime(transactionDate.value)
-                };
-                
-                console.log(data);
-        
-                // Disable button and show spinner
-                saveTransactionBtn.disabled = true;
-                spinner.classList.remove('hidden');
-                saveButtonText.textContent = 'Processing...';
-        
-                try {
-                    const response = await fetch(API_TRANSFER_STORE, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    });
-        
-                    const result = await response.json();
-        
-                    if (response.ok && result.success) {
-                        alert('Transfer completed successfully!');
-                        resetTransactionForm();
-                        
-                        // Reload page or update UI as needed
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        alert(result.error || 'Transfer failed. Please try again.');
-                    }
-        
-                } catch (error) {
-                    console.error('Transfer error:', error);
-                    alert('Network error. Please check your connection.');
-                } finally {
-                    // Re-enable button
-                    saveTransactionBtn.disabled = false;
-                    spinner.classList.add('hidden');
-                    saveButtonText.textContent = 'Transfer Amount';
-                }
-            }
-        
+            console.log('EPS Form initialized');
         });
+        
+        // Function to extract ID and Name from input value (Transfer ফর্মের মতো)
+        function extractIds(value) {
+            if (!value) return null;
+            const parts = value.split('|').map(v => v.trim());
+            return {
+                sys_id: parts[0] || null,
+                name: parts[1] || null,
+            };
+        }
+        
+        // Calculate salary function
+        function calculateSalary() {
+            // Get earning values
+            const basicSalary = parseFloat(document.querySelector('input[name="basic_salary"]').value) || 0;
+            const houseRent = parseFloat(document.querySelector('input[name="house_rent"]').value) || 0;
+            const medicalAllowance = parseFloat(document.querySelector('input[name="medical_allowance"]').value) || 0;
+            const conveyance = parseFloat(document.querySelector('input[name="conveyance"]').value) || 0;
+            
+            // Get deduction values
+            const pfDeduction = parseFloat(document.querySelector('input[name="pf_deduction"]').value) || 0;
+            const taxDeduction = parseFloat(document.querySelector('input[name="tax_deduction"]').value) || 0;
+            const otherDeduction = parseFloat(document.querySelector('input[name="other_deduction"]').value) || 0;
+            
+            // Calculate totals
+            const grossEarnings = basicSalary + houseRent + medicalAllowance + conveyance;
+            const totalDeductions = pfDeduction + taxDeduction + otherDeduction;
+            const netSalary = grossEarnings - totalDeductions;
+            
+            // Update display
+            document.getElementById('gross_display').textContent = `৳ ${grossEarnings.toFixed(2)}`;
+            document.getElementById('deduction_display').textContent = `৳ ${totalDeductions.toFixed(2)}`;
+            document.getElementById('net_display').textContent = `৳ ${netSalary.toFixed(2)}`;
+        }
+        
+        // Reset form function
+        function resetForm() {
+            // Reset employee input
+            const employeeInput = document.getElementById('employeeInput');
+            if (employeeInput) {
+                employeeInput.value = '';
+            }
+            
+            // Reset other inputs
+            document.querySelector('input[name="basic_salary"]').value = '';
+            document.querySelector('input[name="house_rent"]').value = '';
+            document.querySelector('input[name="medical_allowance"]').value = '';
+            document.querySelector('input[name="conveyance"]').value = '';
+            document.querySelector('input[name="pf_deduction"]').value = '';
+            document.querySelector('input[name="tax_deduction"]').value = '';
+            document.querySelector('input[name="other_deduction"]').value = '';
+            
+            // Reset effective date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="effective_date"]').value = today;
+            
+            // Reset salary display
+            document.getElementById('gross_display').textContent = '৳ 0.00';
+            document.getElementById('deduction_display').textContent = '৳ 0.00';
+            document.getElementById('net_display').textContent = '৳ 0.00';
+            
+            // Hide messages
+            hideMessages();
+        }
+        
+        // Form validation function
+        function validateForm() {
+            let isValid = true;
+            
+            // Check employee input
+            const employeeInput = document.getElementById('employeeInput');
+            const employeeData = extractIds(employeeInput?.value);
+            
+            if (!employeeData || !employeeData.sys_id) {
+                showMessage('error', 'Please select an employee from the dropdown');
+                if (employeeInput) {
+                    employeeInput.style.borderColor = '#ef4444';
+                    employeeInput.focus();
+                }
+                isValid = false;
+            } else {
+                if (employeeInput) employeeInput.style.borderColor = '#d1d5db';
+            }
+            
+            // Check basic salary
+            const basicSalaryInput = document.querySelector('input[name="basic_salary"]');
+            const basicSalary = parseFloat(basicSalaryInput.value);
+            
+            if (!basicSalaryInput.value || isNaN(basicSalary) || basicSalary <= 0) {
+                showMessage('error', 'Basic salary is required and must be greater than 0');
+                basicSalaryInput.style.borderColor = '#ef4444';
+                isValid = false;
+            } else {
+                basicSalaryInput.style.borderColor = '#d1d5db';
+            }
+            
+            // Check effective date
+            const effectiveDateInput = document.querySelector('input[name="effective_date"]');
+            if (!effectiveDateInput.value) {
+                showMessage('error', 'Effective date is required');
+                effectiveDateInput.style.borderColor = '#ef4444';
+                isValid = false;
+            } else {
+                effectiveDateInput.style.borderColor = '#d1d5db';
+            }
+            
+            return isValid;
+        }
+        
+        // Form submission handler - Transfer ফর্মের মতো করে
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            // Hide any existing messages
+            hideMessages();
+            
+            // Validate form
+            if (!validateForm()) {
+                return;
+            }
+            
+            // Get employee data using the same method as Transfer form
+            const employeeInput = document.getElementById('employeeInput');
+            const employeeData = extractIds(employeeInput?.value);
+            
+            if (!employeeData || !employeeData.sys_id) {
+                showMessage('error', 'Please select a valid employee from the dropdown');
+                return;
+            }
+            
+            // Get other form values
+            const basicSalaryInput = document.querySelector('input[name="basic_salary"]');
+            const effectiveDateInput = document.querySelector('input[name="effective_date"]');
+            const houseRentInput = document.querySelector('input[name="house_rent"]');
+            const medicalAllowanceInput = document.querySelector('input[name="medical_allowance"]');
+            const conveyanceInput = document.querySelector('input[name="conveyance"]');
+            const pfDeductionInput = document.querySelector('input[name="pf_deduction"]');
+            const taxDeductionInput = document.querySelector('input[name="tax_deduction"]');
+            const otherDeductionInput = document.querySelector('input[name="other_deduction"]');
+            
+            // Prepare data object - Transfer ফর্মের structure অনুযায়ী
+            const data = {
+                employee_id: employeeData.sys_id,
+                employee_name: employeeData.name || '',
+                effective_date: effectiveDateInput.value,
+                basic_salary: parseFloat(basicSalaryInput.value) || 0,
+                house_rent: parseFloat(houseRentInput.value) || 0,
+                medical_allowance: parseFloat(medicalAllowanceInput.value) || 0,
+                conveyance: parseFloat(conveyanceInput.value) || 0,
+                pf_deduction: parseFloat(pfDeductionInput.value) || 0,
+                tax_deduction: parseFloat(taxDeductionInput.value) || 0,
+                other_deduction: parseFloat(otherDeductionInput.value) || 0,
+                status: 'active'
+            };
+            
+            console.log('Submitting EPS data:', data);
+            
+            // Show loading state
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving EPS Structure...';
+            submitBtn.disabled = true;
+            
+            try {
+                // Call API using JavaScript
+                const response = await fetch(storeEpsApi, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('success', result.message || 'EPS Structure saved successfully!');
+                    
+                    // Show salary summary in success message
+                    if (result.salary_summary) {
+                        const summary = result.salary_summary;
+                        const summaryText = `<br>Gross: ৳${summary.gross_salary.toFixed(2)} | Net: ৳${summary.net_salary.toFixed(2)}`;
+                        document.getElementById('successText').innerHTML += summaryText;
+                    }
+                    
+                    // Reset form after successful submission
+                    setTimeout(() => resetForm(), 3000);
+                    
+                } else {
+                    showMessage('error', result.message || 'Failed to save EPS structure.');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', 'Network error. Please check your connection.');
+            } finally {
+                // Restore button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // Show message function
+        function showMessage(type, text) {
+            const container = document.getElementById('messageContainer');
+            const successDiv = document.getElementById('successMessage');
+            const errorDiv = document.getElementById('errorMessage');
+            const successText = document.getElementById('successText');
+            const errorText = document.getElementById('errorText');
+            
+            // Hide all first
+            container.classList.add('hidden');
+            successDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            
+            // Show appropriate message
+            if (type === 'success') {
+                successText.textContent = text;
+                successDiv.classList.remove('hidden');
+                container.classList.remove('hidden');
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    container.classList.add('hidden');
+                }, 5000);
+            } else if (type === 'error') {
+                errorText.textContent = text;
+                errorDiv.classList.remove('hidden');
+                container.classList.remove('hidden');
+            }
+        }
+        
+        // Hide messages function
+        function hideMessages() {
+            document.getElementById('messageContainer').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
     </script>
 
 </body>

@@ -119,7 +119,7 @@ $base_ip_path = trim($ip_port, "/");
                                 <input id="paymentType" name="paymentType" value="Deposit" hidden />
                                 
                                 <div>
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label for="select_type" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-user"></i> Select Type
                                     </label>
                                    <select name="select_type" id="select_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
@@ -130,7 +130,7 @@ $base_ip_path = trim($ip_port, "/");
                                 
                                 <!-- Client -->
                                 <div id="client-section">
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label for="clientInput" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-user"></i> Client Name
                                     </label>
                                    <?php include('form-selects/clients.php') ?>
@@ -138,14 +138,14 @@ $base_ip_path = trim($ip_port, "/");
                                 
                                 <!--Vendor-->
                                 <div id="vendor-section" class="hidden">
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label for="vendorInput" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-user"></i> Vendor Name
                                     </label>
                                    <?php include('form-selects/vendors.php') ?>
                                 </div>
                                 
                                 <div>
-                                    <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-receipt"></i> Account Name
                                     </label>
                                    <?php include('form-selects/accounts.php') ?>
@@ -231,6 +231,8 @@ $base_ip_path = trim($ip_port, "/");
             const particularTextarea = document.getElementById('particular');
         
             /* ================= UTILS ================= */
+            const ACCOUNT_MANDATORY_FROM = new Date('2026-02-01');
+            
             function extractIds(value) {
                 if (!value) return null;
                 const parts = value.split('|').map(v => v.trim());
@@ -280,9 +282,13 @@ $base_ip_path = trim($ip_port, "/");
                 const vendor = extractIds(vendorInput?.value);
                 const account = extractIds(accountInput.value);
         
-                if (!account || !account.sys_id) {
-                    alert('Please select an account');
-                    return false;
+                const txnDate = new Date(transactionDate.value);
+                
+                if (txnDate >= ACCOUNT_MANDATORY_FROM) {
+                    if (!account || !account.sys_id) {
+                        alert('From 1 Feb 2026, selecting an account is mandatory');
+                        return false;
+                    }
                 }
         
                 if (type === 'client' && (!client || !client.sys_id)) {
@@ -334,20 +340,35 @@ $base_ip_path = trim($ip_port, "/");
                 const client = extractIds(clientInput?.value);
                 const vendor = extractIds(vendorInput?.value);
                 const account = extractIds(accountInput.value);
-        
-                const accountInfo = await fetchAccountInfo(account.sys_id);
-                if (!accountInfo) {
-                    alert('Account info fetch failed');
-                    return;
+                const txnDate = new Date(transactionDate.value);
+                
+                let accountInfo = null;
+                
+                // Only fetch account info when account is mandatory OR provided
+                if (txnDate >= ACCOUNT_MANDATORY_FROM || (account && account.sys_id)) {
+                
+                    if (!account || !account.sys_id) {
+                        alert('Account is required for this transaction date');
+                        return;
+                    }
+                
+                    accountInfo = await fetchAccountInfo(account.sys_id);
+                
+                    if (!accountInfo) {
+                        alert('Account info fetch failed');
+                        return;
+                    }
                 }
         
                 const data = {
-                    accountId: account.sys_id,
-                    accountName: account.name,
+                    accountId: account?.sys_id || null,
+                    accountName: account?.name || null,
                     particular: particularTextarea.value,
                     balance: parseFloat(amountInput.value),
                     paymentType: 'Withdraw',
-                    currentAccountBalance: parseFloat(accountInfo.balance || 0),
+                    currentAccountBalance: accountInfo
+                        ? parseFloat(accountInfo.balance || 0)
+                        : 0,
                     transactionDate: transactionDate.value,
                     client_id: type === 'client' ? client.sys_id : null,
                     client_name: type === 'client' ? client.name : null,

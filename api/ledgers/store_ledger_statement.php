@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+$cutoffDate = new DateTime('2026-02-01 00:00:00', new DateTimeZone('Asia/Dhaka'));
+
 // 1. DB connection (PDO)
 require '../../server/db_connection.php'; // provides $pdo
 require '../../server/uuid_with_system_id_generator.php';
@@ -40,6 +42,8 @@ $reconciliation_type = isset($data['reconciliation_type']) ? (int)$data['reconci
 
 // Time Zone
 $transaction_date = $data['transactionDate'] ?? null;
+$txnDateObj = new DateTime($transaction_date, new DateTimeZone('Asia/Dhaka'));
+
 
 if ($transaction_date) {
     $tz = new DateTimeZone('Asia/Dhaka');
@@ -56,18 +60,25 @@ if ($transaction_date) {
 }
 
 
-if (
-    !$account_row_id ||
-    !$account_name ||
-    !$transaction_date ||
-    !$paymentType
-) {
+if (!$transaction_date || !$paymentType) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error'   => 'Missing required fields'
     ]);
     exit;
+}
+
+// After 1 Feb 2026 → accountId & accountName required
+if ($txnDateObj >= $cutoffDate) {
+    if (!$account_row_id || !$account_name) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error'   => 'accountId and accountName are required from 1 Feb 2026'
+        ]);
+        exit;
+    }
 }
 
 // Normalize numbers
@@ -130,7 +141,7 @@ try {
     /* ---------------- Generate IDs & Meta ---------------- */
     $stmtIds = generateIDs('ac_banking_stmts');
 
-    $user = $_SESSION['user_name'] ?? $data['user'] ?? 'system';
+    $user = $_SESSION['user_name'] ?? 'system';
     $stmtMeta = buildMetaData(null, $user);
 
     /* ---------------- Insert Statement ---------------- */

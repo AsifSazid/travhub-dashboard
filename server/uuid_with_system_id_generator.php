@@ -49,6 +49,11 @@ function generateUUID(PDO $pdo, string $tag): string
         // Inventory
         'products'  => ['table' => 'products',  'column' => 'sys_id', 'short' => 'PD'],
         'orders'    => ['table' => 'orders',    'column' => 'sys_id', 'short' => 'OR'],
+
+        // HRM
+        'eps_structures'    => ['table' => 'eps_structures',    'column' => 'sys_id', 'short' => 'EP'],
+        
+
     ];
 
     if (!isset($map[$tag])) {

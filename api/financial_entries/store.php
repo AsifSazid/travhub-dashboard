@@ -59,7 +59,6 @@ try {
     $amount  = (float) $input['amount'];
     $purpose = trim($input['purpose']);
     $date    = $input['date'] ?? date('Y-m-d');
-    $ref     = $input['ref'] ?? null;
 
     $clientId = $input['client_id'] ?? null;
     $vendorId = $input['vendor_id'] ?? null;
@@ -67,6 +66,8 @@ try {
     $accountId = $input['account_id'] ?? null;
     $workId   = $input['work_id'] ?? null;
     $taskId   = $input['task_id'] ?? null;
+    
+    $ref     = $input['ref'] ?? $accountId ?? null;
 
     $clientName = $vendorName = $taskTitle = $workTitle = null;
 
@@ -144,8 +145,8 @@ try {
     $stmt->execute([
         ':uuid' => $ids['uuid'],
         ':sys_id' => $ids['sys_id'],
-        ':vendor_sys_id' => $clientId ?? $vendorId ?? $accountId ?? null,
-        ':vendor_name' => $clientName ?? $vendorName ?? $accountName ?? null,
+        ':user_sys_id' => $clientId ?? $vendorId ?? $accountId ?? null,
+        ':user_name' => $clientName ?? $vendorName ?? $accountName ?? null,
         ':vendor_type' => $vendorType ?? null,
         ':task_sys_id' => $taskId,
         ':task_title' => $taskTitle,

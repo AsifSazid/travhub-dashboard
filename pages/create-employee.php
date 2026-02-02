@@ -118,7 +118,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
     </div>
     
     <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300 h-full">
         <div class="p-6">
             <div class="bg-white rounded-lg shadow p-4">
                 <!-- Header Card -->
