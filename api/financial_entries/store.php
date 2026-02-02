@@ -119,6 +119,20 @@ try {
             throw new Exception('Vendor not found');
         }
     }
+    
+    if ($date) {
+        $tz = new DateTimeZone('Asia/Dhaka');
+    
+        // API date + current time
+        $dateTime = new DateTime($transaction_date, $tz);
+        $currentTime = (new DateTime('now', $tz))->format('H:i:s');
+    
+        $dateTime->setTime(
+            ...explode(':', $currentTime)
+        );
+    
+        $date = $dateTime->format('Y-m-d H:i:s');
+    }
 
     // ------------------ Insert ------------------
     $ids = generateIDs('financial_entries');

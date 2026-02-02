@@ -1,93 +1,86 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
-    <div class="col-span-3">    
-        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
-            <!-- Header with Search and Filters -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-                <h2 class="text-2xl font-semibold text-gray-800">Vendor Transactions</h2>
-                
-                <!-- Search and Filter Section -->
-                <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <!-- Search Input -->
-                    <div class="relative flex-1 sm:flex-none">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400"></i>
-                        </div>
-                        <input 
-                            type="text" 
-                            id="searchInput"
-                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-                            placeholder="Search vendor transactions..."
-                        >
-                    </div>
-                    
-                    <!-- Type Filter -->
-                    <div class="relative">
-                        <select 
-                            id="filterType" 
-                            class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-                        >
-                            <option value="all">All Types</option>
-                            <option value="credit">Credit</option>
-                            <option value="debit">Debit</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <i class="fas fa-chevron-down text-gray-400"></i>
-                        </div>
-                    </div>
-                    
-                    <!-- Reset Button -->
-                    <button 
-                        id="resetFilters"
-                        class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center whitespace-nowrap"
-                    >
-                        <i class="fas fa-redo mr-2"></i>Reset
-                    </button>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 m-8">
+    <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="total-trnx" class="font-semibold text-purple-800">1</p>
+        <p class="text-xs text-purple-600 mt-1">Total Trnx</p>
+    </div>
+    <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="total-credit" class="font-semibold text-green-800">1</p>
+        <p class="text-xs text-green-600 mt-1">Total Credit</p>
+    </div>
+    <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="total-debit" class="font-semibold text-red-800">1</p>
+        <p class="text-xs text-red-600 mt-1">Total Debit</p>
+        </div>
+    <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="total-outstanding" class="font-semibold text-yellow-800">1</p>
+        <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
+    </div>
+</div>
+<div class="bg-white rounded-lg shadow p-4 flex flex-col">
+    <!-- Header with Search and Filters -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+        <h2 class="text-2xl font-semibold text-gray-800">Vendor Transactions</h2>
+        
+        <!-- Search and Filter Section -->
+        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <!-- Search Input -->
+            <div class="relative flex-1 sm:flex-none">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+                    placeholder="Search vendor transactions..."
+                >
+            </div>
+            
+            <!-- Type Filter -->
+            <div class="relative">
+                <select 
+                    id="filterType" 
+                    class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+                >
+                    <option value="all">All Types</option>
+                    <option value="credit">Credit</option>
+                    <option value="debit">Debit</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i class="fas fa-chevron-down text-gray-400"></i>
                 </div>
             </div>
-    
-            <div class="overflow-x-auto overflow-y-auto max-h-[70vh] table-container">
-                <table id="finTable" class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="finTableBody" class="bg-white divide-y divide-gray-200 text-left">
-                    </tbody>
-                </table>
-                
-                <!-- No Results Message -->
-                <div id="noResultsMessage" class="hidden px-6 py-10 text-center text-gray-500">
-                    <div class="flex flex-col items-center gap-2">
-                        <i class="fas fa-search text-3xl text-gray-400"></i>
-                        <p class="text-sm">No vendor transactions match your search criteria</p>
-                    </div>
-                </div>
-            </div>
+            
+            <!-- Reset Button -->
+            <button 
+                id="resetFilters"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center whitespace-nowrap"
+            >
+                <i class="fas fa-redo mr-2"></i>Reset
+            </button>
         </div>
     </div>
-    <div class="col-span-1 border-l border-gray-400 sticky self-start h-fit">
-        <h3 class="text-xl font-semibold mb-2">Summary</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 m-8">
-            <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <p id="total-trnx" class="font-semibold text-purple-800">1</p>
-                <p class="text-xs text-purple-600 mt-1">Total Trnx</p>
-            </div>
-            <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <p id="total-credit" class="font-semibold text-green-800">1</p>
-                <p class="text-xs text-green-600 mt-1">Total Credit</p>
-            </div>
-            <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <p id="total-debit" class="font-semibold text-red-800">1</p>
-                <p class="text-xs text-red-600 mt-1">Total Debit</p>
-            </div>
-            <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <p id="total-outstanding" class="font-semibold text-yellow-800">1</p>
-                <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
+
+    <div class="overflow-x-auto table-container">
+        <table id="finTable" class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="finTableBody" class="bg-white divide-y divide-gray-200 text-left">
+            </tbody>
+        </table>
+        
+        <!-- No Results Message -->
+        <div id="noResultsMessage" class="hidden px-6 py-10 text-center text-gray-500">
+            <div class="flex flex-col items-center gap-2">
+                <i class="fas fa-search text-3xl text-gray-400"></i>
+                <p class="text-sm">No vendor transactions match your search criteria</p>
             </div>
         </div>
     </div>
