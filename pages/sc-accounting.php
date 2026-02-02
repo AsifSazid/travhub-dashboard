@@ -64,9 +64,9 @@
         <table id="finTable" class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Purpose</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Running Outstanding</th>
@@ -91,32 +91,54 @@
                 <p class="text-sm">No transactions match your search criteria</p>
             </div>
         </div>
+        
+        <!-- Load More Button -->
+        <div id="loadMoreContainer" class="hidden mt-4 text-center">
+            <button 
+                id="loadMoreBtn"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+                <i class="fas fa-spinner fa-spin hidden mr-2" id="loadMoreSpinner"></i>
+                Load More
+            </button>
+        </div>
     </div>
 </div>
 
 <script>
     const GET_FINANCIAL_STATEMENT_BY_CLIENT_API = "<?php echo $getClientFinEntriesApi; ?>";
     let originalFinStmts = []; // Store original data for filtering
+    let displayedFinStmts = []; // Store currently displayed data
+    let currentOffset = 0; // Start from newest
+    const incrementAmount = 5; // How many to load each time
+    let isFiltering = false; // Track if we're in filtering mode
 
     function reloadFinancialTable() {
         fetch(GET_FINANCIAL_STATEMENT_BY_CLIENT_API)
             .then(res => res.json())
             .then(data => {
                 if (!data.success) return;
-                // API থেকে ডেটা নিই এবং id সহ sort করি
+                
+                // API থেকে ডেটা নিই এবং নতুন থেকে পুরানো সাজাই (নতুন তারিখ আগে)
                 originalFinStmts = data.finStmts.sort((a, b) => {
-                    // প্রথমে তারিখ পুরানো থেকে নতুন
+                    // প্রথমে তারিখ নতুন থেকে পুরানো
                     const dateA = new Date(a.date);
                     const dateB = new Date(b.date);
                     if (dateA.getTime() !== dateB.getTime()) {
-                        return dateA - dateB;
+                        return dateB - dateA; // নতুন তারিখ আগে
                     }
-                    // তারিখ একই হলে id পুরানো থেকে নতুন (ছোট id আগে)
-                    return a.id - b.id;
+                    // তারিখ একই হলে id বড় থেকে ছোট (নতুন id আগে)
+                    return b.id - a.id;
                 });
 
-                renderFinTable(originalFinStmts);
-                updateSummary(originalFinStmts);
+                // প্রাথমিকভাবে নতুন ৫টি ট্রানজেকশন দেখাবো (0 থেকে 5)
+                currentOffset = 0;
+                displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
+                renderFinTable(displayedFinStmts, originalFinStmts); // পুরো ডেটা ক্যালকুলেশনের জন্য পাঠাই
+                updateSummary(originalFinStmts); // সামারি সবসময় পুরো ডেটার উপর ভিত্তি করে
+                
+                // Load More বাটন দেখানোর সিদ্ধান্ত
+                toggleLoadMoreButton();
             })
     }
     
@@ -161,42 +183,70 @@
     const resetFilters = document.getElementById('resetFilters');
     const noResultsMessage = document.getElementById('noResultsMessage');
     const finalOutstanding = document.getElementById('final-outstanding');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const loadMoreSpinner = document.getElementById('loadMoreSpinner');
 
     function filterTransactions() {
         const searchTerm = searchInput.value.toLowerCase();
         const selectedType = filterType.value;
         
-        let filteredList = originalFinStmts.filter(entry => {
-            // Search filter
-            const matchesSearch = searchTerm === '' || 
-                (entry.purpose && entry.purpose.toLowerCase().includes(searchTerm)) ||
-                (entry.work_title && entry.work_title.toLowerCase().includes(searchTerm)) ||
-                (entry.date && entry.date.toLowerCase().includes(searchTerm));
-            
-            // Type filter
-            const matchesType = selectedType === 'all' || 
-                (entry.type && entry.type.toLowerCase() === selectedType);
-            
-            return matchesSearch && matchesType;
-        });
+        isFiltering = searchTerm !== '' || selectedType !== 'all';
         
-        renderFinTable(filteredList);
-        updateSummary(filteredList);
-        
-        // Show/hide no results message
-        if (filteredList.length === 0 && originalFinStmts.length > 0) {
-            noResultsMessage.classList.remove('hidden');
-            finTableBody.innerHTML = '';
-            finalOutstanding.textContent = '0.00';
+        if (isFiltering) {
+            // সার্চ বা ফিল্টার করা হলে পুরো ডেটা থেকে ফলাফল দেখাবে
+            let filteredList = originalFinStmts.filter(entry => {
+                // Search filter
+                const matchesSearch = searchTerm === '' || 
+                    (entry.purpose && entry.purpose.toLowerCase().includes(searchTerm)) ||
+                    (entry.work_title && entry.work_title.toLowerCase().includes(searchTerm)) ||
+                    (entry.date && entry.date.toLowerCase().includes(searchTerm));
+                
+                // Type filter
+                const matchesType = selectedType === 'all' || 
+                    (entry.type && entry.type.toLowerCase() === selectedType);
+                
+                return matchesSearch && matchesType;
+            });
+            
+            // ফিল্টার মোডে সব দেখাবে, নতুন থেকে পুরানো সাজিয়ে
+            displayedFinStmts = filteredList.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                if (dateA.getTime() !== dateB.getTime()) {
+                    return dateB - dateA; // নতুন তারিখ আগে
+                }
+                return b.id - a.id; // নতুন id আগে
+            });
+            
+            renderFinTable(displayedFinStmts, filteredList);
+            updateSummary(filteredList);
+            
+            // Show/hide no results message
+            if (filteredList.length === 0 && originalFinStmts.length > 0) {
+                noResultsMessage.classList.remove('hidden');
+                finTableBody.innerHTML = '';
+                finalOutstanding.textContent = '0.00';
+                loadMoreContainer.classList.add('hidden');
+            } else {
+                noResultsMessage.classList.add('hidden');
+                loadMoreContainer.classList.add('hidden'); // ফিল্টার মোডে Load More দেখাবে না
+            }
         } else {
+            // ফিল্টার না করা হলে নতুন থেকে পুরানো সাজিয়ে নির্দিষ্ট পরিমাণ দেখাবে
+            isFiltering = false;
+            displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
+            renderFinTable(displayedFinStmts, originalFinStmts);
+            updateSummary(originalFinStmts);
             noResultsMessage.classList.add('hidden');
+            toggleLoadMoreButton();
         }
     }
 
-    function renderFinTable(list) {
+    function renderFinTable(displayList, calculationList) {
         finTableBody.innerHTML = '';
         
-        if (!list || list.length === 0) {
+        if (!displayList || displayList.length === 0) {
             const tr = document.createElement('tr');
     
             tr.innerHTML = `
@@ -213,9 +263,9 @@
             return;
         }
         
-        // STEP 1: প্রথমে পুরানো থেকে নতুন সাজিয়ে running balance calculate করি
-        // তারিখ একই হলে id অনুযায়ী sort (ছোট id আগে)
-        const sortedForCalculation = [...list].sort((a, b) => {
+        // STEP 1: ক্যালকুলেশনের জন্য পুরানো থেকে নতুন সাজাই
+        // প্রথমে তারিখ পুরানো থেকে নতুন
+        const sortedForCalculation = [...calculationList].sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             if (dateA.getTime() !== dateB.getTime()) {
@@ -226,15 +276,11 @@
         
         // STEP 2: প্রতিটি transaction এর জন্য running balance calculate করি
         let cumulativeBalance = 0;
-        const runningBalances = []; // Array হিসেবে store করবো index অনুযায়ী
+        const runningBalances = new Map(); // Map হিসেবে store করবো id অনুযায়ী
         
-        sortedForCalculation.forEach((entry, index) => {
+        sortedForCalculation.forEach((entry) => {
             const type = (entry.type || '').toLowerCase();
             const amount = Number(entry.amount) || 0;
-            
-            // এই transaction apply করার আগে balance store করি
-            // কারণ আমরা এই transaction এর পরের balance show করবো
-            const balanceBeforeThisTransaction = cumulativeBalance;
             
             // এখন transaction apply করি
             if (type === 'debit') {
@@ -245,43 +291,26 @@
                 cumulativeBalance -= amount;
             }
             
-            // এই transaction এর পরে running balance হবে cumulativeBalance
-            runningBalances.push({
-                id: entry.id,
-                balance: cumulativeBalance
-            });
+            // এই transaction এর পরে running balance store করি
+            runningBalances.set(entry.id, cumulativeBalance);
         });
         
         // Final balance store করি
         const finalBalance = cumulativeBalance;
         
-        // STEP 3: এবার UI তে দেখানোর জন্য নতুন থেকে পুরানো সাজাই
-        const sortedForDisplay = [...list].sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            if (dateA.getTime() !== dateB.getTime()) {
-                return dateB - dateA; // নতুন তারিখ আগে
-            }
-            // একই তারিখে বড় id আগে (নতুন transaction আগে)
-            return b.id - a.id;
-        });
+        // STEP 3: ডিসপ্লের জন্য displayList কে নতুন থেকে পুরানো সাজাই (ইতিমধ্যে সাজানো)
+        // displayList ইতিমধ্যে নতুন থেকে পুরানো সাজানো আছে
         
         // STEP 4: নতুন থেকে পুরানো তারিখে show করি
-        sortedForDisplay.forEach(finSingleEntry => {
+        displayList.forEach(finSingleEntry => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-gray-50";
 
             const type = (finSingleEntry.type || '').toLowerCase();
             const amount = Number(finSingleEntry.amount) || 0;
             
-            // এই transaction এর running balance খুঁজে বের করি
-            // প্রথমে sortedForCalculation array তে এই entry এর index খুঁজি
-            const calculationIndex = sortedForCalculation.findIndex(item => 
-                item.id === finSingleEntry.id
-            );
-            
-            const runningOutstanding = calculationIndex >= 0 ? 
-                runningBalances[calculationIndex].balance : 0;
+            // এই transaction এর running balance Map থেকে নিই
+            const runningOutstanding = runningBalances.get(finSingleEntry.id) || 0;
 
             let typeBadge = `
                     <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
@@ -312,16 +341,16 @@
             }
 
             tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${finSingleEntry.date || 'N/A'}
+                    </td>
+
+                    <td class="px-6 py-2 text-sm text-gray-700 max-w-xs break-words whitespace-normal">
                         ${finSingleEntry.purpose || 'No Data Found'}
                     </td>
                     
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${finSingleEntry.work_title || 'No Data Found'}
-                    </td>
-
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${finSingleEntry.date || 'N/A'}
                     </td>
 
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -353,14 +382,48 @@
         }
     }
 
+    function toggleLoadMoreButton() {
+        // শুধুমাত্র ফিল্টার মোডে না থাকলে এবং আরো ডেটা থাকলে Load More বাটন দেখাবে
+        if (!isFiltering && (currentOffset + incrementAmount) < originalFinStmts.length) {
+            loadMoreContainer.classList.remove('hidden');
+        } else {
+            loadMoreContainer.classList.add('hidden');
+        }
+    }
+
+    function loadMoreTransactions() {
+        loadMoreSpinner.classList.remove('hidden');
+        loadMoreBtn.disabled = true;
+        
+        // নতুন ডেটা লোড করি (পুরানো ডেটার দিকে যাবো)
+        currentOffset += incrementAmount;
+        
+        // পরবর্তী ৫টি ট্রানজেকশন যোগ করি
+        const nextBatch = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
+        displayedFinStmts = [...displayedFinStmts, ...nextBatch];
+        
+        // কিছুক্ষণ পরে UI আপডেট করি (লোডিং ইফেক্টের জন্য)
+        setTimeout(() => {
+            renderFinTable(displayedFinStmts, originalFinStmts);
+            updateSummary(originalFinStmts);
+            toggleLoadMoreButton();
+            
+            loadMoreSpinner.classList.add('hidden');
+            loadMoreBtn.disabled = false;
+        }, 300);
+    }
+
     // Event Listeners
     searchInput.addEventListener('input', filterTransactions);
     filterType.addEventListener('change', filterTransactions);
     resetFilters.addEventListener('click', () => {
         searchInput.value = '';
         filterType.value = 'all';
+        currentOffset = 0; // রিসেট করলে আবার নতুন ডেটা থেকে শুরু হবে
+        isFiltering = false;
         filterTransactions();
     });
+    loadMoreBtn.addEventListener('click', loadMoreTransactions);
 
     // Initialize
     reloadFinancialTable();

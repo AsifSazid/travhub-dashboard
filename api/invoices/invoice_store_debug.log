@@ -1252,3 +1252,70 @@ Bank Count: 0
 MFS Count: 0
 ========================================
 
+[2026-02-02 17:33:12] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryaq6sHHaCqKqYKu9T
+POST Data:
+invoice_no: THR-IN-26-00K020...
+client_title: THR-CL-26-00K005...
+date: 2026-02-02...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Sri Lanka ETA
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 3000.00
+)
+
+work_particular: Array
+(
+    [0] => MR ABDUR ROUF
+260112VI14951521
+)
+
+amount: Array
+(
+    [0] => 3000.00
+)
+
+total_amount: 3000.00...
+paid_amount: 0...
+due_amount: 3000.00...
+========================================
+
+[2026-02-02 17:33:12] RAW INPUT:
+
+
+[2026-02-02 17:33:12] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-02 15:33:12] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 31
+Invoice No: THR-IN-26-00K020
+Client: Walton Hi-Tech Industries PLC
+Total Amount: 3000
+Bank Count: 0
+MFS Count: 0
+========================================
+
