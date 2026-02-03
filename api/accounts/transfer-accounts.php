@@ -238,6 +238,7 @@ try {
             ':sys_id' => $empSysIds['sys_id'],
             ':user_sys_id' => $employeeId ?? null,
             ':user_name' => $employeeName ?? null,
+            ':user_type' => 'employee',
             ':date' => $transactionDate,
             ':purpose' => $particular,
             ':type' => 'credit',

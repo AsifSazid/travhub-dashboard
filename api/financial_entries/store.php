@@ -70,7 +70,8 @@ try {
     $ref     = $input['ref'] ?? $accountId ?? null;
 
     $clientName = $vendorName = $taskTitle = $workTitle = null;
-
+    $userType = '';
+    
     // ------------------ Work ------------------
     if ($workId) {
         $stmt = $pdo->prepare("SELECT title FROM works WHERE sys_id = ?");
@@ -90,6 +91,7 @@ try {
         $stmt = $pdo->prepare("SELECT name FROM clients WHERE sys_id = ?");
         $stmt->execute([$clientId]);
         $clientName = $stmt->fetchColumn();
+        $userType = 'client';
 
         if (!$clientName) {
             throw new Exception('Client not found');
@@ -101,6 +103,7 @@ try {
         $stmt = $pdo->prepare("SELECT name FROM vendors WHERE sys_id = ?");
         $stmt->execute([$vendorId]);
         $vendorName = $stmt->fetchColumn();
+        $userType = 'vendor ' . $vendorType;
 
         if (!$vendorName) {
             throw new Exception('Vendor not found');
@@ -141,14 +144,14 @@ try {
     $stmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
-            user_sys_id, user_name, vendor_type,
+            user_sys_id, user_name, user_type,
             task_sys_id, task_title,
             work_sys_id, work_title,
             date, purpose, type, amount, ref,
             meta_data
         ) VALUES (
             :uuid, :sys_id,
-            :user_sys_id, :user_name, :vendor_type,
+            :user_sys_id, :user_name, :user_type,
             :task_sys_id, :task_title,
             :work_sys_id, :work_title,
             :date, :purpose, :type, :amount, :ref,
@@ -161,7 +164,7 @@ try {
         ':sys_id' => $ids['sys_id'],
         ':user_sys_id' => $clientId ?? $vendorId ?? $accountId ?? null,
         ':user_name' => $clientName ?? $vendorName ?? $accountName ?? null,
-        ':vendor_type' => $vendorType ?? null,
+        ':user_type' => $userType ?? null,
         ':task_sys_id' => $taskId,
         ':task_title' => $taskTitle,
         ':work_sys_id' => $workId,
