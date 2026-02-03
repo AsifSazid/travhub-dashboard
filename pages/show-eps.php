@@ -55,78 +55,86 @@ $emp = $epsData['epsDetails'];
         <div class="space-y-6">
             <!-- Employee Information Card -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b">Employee Information</h2>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 pb-3 border-b">Employee Salary Information of <?php echo htmlspecialchars($emp['employee_name']); ?></h2>
                 
                 <div class="mb-4">
-                    <h3 class="text-xl font-medium text-gray-900"><?php echo htmlspecialchars($emp['employee_name']); ?></h3>
-                    <p class="text-gray-600">Salary Structure Details</p>
+                    <p class="text-md font-medium text-gray-800 mb-4">Salary Structure Details</p>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="text-sm text-gray-500">Basic Salary</div>
-                        <div class="text-lg font-semibold text-gray-800"><?php echo $emp['basic_salary']; ?></div>
+                <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">Basic Salary</div>
+                            <div class="text-lg font-semibold text-gray-800"><?php echo $emp['basic_salary']; ?></div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">House Rent</div>
+                            <div class="text-lg font-semibold text-gray-800"><?php echo $emp['house_rent']; ?></div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">Medical Allowance</div>
+                            <div class="text-lg font-semibold text-gray-800"><?php echo $emp['medical_allowance']; ?></div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">Conveyance</div>
+                            <div class="text-lg font-semibold text-gray-800"><?php echo $emp['conveyance']; ?></div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">Gross Salary</div>
+                            <div class="text-lg font-semibold text-gray-800"><?php echo $emp['gross_salary']; ?></div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">Net Salary</div>
+                            <div class="text-lg font-semibold text-gray-800"><?php echo $emp['net_salary']; ?></div>
+                        </div>
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="text-sm text-gray-500">House Rent</div>
-                        <div class="text-lg font-semibold text-gray-800"><?php echo $emp['house_rent']; ?></div>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="text-sm text-gray-500">Medical Allowance</div>
-                        <div class="text-lg font-semibold text-gray-800"><?php echo $emp['medical_allowance']; ?></div>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="text-sm text-gray-500">Conveyance</div>
-                        <div class="text-lg font-semibold text-gray-800"><?php echo $emp['conveyance']; ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Salary Generation Section -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-6 pb-3 border-b">Salary Generation</h2>
-                
-                <div class="grid md:grid-cols-2 gap-8">
-                    <!-- Additions Section -->
-                    <div>
-                        <h3 class="text-md font-medium text-gray-800 mb-4">Additions</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
-                                <input type="number" id="bonus" placeholder="Enter bonus amount" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                    <div class="grid md:grid-cols-2 gap-8 m-4">
+                        <!-- Additions Section -->
+                        <div>
+                            <h3 class="text-md font-medium text-gray-800 mb-4">Additions</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
+                                    <input type="number" id="bonus" placeholder="Enter bonus amount" 
+                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Overtime</label>
+                                    <input type="number" id="overtime" placeholder="Enter overtime amount" 
+                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Other Allowances</label>
+                                    <input type="number" id="other_allowances" placeholder="Enter other allowances amount" 
+                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Overtime</label>
-                                <input type="number" id="overtime" placeholder="Enter overtime amount" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                        </div>
+                        
+                        <!-- Deductions Section -->
+                        <div>
+                            <h3 class="text-md font-medium text-gray-800 mb-4">Deductions</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Provident Fund (PF)</label>
+                                    <input type="number" id="pf" placeholder="Enter PF amount" 
+                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Loan</label>
+                                    <input type="number" id="loan" placeholder="Enter loan amount" 
+                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tax</label>
+                                    <input type="number" id="tax" placeholder="Enter tax amount" 
+                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Deductions Section -->
-                    <div>
-                        <h3 class="text-md font-medium text-gray-800 mb-4">Deductions</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Provident Fund (PF)</label>
-                                <input type="number" id="pf" placeholder="Enter PF amount" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Loan</label>
-                                <input type="number" id="loan" placeholder="Enter loan amount" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Tax</label>
-                                <input type="number" id="tax" placeholder="Enter tax amount" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
+                
                 <!-- Payment Account Selection -->
                 <div class="mt-8 pt-6 border-t">
                     <h3 class="text-md font-medium text-gray-800 mb-4">Payment Information</h3>
@@ -140,12 +148,14 @@ $emp = $epsData['epsDetails'];
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Month of Salary</label>
-                                <input type="text" id="month" placeholder="Enter Month Name and Year" 
+                                <input type="text" id="month_of_salary" placeholder="Enter Month Name and Year. Example- January 2026" 
                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                             </div>
                         </div>
                         <div>
-                            
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Note</label>
+                            <textarea type="text" id="note" placeholder="Add Your Notes Here" rows="4"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">No Notes</textarea>
                         </div>
                     </div>
                 </div>
@@ -187,12 +197,12 @@ $emp = $epsData['epsDetails'];
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600"><?php echo $row['salary_month']; ?></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <?php 
-                                        $statusColor = match(strtolower($row['status'])) {
-                                            'paid' => 'bg-green-100 text-green-800',
-                                            'pending' => 'bg-yellow-100 text-yellow-800',
-                                            'cancelled' => 'bg-red-100 text-red-800',
-                                            default => 'bg-gray-100 text-gray-800'
-                                        };
+                                            $statusColor = match(strtolower($row['status'])) {
+                                                'paid' => 'bg-green-100 text-green-800',
+                                                'pending' => 'bg-yellow-100 text-yellow-800',
+                                                'cancelled' => 'bg-red-100 text-red-800',
+                                                default => 'bg-gray-100 text-gray-800'
+                                            };
                                         ?>
                                         <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusColor; ?>">
                                             <?php echo strtoupper($row['status']); ?>
@@ -287,10 +297,13 @@ function generateSalary() {
         eps_id: "<?php echo $eps_id; ?>",
         bonus: document.getElementById('bonus').value || 0,
         overtime: document.getElementById('overtime').value || 0,
+        other_allowances: document.getElementById('other_allowances').value || 0,
         pf: document.getElementById('pf').value || 0,
         loan: document.getElementById('loan').value || 0,
         tax: document.getElementById('tax').value || 0,
-        from_account: selectedAccountId
+        from_account: selectedAccountId,
+        month_of_salary: document.getElementById('month_of_salary').value || '',
+        note: document.getElementById('note').value || '',
     };
 
     console.log('Sending data:', data);

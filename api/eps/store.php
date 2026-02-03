@@ -114,12 +114,13 @@ try {
     $house_rent         = (float) ($data['house_rent'] ?? 0);
     $medical_allowance  = (float) ($data['medical_allowance'] ?? 0);
     $conveyance         = (float) ($data['conveyance'] ?? 0);
+    $allowance         = (float) ($data['allowance'] ?? 0);
 
     $pf_deduction       = (float) ($data['pf_deduction'] ?? 0);
     $tax_deduction      = (float) ($data['tax_deduction'] ?? 0);
     $other_deduction    = (float) ($data['other_deduction'] ?? 0);
 
-    $gross_salary       = $basic_salary + $house_rent + $medical_allowance + $conveyance;
+    $gross_salary       = $basic_salary + $house_rent + $medical_allowance + $conveyance + $allowance;
     $total_deductions   = $pf_deduction + $tax_deduction + $other_deduction;
     $net_salary         = $gross_salary - $total_deductions;
 

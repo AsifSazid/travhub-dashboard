@@ -38,6 +38,7 @@ function generateUUID(PDO $pdo, string $tag): string
         'financial_entries'  => ['table' => 'financial_entries',  'column' => 'sys_id', 'short' => 'FE'],
         'ac_banking'  => ['table' => 'ac_banking',  'column' => 'sys_id', 'short' => 'AC'],
         'ac_banking_stmts'  => ['table' => 'ac_banking_stmts',  'column' => 'sys_id', 'short' => 'AS'],
+        'payroll_finals'  => ['table' => 'payroll_finals',  'column' => 'sys_id', 'short' => 'PS'],
 
         // Operations
         'bookings'  => ['table' => 'bookings',  'column' => 'sys_id', 'short' => 'BK'],
