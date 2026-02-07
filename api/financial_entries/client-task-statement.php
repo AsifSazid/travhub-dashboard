@@ -9,12 +9,14 @@ $taskId = $_GET['task_id'];
 
 try {
     $stmt = $pdo->prepare("
-        SELECT purpose, amount FROM financial_entries
+        SELECT purpose, amount, type FROM financial_entries
         WHERE user_sys_id = ? AND task_sys_id = ?
         ORDER BY id DESC
     ");
     $stmt->execute([$clientId, $taskId]);
     $finStmts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // var_dump($finStmts);
 
     echo json_encode(['stmt' => $finStmts, 'success' => true]); // Send JSON to the client
 } catch (Exception $e) {

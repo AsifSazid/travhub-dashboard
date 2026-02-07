@@ -1554,3 +1554,161 @@ Bank Count: 0
 MFS Count: 0
 ========================================
 
+[2026-02-07 22:47:39] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary4JSIxaE5ORtBA2A2
+POST Data:
+invoice_no: THR-IN-26-00K024...
+client_title: THR-CL-26-00K015...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => DAC-IST-LHR-DAC by Turkish Air
+    [1] => Dhaka - Chittagong By BG
+    [2] => Chittagong - Dhaka by Novo
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 441500
+    [1] => 4249
+    [2] => 9500
+)
+
+work_particular: Array
+(
+    [0] => Multiple financial statements:
+1. Discount - -৳5000.00 (credit)
+2. Passangers: ARAFAT, MOHAMMAD EASIR MR, ALFSANI, MUJADDID MSTR, ANWAR, KHANDAKAR MAKSURAT MRS 
+Dates: 08 Mar 26/16 Mar 26/5 Apr 26
+WF55UJ (TK)/ FS9FWW (Gal)
+2355060483480/2355060483481/2355060483482 - +৳446500.00 (debit)
+Net Total: ৳441500.00
+    [1] => PASSENGER: MOHAMMAD EASIR ARAFAT
+03-Feb-2026 | 08:00
+NUOOIS / 9975853199523 (debit)
+    [2] => PASSENGER: MOHAMMAD EASIR ARAFAT
+03-Feb-2026 | 14:40
+LAVQXJ / 8551016725178 (debit)
+)
+
+amount: Array
+(
+    [0] => 441500.00
+    [1] => 4249.00
+    [2] => 9500.00
+)
+
+total_amount: 455249.00...
+paid_amount: 0...
+due_amount: 455249.00...
+========================================
+
+[2026-02-07 22:47:39] RAW INPUT:
+
+
+[2026-02-07 22:47:39] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 20:47:39] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 35
+Invoice No: THR-IN-26-00K024
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 455249
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 22:50:15] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarygUTmSvjcNNlj89gd
+POST Data:
+invoice_no: THR-IN-26-00K024...
+client_title: THR-CL-26-00K015...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => DAC-IST-LHR-DAC by Turkish Air
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 441500
+)
+
+work_particular: Array
+(
+    [0] => Multiple financial statements:
+1. Discount - (-) 5000.00 (credit)
+2. Passangers: ARAFAT, MOHAMMAD EASIR MR, ALFSANI, MUJADDID MSTR, ANWAR, KHANDAKAR MAKSURAT MRS 
+Dates: 08 Mar 26/16 Mar 26/5 Apr 26
+WF55UJ (TK)/ FS9FWW (Gal)
+2355060483480/2355060483481/2355060483482 - (+) 446500.00 (debit)
+Net Total: ৳441500.00
+)
+
+amount: Array
+(
+    [0] => 441500.00
+)
+
+total_amount: 441500.00...
+paid_amount: 0...
+due_amount: 441500.00...
+========================================
+
+[2026-02-07 22:50:15] RAW INPUT:
+
+
+[2026-02-07 22:50:15] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 20:50:15] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 36
+Invoice No: THR-IN-26-00K024
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 441500
+Bank Count: 0
+MFS Count: 0
+========================================
+

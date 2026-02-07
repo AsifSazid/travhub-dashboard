@@ -1912,12 +1912,17 @@ $base_ip_path = trim($ip_port, "/");
             try {
                 const response = await fetch(`${GET_FINANCIAL_STATEMENT_API}?client_id=${globalClientState.clientId}&task_id=${taskId}`);
                 const data = await response.json();
-
-                if (data.success) {
-                    return data.stmt;
+                
+                console.log('Financial statements for task', taskId, ':', data.stmt);
+        
+                if (data.success && data.stmt && Array.isArray(data.stmt)) {
+                    return data.stmt; // পুরো অ্যারে রিটার্ন করুন
+                } else {
+                    return []; // খালি অ্যারে রিটার্ন করুন
                 }
             } catch (error) {
                 console.error('Error loading financial data:', error);
+                return [];
             }
         }
         
@@ -1944,10 +1949,10 @@ $base_ip_path = trim($ip_port, "/");
             // Populate task checkboxes
             const checkboxesContainer = groupElement.querySelector('.task-checkboxes');
             tasks.forEach(task => {
-            
                 const checkboxDiv = document.createElement('div');
                 checkboxDiv.className = 'task-checkbox-container';
-            
+                
+                // প্রথমে বেসিক HTML সেট করুন
                 checkboxDiv.innerHTML = `
                     <input type="checkbox"
                            id="task_${task.sys_id}_${groupId}"
@@ -1955,31 +1960,126 @@ $base_ip_path = trim($ip_port, "/");
                            class="task-checkbox mr-2"
                            data-task-data='${JSON.stringify(task)}'>
                     <label for="task_${task.sys_id}_${groupId}" class="text-sm cursor-pointer">
-                        <span class="font-medium">${task.title || 'No Title'}</span>
-                        <span class="text-gray-600 ml-2 rate">Loading...</span>
-                        <span class="text-gray-600 ml-2 purpose">Loading...</span>
+                        <div class="flex items-center">
+                            <span class="font-medium">${task.title || 'No Title'}</span>
+                        </div>
+                        <div id="fin-info-${task.sys_id}-${groupId}" class="financial-info mt-1 text-xs text-gray-600">
+                            <div class="text-gray-500 italic">Loading financial data...</div>
+                        </div>
                     </label>
                 `;
-            
+                
                 checkboxesContainer.appendChild(checkboxDiv);
-            
-                loadFinancialData(task.sys_id).then(fin => {
-                    if (!fin || !fin.length) return;
                 
-                    task.rate = fin[0].amount;
-                    task.purpose = fin[0].purpose;
-                
-                    // 🔥 UPDATE DATASET
-                    const checkbox = checkboxDiv.querySelector('.task-checkbox');
-                    checkbox.dataset.taskData = JSON.stringify(task);
-                
-                    checkboxDiv.querySelector('.rate').textContent =
-                        `(Rate: ৳ ${task.rate})`;
-                
-                    checkboxDiv.querySelector('.purpose').textContent =
-                        `(Purpose: ${task.purpose})`;
+                // ফিনান্সিয়াল ডেটা লোড করুন
+                loadFinancialData(task.sys_id).then(financialStatements => {
+                    const finInfoDiv = document.getElementById(`fin-info-${task.sys_id}-${groupId}`);
+                    
+                    if (!financialStatements || financialStatements.length === 0) {
+                        finInfoDiv.innerHTML = `<div class="text-gray-400">No financial statements found</div>`;
+                        return;
+                    }
+                    
+                    // একাধিক ফিনান্সিয়াল স্টেটমেন্ট ডিসপ্লে করুন
+                    let html = '';
+                    
+                    // মোট পরিমাণ গণনা করুন - আপনার নির্দেশ অনুযায়ী
+                    const totalAmount = financialStatements.reduce((sum, stmt) => {
+                        const amount = parseFloat(stmt.amount) || 0;
+                        if (stmt.type === 'credit') {
+                            return sum - amount; // credit হলে বিয়োগ
+                        } else if (stmt.type === 'debit') {
+                            return sum + amount; // debit হলে যোগ
+                        } else {
+                            return sum + amount; // ডিফল্ট
+                        }
+                    }, 0);
+                    
+                    // প্রতিটি ফিনান্সিয়াল স্টেটমেন্ট দেখান
+                    financialStatements.forEach((stmt, index) => {
+                        const amount = parseFloat(stmt.amount) || 0;
+                        const isCredit = stmt.type === 'credit';
+                        const amountClass = isCredit ? 'text-red-600' : 'text-green-600';
+                        const amountSign = isCredit ? '-' : '+';
+                        const typeBadge = isCredit ? 
+                            `<span class="ml-1 text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded">Credit</span>` : 
+                            `<span class="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">Debit</span>`;
+                        
+                        html += `
+                            <div class="financial-item mb-1 p-2 bg-gray-50 rounded ${isCredit ? 'border-l-2 border-red-400' : 'border-l-2 border-green-400'}">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="font-medium">#${index + 1}</span>
+                                        ${typeBadge}
+                                    </div>
+                                    <span class="${amountClass} font-medium">
+                                        ${amountSign}৳ ${amount.toFixed(2)}
+                                    </span>
+                                </div>
+                                <div class="text-gray-600 text-xs mt-1">
+                                    <span class="font-medium">Purpose:</span> ${stmt.purpose || 'N/A'}
+                                </div>
+                                <div class="text-gray-500 text-xs mt-1">
+                                    <span class="font-medium">Type:</span> ${stmt.type || 'N/A'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    // মোট যোগ করুন
+                    const totalClass = totalAmount >= 0 ? 'text-green-700' : 'text-red-700';
+                    const totalSign = totalAmount >= 0 ? '' : '-';
+                    
+                    html += `
+                        <div class="mt-2 pt-2 border-t border-gray-300">
+                            <div class="flex justify-between font-semibold">
+                                <span>Net Total:</span>
+                                <span class="${totalClass}">
+                                    ${totalSign}৳ ${Math.abs(totalAmount).toFixed(2)}
+                                </span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                ${financialStatements.length} statement(s) • 
+                                Credit: -৳, Debit: +৳
+                            </div>
+                        </div>
+                    `;
+                    
+                    finInfoDiv.innerHTML = html;
+                    
+                    // টাস্ক ডেটা আপডেট করুন
+                    if (financialStatements.length > 0) {
+                        // নেট টোটাল রেট হিসেবে সেট করুন
+                        task.rate = Math.abs(totalAmount);
+                        task.netTotal = totalAmount; // আসল টোটাল (নেগেটিভ হতে পারে)
+                        
+                        // purpose গুলো একত্রিত করুন
+                        const purposes = financialStatements.map(s => s.purpose).filter(p => p);
+                        task.purpose = purposes.length > 0 ? purposes.join(', ') : '';
+                        
+                        // টাইপ অনুযায়ী লেবেল তৈরি করুন
+                        const debitCount = financialStatements.filter(s => s.type === 'debit').length;
+                        const creditCount = financialStatements.filter(s => s.type === 'credit').length;
+                        
+                        let typeLabel = '';
+                        if (debitCount > 0 && creditCount > 0) {
+                            typeLabel = ` (${debitCount} debit, ${creditCount} credit)`;
+                        } else if (debitCount > 0) {
+                            typeLabel = ` (${debitCount} debit)`;
+                        } else if (creditCount > 0) {
+                            typeLabel = ` (${creditCount} credit)`;
+                        }
+                        
+                        task.typeLabel = typeLabel;
+                        task.financialStatements = financialStatements;
+                        task.totalAmount = totalAmount;
+                        
+                        // টাস্ক ডেটা আপডেট করুন
+                        const checkbox = checkboxDiv.querySelector('.task-checkbox');
+                        checkbox.dataset.taskData = JSON.stringify(task);
+                    }
                 });
-            
+                
                 checkboxDiv.querySelector('.task-checkbox')
                     .addEventListener('change', () => {
                         handleTaskSelection(workItemId, groupId);
@@ -2090,10 +2190,59 @@ $base_ip_path = trim($ip_port, "/");
             allTasks.forEach(task => {
                 const taskData = task.data;
                 
+                // টাস্ক ডেটা থেকে ফিনান্সিয়াল স্টেটমেন্ট পান
+                const financialStatements = taskData.financialStatements || [];
+                const totalAmount = taskData.totalAmount || 0; // নেট টোটাল (পজিটিভ/নেগেটিভ হতে পারে)
+                const netAmount = Math.abs(totalAmount); // ইনভয়েসের জন্য পরম মান
+                
+                // যদি একাধিক ফিনান্সিয়াল স্টেটমেন্ট থাকে, তাহলে বিশেষভাবে দেখান
+                let details = '';
+                if (financialStatements.length > 1) {
+                    details = `Multiple financial statements:\n`;
+                    financialStatements.forEach((stmt, idx) => {
+                        const sign = stmt.type === 'credit' ? '-' : '+';
+                        details += `${idx + 1}. ${stmt.purpose || 'N/A'} -> (${sign})${parseFloat(stmt.amount).toFixed(2)} (${stmt.type})\n`;
+                    });
+                    const finalSign = totalAmount >= 0 ? '' : '-';
+                    details += `Net Total: ${finalSign}৳${netAmount.toFixed(2)}`;
+                } else if (financialStatements.length === 1) {
+                    const stmt = financialStatements[0];
+                    details = `${stmt.purpose || ''} (${stmt.type})`;
+                } else {
+                    details = taskData.purpose || '';
+                }
+                
+                // টাইপ লেবেল
+                const debitCount = financialStatements.filter(s => s.type === 'debit').length;
+                const creditCount = financialStatements.filter(s => s.type === 'credit').length;
+                
+                let typeIndicator = '';
+                if (debitCount > 0 && creditCount > 0) {
+                    typeIndicator = `<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Mixed (${debitCount}D/${creditCount}C)</span>`;
+                } else if (debitCount > 0) {
+                    typeIndicator = `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Debit (${debitCount})</span>`;
+                } else if (creditCount > 0) {
+                    typeIndicator = `<span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">Credit (${creditCount})</span>`;
+                }
+                
+                // টোটালের জন্য ক্লাস নির্ধারণ
+                const totalClass = totalAmount >= 0 ? 'text-green-700' : 'text-red-700';
+                const totalSign = totalAmount >= 0 ? '' : '-';
+                
                 // Create the work item form element
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'generated-item bg-white border rounded-lg p-4 mb-3';
                 itemDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h5 class="font-medium text-gray-800">${taskData.title || ''}</h5>
+                            ${typeIndicator}
+                        </div>
+                        <div class="${totalClass} font-bold text-lg">
+                            ${totalSign}৳<span class="total-amount">${netAmount.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                         <div class="form-group">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -2113,33 +2262,84 @@ $base_ip_path = trim($ip_port, "/");
                                    data-generated="true">
                         </div>
                         <div class="form-group">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Rate</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Rate (Net)</label>
                             <input type="number" 
                                    name="work_rate[]"
                                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
-                                   value="${taskData.rate || 0}"
+                                   value="${netAmount}"
                                    data-generated="true"
                                    step="0.01">
                         </div>
                     </div>
+                    
                     <div class="form-group mb-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Details</label>
                         <textarea name="work_particular[]"
                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
-                                  rows="2"
-                                  data-generated="true">${taskData.purpose || ''}</textarea>
+                                  rows="3"
+                                  data-generated="true">${details}</textarea>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">
+                    
+                    <!-- যদি একাধিক ফিনান্সিয়াল স্টেটমেন্ট থাকে -->
+                    ${financialStatements.length > 0 ? `
+                        <div class="multiple-financials bg-gray-50 p-3 rounded-lg mb-3">
+                            <h6 class="font-medium text-sm text-gray-700 mb-2">Financial Statements Details:</h6>
+                            <div class="space-y-2 max-h-40 overflow-y-auto">
+                                ${financialStatements.map((stmt, idx) => {
+                                    const amount = parseFloat(stmt.amount) || 0;
+                                    const isCredit = stmt.type === 'credit';
+                                    const amountClass = isCredit ? 'text-red-600' : 'text-green-600';
+                                    const amountSign = isCredit ? '-' : '+';
+                                    const typeBadge = isCredit ? 
+                                        'bg-red-100 text-red-800' : 
+                                        'bg-green-100 text-green-800';
+                                    
+                                    return `
+                                        <div class="bg-white p-2 rounded border ${isCredit ? 'border-l-2 border-red-300' : 'border-l-2 border-green-300'}">
+                                            <div class="flex justify-between items-center">
+                                                <div>
+                                                    <span class="text-sm font-medium">#${idx + 1}</span>
+                                                    <span class="ml-2 text-xs ${typeBadge} px-2 py-0.5 rounded">${stmt.type || 'N/A'}</span>
+                                                </div>
+                                                <span class="text-sm ${amountClass} font-medium">
+                                                    (${amountSign}) ${amount.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div class="text-xs text-gray-600 mt-1">
+                                                ${stmt.purpose ? `<div><span class="font-medium">Purpose:</span> ${stmt.purpose}</div>` : ''}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-gray-300">
+                                <div class="flex justify-between text-sm">
+                                    <div>
+                                        <span class="font-medium">Summary:</span>
+                                        <span class="ml-2">Debit: ${debitCount} | Credit: ${creditCount}</span>
+                                    </div>
+                                    <div class="${totalClass} font-semibold">
+                                        Net: ${totalSign} ${netAmount.toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex justify-between items-center text-sm text-gray-600">
+                        <div>
                             From: <span class="font-medium">${state.selectedWork?.data?.title || 'System Work'}</span>
-                        </span>
-                        <span class="text-green-600 font-medium">
-                            Amount: ৳<span class="calculated-amount">${taskData.rate || 0}</span>
-                        </span>
+                            <span class="ml-2 text-xs bg-gray-200 px-2 py-1 rounded">
+                                ${financialStatements.length} statement(s)
+                            </span>
+                        </div>
+                        <div class="${totalClass} font-medium">
+                            Net Total: ${totalSign}৳<span class="calculated-amount">${netAmount.toFixed(2)}</span>
+                        </div>
                     </div>
                     <input type="hidden" 
                            name="amount[]" 
-                           value="${taskData.rate || 0}"
+                           value="${netAmount}"
                            data-generated="true"
                            class="generated-input">
                 `;
@@ -2152,6 +2352,7 @@ $base_ip_path = trim($ip_port, "/");
                 const rateInput   = item.querySelector('[name="work_rate[]"]');
                 const qtyInput    = item.querySelector('[name="work_qty[]"]');
                 const amountSpan  = item.querySelector('.calculated-amount');
+                const totalAmountSpan = item.querySelector('.total-amount');
                 const amountInput = item.querySelector('[name="amount[]"]');
                 
                 const handler = function () {
@@ -2161,7 +2362,23 @@ $base_ip_path = trim($ip_port, "/");
                 
                     const formatted = amount.toFixed(2);
                     amountSpan.textContent = formatted;
+                    totalAmountSpan.textContent = formatted;
                     amountInput.value = formatted;
+                    
+                    // টোটালের সাইন আপডেট করুন
+                    const netTotal = totalAmount >= 0 ? amount : -amount;
+                    const itemTotalClass = netTotal >= 0 ? 'text-green-700' : 'text-red-700';
+                    const totalSign = netTotal >= 0 ? '' : '-';
+                    
+                    // টোটাল স্প্যান আপডেট করুন
+                    const totalDisplay = item.querySelector('.text-lg');
+                    totalDisplay.className = `${itemTotalClass} font-bold text-lg`;
+                    totalDisplay.innerHTML = `${totalSign}৳<span class="total-amount">${Math.abs(netTotal).toFixed(2)}</span>`;
+                    
+                    // নেট টোটাল স্প্যান আপডেট করুন
+                    const netDisplay = item.querySelector('.font-medium:has(.calculated-amount)');
+                    netDisplay.className = `${itemTotalClass} font-medium`;
+                    netDisplay.innerHTML = `Net Total: ${totalSign}৳<span class="calculated-amount">${Math.abs(netTotal).toFixed(2)}</span>`;
                 
                     calculateTotal();
                 };
