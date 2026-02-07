@@ -14,7 +14,7 @@ $base_ip_path = trim($ip_port, "/");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accounting - Account Laser Records</title>
+    <title>Accounting - Account Ladger Records</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -192,10 +192,12 @@ $base_ip_path = trim($ip_port, "/");
     <div id="statementModal" class="modal-overlay">
         <div class="modal-content">
             <div class="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
-                <h5 class="text-lg font-semibold flex items-center">
-                    <i class="fas fa-file-invoice-dollar mr-2"></i>
-                    Statement for <span id="statementAccountName" class="ml-1"></span>
-                </h5>
+                <a id="showFullStmt" href="#" target="_blank">
+                    <h5 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-external-link-alt mr-2"></i>
+                        Show Full Statement for <span id="statementAccountName" class="ml-1"></span>
+                    </h5>
+                </a>
                 <button onclick="closeStatementModal()" class="text-white hover:text-gray-200 text-xl">
                     <i class="fas fa-times"></i>
                 </button>
@@ -565,6 +567,11 @@ $base_ip_path = trim($ip_port, "/");
 
                 // Update modal header
                 document.getElementById('statementAccountName').textContent = accountName;
+                
+                // Update Show Full Statement link
+                const showFullStmtLink = document.getElementById('showFullStmt');
+                showFullStmtLink.href = `show-full-statement.php?acc_id=${accountId}`;
+                showFullStmtLink.target = "_blank"; // Open in new tab
 
                 // Update current balance display
                 const amount = parseFloat(accountBalance || 0);
@@ -726,32 +733,6 @@ $base_ip_path = trim($ip_port, "/");
                     statementLoader.classList.add('hidden');
                 }
             }
-
-            // function displayStatement(data) {
-            //     currentStatementData = data;
-
-            //     if (data.length === 0) {
-            //         showNoStatementData();
-            //         return;
-            //     }
-
-            //     data.forEach(item => {
-            //         const row = document.createElement('tr');
-            //         row.innerHTML = `
-            //             <td class="px-4 py-3 text-sm text-gray-900">${item.date || ''}</td>
-            //             <td class="px-4 py-3 text-sm text-gray-900">${item.particular || ''}</td>
-            //             <td class="px-4 py-3 text-sm text-red-600 font-medium">${formatCurrency(item.withdraw)}</td>
-            //             <td class="px-4 py-3 text-sm text-green-600 font-medium">${formatCurrency(item.deposit)}</td>
-            //             <td class="px-4 py-3 text-sm text-gray-900 font-semibold">${formatCurrency(item.balance)}</td>
-            //             <td class="px-4 py-3 text-sm text-blue-600">${formatCurrency(item.reconsilation)}</td>
-            //         `;
-            //         statementTableBody.appendChild(row);
-            //     });
-            
-            //     statementTableContainer.classList.remove('hidden');
-            //     downloadCsvBtn.disabled = false;
-            // }
-            
             
             function displayStatement(data) {
                 currentStatementData = data;
