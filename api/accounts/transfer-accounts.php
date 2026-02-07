@@ -44,7 +44,6 @@ $transferMethodStatus = $data['transferMethodStatus'] ?? '';
 $amount          = $data['amount']          ?? 0;
 $particular      = $data['particular']      ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d h:m:s');
-$methodStatus = ''; 
 
 /* ================= VALIDATION ================= */
 $allowedTypes = ['a2a', 'a2p'];
@@ -65,30 +64,6 @@ if (!is_numeric($amount) || $amount <= 0) {
         'message' => 'Invalid amount'
     ]);
     exit;
-}
-
-if ($transferMethod === 'cheque')
-{
-    $methodStatus = json_encode([
-        "trnx_ref"     => "",
-        "trnx_date"   => "",
-        "trnx_status" => "waiting2submit"
-    ]);
-    // waiting2submit = Waiting to Submit;
-    // submitted2bank = Submitted to Bank;
-    // cleared = Bank Cleared the Cheque;
-    // bounced = Cheque Bounced;
-}
-
-if ($transferMethod === 'bftn-eft') {
-    $methodStatus = json_encode([
-        "trnx_id"     => "",
-        "trnx_date"   => "",
-        "trnx_status" => "pending"
-    ]);
-    // pending = trnx kora hoiche kintu ekhono kono action hoy nai 
-    // successful = trnx hoiche and trnx id pawya geche 
-    // unsuccessful = trnx successful hoy nai
 }
 
 $instrumentMethods = ['cheque', 'bftn-eft'];
@@ -134,7 +109,9 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
         "status"          => 'pending',
         "date"            => date('Y-m-d'),
         "remarks"         => $particular,
-        "related_to"      => $transferType === 'a2a' ? $toAccountName : $employeeName,
+        "related_type"    => $transferType,
+        "related_from"    => $fromAccountId . '||' . $fromAccountName,
+        "related_to"      => $transferType === 'a2a' ? $toAccountId . '||' . $toAccountName : $employeeId . '||' . $employeeName,
         "amount"          => $amount // Add amount to instrument
     ];
 
@@ -227,13 +204,13 @@ try {
         INSERT INTO ac_banking_stmts
         (
             uuid, sys_id, ledger_db_id, name, date, transfer_type,
-            particular, withdraw, deposit, balance, transfer_method,  method_status,
+            particular, withdraw, deposit, balance, transfer_method,
             reconsilation, reconsilation_type, ref, meta_data
         )
         VALUES
         (
             :uuid, :sys_id, :ledger_db_id, :name, :date, :transfer_type,
-            :particular, :withdraw, :deposit, :balance, :transfer_method, :method_status,
+            :particular, :withdraw, :deposit, :balance, :transfer_method,
             0, 0, :ref, :meta_data
         )
     ");
@@ -250,7 +227,6 @@ try {
         ':balance'      => $newFromBalance,
         ':transfer_type'=> $transferType ?? null,
         ':transfer_method'      => $transferMethod ?? null,
-        ':method_status'=> $methodStatus,
         ':ref'          => $ref,
         ':meta_data'    => $fromMeta
     ]);
@@ -293,7 +269,6 @@ try {
             ':balance'      => $newToBalance,
             ':transfer_type'=> $transferType ?? null,
             ':transfer_method'      => $transferMethod ?? null,
-            ':method_status'=> $methodStatus,
             ':ref'          => $fromAccountId,
             ':meta_data'    => $toMeta
         ]);

@@ -76,9 +76,20 @@ $meta_data = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 ===================================================== */
 $instrumentDate = $data['instrument_date'] ?? $data['date'] ?? date('Y-m-d');
 $amount = $data['amount'] ?? 0.00;
+$relatedType = $data['related_type'] ?? '';
+$relatedFrom = $data['related_from'] ?? '';
 $relatedTo = $data['related_to'] ?? '';
 $remarks = $data['remarks'] ?? '';
 $clearingDate = $data['clearing_date'] ?? null;
+$trnxType = '';
+
+if($relatedType == 'a2a' || $relatedType == 'a2p'){
+    $trnxType = 'debit';
+}elseif($relatedType == 'received'){
+    $trnxType = 'credit';
+}elseif($relatedType == 'payment'){
+    $trnxType = 'debit';
+}
 
 /* =====================================================
    INSERT DATA
@@ -86,14 +97,14 @@ $clearingDate = $data['clearing_date'] ?? null;
 try {
     $sql = "
     INSERT INTO ac_instrument_tracking (
-        uuid, sys_id, instrument_type, instrument_no,
+        uuid, sys_id, instrument_type, trnx_type, instrument_no,
         account_name, bank_name, instrument_date,
-        amount, related_to, status, date,
+        amount, related_type, related_from, related_to, status, date,
         clearing_date, remarks, meta_data
     ) VALUES (
-        :uuid, :sys_id, :instrument_type, :instrument_no,
+        :uuid, :sys_id, :instrument_type, :trnx_type, :instrument_no,
         :account_name, :bank_name, :instrument_date,
-        :amount, :related_to, :status, :date,
+        :amount, :related_type, :related_from, :related_to, :status, :date,
         :clearing_date, :remarks, :meta_data
     )
     ";
@@ -103,11 +114,14 @@ try {
         ':uuid'            => $uuid,
         ':sys_id'          => $sys_id,
         ':instrument_type' => $instrumentType,
+        ':trnx_type'       => $trnxType,
         ':instrument_no'   => $instrumentNo,
         ':account_name'    => $accountName,
         ':bank_name'       => $bankName,
         ':instrument_date' => $instrumentDate,
         ':amount'          => $amount,
+        ':related_type'    => $relatedType,
+        ':related_from'    => $relatedFrom,
         ':related_to'      => $relatedTo,
         ':status'          => $status,
         ':date'            => $date,

@@ -1472,3 +1472,85 @@ Bank Count: 0
 MFS Count: 0
 ========================================
 
+[2026-02-07 20:09:41] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryAkr45o4u1JGEaXdv
+POST Data:
+invoice_no: THR-IN-26-00K023...
+client_title: THR-CL-26-00K015...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Dhaka - Bangkok - Dhaka Air Ticket by US Bangla
+    [1] => Thailand Tour Package | 6 Nights 7 Day
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 103236.00
+    [1] => 143000.00
+)
+
+work_particular: Array
+(
+    [0] => Passengers: MOHAMMAD EASIR ARAFAT, KHANDAKAR MAKSURAT ANWAR, MUJADDID ALFSANI
+Tr. Dt: 10 Feb 2026
+Rt. Dt: 16 Feb 2026
+097CTA / 7792411413246/7792411413247/7792411413248
+    [1] => Destination: Pattaya and Bangkok
+No of Pax: 2 Adults 1 child
+Hotel: Discovery Beach Pattaya (2N), Royal Benja (4N)
+Inclusions:
+- All transfers
+- Hotel
+- Nong Nooch Garden
+- Safari World
+- Dinner Cruise
+)
+
+amount: Array
+(
+    [0] => 103236.00
+    [1] => 143000.00
+)
+
+total_amount: 246236.00...
+paid_amount: 0...
+due_amount: 246236.00...
+========================================
+
+[2026-02-07 20:09:41] RAW INPUT:
+
+
+[2026-02-07 20:09:41] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 18:09:41] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 34
+Invoice No: THR-IN-26-00K023
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 246236
+Bank Count: 0
+MFS Count: 0
+========================================
+
