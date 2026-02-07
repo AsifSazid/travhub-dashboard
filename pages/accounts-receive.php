@@ -193,7 +193,7 @@ $base_ip_path = trim($ip_port, "/");
         
             /* ================= CONFIG ================= */
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_POST_URL = `${IP_PATH}/api/ledgers/store_ledger_statement.php`;
+            const API_POST_URL = `${IP_PATH}/api/accounts/store_ledger_stmt.php`;
             const FINANCIAL_ENTRIES_STORE_API = `${IP_PATH}/api/financial_entries/store.php`;
             const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
         

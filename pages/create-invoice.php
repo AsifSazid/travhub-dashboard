@@ -2367,7 +2367,19 @@ $base_ip_path = trim($ip_port, "/");
             document.getElementById('work_items').appendChild(div);
             
             // Initialize event listeners for this work item
-            initializeWorkItemEventListeners(div);
+            const workItemId = initializeWorkItemEventListeners(div);
+            
+            // ✅ **NEW: Immediately update system mode with current client**
+            const systemContainer = div.querySelector('.system-work-container');
+            if (systemContainer && globalClientState.clientId) {
+                // Update client info display
+                updateSystemWorkItemClientInfo(div);
+                
+                // Fetch works for this client
+                setTimeout(() => {
+                    fetchWorksForClient(globalClientState.clientId, systemContainer);
+                }, 100);
+            }
             
             // Initialize calculation for custom mode
             updateCustomWorkItemCalculation(div);
