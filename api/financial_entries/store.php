@@ -103,7 +103,7 @@ try {
         $stmt = $pdo->prepare("SELECT name FROM vendors WHERE sys_id = ?");
         $stmt->execute([$vendorId]);
         $vendorName = $stmt->fetchColumn();
-        $userType = 'vendor ' . $vendorType;
+        $userType = 'vendor';
 
         if (!$vendorName) {
             throw new Exception('Vendor not found');
@@ -144,14 +144,14 @@ try {
     $stmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
-            user_sys_id, user_name, user_type,
+            user_sys_id, user_name, user_type, vendor_type,
             task_sys_id, task_title,
             work_sys_id, work_title,
             date, purpose, type, amount, ref,
             meta_data
         ) VALUES (
             :uuid, :sys_id,
-            :user_sys_id, :user_name, :user_type,
+            :user_sys_id, :user_name, :user_type, :vendor_type,
             :task_sys_id, :task_title,
             :work_sys_id, :work_title,
             :date, :purpose, :type, :amount, :ref,
@@ -165,6 +165,7 @@ try {
         ':user_sys_id' => $clientId ?? $vendorId ?? $accountId ?? null,
         ':user_name' => $clientName ?? $vendorName ?? $accountName ?? null,
         ':user_type' => $userType ?? null,
+        ':vendor_type' => $vendorType ?? null,
         ':task_sys_id' => $taskId,
         ':task_title' => $taskTitle,
         ':work_sys_id' => $workId,

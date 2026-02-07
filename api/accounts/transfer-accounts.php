@@ -91,6 +91,99 @@ if ($transferMethod === 'bftn-eft') {
     // unsuccessful = trnx successful hoy nai
 }
 
+$instrumentMethods = ['cheque', 'bftn-eft'];
+
+if (in_array($transferMethod, $instrumentMethods, true)) {
+
+    /* ================= CALL INSTRUMENT API ================= */
+    $instrumentApiUrl = "https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/store.php";
+
+    /* ================= INSTRUMENT DATA ================= */
+    $chequeNo = $data['chequeNo'] ?? $data['instrument_no'] ?? '';
+    $chequeAccountName = $data['chequeAccountName'] ?? '';
+    $chequeDate = $data['chequeDate'] ?? '';
+    $bankName = $data['bankName'] ?? '';
+    $accountName = $data['accountName'] ?? '';
+    $eftBankName = $data['eftBankName'] ?? '';
+    $bftnDate = $data['bftnDate'] ?? '';
+    
+    // Determine account name based on method
+    $instrumentAccountName = '';
+    $instrumentBankName = '';
+    $instrumentDate = '';
+    
+    if ($transferMethod === 'cheque') {
+        $instrumentAccountName = $chequeAccountName;
+        $instrumentBankName = $bankName;
+        $instrumentDate = $chequeDate ?: date('Y-m-d');
+        $instrumentNo = $chequeNo;
+    } elseif ($transferMethod === 'bftn-eft') {
+        $instrumentAccountName = $accountName;
+        $instrumentBankName = $eftBankName;
+        $instrumentDate = $bftnDate ?: date('Y-m-d');
+        $instrumentNo = ''; // BFTN/EFT এর জন্য আলাদা নম্বর থাকতে পারে
+    }
+    
+    // Then update instrument payload:
+    $instrumentPayload = [
+        "instrument_type" => strtoupper($transferMethod),
+        "instrument_no"   => $instrumentNo,
+        "account_name"    => $instrumentAccountName,
+        "bank_name"       => $instrumentBankName,
+        "instrument_date" => $instrumentDate,
+        "status"          => 'pending',
+        "date"            => date('Y-m-d'),
+        "remarks"         => $particular,
+        "related_to"      => $transferType === 'a2a' ? $toAccountName : $employeeName,
+        "amount"          => $amount // Add amount to instrument
+    ];
+
+    $ch = curl_init($instrumentApiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS     => json_encode($instrumentPayload),
+        CURLOPT_TIMEOUT        => 10
+    ]);
+
+    $response = curl_exec($ch);
+    $error    = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Instrument API call failed',
+            'error'   => $error
+        ]);
+        exit;
+    }
+
+    $result = json_decode($response, true);
+
+    if (!$result || !$result['success']) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Instrument store failed',
+            'api_response' => $response
+        ]);
+        exit;
+    }
+
+    /* ================= NO TRANSACTION ENTRY ================= */
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Instrument recorded successfully. Transaction pending.',
+        'instrument' => $result['data']
+    ]);
+    exit; // 🔴 VERY IMPORTANT
+}
+
+
 try {
     /* ================= START TRANSACTION ================= */
     $pdo->beginTransaction();
@@ -133,14 +226,14 @@ try {
     $stmtInsert = $pdo->prepare("
         INSERT INTO ac_banking_stmts
         (
-            uuid, sys_id, ledger_db_id, name, date,
-            particular, withdraw, deposit, balance, method_status,
+            uuid, sys_id, ledger_db_id, name, date, transfer_type,
+            particular, withdraw, deposit, balance, transfer_method,  method_status,
             reconsilation, reconsilation_type, ref, meta_data
         )
         VALUES
         (
-            :uuid, :sys_id, :ledger_db_id, :name, :date,
-            :particular, :withdraw, :deposit, :balance, :method_status,
+            :uuid, :sys_id, :ledger_db_id, :name, :date, :transfer_type,
+            :particular, :withdraw, :deposit, :balance, :transfer_method, :method_status,
             0, 0, :ref, :meta_data
         )
     ");
@@ -155,6 +248,8 @@ try {
         ':withdraw'     => $amount,
         ':deposit'      => 0,
         ':balance'      => $newFromBalance,
+        ':transfer_type'=> $transferType ?? null,
+        ':transfer_method'      => $transferMethod ?? null,
         ':method_status'=> $methodStatus,
         ':ref'          => $ref,
         ':meta_data'    => $fromMeta
@@ -196,6 +291,8 @@ try {
             ':withdraw'     => 0,
             ':deposit'      => $amount,
             ':balance'      => $newToBalance,
+            ':transfer_type'=> $transferType ?? null,
+            ':transfer_method'      => $transferMethod ?? null,
             ':method_status'=> $methodStatus,
             ':ref'          => $fromAccountId,
             ':meta_data'    => $toMeta
@@ -222,12 +319,12 @@ try {
         $stmt = $pdo->prepare("
             INSERT INTO financial_entries (
                 uuid, sys_id,
-                user_sys_id, user_name,
+                user_sys_id, user_name, user_type,
                 date, purpose, type, amount, ref,
                 meta_data
             ) VALUES (
                 :uuid, :sys_id,
-                :user_sys_id, :user_name,
+                :user_sys_id, :user_name, :user_type,
                 :date, :purpose, :type, :amount, :ref,
                 :meta_data
             )

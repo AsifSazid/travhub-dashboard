@@ -322,6 +322,7 @@ $base_ip_path = trim($ip_port, "/");
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Particular</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Withdraw</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deposit</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
@@ -786,6 +787,7 @@ $base_ip_path = trim($ip_port, "/");
                     row.innerHTML = `
                         <td class="px-4 py-3 text-sm text-gray-900">${item.date || ''}</td>
                         <td class="px-4 py-3 text-sm text-gray-900">${item.particular || ''}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 uppercase">${item.transfer_method || ''}</td>
                         <td class="px-4 py-3 text-sm text-red-600 font-medium">${formatCurrency(item.withdraw)}</td>
                         <td class="px-4 py-3 text-sm text-green-600 font-medium">${formatCurrency(item.deposit)}</td>
                         <td class="px-4 py-3 text-sm text-gray-900 font-semibold">${formatCurrency(item.balance)}</td>

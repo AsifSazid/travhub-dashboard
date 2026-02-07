@@ -168,6 +168,79 @@ $base_ip_path = trim($ip_port, "/");
                                         id="balance" name="balance" required placeholder="0.00">
                                 </div>
                                 
+                                <!-- Cheque Details Section (Hidden by default) -->
+                                <div id="cheque-details-section" class="hidden md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="col-span-1">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                                            <div class="col-span-1">
+                                                <label for="cheque_no" class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-file-invoice mr-1"></i> Cheque No
+                                                </label>
+                                                <input type="text"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    id="cheque_no" name="cheque_no" placeholder="Enter cheque number">
+                                            </div>
+                                            
+                                            <div class="col-span-1">
+                                                <label for="cheque_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-calendar-day mr-1"></i> Cheque Date
+                                                </label>
+                                                <input type="date"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    id="cheque_date" name="cheque_date">
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                    <div class="col-span-1">
+                                        <label for="cheque_account_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-user-circle mr-1"></i> Account Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="cheque_account_name" name="cheque_account_name" placeholder="Enter account name">
+                                    </div>
+                                    
+                                    <div class="col-span-1">
+                                        <label for="bank_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-university mr-1"></i> Bank Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="bank_name" name="bank_name" placeholder="Enter bank name">
+                                    </div>
+                                </div>
+                                
+                                <!-- BFTN/EFT Details Section (Hidden by default) -->
+                                <div id="bftn-details-section" class="hidden md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="col-span-1">
+                                        <label for="account_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-user-circle mr-1"></i> Account Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="account_name" name="account_name" placeholder="Enter account name">
+                                    </div>
+                                    
+                                    <div class="col-span-1">
+                                        <label for="eft_bank_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-university mr-1"></i> Bank Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="eft_bank_name" name="eft_bank_name" placeholder="Enter bank name">
+                                    </div>
+                                    
+                                    <div class="col-span-1">
+                                        <label for="bftn_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-calendar-check mr-1"></i> Transaction Date
+                                        </label>
+                                        <input type="date"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="bftn_date" name="bftn_date">
+                                    </div>
+                                </div>
+                                
                                 <!-- Particular -->
                                 <div class="md:col-span-2 lg:col-span-3">
                                     <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
@@ -204,266 +277,315 @@ $base_ip_path = trim($ip_port, "/");
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     
     <script>
-        // API URL from PHP variable
-        const storeEpsApi = "<?php echo $storeEpsApi; ?>";
+        document.addEventListener('DOMContentLoaded', function () {
         
-        // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set today's date as default for effective date
-            const today = new Date().toISOString().split('T')[0];
-            document.querySelector('input[name="effective_date"]').value = today;
+            /* ================= CONFIG ================= */
+            const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
+            const API_TRANSFER_STORE = `${IP_PATH}/api/accounts/transfer-accounts.php`;
+
+            /* ================= ELEMENTS ================= */
+            const transactionForm = document.getElementById('transactionForm');
+            const saveTransactionBtn = document.getElementById('saveTransactionBtn');
+            const spinner = document.getElementById('spinner');
+            const saveButtonText = document.getElementById('saveButtonText');
+
+            const selectType = document.getElementById('select_type');
+            const employeeSection = document.getElementById('employee-section');
+            const toAccountSection = document.getElementById('to-account-section');
+            const transferMethod = document.getElementById('transfer_method');
+            const chequeDetailsSection = document.getElementById('cheque-details-section');
+            const bftnDetailsSection = document.getElementById('bftn-details-section');
             
-            // Add form submit event listener
-            document.getElementById('epsForm').addEventListener('submit', handleFormSubmit);
-            
-            // Initial calculation
-            calculateSalary();
-            
-            // Add input listeners for salary calculation
-            document.querySelectorAll('input[type="number"]').forEach(input => {
-                input.addEventListener('input', calculateSalary);
-            });
-            
-            console.log('EPS Form initialized');
-        });
-        
-        // Function to extract ID and Name from input value (Transfer ফর্মের মতো)
-        function extractIds(value) {
-            if (!value) return null;
-            const parts = value.split('|').map(v => v.trim());
-            return {
-                sys_id: parts[0] || null,
-                name: parts[1] || null,
-            };
-        }
-        
-        // Calculate salary function
-        function calculateSalary() {
-            // Get earning values
-            const basicSalary = parseFloat(document.querySelector('input[name="basic_salary"]').value) || 0;
-            const houseRent = parseFloat(document.querySelector('input[name="house_rent"]').value) || 0;
-            const medicalAllowance = parseFloat(document.querySelector('input[name="medical_allowance"]').value) || 0;
-            const conveyance = parseFloat(document.querySelector('input[name="conveyance"]').value) || 0;
-            
-            // Get deduction values
-            const pfDeduction = parseFloat(document.querySelector('input[name="pf_deduction"]').value) || 0;
-            const taxDeduction = parseFloat(document.querySelector('input[name="tax_deduction"]').value) || 0;
-            const otherDeduction = parseFloat(document.querySelector('input[name="other_deduction"]').value) || 0;
-            
-            // Calculate totals
-            const grossEarnings = basicSalary + houseRent + medicalAllowance + conveyance;
-            const totalDeductions = pfDeduction + taxDeduction + otherDeduction;
-            const netSalary = grossEarnings - totalDeductions;
-            
-            // Update display
-            document.getElementById('gross_display').textContent = `৳ ${grossEarnings.toFixed(2)}`;
-            document.getElementById('deduction_display').textContent = `৳ ${totalDeductions.toFixed(2)}`;
-            document.getElementById('net_display').textContent = `৳ ${netSalary.toFixed(2)}`;
-        }
-        
-        // Reset form function
-        function resetForm() {
-            // Reset employee input
+            const fromAccountInput = document.getElementById('accountInput');
+            const toAccountInput = document.getElementById('toAccountInput');
             const employeeInput = document.getElementById('employeeInput');
-            if (employeeInput) {
-                employeeInput.value = '';
+            
+            const transactionDate = document.getElementById('transactionDate');
+            const amountInput = document.getElementById('balance');
+            const particularTextarea = document.getElementById('particular');
+            
+            // Cheque fields
+            const chequeNoInput = document.getElementById('cheque_no');
+            const chequeDateInput = document.getElementById('cheque_date');
+            const chequeAccountNameInput = document.getElementById('cheque_account_name');
+            const bankNameInput = document.getElementById('bank_name');
+            
+            // BFTN/EFT fields
+            const accountNameInput = document.getElementById('account_name');
+            const eftBankNameInput = document.getElementById('eft_bank_name');
+            const bftnDateInput = document.getElementById('bftn_date');
+        
+            /* ================= UTILS ================= */
+            function extractIds(value) {
+                if (!value) return null;
+                const parts = value.split('|').map(v => v.trim());
+                return {
+                    sys_id: parts[0] || null,
+                    name: parts[1] || null,
+                };
             }
-            
-            // Reset other inputs
-            document.querySelector('input[name="basic_salary"]').value = '';
-            document.querySelector('input[name="house_rent"]').value = '';
-            document.querySelector('input[name="medical_allowance"]').value = '';
-            document.querySelector('input[name="conveyance"]').value = '';
-            document.querySelector('input[name="pf_deduction"]').value = '';
-            document.querySelector('input[name="tax_deduction"]').value = '';
-            document.querySelector('input[name="other_deduction"]').value = '';
-            
-            // Reset effective date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.querySelector('input[name="effective_date"]').value = today;
-            
-            // Reset salary display
-            document.getElementById('gross_display').textContent = '৳ 0.00';
-            document.getElementById('deduction_display').textContent = '৳ 0.00';
-            document.getElementById('net_display').textContent = '৳ 0.00';
-            
-            // Hide messages
-            hideMessages();
-        }
         
-        // Form validation function
-        function validateForm() {
-            let isValid = true;
+            function todayDate() {
+                return new Date().toISOString().split('T')[0];
+            }
+
+            /* ================= INIT ================= */
+            transactionDate.value = todayDate();
+            transactionDate.max = todayDate(); // Can't select future date
             
-            // Check employee input
-            const employeeInput = document.getElementById('employeeInput');
-            const employeeData = extractIds(employeeInput?.value);
-            
-            if (!employeeData || !employeeData.sys_id) {
-                showMessage('error', 'Please select an employee from the dropdown');
-                if (employeeInput) {
-                    employeeInput.style.borderColor = '#ef4444';
-                    employeeInput.focus();
+            // Set max dates for cheque and bftn date
+            chequeDateInput.max = todayDate();
+            bftnDateInput.max = todayDate();
+        
+            function toggleTransferSections() {
+                const type = selectType.value;
+        
+                if (type === 'a2p') {
+                    employeeSection.classList.remove('hidden');
+                    toAccountSection.classList.add('hidden');
+                    if (toAccountInput) toAccountInput.value = '';
+                } else {
+                    toAccountSection.classList.remove('hidden');
+                    employeeSection.classList.add('hidden');
+                    if (employeeInput) employeeInput.value = '';
                 }
-                isValid = false;
-            } else {
-                if (employeeInput) employeeInput.style.borderColor = '#d1d5db';
             }
             
-            // Check basic salary
-            const basicSalaryInput = document.querySelector('input[name="basic_salary"]');
-            const basicSalary = parseFloat(basicSalaryInput.value);
-            
-            if (!basicSalaryInput.value || isNaN(basicSalary) || basicSalary <= 0) {
-                showMessage('error', 'Basic salary is required and must be greater than 0');
-                basicSalaryInput.style.borderColor = '#ef4444';
-                isValid = false;
-            } else {
-                basicSalaryInput.style.borderColor = '#d1d5db';
+            function togglePaymentDetails() {
+                const method = transferMethod.value;
+                
+                // Hide all sections first
+                chequeDetailsSection.classList.add('hidden');
+                bftnDetailsSection.classList.add('hidden');
+                
+                // Clear all fields
+                chequeNoInput.value = '';
+                chequeDateInput.value = '';
+                chequeAccountNameInput.value = '';
+                bankNameInput.value = '';
+                accountNameInput.value = '';
+                eftBankNameInput.value = '';
+                bftnDateInput.value = '';
+                
+                // Show relevant section
+                if (method === 'cheque') {
+                    chequeDetailsSection.classList.remove('hidden');
+                } else if (method === 'bftn-eft') {
+                    bftnDetailsSection.classList.remove('hidden');
+                }
             }
-            
-            // Check effective date
-            const effectiveDateInput = document.querySelector('input[name="effective_date"]');
-            if (!effectiveDateInput.value) {
-                showMessage('error', 'Effective date is required');
-                effectiveDateInput.style.borderColor = '#ef4444';
-                isValid = false;
-            } else {
-                effectiveDateInput.style.borderColor = '#d1d5db';
-            }
-            
-            return isValid;
-        }
         
-        // Form submission handler - Transfer ফর্মের মতো করে
-        async function handleFormSubmit(event) {
-            event.preventDefault();
+            toggleTransferSections();
+            togglePaymentDetails();
             
-            // Hide any existing messages
-            hideMessages();
-            
-            // Validate form
-            if (!validateForm()) {
-                return;
-            }
-            
-            // Get employee data using the same method as Transfer form
-            const employeeInput = document.getElementById('employeeInput');
-            const employeeData = extractIds(employeeInput?.value);
-            
-            if (!employeeData || !employeeData.sys_id) {
-                showMessage('error', 'Please select a valid employee from the dropdown');
-                return;
-            }
-            
-            // Get other form values
-            const basicSalaryInput = document.querySelector('input[name="basic_salary"]');
-            const effectiveDateInput = document.querySelector('input[name="effective_date"]');
-            const houseRentInput = document.querySelector('input[name="house_rent"]');
-            const medicalAllowanceInput = document.querySelector('input[name="medical_allowance"]');
-            const conveyanceInput = document.querySelector('input[name="conveyance"]');
-            const pfDeductionInput = document.querySelector('input[name="pf_deduction"]');
-            const taxDeductionInput = document.querySelector('input[name="tax_deduction"]');
-            const otherDeductionInput = document.querySelector('input[name="other_deduction"]');
-            
-            // Prepare data object - Transfer ফর্মের structure অনুযায়ী
-            const data = {
-                employee_id: employeeData.sys_id,
-                employee_name: employeeData.name || '',
-                effective_date: effectiveDateInput.value,
-                basic_salary: parseFloat(basicSalaryInput.value) || 0,
-                house_rent: parseFloat(houseRentInput.value) || 0,
-                medical_allowance: parseFloat(medicalAllowanceInput.value) || 0,
-                conveyance: parseFloat(conveyanceInput.value) || 0,
-                pf_deduction: parseFloat(pfDeductionInput.value) || 0,
-                tax_deduction: parseFloat(taxDeductionInput.value) || 0,
-                other_deduction: parseFloat(otherDeductionInput.value) || 0,
-                status: 'active'
+            selectType.addEventListener('change', toggleTransferSections);
+            transferMethod.addEventListener('change', togglePaymentDetails);
+        
+            window.resetTransactionForm = function () {
+                transactionForm.reset();
+                transactionDate.value = todayDate();
+                transactionDate.max = todayDate();
+                chequeDateInput.max = todayDate();
+                bftnDateInput.max = todayDate();
+                toggleTransferSections();
+                togglePaymentDetails();
             };
-            
-            console.log('Submitting EPS data:', data);
-            
-            // Show loading state
-            const submitBtn = event.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving EPS Structure...';
-            submitBtn.disabled = true;
-            
-            try {
-                // Call API using JavaScript
-                const response = await fetch(storeEpsApi, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showMessage('success', result.message || 'EPS Structure saved successfully!');
-                    
-                    // Show salary summary in success message
-                    if (result.salary_summary) {
-                        const summary = result.salary_summary;
-                        const summaryText = `<br>Gross: ৳${summary.gross_salary.toFixed(2)} | Net: ৳${summary.net_salary.toFixed(2)}`;
-                        document.getElementById('successText').innerHTML += summaryText;
+        
+            saveTransactionBtn.addEventListener('click', submitTransfer);
+        
+            /* ================= VALIDATION ================= */
+            function validateForm() {
+                const type = selectType.value;
+                const method = transferMethod.value;
+                const fromAccount = extractIds(fromAccountInput?.value);
+                const toAccount = extractIds(toAccountInput?.value);
+                const employee = extractIds(employeeInput?.value);
+        
+                // Validate From Account
+                if (!fromAccount || !fromAccount.sys_id) {
+                    alert('Please select From Account');
+                    fromAccountInput?.focus();
+                    return false;
+                }
+        
+                // Validate To based on type
+                if (type === 'a2a') {
+                    if (!toAccount || !toAccount.sys_id) {
+                        alert('Please select To Account');
+                        toAccountInput?.focus();
+                        return false;
                     }
                     
-                    // Reset form after successful submission
-                    setTimeout(() => resetForm(), 3000);
-                    
-                } else {
-                    showMessage('error', result.message || 'Failed to save EPS structure.');
+                    // Check if same account
+                    if (fromAccount.sys_id === toAccount.sys_id) {
+                        alert('From Account and To Account cannot be the same');
+                        return false;
+                    }
+                } else if (type === 'a2p') {
+                    if (!employee || !employee.sys_id) {
+                        alert('Please select Employee');
+                        employeeInput?.focus();
+                        return false;
+                    }
+                }
+        
+                // Validate Date
+                if (!transactionDate.value) {
+                    alert('Please select a date');
+                    transactionDate.focus();
+                    return false;
+                }
+        
+                // Validate Amount
+                const amount = parseFloat(amountInput.value);
+                if (!amountInput.value || isNaN(amount) || amount <= 0) {
+                    alert('Please enter a valid amount (greater than 0)');
+                    amountInput.focus();
+                    return false;
                 }
                 
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('error', 'Network error. Please check your connection.');
-            } finally {
-                // Restore button state
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
-        }
-        
-        // Show message function
-        function showMessage(type, text) {
-            const container = document.getElementById('messageContainer');
-            const successDiv = document.getElementById('successMessage');
-            const errorDiv = document.getElementById('errorMessage');
-            const successText = document.getElementById('successText');
-            const errorText = document.getElementById('errorText');
-            
-            // Hide all first
-            container.classList.add('hidden');
-            successDiv.classList.add('hidden');
-            errorDiv.classList.add('hidden');
-            
-            // Show appropriate message
-            if (type === 'success') {
-                successText.textContent = text;
-                successDiv.classList.remove('hidden');
-                container.classList.remove('hidden');
+                // Validate Cheque details if method is cheque
+                if (method === 'cheque') {
+                    if (!chequeNoInput.value.trim()) {
+                        alert('Please enter Cheque Number');
+                        chequeNoInput.focus();
+                        return false;
+                    }
+                    
+                    if (!chequeDateInput.value) {
+                        alert('Please select Cheque Date');
+                        chequeDateInput.focus();
+                        return false;
+                    }
+                    
+                    if (!chequeAccountNameInput.value.trim()) {
+                        alert('Please enter Account Name for cheque');
+                        chequeAccountNameInput.focus();
+                        return false;
+                    }
+                    
+                    if (!bankNameInput.value.trim()) {
+                        alert('Please enter Bank Name');
+                        bankNameInput.focus();
+                        return false;
+                    }
+                }
                 
-                // Auto-hide after 5 seconds
-                setTimeout(() => {
-                    container.classList.add('hidden');
-                }, 5000);
-            } else if (type === 'error') {
-                errorText.textContent = text;
-                errorDiv.classList.remove('hidden');
-                container.classList.remove('hidden');
-            }
-        }
+                // Validate BFTN/EFT details if method is bftn-eft
+                if (method === 'bftn-eft') {
+                    if (!accountNameInput.value.trim()) {
+                        alert('Please enter Account Name');
+                        accountNameInput.focus();
+                        return false;
+                    }
+                    
+                    if (!eftBankNameInput.value.trim()) {
+                        alert('Please enter Bank Name');
+                        eftBankNameInput.focus();
+                        return false;
+                    }
+                    
+                    if (!bftnDateInput.value) {
+                        alert('Please select Transaction Date');
+                        bftnDateInput.focus();
+                        return false;
+                    }
+                }
         
-        // Hide messages function
-        function hideMessages() {
-            document.getElementById('messageContainer').classList.add('hidden');
-            document.getElementById('successMessage').classList.add('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-        }
+                // Validate Particular
+                if (!particularTextarea.value.trim()) {
+                    alert('Please enter transfer particulars');
+                    particularTextarea.focus();
+                    return false;
+                }
+        
+                return true;
+            }
+            
+            function buildDateTime(dateOnly) {
+                const now = new Date();
+            
+                const time =
+                    String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+            
+                return `${dateOnly} ${time}`;
+            }
+        
+            /* ================= SUBMIT TRANSFER ================= */
+            async function submitTransfer() {
+                if (!validateForm()) return;
+        
+                const type = selectType.value;
+                const method = transferMethod.value;
+                const fromAccount = extractIds(accountInput.value);
+                const toAccount = type === 'a2a' ? extractIds(toAccountInput.value) : null;
+                const employee = type === 'a2p' ? extractIds(employeeInput.value) : null;
+        
+                const data = {
+                    fromAccountId: fromAccount?.sys_id || null,
+                    fromAccountName: fromAccount?.name || null,
+                    toAccountId: toAccount?.sys_id || null,
+                    toAccountName: toAccount?.name || null,
+                    employeeId: employee?.sys_id || null,
+                    employeeName: employee?.name || null,
+                    transferType: type,
+                    transferMethod: method,
+                    amount: amountInput.value,
+                    particular: particularTextarea.value.trim(),
+                    transactionDate: buildDateTime(transactionDate.value),
+                    chequeNo: method === 'cheque' ? chequeNoInput.value.trim() : null,
+                    chequeDate: method === 'cheque' ? chequeDateInput.value : null,
+                    chequeAccountName: method === 'cheque' ? chequeAccountNameInput.value : null,
+                    bankName: method === 'cheque' ? bankNameInput.value.trim() : null,
+                    accountName: method === 'bftn-eft' ? accountNameInput.value.trim() : null,
+                    eftBankName: method === 'bftn-eft' ? eftBankNameInput.value.trim() : null,
+                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null
+                };
+                
+                console.log('Transfer data:', data);
+        
+                // Disable button and show spinner
+                saveTransactionBtn.disabled = true;
+                spinner.classList.remove('hidden');
+                saveButtonText.textContent = 'Processing...';
+        
+                try {
+                    const response = await fetch(API_TRANSFER_STORE, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+        
+                    const result = await response.json();
+        
+                    if (response.ok && result.success) {
+                        alert('Transfer completed successfully!');
+                        resetTransactionForm();
+                        
+                        // Reload page or update UI as needed
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        alert(result.error || 'Transfer failed. Please try again.');
+                    }
+        
+                } catch (error) {
+                    console.error('Transfer error:', error);
+                    alert('Network error. Please check your connection.');
+                } finally {
+                    // Re-enable button
+                    saveTransactionBtn.disabled = false;
+                    spinner.classList.add('hidden');
+                    saveButtonText.textContent = 'Transfer Amount';
+                }
+            }
+        
+        });
     </script>
 
 </body>

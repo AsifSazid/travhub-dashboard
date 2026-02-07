@@ -123,12 +123,14 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-user-tie mr-3"></i>
                         <span class="sidebar-text">Employees</span>
                     </a>
-                    <a href="pms.php"
-                        class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'pms.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                        <i class="fa-solid fa-wallet mr-3"></i>
-                        <span class="sidebar-text">PMS</span>
-                    </a>
+                    <?php if ($_SESSION['role'] == '0') { ?>
+                        <a href="pms.php"
+                           class="flex items-center p-3 rounded-lg 
+                           <?= $currentPage == 'pms.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                            <i class="fa-solid fa-wallet mr-3"></i>
+                            <span class="sidebar-text">PMS</span>
+                        </a>
+                    <?php } ?>
                     <!--<a href="create-invoice.php"-->
                     <!--    class="flex items-center p-3 rounded-lg -->
                     <!--   <?= $currentPage == 'create-invoice.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">-->

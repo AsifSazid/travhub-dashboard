@@ -1319,3 +1319,156 @@ Bank Count: 0
 MFS Count: 0
 ========================================
 
+[2026-02-07 17:22:49] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary0KSzBROuwNYSKRkC
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K013...
+date: 2026-02-07...
+client_phone_no: +8801678-049258...
+client_cc: Khademul Islam...
+work_title: Array
+(
+    [0] => Malaysia Visa
+    [1] => DAC-KUL-DAC Air Ticket On Biman Bangladesh
+    [2] => Malaysia Hotel 
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 5000.00
+    [1] => 62500.00
+    [2] => 27500.00
+)
+
+work_particular: Array
+(
+    [0] => 6 Month Multiple Entry E-Visa
+Applicant Name: MD MONIR HOSSAIN
+E-VISA Expire Date: 04 AUG 2026
+    [1] => Traveler: HOSSAIN/MD MONIR MR
+Tr. Dt: 09 FEB 2026 
+Rt. Dt: 14 FEB 2026
+EUXVPR / 9975074385817
+    [2] => Hotel Name: Flora by Crossroads Hotel
+C/In: 9 Feb
+C/Out: 14 Feb
+Room: Forest View Room (14sqm)
+Breakfast: Not Included
+)
+
+amount: Array
+(
+    [0] => 5000.00
+    [1] => 62500.00
+    [2] => 27500.00
+)
+
+total_amount: 95000.00...
+paid_amount: 0...
+due_amount: 95000.00...
+========================================
+
+[2026-02-07 17:22:49] RAW INPUT:
+
+
+[2026-02-07 17:22:49] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 15:22:49] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 32
+Invoice No: THR-IN-26-00K021
+Client: Remark HB Limited
+Total Amount: 95000
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 18:03:55] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryGxrE0ZLcjOE0BEce
+POST Data:
+invoice_no: THR-IN-26-00K022...
+client_title: THR-CL-26-00K014...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: Asaduzzaman Soikot...
+work_title: Array
+(
+    [0] => China 2 Years Multiple Entry Business Visa
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 75000.00
+)
+
+work_particular: Array
+(
+    [0] => Applicant: Golam Murhsed
+Expiry Date: 14 JAN 2028
+Visa Number: M8616988
+)
+
+amount: Array
+(
+    [0] => 75000.00
+)
+
+total_amount: 75000.00...
+paid_amount: 0...
+due_amount: 75000.00...
+========================================
+
+[2026-02-07 18:03:55] RAW INPUT:
+
+
+[2026-02-07 18:03:55] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 16:03:55] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 33
+Invoice No: THR-IN-26-00K022
+Client: TST WHITE HOUSE
+Total Amount: 75000
+Bank Count: 0
+MFS Count: 0
+========================================
+
