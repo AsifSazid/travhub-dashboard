@@ -1170,7 +1170,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             <div class="text-sm font-medium text-gray-900">${transaction.purpose || 'No Data'}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${transaction.client_name || transaction.vendor_name || transaction.account_name || 'Unknown'}</div>
+                            <div class="text-sm text-gray-900">${transaction.user_name || 'Unknown'}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">

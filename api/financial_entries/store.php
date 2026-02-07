@@ -127,7 +127,7 @@ try {
         $tz = new DateTimeZone('Asia/Dhaka');
     
         // API date + current time
-        $dateTime = new DateTime($transaction_date, $tz);
+        $dateTime = new DateTime($date, $tz);
         $currentTime = (new DateTime('now', $tz))->format('H:i:s');
     
         $dateTime->setTime(
@@ -298,10 +298,10 @@ try {
                 ':name'          => $accountName,
                 ':date'          => $date,
                 ':particular'    => $purpose,
-                ':deposit'      => $deposit,
+                ':deposit'       => $deposit,
                 ':balance'       => $newBalance, // running balance
                 ':meta_data'     => $stmtMeta,
-                ':ref'     => $ids['sys_id'],
+                ':ref'           => $ids['sys_id'],
             ]);
             
             
