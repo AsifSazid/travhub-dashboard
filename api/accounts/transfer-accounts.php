@@ -45,9 +45,6 @@ $amount          = $data['amount']          ?? 0;
 $particular      = $data['particular']      ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d h:m:s');
 
-var_dump($transactionDate);
-die;
-
 /* ================= VALIDATION ================= */
 $allowedTypes = ['a2a', 'a2p'];
 

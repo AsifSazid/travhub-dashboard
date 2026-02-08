@@ -42,6 +42,7 @@ $amount = $data['amount'] ?? 0;
 $particular = $data['particular'] ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
 $transferMethod = $data['transferMethod'] ?? 'cash';
+$withdraw = 0;
 
 // Payment type is always Deposit for received
 $paymentType = 'Deposit';
@@ -239,7 +240,7 @@ try {
         ':name' => $accountName,
         ':date' => $transactionDate,
         ':particular' => $particular,
-        ':withdraw' => 0,
+        ':withdraw' => $withdraw,
         ':deposit' => $amount,
         ':balance' => $newBalance,
         ':transfer_method' => $transferMethod,
@@ -295,6 +296,19 @@ try {
             'bank_stmt_id' => $stmtSysId,
             'financial_entry_id' => $financialUUIDs['sys_id'],
             'new_balance' => $newBalance
+        ],
+        'item' => [
+            'uuid' => $stmtUUIDs['uuid'],
+            'sys_id' => $stmtUUIDs['sys_id'],
+            'ledger_db_id' => $accountId,
+            'name' => $accountName,
+            'date' => $transactionDate,
+            'particular' => $particular,
+            'withdraw' => $withdraw,
+            'deposit' => $amount,
+            'balance' => $newBalance,
+            'transfer_method' => $transferMethod,
+            'meta_data' => $stmtMeta 
         ]
     ]);
 

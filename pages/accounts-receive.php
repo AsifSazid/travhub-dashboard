@@ -458,6 +458,105 @@ $base_ip_path = trim($ip_port, "/");
             
                 return `${dateOnly} ${time}`;
             }
+            
+            // Updated Receipt Printing Logic for 58mm POS Printers
+            window.printReceipt = function(itemString) {
+                try {
+                    // স্ট্রিং থেকে অবজেক্টে রূপান্তর
+                    const item = JSON.parse(decodeURIComponent(itemString));
+
+                    // আপনার বাকি প্রিন্টিং লজিক এখানে লিখুন...
+                    const printWindow = window.open('', '_blank', 'width=350,height=600');
+                    
+                    const receiptContent = `
+                        <html>
+                        <head>
+                            <title>Receipt - ${item.sys_id}</title>
+                            <style>
+                                @page { margin: 0; }
+                                body { 
+                                    font-family: 'Poppins', sans-serif; /* Standard sans-serif is often clearer on low DPI */
+                                    width: 58mm; 
+                                    padding: 2mm; 
+                                    margin: 0; 
+                                    font-size: 14px; /* Increased base size */
+                                    color: #000;
+                                    font-weight: 600; /* Bolder text for better thermal burning */
+                                }
+                                .logo-container { text-align: center; margin-bottom: 5px; }
+                                .logo-container img { width: 20mm; height: auto; filter: grayscale(100%) contrast(150%); }
+                                .receipt-container { width: 100%; }
+                                .header { text-align: center; margin-bottom: 8px; }
+                                .brand { font-size: 20px; font-weight: 900; margin: 0; text-transform: uppercase; }
+                                .separator { border-top: 2px dashed #000; margin: 5px 0; }
+                                .row { display: flex; justify-content: space-between; margin: 4px 0; line-height: 1.1; }
+                                .row span:first-child { text-align: left; }
+                                .row span:last-child { text-align: right; font-weight: 900; }
+                                .total-row { font-size: 16px; margin-top: 8px; border-top: 2px solid #000; padding-top: 5px; }
+                                .footer { text-align: center; margin-top: 15px; font-size: 11px; font-weight: normal; }
+                                @media print {
+                                    body { width: 58mm; -webkit-print-color-adjust: exact; }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="receipt-container">
+                                <div class="logo-container">
+                                    <img src="../assets/images/logo/round-logo.png" alt="TravHub Global Limited">
+                                </div>
+                                
+                                <div class="header">
+                                    <p class="brand">TravHub Global Limited</p>
+                                    <small>OFFICIAL RECEIPT</small>
+                                </div>
+                                
+                                <div class="separator"></div>
+                                
+                                <div class="row"><span>DATE:</span> <span>${item.date}</span></div>
+                                <div class="row"><span>SYS ID:</span> <span>${item.sys_id}</span></div>
+                                <div class="row"><span>NAME:</span> <span>${item.name.toUpperCase()}</span></div>
+                                
+                                <div class="separator"></div>
+                                
+                                <div class="row">
+                                    <span>PARTICULAR:</span> 
+                                    <span>
+                                        ${item.particular.length > 16 
+                                            ? item.particular.substring(0, 8) + '...' + item.particular.slice(-5) 
+                                            : item.particular}
+                                    </span>
+                                </div>
+                                <div class="row"><span>METHOD:</span> <span>${item.transfer_method || 'CASH'}</span></div>
+                                
+                                <div class="row total-row">
+                                    <span>TOTAL AMOUNT:</span> 
+                                    <span>
+                                        ${item.deposit > 0 ? item.deposit : item.withdraw} TK
+                                    </span>
+                                </div>
+                                
+                                <div class="separator"></div>
+                                
+                                <div class="footer">
+                                    <strong>WE RECEIVED YOUR PAYMENT! <br> THANK YOU!!</strong><br>
+                                    ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </div>
+                            </div>
+                            <script>
+                                window.onload = function() { 
+                                    window.print(); 
+                                    setTimeout(function() { window.close(); }, 500); 
+                                }
+                            <\/script>
+                        </body>
+                        </html>
+                    `;
+                    printWindow.document.write(receiptContent);
+                    printWindow.document.close();
+                } catch (e) {
+                    console.error("Error parsing item data", e);
+                }
+            };
         
             /* ================= SUBMIT ================= */
             async function submitTransaction() {
@@ -512,6 +611,9 @@ $base_ip_path = trim($ip_port, "/");
                             alert('Transaction saved successfully!');
                         }
                         resetTransactionForm();
+                        
+                        const itemData = encodeURIComponent(JSON.stringify(result.item));
+                        printReceipt(itemData);
                     } else {
                         alert(result.error || result.message || 'Transaction failed.');
                     }

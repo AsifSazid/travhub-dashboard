@@ -43,6 +43,8 @@ $particular = $data['particular'] ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
 $transferMethod = $data['transferMethod'] ?? 'cash';
 
+$deposit = 0;
+
 // Payment type is always Withdraw for payment
 $paymentType = 'Withdraw';
 
@@ -248,7 +250,7 @@ try {
         ':date' => $transactionDate,
         ':particular' => $particular,
         ':withdraw' => $amount,
-        ':deposit' => 0,
+        ':deposit' => $deposit,
         ':balance' => $newBalance,
         ':transfer_method' => $transferMethod,
         ':meta_data' => $stmtMeta
@@ -303,6 +305,19 @@ try {
             'bank_stmt_id' => $stmtSysId,
             'financial_entry_id' => $financialUUIDs['sys_id'],
             'new_balance' => $newBalance
+        ], 
+        'item' => [
+            'uuid' => $stmtUUIDs['uuid'],
+            'sys_id' => $stmtUUIDs['sys_id'],
+            'ledger_db_id' => $accountId,
+            'name' => $accountName,
+            'date' => $transactionDate,
+            'particular' => $particular,
+            'withdraw' => $amount,
+            'deposit' => $deposit,
+            'balance' => $newBalance,
+            'transfer_method' => $transferMethod,
+            'meta_data' => $stmtMeta
         ]
     ]);
 
