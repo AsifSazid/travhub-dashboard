@@ -15,15 +15,25 @@
     </div>
 
     <form action="">
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-4">
+            <div class="col-span-3">
+                <label class="block text-sm font-medium text-gray-700 my-2">Work Title</label>
+                <input name="work_title" placeholder="Write a Work Title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
             <div>
                 <label class="col-span-3 block text-sm font-medium text-gray-700 my-2">Search Client</label>
 
                 <?php include('form-selects/clients.php') ?>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 my-2">Work Title</label>
-                <input name="work_title" placeholder="Write a Work Title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <label class="col-span-3 block text-sm font-medium text-gray-700 my-2">Owned By</label>
+
+                <?php include('form-selects/second-employees.php') ?>
+            </div>
+            <div>
+                <label class="col-span-3 block text-sm font-medium text-gray-700 my-2">Performed By</label>
+ 
+                <?php include('form-selects/third-employees.php') ?>
             </div>
         </div>
 
@@ -353,11 +363,15 @@
 
         // Get form values
         const clientValue = document.getElementById('clientInput').value;
+        const ownedByValue = document.getElementById('employeeInput').value;
+        const performedByValue = document.getElementById('secondEmployeeInput').value;
         const workTitle = form.querySelector('input[name="work_title"]').value;
 
         // Prepare payload
         const payload = {
             client: clientValue,
+            ownedBy: ownedByValue,
+            performedBy: performedByValue,
             work_title: workTitle
         };
 

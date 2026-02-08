@@ -6,7 +6,7 @@
             <input
                 type="text"
                 id="employeeInput"
-                placeholder="Search for a employee..."
+                placeholder="Search for an employee..."
                 class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-all duration-200"
                 autocomplete="off">
         </div>
