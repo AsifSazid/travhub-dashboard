@@ -36,7 +36,7 @@
         </button>
 
         <!-- Loan -->
-        <a href="accounts-transfer.php"
+        <a href="index-petty.php?type=loan"
            class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 p-5 rounded-xl text-center transition-all hover:shadow-lg hover:-translate-y-1">
             <div class="bg-yellow-100 group-hover:bg-yellow-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <i class="fa-solid fa-hand-holding-dollar text-yellow-600 text-xl"></i>

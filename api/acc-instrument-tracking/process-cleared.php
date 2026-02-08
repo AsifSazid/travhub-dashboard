@@ -1,6 +1,10 @@
 <?php
 session_start();
-require '../../server/db_connection.php';          // $pdo
+
+// Bangladesh time zone
+date_default_timezone_set('Asia/Dhaka');
+
+require '../../server/db_connection.php';
 require '../../server/generate_meta_data.php';
 require '../../server/uuid_with_system_id_generator.php';
 
@@ -9,13 +13,24 @@ header('Content-Type: application/json');
 try {
     $data = json_decode(file_get_contents('php://input'), true);
     
-    if (!isset($data['sys_id']) || !isset($data['amount']) || !isset($data['trnx_type'])) {
-        throw new Exception('Missing required fields');
+    // Validate required fields
+    $requiredFields = ['sys_id', 'amount', 'trnx_type', 'instrument_type'];
+    foreach ($requiredFields as $field) {
+        if (!isset($data[$field])) {
+            throw new Exception("Missing required field: {$field}");
+        }
     }
+    
+    $sysId = $data['sys_id'];
+    $amount = (float) $data['amount'];
+    $trnxType = $data['trnx_type']; // 'credit' or 'debit'
+    $instrumentType = $data['instrument_type']; // 'cheque', 'pay_order', 'tt', 'dd', etc.
+    $relatedType = $data['related_type'] ?? 'a2a'; // 'a2a', 'a2p', 'client', 'vendor'
+    $remarks = $data['remarks'] ?? '';
     
     $pdo->beginTransaction();
     
-    // First get instrument data WITH status check
+    // Get instrument data with status check
     $instrumentStmt = $pdo->prepare("
         SELECT meta_data, related_from, related_to, account_name, bank_name, 
                instrument_date, remarks, status, amount 
@@ -23,18 +38,16 @@ try {
         WHERE sys_id = ? AND status != 'cleared'
         FOR UPDATE
     ");
-    $instrumentStmt->execute([$data['sys_id']]);
+    $instrumentStmt->execute([$sysId]);
     $instrument = $instrumentStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$instrument) {
         throw new Exception('Instrument not found or already cleared');
     }
     
-    $amount = $data['amount'];
-    $trnxType = $data['trnx_type'];
-    $relatedType = $data['related_type'] ?? 'a2a';
-    $transactionDate = $instrument['instrument_date'] ?? date('Y-m-d');
-    $particular = "Instrument Cleared: " . ($data['remarks'] ?? $instrument['remarks'] ?? 'Instrument clearance');
+    // Use current date/time for transaction
+    $transactionDate = date('Y-m-d H:i:s');
+    $particular = "Instrument Cleared: " . ($remarks ?: $instrument['remarks'] ?? 'Instrument clearance');
     $userName = $_SESSION['user_name'] ?? 'system';
     
     // Build meta data
@@ -52,80 +65,48 @@ try {
     $toAccountId = $relatedTo[0] ?? null;
     $toAccountName = $relatedTo[1] ?? null;
     
-    // Check if accounts exist and have sufficient balance BEFORE any updates
-    if ($trnxType === 'debit' && $relatedType === 'a2a') {
-        // For DEBIT A2A: Check from account balance
-        $fromAccStmt = $pdo->prepare("
-            SELECT balance, sys_id 
-            FROM ac_banking 
-            WHERE sys_id = ?
-            FOR UPDATE
-        ");
-        $fromAccStmt->execute([$fromAccountId]);
-        $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$fromAccount) {
-            throw new Exception('From account not found: ' . $fromAccountId);
-        }
-
-        if ($fromAccount['balance'] < $amount) {
-            throw new Exception('Insufficient balance in from account. Available: ৳' . 
-                               number_format($fromAccount['balance'], 2) . 
-                               ', Required: ৳' . number_format($amount, 2));
-        }
-        
-        // Check to account exists
-        $toAccStmt = $pdo->prepare("SELECT sys_id FROM ac_banking WHERE sys_id = ? FOR UPDATE");
-        $toAccStmt->execute([$toAccountId]);
-        $toAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$toAccount) {
-            throw new Exception('To account not found: ' . $toAccountId);
-        }
-        
-    } elseif ($trnxType === 'debit' && $relatedType === 'a2p') {
-        // For DEBIT A2P: Check from account balance
-        $fromAccStmt = $pdo->prepare("
-            SELECT balance, sys_id 
-            FROM ac_banking 
-            WHERE sys_id = ?
-            FOR UPDATE
-        ");
-        $fromAccStmt->execute([$fromAccountId]);
-        $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$fromAccount) {
-            throw new Exception('From account not found: ' . $fromAccountId);
-        }
-
-        if ($fromAccount['balance'] < $amount) {
-            throw new Exception('Insufficient balance in from account. Available: ৳' . 
-                               number_format($fromAccount['balance'], 2) . 
-                               ', Required: ৳' . number_format($amount, 2));
-        }
-        
-    } elseif ($trnxType === 'credit') {
-        // For CREDIT: Check from account exists (receiving account)
-        $accStmt = $pdo->prepare("SELECT sys_id FROM ac_banking WHERE sys_id = ? FOR UPDATE");
-        $accStmt->execute([$fromAccountId]);
-        $account = $accStmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$account) {
-            throw new Exception('Account not found: ' . $fromAccountId);
-        }
-    }
-    
-    // Now perform the transactions
+    // Initialize variables for transaction IDs
+    $transactionId = null;
     $fromUUIDs = null;
     $stmtUUIDs = null;
     
+    // ============ LOGIC-01: DEBIT TRANSACTIONS ============
     if ($trnxType === 'debit') {
+        
+        // === a2a (Account to Account) ===
         if ($relatedType === 'a2a') {
-            // DEBIT and A2A
+            // Check from account balance
+            $fromAccStmt = $pdo->prepare("
+                SELECT balance, sys_id 
+                FROM ac_banking 
+                WHERE sys_id = ?
+                FOR UPDATE
+            ");
+            $fromAccStmt->execute([$fromAccountId]);
+            $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
             
-            /* ================= FROM ACCOUNT ================= */
+            if (!$fromAccount) {
+                throw new Exception('From account not found: ' . $fromAccountId);
+            }
+            
+            if ($fromAccount['balance'] < $amount) {
+                throw new Exception('Insufficient balance in from account. Available: ৳' . 
+                                   number_format($fromAccount['balance'], 2) . 
+                                   ', Required: ৳' . number_format($amount, 2));
+            }
+            
+            // Check to account exists
+            $toAccStmt = $pdo->prepare("SELECT balance, sys_id FROM ac_banking WHERE sys_id = ? FOR UPDATE");
+            $toAccStmt->execute([$toAccountId]);
+            $toAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$toAccount) {
+                throw new Exception('To account not found: ' . $toAccountId);
+            }
+            
+            // ========== FROM ACCOUNT ==========
             $newFromBalance = $fromAccount['balance'] - $amount;
-
+            
             $updateStmt = $pdo->prepare("
                 UPDATE ac_banking 
                 SET balance = :balance 
@@ -135,8 +116,8 @@ try {
                 ':balance' => $newFromBalance,
                 ':id'      => $fromAccountId
             ]);
-
-            /* -------- FROM ACCOUNT STATEMENT -------- */
+            
+            // FROM ACCOUNT STATEMENT
             $fromUUIDs = generateIDs('ac_banking_stmts');
             
             $stmtInsert = $pdo->prepare("
@@ -153,7 +134,7 @@ try {
                     0, 0, :ref, :meta_data
                 )
             ");
-
+            
             $stmtInsert->execute([
                 ':uuid'         => $fromUUIDs['uuid'],
                 ':sys_id'       => $fromUUIDs['sys_id'],
@@ -165,22 +146,24 @@ try {
                 ':deposit'      => 0,
                 ':balance'      => $newFromBalance,
                 ':transfer_type'=> $relatedType,
-                ':transfer_method' => 'instrument',
+                ':transfer_method' => $instrumentType,
                 ':ref'          => $toAccountId,
                 ':meta_data'    => $transactionMetaData
             ]);
-
-            /* ================= TO ACCOUNT ================= */
-            $newToBalance = $toAccount['amount'] + $amount;
-        
+            
+            $transactionId = $fromUUIDs['sys_id'];
+            
+            // ========== TO ACCOUNT ==========
+            $newToBalance = $toAccount['balance'] + $amount;
+            
             $updateStmt->execute([
                 ':balance' => $newToBalance,
                 ':id'      => $toAccountId
             ]);
-        
-            /* -------- TO ACCOUNT STATEMENT -------- */
+            
+            // TO ACCOUNT STATEMENT
             $toUUIDs = generateIDs('ac_banking_stmts');
-        
+            
             $stmtInsert->execute([
                 ':uuid'         => $toUUIDs['uuid'],
                 ':sys_id'       => $toUUIDs['sys_id'],
@@ -192,25 +175,50 @@ try {
                 ':deposit'      => $amount,
                 ':balance'      => $newToBalance,
                 ':transfer_type'=> $relatedType,
-                ':transfer_method' => 'instrument',
+                ':transfer_method' => $instrumentType,
                 ':ref'          => $fromAccountId,
                 ':meta_data'    => $transactionMetaData
             ]);
             
-        } elseif ($relatedType === 'a2p') {
-            // DEBIT and A2P
+        }
+        // === a2p (Account to Person/Employee) ===
+        elseif ($relatedType === 'a2p') {
+            // Check from account balance
+            $fromAccStmt = $pdo->prepare("
+                SELECT balance, sys_id 
+                FROM ac_banking 
+                WHERE sys_id = ?
+                FOR UPDATE
+            ");
+            $fromAccStmt->execute([$fromAccountId]);
+            $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
             
-            /* ================= FROM ACCOUNT ================= */
+            if (!$fromAccount) {
+                throw new Exception('From account not found: ' . $fromAccountId);
+            }
+            
+            if ($fromAccount['balance'] < $amount) {
+                throw new Exception('Insufficient balance in from account. Available: ৳' . 
+                                   number_format($fromAccount['balance'], 2) . 
+                                   ', Required: ৳' . number_format($amount, 2));
+            }
+            
+            // ========== FROM ACCOUNT ==========
             $newFromBalance = $fromAccount['balance'] - $amount;
-
+            
+            $updateStmt = $pdo->prepare("
+                UPDATE ac_banking 
+                SET balance = :balance 
+                WHERE sys_id = :id
+            ");
             $updateStmt->execute([
                 ':balance' => $newFromBalance,
                 ':id'      => $fromAccountId
             ]);
-
-            /* -------- FROM ACCOUNT STATEMENT -------- */
+            
+            // FROM ACCOUNT STATEMENT
             $fromUUIDs = generateIDs('ac_banking_stmts');
-
+            
             $stmtInsert = $pdo->prepare("
                 INSERT INTO ac_banking_stmts
                 (
@@ -225,7 +233,7 @@ try {
                     0, 0, :ref, :meta_data
                 )
             ");
-
+            
             $stmtInsert->execute([
                 ':uuid'         => $fromUUIDs['uuid'],
                 ':sys_id'       => $fromUUIDs['sys_id'],
@@ -237,19 +245,21 @@ try {
                 ':deposit'      => 0,
                 ':balance'      => $newFromBalance,
                 ':transfer_type'=> $relatedType,
-                ':transfer_method' => 'instrument',
+                ':transfer_method' => $instrumentType,
                 ':ref'          => $toAccountId,
                 ':meta_data'    => $transactionMetaData
             ]);
-
-            /* ================= TO EMPLOYEE ================= */
+            
+            $transactionId = $fromUUIDs['sys_id'];
+            
+            // ========== TO EMPLOYEE ==========
             if (!$toAccountId || !$toAccountName) {
                 throw new Exception('Employee information not found');
             }
-        
-            /* -------- TO EMPLOYEE STATEMENT -------- */
+            
+            // EMPLOYEE FINANCIAL ENTRY
             $empSysIds = generateIDs('financial_entries');
-        
+            
             $stmt = $pdo->prepare("
                 INSERT INTO financial_entries (
                     uuid, sys_id,
@@ -263,7 +273,7 @@ try {
                     :meta_data
                 )
             ");
-        
+            
             $stmt->execute([
                 ':uuid' => $empSysIds['uuid'],
                 ':sys_id' => $empSysIds['sys_id'],
@@ -272,73 +282,125 @@ try {
                 ':user_type' => 'employee',
                 ':date' => $transactionDate,
                 ':purpose' => $particular,
-                ':type' => 'credit',
+                ':type' => 'credit', // Employee receives money
                 ':amount' => $amount,
-                ':ref' => 'Petty Cash' . '-' . $fromUUIDs['sys_id'],
+                ':ref' => 'Petty Cash - ' . $fromUUIDs['sys_id'],
+                ':meta_data' => $transactionMetaData
+            ]);
+            
+        }
+        // === Payment to Client/Vendor (LOGIC-03) ===
+        elseif (in_array($relatedType, ['client', 'vendor'])) {
+            // First: Financial entry (LOGIC-03: payment to client/vendor)
+            $financialUUIDs = generateIDs('financial_entries');
+            
+            $financialStmt = $pdo->prepare("
+                INSERT INTO financial_entries (
+                    uuid, sys_id,
+                    user_sys_id, user_name, user_type,
+                    date, purpose, type, amount, ref,
+                    meta_data
+                ) VALUES (
+                    :uuid, :sys_id,
+                    :user_sys_id, :user_name, :user_type,
+                    :date, :purpose, :type, :amount, :ref,
+                    :meta_data
+                )
+            ");
+            
+            $financialStmt->execute([
+                ':uuid' => $financialUUIDs['uuid'],
+                ':sys_id' => $financialUUIDs['sys_id'],
+                ':user_sys_id' => $toAccountId,
+                ':user_name' => $toAccountName,
+                ':user_type' => $relatedType, // 'client' or 'vendor'
+                ':date' => $transactionDate,
+                ':purpose' => $particular,
+                ':type' => 'debit', // Payment made to client/vendor
+                ':amount' => $amount,
+                ':ref' => 'Instrument Payment',
+                ':meta_data' => $transactionMetaData
+            ]);
+            
+            $transactionId = $financialUUIDs['sys_id'];
+            
+            // Second: Bank account update (from account)
+            $fromAccStmt = $pdo->prepare("
+                SELECT balance, sys_id 
+                FROM ac_banking 
+                WHERE sys_id = ?
+                FOR UPDATE
+            ");
+            $fromAccStmt->execute([$fromAccountId]);
+            $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$fromAccount) {
+                throw new Exception('Bank account not found: ' . $fromAccountId);
+            }
+            
+            if ($fromAccount['balance'] < $amount) {
+                throw new Exception('Insufficient balance in bank account. Available: ৳' . 
+                                   number_format($fromAccount['balance'], 2) . 
+                                   ', Required: ৳' . number_format($amount, 2));
+            }
+            
+            // Update bank balance
+            $newFromBalance = $fromAccount['balance'] - $amount;
+            
+            $updateStmt = $pdo->prepare("
+                UPDATE ac_banking 
+                SET balance = :balance 
+                WHERE sys_id = :id
+            ");
+            $updateStmt->execute([
+                ':balance' => $newFromBalance,
+                ':id'      => $fromAccountId
+            ]);
+            
+            // Bank statement entry
+            $stmtUUIDs = generateIDs('ac_banking_stmts');
+            
+            $stmtInsert = $pdo->prepare("
+                INSERT INTO ac_banking_stmts
+                (
+                    uuid, sys_id, ledger_db_id, name, date, particular,
+                    withdraw, deposit, balance, transfer_method, meta_data
+                )
+                VALUES
+                (
+                    :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
+                    :withdraw, :deposit, :balance, :transfer_method, :meta_data
+                )
+            ");
+            
+            $stmtInsert->execute([
+                ':uuid' => $stmtUUIDs['uuid'],
+                ':sys_id' => $stmtUUIDs['sys_id'],
+                ':ledger_db_id' => $fromAccountId,
+                ':name' => $fromAccountName,
+                ':date' => $transactionDate,
+                ':particular' => $particular,
+                ':withdraw' => $amount,
+                ':deposit' => 0,
+                ':balance' => $newFromBalance,
+                ':transfer_method' => $instrumentType,
                 ':meta_data' => $transactionMetaData
             ]);
         }
         
-    } elseif ($trnxType === 'credit') {
-        // CREDIT transactions - Received
+    }
+    // ============ LOGIC-02: CREDIT TRANSACTIONS (Receive from Client/Vendor) ============
+    elseif ($trnxType === 'credit') {
         
-        /* ================= BANK LEDGER ENTRY ================= */
-        // Get current balance for credit transaction
-        $accStmt = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ?");
-        $accStmt->execute([$fromAccountId]);
-        $account = $accStmt->fetch(PDO::FETCH_ASSOC);
-        
-        $currentBalance = $account['balance'];
-        $newBalance = $currentBalance + $amount;
-
-        $updateStmt = $pdo->prepare("
-            UPDATE ac_banking 
-            SET balance = :balance 
-            WHERE sys_id = :id
-        ");
-        $updateStmt->execute([
-            ':balance' => $newBalance,
-            ':id'      => $fromAccountId
-        ]);
-
-        // Insert into bank statements
-        $stmtUUIDs = generateIDs('ac_banking_stmts');
-
-        $stmtInsert = $pdo->prepare("
-            INSERT INTO ac_banking_stmts
-            (
-                uuid, sys_id, ledger_db_id, name, date, particular,
-                withdraw, deposit, balance, transfer_method, meta_data
-            )
-            VALUES
-            (
-                :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
-                :withdraw, :deposit, :balance, :transfer_method, :meta_data
-            )
-        ");
-
-        $stmtInsert->execute([
-            ':uuid' => $stmtUUIDs['uuid'],
-            ':sys_id' => $stmtUUIDs['sys_id'],
-            ':ledger_db_id' => $fromAccountId,
-            ':name' => $fromAccountName,
-            ':date' => $transactionDate,
-            ':particular' => $particular,
-            ':withdraw' => 0,
-            ':deposit' => $amount,
-            ':balance' => $newBalance,
-            ':transfer_method' => 'instrument',
-            ':meta_data' => $transactionMetaData
-        ]);
-
-        $stmtSysId = $stmtUUIDs['sys_id'];
-
-        /* ================= FINANCIAL ENTRIES ================= */
+        // First: Financial entry (LOGIC-02: receive from client/vendor)
         $financialUUIDs = generateIDs('financial_entries');
-
-        // Determine if it's client or vendor
-        $userType = strpos(strtolower($toAccountName), 'client') !== false ? 'client' : 'vendor';
-
+        
+        // Determine user type
+        $userType = 'client';
+        if ($relatedType === 'vendor' || strpos(strtolower($toAccountName), 'vendor') !== false) {
+            $userType = 'vendor';
+        }
+        
         $financialStmt = $pdo->prepare("
             INSERT INTO financial_entries (
                 uuid, sys_id,
@@ -352,7 +414,7 @@ try {
                 :meta_data
             )
         ");
-
+        
         $financialStmt->execute([
             ':uuid' => $financialUUIDs['uuid'],
             ':sys_id' => $financialUUIDs['sys_id'],
@@ -361,14 +423,76 @@ try {
             ':user_type' => $userType,
             ':date' => $transactionDate,
             ':purpose' => $particular,
-            ':type' => 'credit',
+            ':type' => 'credit', // Received from client/vendor
             ':amount' => $amount,
-            ':ref' => $stmtSysId,
+            ':ref' => 'Instrument Receive',
+            ':meta_data' => $transactionMetaData
+        ]);
+        
+        $transactionId = $financialUUIDs['sys_id'];
+        
+        // Second: Bank account update (to account - where money is deposited)
+        $fromAccStmt = $pdo->prepare("
+            SELECT balance, sys_id 
+            FROM ac_banking 
+            WHERE sys_id = ?
+            FOR UPDATE
+        ");
+        $fromAccStmt->execute([$fromAccountId]);
+        $bankAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$bankAccount) {
+            throw new Exception('Bank account not found: ' . $fromAccountId);
+        }
+        
+        // Update bank balance
+        $newBalance = $bankAccount['balance'] + $amount;
+        
+        $updateStmt = $pdo->prepare("
+            UPDATE ac_banking 
+            SET balance = :balance 
+            WHERE sys_id = :id
+        ");
+        $updateStmt->execute([
+            ':balance' => $newBalance,
+            ':id'      => $fromAccountId
+        ]);
+        
+        // Bank statement entry
+        $stmtUUIDs = generateIDs('ac_banking_stmts');
+        
+        $stmtInsert = $pdo->prepare("
+            INSERT INTO ac_banking_stmts
+            (
+                uuid, sys_id, ledger_db_id, name, date, particular,
+                withdraw, deposit, balance, transfer_method, meta_data
+            )
+            VALUES
+            (
+                :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
+                :withdraw, :deposit, :balance, :transfer_method, :meta_data
+            )
+        ");
+        
+        $stmtInsert->execute([
+            ':uuid' => $stmtUUIDs['uuid'],
+            ':sys_id' => $stmtUUIDs['sys_id'],
+            ':ledger_db_id' => $fromAccountId,
+            ':name' => $fromAccountName,
+            ':date' => $transactionDate,
+            ':particular' => $particular,
+            ':withdraw' => 0,
+            ':deposit' => $amount,
+            ':balance' => $newBalance,
+            ':transfer_method' => $instrumentType,
             ':meta_data' => $transactionMetaData
         ]);
     }
+    else {
+        throw new Exception('Invalid transaction type');
+    }
     
-    // Update instrument status to cleared AFTER successful transactions
+    // Update instrument status to cleared
     $updateInstrumentStmt = $pdo->prepare("
         UPDATE ac_instrument_tracking 
         SET 
@@ -381,13 +505,11 @@ try {
         WHERE sys_id = :sys_id
     ");
     
-    $transactionId = $fromUUIDs['sys_id'] ?? $stmtUUIDs['sys_id'] ?? null;
-    
     $updateResult = $updateInstrumentStmt->execute([
         ':cleared_by' => $userName,
         ':transaction_id' => $transactionId,
         ':meta_data' => $transactionMetaData,
-        ':sys_id' => $data['sys_id']
+        ':sys_id' => $sysId
     ]);
     
     if ($updateResult) {
@@ -396,7 +518,8 @@ try {
         echo json_encode([
             'success' => true,
             'message' => 'Financial transactions processed successfully',
-            'transaction_id' => $transactionId
+            'transaction_id' => $transactionId,
+            'transaction_date' => $transactionDate
         ]);
     } else {
         $pdo->rollBack();

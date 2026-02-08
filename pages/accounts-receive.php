@@ -279,7 +279,7 @@ $base_ip_path = trim($ip_port, "/");
         
             /* ================= CONFIG ================= */
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_RECEIVED_TRANSACTION = `${IP_PATH}/api/accounts/store-ledger-stmt.php`;
+            const API_RECEIVED_TRANSACTION = `${IP_PATH}/api/accounts/receive-transaction.php`;
             const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
         
             /* ================= ELEMENTS ================= */

@@ -392,10 +392,10 @@ $base_ip_path = trim($ip_port, "/");
         
             window.resetTransactionForm = function () {
                 transactionForm.reset();
-                transactionDate.value = BD_TIME.getDate();();
-                transactionDate.max = BD_TIME.getDate();();
-                if(chequeDateInput) chequeDateInput.min = BD_TIME.getDate();();
-                if(bftnDateInput) bftnDateInput.min = BD_TIME.getDate();();
+                transactionDate.value = BD_TIME.getDate();
+                transactionDate.max = BD_TIME.getDate();
+                if(chequeDateInput) chequeDateInput.min = BD_TIME.getDate();
+                if(bftnDateInput) bftnDateInput.min = BD_TIME.getDate();
                 togglePartySection();
                 togglePaymentDetails();
             };
