@@ -40,6 +40,7 @@ function generateUUID(PDO $pdo, string $tag): string
         'ac_banking_stmts'  => ['table' => 'ac_banking_stmts',  'column' => 'sys_id', 'short' => 'AS'],
         'AIT'  => ['table' => 'ac_instrument_tracking',  'column' => 'sys_id', 'short' => 'AT'], // account instrument tracking... eg. cheque, bftn/eft
         'payroll_finals'  => ['table' => 'payroll_finals',  'column' => 'sys_id', 'short' => 'PS'],
+        'petty_cash'  => ['table' => 'petty_cashes',  'column' => 'sys_id', 'short' => 'PC'],
 
         // Operations
         'bookings'  => ['table' => 'bookings',  'column' => 'sys_id', 'short' => 'BK'],
