@@ -6,6 +6,7 @@ if (empty($ip_port)) {
 }
 
 $base_ip_path = trim($ip_port, "/");
+
 ?>
 
 <!DOCTYPE html>
@@ -330,12 +331,12 @@ $base_ip_path = trim($ip_port, "/");
             }
 
             /* ================= INIT ================= */
-            transactionDate.value = todayDate();
-            transactionDate.max = todayDate(); // Can't select future date
+            transactionDate.value = BD_TIME.getDate();
+            transactionDate.max = BD_TIME.getDate(); // Can't select future date
             
             // Set max dates for cheque and bftn date
-            chequeDateInput.max = todayDate();
-            bftnDateInput.max = todayDate();
+            chequeDateInput.min = BD_TIME.getDate();
+            bftnDateInput.min = BD_TIME.getDate();
         
             function toggleTransferSections() {
                 const type = selectType.value;

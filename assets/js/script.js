@@ -546,3 +546,31 @@ const UIInteractions = (function () {
 document.addEventListener('DOMContentLoaded', function() {
     UIInteractions.init();
 });
+
+window.BD_TIME = {
+    getDate: function() {
+        const now = new Date();
+        return new Date(now.getTime() + (6 * 60 * 60 * 1000)) // UTC+6
+            .toISOString().split('T')[0];
+    },
+    
+    getDateTime: function() {
+        const now = new Date();
+        const bdTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+        const date = bdTime.toISOString().split('T')[0];
+        const time = bdTime.toTimeString().split(' ')[0];
+        return `${date} ${time}`;
+    },
+    
+    formatForAPI: function(dateStr) {
+        // যদি শুধু তারিখ থাকে, বাংলাদেশ সময় যোগ করুন
+        if (dateStr && !dateStr.includes(' ')) {
+            const time = new Date().toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Dhaka',
+                hour12: false
+            });
+            return `${dateStr} ${time}`;
+        }
+        return dateStr;
+    }
+};

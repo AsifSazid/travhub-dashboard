@@ -45,6 +45,9 @@ $amount          = $data['amount']          ?? 0;
 $particular      = $data['particular']      ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d h:m:s');
 
+var_dump($transactionDate);
+die;
+
 /* ================= VALIDATION ================= */
 $allowedTypes = ['a2a', 'a2p'];
 
@@ -110,8 +113,8 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
         "date"            => date('Y-m-d'),
         "remarks"         => $particular,
         "related_type"    => $transferType,
-        "related_from"    => $fromAccountId . '||' . $fromAccountName,
-        "related_to"      => $transferType === 'a2a' ? $toAccountId . '||' . $toAccountName : $employeeId . '||' . $employeeName,
+        "related_from"    => $fromAccountId . ' || ' . $fromAccountName,
+        "related_to"      => $transferType === 'a2a' ? $toAccountId . ' || ' . $toAccountName : $employeeId . ' || ' . $employeeName,
         "amount"          => $amount // Add amount to instrument
     ];
 

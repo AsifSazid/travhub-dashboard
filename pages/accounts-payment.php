@@ -54,6 +54,10 @@ $base_ip_path = trim($ip_port, "/");
         ::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+        
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -64,23 +68,8 @@ $base_ip_path = trim($ip_port, "/");
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
     
-    <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
-        </div>
-    </div>
-
     <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 transition-all duration-300 h-full">
+    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300 h-full">
         <div class="p-4 md:p-6 h-full">
 
             <!-- Account Statement Container -->
@@ -108,28 +97,22 @@ $base_ip_path = trim($ip_port, "/");
                     <!-- Transaction Input Section -->
                     <div class="bg-blue-50 p-4 md:p-6 rounded-lg mb-6 border border-blue-200">
                         <h6 class="text-blue-700 font-semibold mb-4 flex items-center text-lg">
-                            <i class="fas fa-plus-circle mr-2"></i> Add New Transaction
+                            <i class="fas fa-minus-circle mr-2"></i> Make Payment
                         </h6>
                         <form id="transactionForm" class="space-y-6">
-                            <input type="hidden" id="accountId" name="accountId">
-                            <input type="hidden" id="accountName" name="accountName">
-                            <input type="hidden" id="currentAccountBalance" name="currentAccountBalance">
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                                <input id="paymentType" name="paymentType" value="Deposit" hidden />
-                                
-                                <div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="col-span-1">
                                     <label for="select_type" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fa-solid fa-user"></i> Select Type
+                                        <i class="fa-solid fa-user"></i> Payment To
                                     </label>
-                                   <select name="select_type" id="select_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                   <select name="select_type" id="select_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                        <option value="client" selected>Client</option>
                                        <option value="vendor">Vendor</option>
                                    </select>
                                 </div>
                                 
                                 <!-- Client -->
-                                <div id="client-section">
+                                <div id="client-section" class="col-span-1">
                                     <label for="clientInput" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-user"></i> Client Name
                                     </label>
@@ -137,21 +120,36 @@ $base_ip_path = trim($ip_port, "/");
                                 </div>
                                 
                                 <!--Vendor-->
-                                <div id="vendor-section" class="hidden">
+                                <div id="vendor-section" class="hidden col-span-1">
                                     <label for="vendorInput" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fa-solid fa-user"></i> Vendor Name
                                     </label>
                                    <?php include('form-selects/vendors.php') ?>
                                 </div>
                                 
-                                <div>
+                                <!-- From Account -->
+                                <div class="col-span-1">
                                     <label for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fa-solid fa-receipt"></i> Account Name
+                                        <i class="fas fa-wallet mr-1"></i> From Account
                                     </label>
                                    <?php include('form-selects/accounts.php') ?>
                                 </div>
                                 
-                                <div>
+                                <!-- Transfer Method -->
+                                <div class="col-span-1">
+                                    <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-money-check-alt mr-1"></i> Payment Method
+                                    </label>
+                                   <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                       <option value="cash" selected>Cash</option>
+                                       <option value="cheque">Cheque</option>
+                                       <option value="npsb-rtgs">NPSB/RTGS</option>
+                                       <option value="bftn-eft">BFTN/EFT</option>
+                                   </select>
+                                </div>
+                                
+                                <!-- Date -->
+                                <div class="col-span-1">
                                     <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-1"></i> Date
                                     </label>
@@ -160,44 +158,119 @@ $base_ip_path = trim($ip_port, "/");
                                         id="transactionDate" name="transactionDate" required>
                                 </div>
                                 
-                                <div>
+                                <!-- Amount -->
+                                <div class="col-span-1">
                                     <label for="balance" class="block text-sm font-medium text-gray-700 mb-2">
                                         <i class="fas fa-dollar-sign mr-1"></i> Amount
                                     </label>
-                                    <input type="number" step="0.01"
+                                    <input type="number" step="0.01" min="0"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                         id="balance" name="balance" required placeholder="0.00">
                                 </div>
                                 
-                                <div class="md:col-span-2 lg:col-span-5">
-                                    <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-file-alt mr-1"></i> Particular
-                                    </label>
-                                    <textarea
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" rows="5"
-                                        id="particular" name="particular" placeholder="Enter transaction description"></textarea>
+                                <!-- Cheque Details Section (Hidden by default) -->
+                                <div id="cheque-details-section" class="hidden md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="col-span-1">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                                            <div class="col-span-1">
+                                                <label for="cheque_no" class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-file-invoice mr-1"></i> Cheque No
+                                                </label>
+                                                <input type="text"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    id="cheque_no" name="cheque_no" placeholder="Enter cheque number">
+                                            </div>
+                                            
+                                            <div class="col-span-1">
+                                                <label for="cheque_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-calendar-day mr-1"></i> Cheque Date
+                                                </label>
+                                                <input type="date"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    id="cheque_date" name="cheque_date">
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                    <div class="col-span-1">
+                                        <label for="cheque_account_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-user-circle mr-1"></i> Account Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="cheque_account_name" name="cheque_account_name" placeholder="Enter account name">
+                                    </div>
+                                    
+                                    <div class="col-span-1">
+                                        <label for="bank_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-university mr-1"></i> Bank Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="bank_name" name="bank_name" placeholder="Enter bank name">
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div class="flex justify-end space-x-3 pt-4">
-                                <button type="button" onclick="resetTransactionForm()"
-                                    class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors">
-                                    <i class="fas fa-redo mr-2"></i> Reset
-                                </button>
-                                <button type="button"
-                                    class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center"
-                                    id="saveTransactionBtn">
-                                    <span id="spinner" class="hidden spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                                    <i class="fas fa-save mr-2"></i>
-                                    <span id="saveButtonText">Payment Amount</span>
-                                </button>
-                            </div>
-                        </form>
+                                
+                                <!-- BFTN/EFT Details Section (Hidden by default) -->
+                                <div id="bftn-details-section" class="hidden md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="col-span-1">
+                                        <label for="account_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-user-circle mr-1"></i> Account Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="account_name" name="account_name" placeholder="Enter account name">
+                                    </div>
+                                    
+                                    <div class="col-span-1">
+                                        <label for="eft_bank_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-university mr-1"></i> Bank Name
+                                        </label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="eft_bank_name" name="eft_bank_name" placeholder="Enter bank name">
+                                    </div>
+                                    
+                                    <div class="col-span-1">
+                                        <label for="bftn_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-calendar-check mr-1"></i> Transaction Date
+                                        </label>
+                                        <input type="date"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            id="bftn_date" name="bftn_date">
+                                            </div>
+                                    </div>
+                                    
+                                    <!-- Particular -->
+                                    <div class="md:col-span-2 lg:col-span-3">
+                                        <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-file-alt mr-1"></i> Particular
+                                        </label>
+                                        <textarea
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" rows="3"
+                                            id="particular" name="particular" placeholder="Enter payment description"></textarea>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="resetTransactionForm()"
+                                        class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors">
+                                        <i class="fas fa-redo mr-2"></i> Reset
+                                    </button>
+                                    <button type="button"
+                                        class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center"
+                                        id="saveTransactionBtn">
+                                        <div id="spinner" class="hidden spinner mr-2"></div>
+                                        <i class="fas fa-paper-plane mr-2"></i>
+                                        <span id="saveButtonText">Make Payment</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
 
     <?php include '../elements/floating-menus.php'; ?>
 
@@ -208,31 +281,41 @@ $base_ip_path = trim($ip_port, "/");
         
             /* ================= CONFIG ================= */
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
-            const API_POST_URL = `${IP_PATH}/api/ledgers/store_ledger_statement.php`;
-            const FINANCIAL_ENTRIES_STORE_API = `${IP_PATH}/api/financial_entries/store.php`;
-            const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
-        
+            const API_PAYMENT_TRANSACTION = `${IP_PATH}/api/accounts/payment-transaction.php`;
+
             /* ================= ELEMENTS ================= */
             const transactionForm = document.getElementById('transactionForm');
             const saveTransactionBtn = document.getElementById('saveTransactionBtn');
             const spinner = document.getElementById('spinner');
             const saveButtonText = document.getElementById('saveButtonText');
-        
+
             const selectType = document.getElementById('select_type');
             const clientSection = document.getElementById('client-section');
             const vendorSection = document.getElementById('vendor-section');
-        
+            const transferMethod = document.getElementById('transfer_method');
+            const chequeDetailsSection = document.getElementById('cheque-details-section');
+            const bftnDetailsSection = document.getElementById('bftn-details-section');
+            
             const clientInput = document.getElementById('clientInput');
             const vendorInput = document.getElementById('vendorInput');
             const accountInput = document.getElementById('accountInput');
-        
+            
             const transactionDate = document.getElementById('transactionDate');
             const amountInput = document.getElementById('balance');
             const particularTextarea = document.getElementById('particular');
+            
+            // Cheque fields
+            const chequeNoInput = document.getElementById('cheque_no');
+            const chequeDateInput = document.getElementById('cheque_date');
+            const chequeAccountNameInput = document.getElementById('cheque_account_name');
+            const bankNameInput = document.getElementById('bank_name');
+            
+            // BFTN/EFT fields
+            const accountNameInput = document.getElementById('account_name');
+            const eftBankNameInput = document.getElementById('eft_bank_name');
+            const bftnDateInput = document.getElementById('bftn_date');
         
             /* ================= UTILS ================= */
-            const ACCOUNT_MANDATORY_FROM = new Date('2026-02-01');
-            
             function extractIds(value) {
                 if (!value) return null;
                 const parts = value.split('|').map(v => v.trim());
@@ -241,13 +324,27 @@ $base_ip_path = trim($ip_port, "/");
                     name: parts[1] || null,
                 };
             }
-        
-            function todayDate() {
-                return new Date().toISOString().split('T')[0];
+            
+            function buildDateTime(dateOnly) {
+                // বাংলাদেশের সময়ে current time যোগ করুন
+                const now = new Date();
+                const bangladeshOffset = 6 * 60;
+                const localOffset = now.getTimezoneOffset();
+                const bangladeshTime = new Date(now.getTime() + 
+                    (localOffset + bangladeshOffset) * 60 * 1000);
+                
+                const time = bangladeshTime.toTimeString().split(' ')[0];
+                
+                return `${dateOnly} ${time}`;
             }
-        
+
             /* ================= INIT ================= */
-            transactionDate.value = todayDate();
+            transactionDate.value = BD_TIME.getDate();
+            transactionDate.max = BD_TIME.getDate();
+            
+            // Set max dates for cheque and bftn date
+            chequeDateInput.min = BD_TIME.getDate();
+            bftnDateInput.min = BD_TIME.getDate();
         
             function togglePartySection() {
                 const type = selectType.value;
@@ -262,180 +359,219 @@ $base_ip_path = trim($ip_port, "/");
                     if (vendorInput) vendorInput.value = '';
                 }
             }
+            
+            function togglePaymentDetails() {
+                const method = transferMethod.value;
+                
+                // Hide all sections first
+                if(chequeDetailsSection) chequeDetailsSection.classList.add('hidden');
+                if(bftnDetailsSection) bftnDetailsSection.classList.add('hidden');
+                
+                // Clear all fields if needed
+                if(chequeNoInput) chequeNoInput.value = '';
+                if(chequeDateInput) chequeDateInput.value = '';
+                if(chequeAccountNameInput) chequeAccountNameInput.value = '';
+                if(bankNameInput) bankNameInput.value = '';
+                if(accountNameInput) accountNameInput.value = '';
+                if(eftBankNameInput) eftBankNameInput.value = '';
+                if(bftnDateInput) bftnDateInput.value = '';
+                
+                // Show relevant section
+                if (method === 'cheque' && chequeDetailsSection) {
+                    chequeDetailsSection.classList.remove('hidden');
+                } else if (method === 'bftn-eft' && bftnDetailsSection) {
+                    bftnDetailsSection.classList.remove('hidden');
+                }
+            }
         
             togglePartySection();
+            togglePaymentDetails();
+            
             selectType.addEventListener('change', togglePartySection);
+            transferMethod.addEventListener('change', togglePaymentDetails);
         
             window.resetTransactionForm = function () {
                 transactionForm.reset();
-                transactionDate.value = todayDate();
+                transactionDate.value = BD_TIME.getDate();();
+                transactionDate.max = BD_TIME.getDate();();
+                if(chequeDateInput) chequeDateInput.min = BD_TIME.getDate();();
+                if(bftnDateInput) bftnDateInput.min = BD_TIME.getDate();();
                 togglePartySection();
+                togglePaymentDetails();
             };
         
-            saveTransactionBtn.addEventListener('click', submitTransaction);
+            saveTransactionBtn.addEventListener('click', submitPayment);
         
             /* ================= VALIDATION ================= */
             function validateForm() {
-        
                 const type = selectType.value;
+                const method = transferMethod.value;
                 const client = extractIds(clientInput?.value);
                 const vendor = extractIds(vendorInput?.value);
                 const account = extractIds(accountInput.value);
         
-                const txnDate = new Date(transactionDate.value);
-                
-                if (txnDate >= ACCOUNT_MANDATORY_FROM) {
-                    if (!account || !account.sys_id) {
-                        alert('From 1 Feb 2026, selecting an account is mandatory');
+                // Validate From Account
+                if (!account || !account.sys_id) {
+                    alert('Please select From Account');
+                    accountInput?.focus();
+                    return false;
+                }
+        
+                // Validate To based on type
+                if (type === 'client') {
+                    if (!client || !client.sys_id) {
+                        alert('Please select Client');
+                        clientInput?.focus();
+                        return false;
+                    }
+                } else if (type === 'vendor') {
+                    if (!vendor || !vendor.sys_id) {
+                        alert('Please select Vendor');
+                        vendorInput?.focus();
                         return false;
                     }
                 }
         
-                if (type === 'client' && (!client || !client.sys_id)) {
-                    alert('Please select a client');
-                    return false;
-                }
-        
-                if (type === 'vendor' && (!vendor || !vendor.sys_id)) {
-                    alert('Please select a vendor');
-                    return false;
-                }
-        
+                // Validate Date
                 if (!transactionDate.value) {
                     alert('Please select a date');
+                    transactionDate.focus();
                     return false;
                 }
         
-                if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
-                    alert('Please enter a valid amount');
+                // Validate Amount
+                const amount = parseFloat(amountInput.value);
+                if (!amountInput.value || isNaN(amount) || amount <= 0) {
+                    alert('Please enter a valid amount (greater than 0)');
+                    amountInput.focus();
                     return false;
                 }
+                
+                // Validate Cheque details if method is cheque
+                if (method === 'cheque') {
+                    if (!chequeNoInput.value.trim()) {
+                        alert('Please enter Cheque Number');
+                        chequeNoInput.focus();
+                        return false;
+                    }
+                    
+                    if (!chequeDateInput.value) {
+                        alert('Please select Cheque Date');
+                        chequeDateInput.focus();
+                        return false;
+                    }
+                    
+                    if (!chequeAccountNameInput.value.trim()) {
+                        alert('Please enter Account Name for cheque');
+                        chequeAccountNameInput.focus();
+                        return false;
+                    }
+                    
+                    if (!bankNameInput.value.trim()) {
+                        alert('Please enter Bank Name');
+                        bankNameInput.focus();
+                        return false;
+                    }
+                }
+                
+                // Validate BFTN/EFT details if method is bftn-eft
+                if (method === 'bftn-eft') {
+                    if (!accountNameInput.value.trim()) {
+                        alert('Please enter Account Name');
+                        accountNameInput.focus();
+                        return false;
+                    }
+                    
+                    if (!eftBankNameInput.value.trim()) {
+                        alert('Please enter Bank Name');
+                        eftBankNameInput.focus();
+                        return false;
+                    }
+                    
+                    if (!bftnDateInput.value) {
+                        alert('Please select Transaction Date');
+                        bftnDateInput.focus();
+                        return false;
+                    }
+                }
         
+                // Validate Particular
                 if (!particularTextarea.value.trim()) {
-                    alert('Please enter particulars');
+                    alert('Please enter payment particulars');
+                    particularTextarea.focus();
                     return false;
                 }
         
                 return true;
             }
         
-            /* ================= FETCH ACCOUNT ================= */
-            async function fetchAccountInfo(acc_id) {
-                try {
-                    const res = await fetch(`${FETCH_ACCOUNT}?acc_id=${acc_id}`);
-                    const json = await res.json();
-                    return json.accInfo || null;
-                } catch (e) {
-                    console.error(e);
-                    return null;
-                }
-            }
-        
-            /* ================= SUBMIT ================= */
-            async function submitTransaction() {
-        
+            /* ================= SUBMIT PAYMENT ================= */
+            async function submitPayment() {
                 if (!validateForm()) return;
         
                 const type = selectType.value;
+                const method = transferMethod.value;
                 const client = extractIds(clientInput?.value);
                 const vendor = extractIds(vendorInput?.value);
                 const account = extractIds(accountInput.value);
-                const txnDate = new Date(transactionDate.value);
-                
-                let accountInfo = null;
-                
-                // Only fetch account info when account is mandatory OR provided
-                if (txnDate >= ACCOUNT_MANDATORY_FROM || (account && account.sys_id)) {
-                
-                    if (!account || !account.sys_id) {
-                        alert('Account is required for this transaction date');
-                        return;
-                    }
-                
-                    accountInfo = await fetchAccountInfo(account.sys_id);
-                
-                    if (!accountInfo) {
-                        alert('Account info fetch failed');
-                        return;
-                    }
-                }
         
                 const data = {
                     accountId: account?.sys_id || null,
                     accountName: account?.name || null,
-                    particular: particularTextarea.value,
-                    balance: parseFloat(amountInput.value),
-                    paymentType: 'Withdraw',
-                    currentAccountBalance: accountInfo
-                        ? parseFloat(accountInfo.balance || 0)
-                        : 0,
-                    transactionDate: transactionDate.value,
-                    client_id: type === 'client' ? client.sys_id : null,
-                    client_name: type === 'client' ? client.name : null,
-                    vendor_id: type === 'vendor' ? vendor.sys_id : null,
-                    vendor_name: type === 'vendor' ? vendor.name : null
+                    clientId: type === 'client' ? client?.sys_id : null,
+                    clientName: type === 'client' ? client?.name : null,
+                    vendorId: type === 'vendor' ? vendor?.sys_id : null,
+                    vendorName: type === 'vendor' ? vendor?.name : null,
+                    amount: amountInput.value,
+                    particular: particularTextarea.value.trim(),
+                    transactionDate: buildDateTime(transactionDate.value),
+                    transferMethod: method,
+                    chequeNo: method === 'cheque' ? chequeNoInput.value.trim() : null,
+                    chequeDate: method === 'cheque' ? chequeDateInput.value : null,
+                    chequeAccountName: method === 'cheque' ? chequeAccountNameInput.value : null,
+                    bankName: method === 'cheque' ? bankNameInput.value.trim() : null,
+                    bftnAccountName: method === 'bftn-eft' ? accountNameInput.value.trim() : null,
+                    eftBankName: method === 'bftn-eft' ? eftBankNameInput.value.trim() : null,
+                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null
                 };
+                
+                console.log('Payment data:', data);
         
+                // Disable button and show spinner
                 saveTransactionBtn.disabled = true;
                 spinner.classList.remove('hidden');
                 saveButtonText.textContent = 'Processing...';
         
                 try {
-                    const res = await fetch(API_POST_URL, {
+                    const response = await fetch(API_PAYMENT_TRANSACTION, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify(data)
                     });
         
-                    const result = await res.json();
+                    const result = await response.json();
         
-                    if (res.ok && result.success) {
-                        await callSecondAPI(data, result);
-                    } else {
-                        alert(result.error || 'Ledger save failed');
-                    }
-        
-                } catch (e) {
-                    console.error(e);
-                    alert('Network error');
-                } finally {
-                    saveTransactionBtn.disabled = false;
-                    spinner.classList.add('hidden');
-                    saveButtonText.textContent = 'Received Amount';
-                }
-            }
-        
-            /* ================= SECOND API ================= */
-            async function callSecondAPI(data, firstResult) {
-                const payload = {
-                    type: 'debit',
-                    amount: data.balance,
-                    purpose: data.particular,
-                    client_id: data.client_id,
-                    vendor_id: data.vendor_id,
-                    ref: firstResult.stmt_sys_id,
-                    date: data.transactionDate,
-                };
-        
-                try {
-                    const res = await fetch(FINANCIAL_ENTRIES_STORE_API, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-        
-                    const result = await res.json();
-        
-                    if (result.success) {
-                        alert('Transaction saved successfully');
+                    if (response.ok && result.success) {
+                        if (result.instrument) {
+                            alert('Instrument recorded successfully. Payment pending clearance.');
+                        } else {
+                            alert('Payment completed successfully!');
+                        }
                         resetTransactionForm();
                     } else {
-                        alert('Ledger saved but financial entry failed');
+                        alert(result.error || result.message || 'Payment failed.');
                     }
         
-                } catch (e) {
-                    console.error(e);
-                    alert('Ledger saved, financial entry error');
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    alert('Network error. Please check your connection.');
+                } finally {
+                    // Re-enable button
+                    saveTransactionBtn.disabled = false;
+                    spinner.classList.add('hidden');
+                    saveButtonText.textContent = 'Make Payment';
                 }
             }
         

@@ -313,6 +313,12 @@ $base_ip_path = trim($ip_port, "/");
                     </div>
                 </div>
             </div>
+            
+                
+            <!-- Cheque/BFTN Transactions -->
+            <div class="bg-white rounded-xl shadow p-6 mb-8">
+                <?php include('./acc-instrument-tracking.php') ?>
+            </div>
     
             <!-- Charts and Recent Transactions -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
