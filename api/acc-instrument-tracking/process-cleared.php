@@ -2,6 +2,8 @@
 session_start();
 require '../../server/db_connection.php';          // $pdo
 require '../../server/generate_meta_data.php';
+require '../../server/uuid_with_system_id_generator.php';
+
 header('Content-Type: application/json');
 
 try {
@@ -13,23 +15,29 @@ try {
     
     $pdo->beginTransaction();
     
-    // Get instrument data using sys_id
-    $instrumentStmt = $pdo->prepare("SELECT meta_data, related_from, related_to, account_name, bank_name, instrument_date, remarks FROM ac_instrument_tracking WHERE sys_id = ?");
+    // First get instrument data WITH status check
+    $instrumentStmt = $pdo->prepare("
+        SELECT meta_data, related_from, related_to, account_name, bank_name, 
+               instrument_date, remarks, status, amount 
+        FROM ac_instrument_tracking 
+        WHERE sys_id = ? AND status != 'cleared'
+        FOR UPDATE
+    ");
     $instrumentStmt->execute([$data['sys_id']]);
     $instrument = $instrumentStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$instrument) {
-        throw new Exception('Instrument not found');
+        throw new Exception('Instrument not found or already cleared');
     }
     
     $amount = $data['amount'];
     $trnxType = $data['trnx_type'];
-    $relatedType = $data['related_type'];
+    $relatedType = $data['related_type'] ?? 'a2a';
     $transactionDate = $instrument['instrument_date'] ?? date('Y-m-d');
-    $particular = "Instrument Cleared: " . ($instrument['remarks'] ?? 'Instrument clearance');
+    $particular = "Instrument Cleared: " . ($data['remarks'] ?? $instrument['remarks'] ?? 'Instrument clearance');
     $userName = $_SESSION['user_name'] ?? 'system';
     
-    // Build meta data for transaction
+    // Build meta data
     $transactionMetaData = buildMetaData(
         $instrument['meta_data'] ?? null,
         $userName
@@ -44,6 +52,70 @@ try {
     $toAccountId = $relatedTo[0] ?? null;
     $toAccountName = $relatedTo[1] ?? null;
     
+    // Check if accounts exist and have sufficient balance BEFORE any updates
+    if ($trnxType === 'debit' && $relatedType === 'a2a') {
+        // For DEBIT A2A: Check from account balance
+        $fromAccStmt = $pdo->prepare("
+            SELECT balance, sys_id 
+            FROM ac_banking 
+            WHERE sys_id = ?
+            FOR UPDATE
+        ");
+        $fromAccStmt->execute([$fromAccountId]);
+        $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fromAccount) {
+            throw new Exception('From account not found: ' . $fromAccountId);
+        }
+
+        if ($fromAccount['balance'] < $amount) {
+            throw new Exception('Insufficient balance in from account. Available: ৳' . 
+                               number_format($fromAccount['balance'], 2) . 
+                               ', Required: ৳' . number_format($amount, 2));
+        }
+        
+        // Check to account exists
+        $toAccStmt = $pdo->prepare("SELECT sys_id FROM ac_banking WHERE sys_id = ? FOR UPDATE");
+        $toAccStmt->execute([$toAccountId]);
+        $toAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$toAccount) {
+            throw new Exception('To account not found: ' . $toAccountId);
+        }
+        
+    } elseif ($trnxType === 'debit' && $relatedType === 'a2p') {
+        // For DEBIT A2P: Check from account balance
+        $fromAccStmt = $pdo->prepare("
+            SELECT balance, sys_id 
+            FROM ac_banking 
+            WHERE sys_id = ?
+            FOR UPDATE
+        ");
+        $fromAccStmt->execute([$fromAccountId]);
+        $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fromAccount) {
+            throw new Exception('From account not found: ' . $fromAccountId);
+        }
+
+        if ($fromAccount['balance'] < $amount) {
+            throw new Exception('Insufficient balance in from account. Available: ৳' . 
+                               number_format($fromAccount['balance'], 2) . 
+                               ', Required: ৳' . number_format($amount, 2));
+        }
+        
+    } elseif ($trnxType === 'credit') {
+        // For CREDIT: Check from account exists (receiving account)
+        $accStmt = $pdo->prepare("SELECT sys_id FROM ac_banking WHERE sys_id = ? FOR UPDATE");
+        $accStmt->execute([$fromAccountId]);
+        $account = $accStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$account) {
+            throw new Exception('Account not found: ' . $fromAccountId);
+        }
+    }
+    
+    // Now perform the transactions
     $fromUUIDs = null;
     $stmtUUIDs = null;
     
@@ -52,23 +124,6 @@ try {
             // DEBIT and A2A
             
             /* ================= FROM ACCOUNT ================= */
-            $fromAccStmt = $pdo->prepare("
-                SELECT balance 
-                FROM ac_banking 
-                WHERE sys_id = ?
-                FOR UPDATE
-            ");
-            $fromAccStmt->execute([$fromAccountId]);
-            $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$fromAccount) {
-                throw new Exception('From account not found');
-            }
-
-            if ($fromAccount['balance'] < $amount) {
-                throw new Exception('Insufficient balance');
-            }
-
             $newFromBalance = $fromAccount['balance'] - $amount;
 
             $updateStmt = $pdo->prepare("
@@ -116,20 +171,7 @@ try {
             ]);
 
             /* ================= TO ACCOUNT ================= */
-            $toAccStmt = $pdo->prepare("
-                SELECT balance 
-                FROM ac_banking 
-                WHERE sys_id = ?
-                FOR UPDATE
-            ");
-            $toAccStmt->execute([$toAccountId]);
-            $toAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
-        
-            if (!$toAccount) {
-                throw new Exception('To account not found');
-            }
-        
-            $newToBalance = $toAccount['balance'] + $amount;
+            $newToBalance = $toAccount['amount'] + $amount;
         
             $updateStmt->execute([
                 ':balance' => $newToBalance,
@@ -159,23 +201,6 @@ try {
             // DEBIT and A2P
             
             /* ================= FROM ACCOUNT ================= */
-            $fromAccStmt = $pdo->prepare("
-                SELECT balance 
-                FROM ac_banking 
-                WHERE sys_id = ?
-                FOR UPDATE
-            ");
-            $fromAccStmt->execute([$fromAccountId]);
-            $fromAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$fromAccount) {
-                throw new Exception('From account not found');
-            }
-
-            if ($fromAccount['balance'] < $amount) {
-                throw new Exception('Insufficient balance');
-            }
-
             $newFromBalance = $fromAccount['balance'] - $amount;
 
             $updateStmt->execute([
@@ -258,19 +283,11 @@ try {
         // CREDIT transactions - Received
         
         /* ================= BANK LEDGER ENTRY ================= */
-        $accStmt = $pdo->prepare("
-            SELECT balance 
-            FROM ac_banking 
-            WHERE sys_id = ?
-            FOR UPDATE
-        ");
+        // Get current balance for credit transaction
+        $accStmt = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ?");
         $accStmt->execute([$fromAccountId]);
         $account = $accStmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$account) {
-            throw new Exception('Account not found');
-        }
-
+        
         $currentBalance = $account['balance'];
         $newBalance = $currentBalance + $amount;
 
@@ -351,34 +368,46 @@ try {
         ]);
     }
     
-    // Update instrument for cleared status
+    // Update instrument status to cleared AFTER successful transactions
     $updateInstrumentStmt = $pdo->prepare("
         UPDATE ac_instrument_tracking 
         SET 
+            status = 'cleared',
             cleared_at = NOW(), 
             cleared_by = :cleared_by,
-            cleared_transaction_id = :transaction_id
+            cleared_transaction_id = :transaction_id,
+            meta_data = :meta_data,
+            updated_at = NOW()
         WHERE sys_id = :sys_id
     ");
     
     $transactionId = $fromUUIDs['sys_id'] ?? $stmtUUIDs['sys_id'] ?? null;
     
-    $updateInstrumentStmt->execute([
+    $updateResult = $updateInstrumentStmt->execute([
         ':cleared_by' => $userName,
         ':transaction_id' => $transactionId,
+        ':meta_data' => $transactionMetaData,
         ':sys_id' => $data['sys_id']
     ]);
     
-    $pdo->commit();
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Financial transactions processed successfully',
-        'transaction_id' => $transactionId
-    ]);
+    if ($updateResult) {
+        $pdo->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Financial transactions processed successfully',
+            'transaction_id' => $transactionId
+        ]);
+    } else {
+        $pdo->rollBack();
+        throw new Exception('Failed to update instrument status');
+    }
     
 } catch (Exception $e) {
-    $pdo->rollBack();
+    // Rollback on any error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(400);
     echo json_encode([
         'success' => false,

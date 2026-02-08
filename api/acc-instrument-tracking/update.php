@@ -1,18 +1,18 @@
 <?php
 session_start();
-require '../../server/db_connection.php';          // $pdo
+require '../../server/db_connection.php';
 require '../../server/generate_meta_data.php';
 header('Content-Type: application/json');
 
 try {
     $data = json_decode(file_get_contents('php://input'), true);
     
-    if (!isset($data['id'])) {
-        throw new Exception('Instrument ID is required');
+    if (!isset($data['sys_id'])) {
+        throw new Exception('Instrument sys_id is required');
     }
     
     // First get existing instrument data
-    $getStmt = $pdo->prepare("SELECT sys_id, meta_data FROM ac_instrument_tracking WHERE sys_id = ?");
+    $getStmt = $pdo->prepare("SELECT meta_data, status FROM ac_instrument_tracking WHERE sys_id = ?");
     $getStmt->execute([$data['sys_id']]);
     $existing = $getStmt->fetch(PDO::FETCH_ASSOC);
     
@@ -20,13 +20,18 @@ try {
         throw new Exception('Instrument not found');
     }
     
-    // Build new meta data with existing
+    // Don't allow updating to cleared status via this API
+    if (isset($data['status']) && $data['status'] === 'cleared') {
+        throw new Exception('Use process-cleared.php for clearing instruments');
+    }
+    
+    // Build new meta data
     $newMetaData = buildMetaData(
         $existing['meta_data'],
         $_SESSION['user_name'] ?? 'system'
     );
     
-    // Only update status, remarks, and meta_data
+    // Only update status (except cleared) and remarks
     $stmt = $pdo->prepare("
         UPDATE ac_instrument_tracking 
         SET 

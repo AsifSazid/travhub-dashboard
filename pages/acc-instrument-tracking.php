@@ -928,15 +928,90 @@ document.addEventListener('DOMContentLoaded', function() {
         const newStatus = document.getElementById('modalStatus').value;
         const remarks = document.getElementById('modalRemarks').value;
         
-        // Check if status is changing to "cleared"
+        console.log('Status change:', { oldStatus, newStatus });
+        
+        // If status is changing to "cleared", directly go to process-cleared.php
         if (oldStatus !== 'cleared' && newStatus === 'cleared') {
-            if (!confirm('Are you sure you want to mark this instrument as CLEARED? This will process financial transactions.')) {
+            if (!confirm('Are you sure you want to mark this instrument as CLEARED?\n\n' +
+                        'This will process financial transactions and:\n' +
+                        '1. Check account balances\n' +
+                        '2. Update bank statements\n' +
+                        '3. Update financial entries\n\n' +
+                        'Click OK to proceed or Cancel to abort.')) {
                 return;
             }
+            
+            // Directly process cleared status
+            await processClearedStatus(sysId, oldItem, remarks);
+            return;
         }
         
+        // For other status changes (bounced, failed, cancelled, pending)
+        await updateStatusAndRemarks(sysId, newStatus, remarks, oldItem);
+    }
+    
+    // Process cleared status
+    async function processClearedStatus(sysId, item, remarks) {
         try {
-            // First update the basic information (status and remarks)
+            // Directly call process-cleared.php
+            const clearedResponse = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/process-cleared.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sys_id: sysId,
+                    amount: parseFloat(item.amount),
+                    trnx_type: item.trnx_type,
+                    related_type: item.related_type,
+                    remarks: remarks
+                })
+            });
+            
+            const clearedResult = await clearedResponse.json();
+            
+            if (!clearedResult.success) {
+                // Transaction failed, show error but don't revert (status remains pending)
+                alert(`❌ Transaction failed: ${clearedResult.message}\nStatus remains PENDING.`);
+                
+                // Update remarks with failure reason
+                await updateStatusAndRemarks(
+                    sysId, 
+                    'pending', 
+                    remarks + ' [Cleared failed: ' + clearedResult.message + ']',
+                    item
+                );
+            } else {
+                alert('✅ Instrument marked as cleared and financial transactions processed successfully!');
+                
+                // Update local data
+                const index = allData.findIndex(item => item.sys_id == sysId);
+                if (index !== -1) {
+                    allData[index].status = 'cleared';
+                    allData[index].remarks = remarks;
+                    allData[index].cleared_at = new Date().toISOString();
+                    allData[index].cleared_by = 'system';
+                    allData[index].cleared_transaction_id = clearedResult.transaction_id;
+                    
+                    const filteredIndex = filteredData.findIndex(item => item.sys_id == sysId);
+                    if (filteredIndex !== -1) {
+                        filteredData[filteredIndex] = { ...allData[index] };
+                    }
+                    
+                    renderCards();
+                    closeModalFunc(viewModal);
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error processing cleared status:', error);
+            alert('❌ Failed to process cleared status. Please try again.\nError: ' + error.message);
+        }
+    }
+    
+    // Update status and remarks (for non-cleared status changes)
+    async function updateStatusAndRemarks(sysId, status, remarks, oldItem) {
+        try {
             const updateResponse = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/update.php', {
                 method: 'POST',
                 headers: {
@@ -944,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     sys_id: sysId,
-                    status: newStatus,
+                    status: status,
                     remarks: remarks
                 })
             });
@@ -955,45 +1030,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(updateResult.message || 'Failed to save changes');
             }
             
-            // If status changed to cleared, process financial transactions
-            if (oldStatus !== 'cleared' && newStatus === 'cleared') {
-                const clearedResponse = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/process-cleared.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sys_id: sysId,
-                        amount: parseFloat(oldItem.amount),
-                        trnx_type: oldItem.trnx_type,
-                        related_type: oldItem.related_type
-                    })
-                });
-                
-                const clearedResult = await clearedResponse.json();
-                
-                if (!clearedResult.success) {
-                    alert(`Status updated but transaction failed: ${clearedResult.message}`);
-                    // Keep status as cleared in UI but notify user
-                } else {
-                    alert('Instrument marked as cleared and financial transactions processed successfully!');
-                }
-            } else {
-                alert('Changes saved successfully!');
-            }
+            alert('✅ Changes saved successfully!');
             
-            // Update the item locally
+            // Update local data
             const index = allData.findIndex(item => item.sys_id == sysId);
             if (index !== -1) {
-                allData[index].status = newStatus;
+                allData[index].status = status;
                 allData[index].remarks = remarks;
                 
-                if (newStatus === 'cleared') {
-                    allData[index].cleared_at = new Date().toISOString();
-                    allData[index].cleared_by = 'system';
+                // If changing from cleared to another status, clear cleared info
+                if (oldItem.status === 'cleared' && status !== 'cleared') {
+                    allData[index].cleared_at = null;
+                    allData[index].cleared_by = null;
+                    allData[index].cleared_transaction_id = null;
                 }
                 
-                // Update filtered data
                 const filteredIndex = filteredData.findIndex(item => item.sys_id == sysId);
                 if (filteredIndex !== -1) {
                     filteredData[filteredIndex] = { ...allData[index] };
@@ -1004,8 +1055,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
         } catch (error) {
-            console.error('Error saving changes:', error);
-            alert('Failed to save changes. Please try again.');
+            console.error('Error updating status:', error);
+            alert('❌ Failed to save changes. Please try again.\nError: ' + error.message);
         }
     }
     

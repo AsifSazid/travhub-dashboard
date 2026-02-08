@@ -305,16 +305,16 @@ function handleFormDataRequest() {
         $hashedPassword = password_hash($sys_id, PASSWORD_DEFAULT);
         
         // Define branch_id (default to 1)
-        $branch_id = 1;
+        $role_id = 1;
         
         // Insert into login table for system access
         $stmt = $pdo->prepare("
-            INSERT INTO login (brunch_id, name, email, password, phone, user_id)
+            INSERT INTO login (role, name, email, password, phone, user_id)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
-            $branch_id,
+            $role_id,
             $fullName,
             $email,
             $hashedPassword,
@@ -541,16 +541,16 @@ function handleJsonRequest() {
         $hashedPassword = password_hash($sys_id, PASSWORD_DEFAULT);
         
         // Define branch_id (default to 1)
-        $branch_id = 1;
+        $role_id = 1;
         
         // Insert into login table for system access
         $stmt = $pdo->prepare("
-            INSERT INTO login (brunch_id, name, email, password, phone, user_id)
+            INSERT INTO login (role, name, email, password, phone, user_id)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
-            $branch_id,
+            $role_id,
             $fullName,
             $email,
             $hashedPassword,

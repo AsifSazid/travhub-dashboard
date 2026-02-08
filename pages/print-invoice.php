@@ -28,7 +28,7 @@ try {
     $vendor_json_path = __DIR__ . '/../server/invoice-vendor.json';
 
     $clientStmt = $pdo->prepare("SELECT * FROM clients WHERE sys_id = :sys_id");
-    $clientStmt->execute([':sys_id' => $client_info['title']]);
+    $clientStmt->execute([':sys_id' => $client_info['title'] ?? $invoice['client_sys_id']]);
     $clientDbInfo = $clientStmt->fetch();
     
     $clientPhone = json_decode($clientDbInfo['phone'] ?? '{}', true);
