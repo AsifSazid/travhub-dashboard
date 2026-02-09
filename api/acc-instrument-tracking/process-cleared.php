@@ -432,17 +432,17 @@ try {
         $transactionId = $financialUUIDs['sys_id'];
         
         // Second: Bank account update (to account - where money is deposited)
-        $fromAccStmt = $pdo->prepare("
+        $toAccStmt = $pdo->prepare("
             SELECT balance, sys_id 
             FROM ac_banking 
             WHERE sys_id = ?
             FOR UPDATE
         ");
-        $fromAccStmt->execute([$fromAccountId]);
-        $bankAccount = $fromAccStmt->fetch(PDO::FETCH_ASSOC);
+        $toAccStmt->execute([$toAccountId]);
+        $bankAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$bankAccount) {
-            throw new Exception('Bank account not found: ' . $fromAccountId);
+            throw new Exception('Bank account not found: ' . $toAccountId);
         }
         
         // Update bank balance
@@ -455,7 +455,7 @@ try {
         ");
         $updateStmt->execute([
             ':balance' => $newBalance,
-            ':id'      => $fromAccountId
+            ':id'      => $toAccountId
         ]);
         
         // Bank statement entry
@@ -477,8 +477,8 @@ try {
         $stmtInsert->execute([
             ':uuid' => $stmtUUIDs['uuid'],
             ':sys_id' => $stmtUUIDs['sys_id'],
-            ':ledger_db_id' => $fromAccountId,
-            ':name' => $fromAccountName,
+            ':ledger_db_id' => $toAccountId,
+            ':name' => $toAccountName,
             ':date' => $transactionDate,
             ':particular' => $particular,
             ':withdraw' => 0,

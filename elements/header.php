@@ -76,7 +76,7 @@
 
             <!-- User Menu -->
             <div id="userMenu" class="user-menu absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-40 hidden">
-                <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <a href="profile.php?employee_id=<?php echo $_SESSION['user_id'] ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     <i class="fas fa-user mr-3 text-gray-400"></i>
                     <span>Profile</span>
                 </a>
