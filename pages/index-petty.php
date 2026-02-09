@@ -266,7 +266,7 @@ if (!empty($type)) {
                         <button id="refresh-btn" class="bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center border border-gray-300">
                             <i class="fas fa-sync-alt mr-2"></i> Refresh
                         </button>
-                        <a href="create-petty.php<?php if($type) echo '?type=' . $type ?>" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2.5 px-5 rounded-lg transition duration-300 flex items-center shadow">
+                        <a id="createBtn" href="create-petty.php<?php if($type) echo '?type=' . $type ?>" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2.5 px-5 rounded-lg transition duration-300 flex items-center shadow">
                             <i class="fas fa-plus mr-2"></i> Create New <?php echo ($type ? ucfirst($formattedType) : 'Entry') ; ?>
                         </a>
                     </div>
@@ -477,6 +477,37 @@ if (!empty($type)) {
                     const type = this.dataset.type;
                     currentFilterType = type;
                     
+                    const createBtn = document.getElementById('createBtn');
+                    
+                    if (type === 'all') {
+                        // 1️⃣ URL clean
+                        window.history.pushState({}, '', window.location.pathname);
+                    
+                        // 2️⃣ Button link reset
+                        createBtn.href = 'create-petty.php';
+                    
+                        // 3️⃣ Button text reset
+                        createBtn.innerHTML = `
+                            <i class="fas fa-plus mr-2"></i>
+                            Create New Entry
+                        `;
+                    } else {
+                        // type format (petty_cash → Petty cash)
+                        const formattedType = type.replace(/_/g, ' ');
+                    
+                        // 1️⃣ URL change
+                        window.history.pushState({}, '', `?type=${type}`);
+                    
+                        // 2️⃣ Button link change
+                        createBtn.href = `create-petty.php?type=${type}`;
+                    
+                        // 3️⃣ Button text change
+                        createBtn.innerHTML = `
+                            <i class="fas fa-plus mr-2"></i>
+                            Create New ${formattedType.charAt(0).toUpperCase() + formattedType.slice(1)}
+                        `;
+                    }
+
                     // Update active button
                     document.querySelectorAll('.type-filter-btn').forEach(b => {
                         b.classList.remove('active');

@@ -95,11 +95,19 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                             </p>
 
                             <form id="taskForm">
-                                <div class="">
-                                    <label for="taskTitle" class="block text-sm font-medium text-gray-700 my-2">
-                                        Task Title
-                                    </label>
-                                    <input type="text" id="taskTitle" name="taskTitle" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="">
+                                        <label for="taskTitle" class="block text-sm font-medium text-gray-700 my-2">
+                                            Task Title
+                                        </label>
+                                        <input type="text" id="taskTitle" name="taskTitle" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="col-span-3 block text-sm font-medium text-gray-700 my-2">Performed By</label>
+                        
+                                        <?php include('form-selects/employees.php') ?>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <!-- Left -->
@@ -746,6 +754,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             const infoArea = document.getElementById('infoArea').value;
             const pasteArea = document.getElementById('pasteArea').value;
             const workId = "<?php echo $workId; ?>";
+            const performedByValue = document.getElementById('employeeInput').value;
 
             // Validate required fields
             if (!taskCategory) {
@@ -760,6 +769,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             formData.append('information', infoArea);
             formData.append('pasted_text', pasteArea);
             formData.append('work_id', workId);
+            formData.append('performedBy', performedByValue);
 
             // Append files
             if (droppedFiles.length > 0) {
@@ -973,7 +983,14 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                         <div class="text-sm text-gray-900 truncate task-files">${task.file_info || 'Folder'}</div>
                     </div>
                 </div>
+                
+                <!-- Work Owner info -->
+                <div class="flex items-center work-client mt-2">
+                    <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
+                    <span class="text-sm text-gray-700 truncate">${task.performed_by || 'Not Mentioned'}</span>
+                </div>
             </div>
+            
 
             <!-- Footer with action -->
             <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-${categoryColor}-50 transition-colors">

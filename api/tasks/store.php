@@ -26,6 +26,11 @@ $pastedText     = $_POST['pasted_text'] ?? null;
 $workId         = $_POST['work_id'] ?? null;
 $taskDate         = $_POST['taskDate'] ?? null;
 
+$rawPerformedBy = $_POST['performedBy'] ?? null;
+$performedByParts = explode('|', $rawPerformedBy);
+$performedBySysID = trim($performedByParts[0]);
+$performedByName = trim($performedByParts[1]);
+
 // ---------------- VALIDATION ----------------
 if (!$category || !$workId) {
     echo json_encode(['success' => false, 'message' => 'Category or Work ID missing']);
@@ -362,9 +367,10 @@ try {
             air_ticket_info, 
             all_file_name, 
             status, 
+            performed_by,
             meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     if ($category == 1) {
@@ -388,6 +394,7 @@ try {
         $airTicketInfo,
         $filesJson,
         'pending',
+        $rawPerformedBy,
         $metaDataJson,
     ]);
 

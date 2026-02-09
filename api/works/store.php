@@ -20,18 +20,14 @@ if (!$input) {
 // extract values
 $rawClient = $input['client'] ?? null;
 $rawOwnedBy = $input['ownedBy'] ?? null;
-$rawPerformedBy = $input['performedBy'] ?? null;
 $parts = explode('|', $rawClient);
 $ownedByParts = explode('|', $rawOwnedBy);
-$performedByParts = explode('|', $rawPerformedBy);
 
 // ID always first part
 $clientSysID = trim($parts[0]);
 $clientName = trim($parts[1]);
 $ownedBySysID = trim($ownedByParts[0]);
 $ownedByName = trim($ownedByParts[1]);
-$performedBySysID = trim($performedByParts[0]);
-$performedByName = trim($performedByParts[1]);
 $workTitle = $input['work_title'] ?? null;
 
 $cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
@@ -83,9 +79,8 @@ try {
                 client_name, 
                 title,
                 owned_by,
-                performed_by,
                 meta_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         $workStoreStmt = $pdo->prepare($workStoreSql);
 
@@ -96,8 +91,7 @@ try {
             isset($clientSysID) ? $clientSysID : null,
             isset($clientName) ? $clientName : null,
             isset($workTitle) ? $workTitle : null,
-            isset($ownedBy) ? $ownedBy : null,
-            isset($performedBy) ? $performedBy : null,
+            isset($rawOwnedBy) ? $rawOwnedBy : null,
             isset($metaDataJson) ? $metaDataJson : null
         ]);
 
