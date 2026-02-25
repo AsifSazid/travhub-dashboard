@@ -10,6 +10,7 @@ $employeeId = $_GET['employee_id'];
 // $showEmployeeApi = $ip_port . "api/employees/show.php";
 $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employeeId";
 $getEmployeeFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$employeeId";
+$getNotificationApi = $ip_port . "api/financial_entries/fin-notification.php?id=$employeeId";
 
 $API_BASE = "https://travhub.com.bd/travhub-admin/";
 $getEmployeeApi = $API_BASE . "api/employees/get-employee.php?employee_id=" . urlencode($employeeId);

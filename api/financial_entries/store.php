@@ -117,6 +117,7 @@ try {
         $accountInfo = $stmt->fetch();
         $accountName = $accountInfo['acc_name'];
         $oldBalance = $accountInfo['balance'];
+        $userType = 'account';
         
         if (!$accountInfo) {
             throw new Exception('Vendor not found');

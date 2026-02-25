@@ -7,6 +7,7 @@ if (empty($ip_port)) {
 
 $getAllWorksApi = $ip_port . "api/works/all-works.php";
 $storeWorkApi = $ip_port . "api/works/store.php";
+$deleteWorkApi = $ip_port . "api/works/delete.php";
 
 ?>
 

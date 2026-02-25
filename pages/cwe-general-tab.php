@@ -119,10 +119,58 @@
     </div>
 </div>
 
+<!-- Work Delete Confirmation Modal -->
+<div id="workDeleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center mb-4">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                </div>
+            </div>
+            
+            <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mb-4">
+                Delete Work Confirmation
+            </h3>
+            
+            <div class="mt-2 px-4 py-3 bg-gray-50 rounded-lg">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Enter Work ID to confirm deletion:
+                </label>
+                <input type="text" id="confirmWorkId" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                    placeholder="Enter work ID">
+                <p class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Please enter the work ID <span id="displayWorkId" class="font-bold"></span> to delete
+                </p>
+                <p class="text-xs text-red-500 mt-2">
+                    <i class="fas fa-exclamation-circle mr-1"></i>
+                    Warning: This will also delete all tasks under this work!
+                </p>
+            </div>
+            
+            <div class="flex items-center justify-between mt-5">
+                <button onclick="closeWorkDeleteModal()" 
+                    class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none">
+                    Cancel
+                </button>
+                <button onclick="confirmWorkDelete()" 
+                    id="confirmWorkDeleteBtn"
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                    Delete Work
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // All API's for this Page
     const API_URL_FOR_ALL_WORKS = "<?php echo $getAllWorksApi; ?>";
     const API_URL_FOR_WORK_STORE = "<?php echo $storeWorkApi; ?>";
+    const API_URL_FOR_WORK_DELETE = "<?php echo $deleteWorkApi; ?>";
 
     // get all works
     // Global variables for works
@@ -158,106 +206,354 @@
             });
     }
 
+    // function renderWorkCards(works) {
+    //     // Clear previous data
+    //     worksContainer.innerHTML = '';
+
+    //     if (works.length === 0) {
+    //         workNoResultsMessage.classList.remove('hidden');
+    //         worksContainer.classList.add('hidden');
+    //         return;
+    //     }
+
+    //     workNoResultsMessage.classList.add('hidden');
+    //     worksContainer.classList.remove('hidden');
+
+    //     works.forEach(work => {
+    //         const meta = work.meta_data ? JSON.parse(work.meta_data) : {};
+    //         const created = meta.created_by_date || {};
+    //         const updatedArray = meta.updated_by_date || [];
+    //         const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
+
+    //         const card = document.createElement('a');
+    //         card.href = `task-entry.php?work_id=${work.sys_id}`;
+    //         card.className = "group bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full hover:-translate-y-1 hover:border-blue-300 cursor-pointer";
+
+    //         card.innerHTML = `
+    //         <div class="p-4 flex-grow">
+    //             <!-- Title and client -->
+    //             <div class="mb-4">
+    //                 <h3 class="text-lg font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors mb-2 work-title" title="${work.title || 'No Title'}">
+    //                     ${work.title || 'No Title'}
+    //                 </h3>
+    //                 <div class="flex items-center work-client">
+    //                     <i class="fas fa-user-tie text-gray-400 mr-2 text-sm"></i>
+    //                     <span class="text-sm text-gray-700 truncate">${work.client_name || 'Unknown'}</span>
+    //                 </div>
+    //             </div>
+
+    //             <!-- Files info -->
+    //             <div class="mb-4 flex items-center text-gray-600 bg-gray-50 rounded-lg p-3 work-files">
+    //                 <i class="fas fa-folder text-gray-400 mr-3"></i>
+    //                 <div class="flex-1 min-w-0">
+    //                     <span class="text-sm truncate block">${work.file_info || 'Folder'}</span>
+    //                 </div>
+    //             </div>
+
+    //             <!-- Creation and Update side by side -->
+    //             <div class="grid grid-cols-2 gap-3">
+    //                 <!-- Created Section -->
+    //                 <div class="bg-blue-50 rounded-lg p-3 border border-blue-100 work-creator">
+    //                     <div class="flex items-center mb-2">
+    //                         <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+    //                             <i class="fas fa-plus text-blue-600 text-xs"></i>
+    //                         </div>
+    //                         <span class="text-xs font-semibold text-blue-800 uppercase">Created</span>
+    //                     </div>
+    //                     <div class="text-center">
+    //                         <div class="font-semibold text-gray-900 text-sm mb-1 truncate capitalize">${created.user || 'N/A'}</div>
+    //                         <div class="text-xs text-gray-600">${created.date || ''}</div>
+    //                     </div>
+    //                 </div>
+
+    //                 <!-- Updated Section -->
+    //                 <div class="${lastUpdate ? 'bg-green-50 rounded-lg p-3 border border-green-100 work-updater' : 'bg-gray-50 rounded-lg p-3 border border-gray-100'}">
+    //                     <div class="flex items-center mb-2">
+    //                         <div class="w-7 h-7 rounded-full ${lastUpdate ? 'bg-green-100' : 'bg-gray-100'} flex items-center justify-center mr-2">
+    //                             <i class="fas fa-sync-alt ${lastUpdate ? 'text-green-600' : 'text-gray-400'} text-xs"></i>
+    //                         </div>
+    //                         <span class="text-xs font-semibold ${lastUpdate ? 'text-green-800' : 'text-gray-500'} uppercase">${lastUpdate ? 'Updated' : 'No Update'}</span>
+    //                     </div>
+    //                     <div class="text-center">
+    //                         ${lastUpdate ? `
+    //                             <div class="font-semibold text-gray-900 text-sm mb-1 truncate capitalize">${lastUpdate.user}</div>
+    //                             <div class="text-xs text-gray-600">${lastUpdate.date}</div>
+    //                         ` : `
+    //                             <div class="font-semibold text-gray-400 text-sm mb-1">N/A</div>
+    //                             <div class="text-xs text-gray-400">-</div>
+    //                         `}
+    //                     </div>
+    //                 </div>
+    //             </div>
+                
+    //             <!-- Work Owner info -->
+    //             <div class="flex items-center work-client mt-2">
+    //                 <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
+    //                 <span class="text-sm text-gray-700 truncate">${work.owned_by || 'Not Mentioned'}</span>
+    //             </div>
+    //         </div>
+
+    //         <!-- Footer with task icon -->
+    //         <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-blue-50 transition-colors">
+    //             <div class="flex items-center justify-between">
+    //                 <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors">
+    //                     View Tasks
+    //                 </span>
+    //                 <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
+    //             </div>
+    //         </div>
+    //     `;
+
+    //         worksContainer.appendChild(card);
+    //     });
+    // }
+    
     function renderWorkCards(works) {
         // Clear previous data
         worksContainer.innerHTML = '';
-
+    
         if (works.length === 0) {
             workNoResultsMessage.classList.remove('hidden');
             worksContainer.classList.add('hidden');
             return;
         }
-
+    
         workNoResultsMessage.classList.add('hidden');
         worksContainer.classList.remove('hidden');
-
+    
         works.forEach(work => {
             const meta = work.meta_data ? JSON.parse(work.meta_data) : {};
             const created = meta.created_by_date || {};
             const updatedArray = meta.updated_by_date || [];
             const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
-
-            const card = document.createElement('a');
-            card.href = `task-entry.php?work_id=${work.sys_id}`;
+    
+            // a tag er poriborte div use korbo
+            const card = document.createElement('div');
             card.className = "group bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full hover:-translate-y-1 hover:border-blue-300 cursor-pointer";
-
-            card.innerHTML = `
-            <div class="p-4 flex-grow">
-                <!-- Title and client -->
-                <div class="mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors mb-2 work-title" title="${work.title || 'No Title'}">
-                        ${work.title || 'No Title'}
-                    </h3>
-                    <div class="flex items-center work-client">
-                        <i class="fas fa-user-tie text-gray-400 mr-2 text-sm"></i>
-                        <span class="text-sm text-gray-700 truncate">${work.client_name || 'Unknown'}</span>
-                    </div>
-                </div>
-
-                <!-- Files info -->
-                <div class="mb-4 flex items-center text-gray-600 bg-gray-50 rounded-lg p-3 work-files">
-                    <i class="fas fa-folder text-gray-400 mr-3"></i>
-                    <div class="flex-1 min-w-0">
-                        <span class="text-sm truncate block">${work.file_info || 'Folder'}</span>
-                    </div>
-                </div>
-
-                <!-- Creation and Update side by side -->
-                <div class="grid grid-cols-2 gap-3">
-                    <!-- Created Section -->
-                    <div class="bg-blue-50 rounded-lg p-3 border border-blue-100 work-creator">
-                        <div class="flex items-center mb-2">
-                            <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center mr-2">
-                                <i class="fas fa-plus text-blue-600 text-xs"></i>
-                            </div>
-                            <span class="text-xs font-semibold text-blue-800 uppercase">Created</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-semibold text-gray-900 text-sm mb-1 truncate capitalize">${created.user || 'N/A'}</div>
-                            <div class="text-xs text-gray-600">${created.date || ''}</div>
-                        </div>
-                    </div>
-
-                    <!-- Updated Section -->
-                    <div class="${lastUpdate ? 'bg-green-50 rounded-lg p-3 border border-green-100 work-updater' : 'bg-gray-50 rounded-lg p-3 border border-gray-100'}">
-                        <div class="flex items-center mb-2">
-                            <div class="w-7 h-7 rounded-full ${lastUpdate ? 'bg-green-100' : 'bg-gray-100'} flex items-center justify-center mr-2">
-                                <i class="fas fa-sync-alt ${lastUpdate ? 'text-green-600' : 'text-gray-400'} text-xs"></i>
-                            </div>
-                            <span class="text-xs font-semibold ${lastUpdate ? 'text-green-800' : 'text-gray-500'} uppercase">${lastUpdate ? 'Updated' : 'No Update'}</span>
-                        </div>
-                        <div class="text-center">
-                            ${lastUpdate ? `
-                                <div class="font-semibold text-gray-900 text-sm mb-1 truncate capitalize">${lastUpdate.user}</div>
-                                <div class="text-xs text-gray-600">${lastUpdate.date}</div>
-                            ` : `
-                                <div class="font-semibold text-gray-400 text-sm mb-1">N/A</div>
-                                <div class="text-xs text-gray-400">-</div>
-                            `}
-                        </div>
-                    </div>
-                </div>
+            
+            // Click korle page e jabe
+            card.addEventListener('click', (e) => {
+                // Delete button e click korle page change hobe na
+                if (e.target.closest('.delete-work-btn')) return;
                 
-                <!-- Work Owner info -->
-                <div class="flex items-center work-client mt-2">
-                    <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
-                    <span class="text-sm text-gray-700 truncate">${work.owned_by || 'Not Mentioned'}</span>
+                window.location.href = `task-entry.php?work_id=${work.sys_id}`;
+            });
+    
+            card.innerHTML = `
+                <div class="p-4 flex-grow">
+                    <!-- Title and client -->
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors mb-2 work-title" title="${work.title || 'No Title'}">
+                            ${work.title || 'No Title'}
+                        </h3>
+                        <div class="flex items-center work-client">
+                            <i class="fas fa-user-tie text-gray-400 mr-2 text-sm"></i>
+                            <span class="text-sm text-gray-700 truncate">${work.client_name || 'Unknown'}</span>
+                        </div>
+                    </div>
+    
+                    <!-- Files info -->
+                    <div class="mb-4 flex items-center text-gray-600 bg-gray-50 rounded-lg p-3 work-files">
+                        <i class="fas fa-folder text-gray-400 mr-3"></i>
+                        <div class="flex-1 min-w-0">
+                            <span class="text-sm truncate block">${work.file_info || 'Folder'}</span>
+                        </div>
+                    </div>
+    
+                    <!-- Creation and Update side by side -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Created Section -->
+                        <div class="bg-blue-50 rounded-lg p-3 border border-blue-100 work-creator">
+                            <div class="flex items-center mb-2">
+                                <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+                                    <i class="fas fa-plus text-blue-600 text-xs"></i>
+                                </div>
+                                <span class="text-xs font-semibold text-blue-800 uppercase">Created</span>
+                            </div>
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-900 text-sm mb-1 truncate capitalize">${created.user || 'N/A'}</div>
+                                <div class="text-xs text-gray-600">${created.date || ''}</div>
+                            </div>
+                        </div>
+    
+                        <!-- Updated Section -->
+                        <div class="${lastUpdate ? 'bg-green-50 rounded-lg p-3 border border-green-100 work-updater' : 'bg-gray-50 rounded-lg p-3 border border-gray-100'}">
+                            <div class="flex items-center mb-2">
+                                <div class="w-7 h-7 rounded-full ${lastUpdate ? 'bg-green-100' : 'bg-gray-100'} flex items-center justify-center mr-2">
+                                    <i class="fas fa-sync-alt ${lastUpdate ? 'text-green-600' : 'text-gray-400'} text-xs"></i>
+                                </div>
+                                <span class="text-xs font-semibold ${lastUpdate ? 'text-green-800' : 'text-gray-500'} uppercase">${lastUpdate ? 'Updated' : 'No Update'}</span>
+                            </div>
+                            <div class="text-center">
+                                ${lastUpdate ? `
+                                    <div class="font-semibold text-gray-900 text-sm mb-1 truncate capitalize">${lastUpdate.user}</div>
+                                    <div class="text-xs text-gray-600">${lastUpdate.date}</div>
+                                ` : `
+                                    <div class="font-semibold text-gray-400 text-sm mb-1">N/A</div>
+                                    <div class="text-xs text-gray-400">-</div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Work Owner info -->
+                    <div class="flex items-center justify-between work-client mt-2">
+                        <div class="flex items-center">
+                            <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
+                            <span class="text-sm text-gray-700 truncate">${work.owned_by || 'Not Mentioned'}</span>
+                        </div>
+                        
+                        <!-- Delete Button for Work -->
+                        <button onclick="showWorkDeleteModal('${work.sys_id}', event)" class="delete-work-btn text-red-500 hover:text-red-700 transition-colors" title="Delete Work">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Footer with task icon -->
-            <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-blue-50 transition-colors">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors">
-                        View Tasks
-                    </span>
-                    <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
+    
+                <!-- Footer with task icon -->
+                <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-blue-50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors">
+                            View Tasks
+                        </span>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
+                    </div>
                 </div>
-            </div>
-        `;
-
+            `;
+    
             worksContainer.appendChild(card);
         });
+    }
+    
+    let currentWorkId = null;
+
+    function showWorkDeleteModal(workId, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        currentWorkId = workId;
+        
+        // Show modal
+        const modal = document.getElementById('workDeleteModal');
+        modal.classList.remove('hidden');
+        
+        // Display the work ID that needs to be entered
+        document.getElementById('displayWorkId').textContent = workId;
+        
+        // Clear and focus input
+        const input = document.getElementById('confirmWorkId');
+        input.value = '';
+        input.focus();
+        
+        // Disable delete button initially
+        document.getElementById('confirmWorkDeleteBtn').disabled = true;
+    }
+    
+    function closeWorkDeleteModal() {
+        document.getElementById('workDeleteModal').classList.add('hidden');
+        currentWorkId = null;
+    }
+    
+    // Check if entered ID matches
+    document.getElementById('confirmWorkId').addEventListener('input', function(e) {
+        const enteredId = e.target.value.trim();
+        const deleteBtn = document.getElementById('confirmWorkDeleteBtn');
+        
+        if (enteredId === currentWorkId) {
+            deleteBtn.disabled = false;
+            deleteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    });
+    
+    // Confirm work delete function
+    function confirmWorkDelete() {
+        if (!currentWorkId) return;
+        
+        const deleteBtn = document.getElementById('confirmWorkDeleteBtn');
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+        
+        fetch(API_URL_FOR_WORK_DELETE, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                work_id: currentWorkId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                closeWorkDeleteModal();
+                
+                // Find and remove the card
+                const cards = document.querySelectorAll('#worksContainer > div');
+                cards.forEach(card => {
+                    if (card.querySelector('.work-title')?.textContent.includes(currentWorkId) || 
+                        card.innerHTML.includes(currentWorkId)) {
+                        card.style.opacity = '0.5';
+                        card.style.transition = 'opacity 0.3s';
+                        
+                        setTimeout(() => {
+                            card.remove();
+                            
+                            // Check if no works left
+                            if (worksContainer.children.length === 0) {
+                                workNoResultsMessage.classList.remove('hidden');
+                                worksContainer.classList.add('hidden');
+                            }
+                        }, 300);
+                    }
+                });
+                
+                showNotification('Work deleted successfully', 'success');
+                
+                loadWorks();
+            } else {
+                showNotification('Error: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error connecting to server', 'error');
+        })
+        .finally(() => {
+            deleteBtn.innerHTML = 'Delete Work';
+            deleteBtn.disabled = false;
+        });
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const taskModal = document.getElementById('deleteModal');
+        const workModal = document.getElementById('workDeleteModal');
+        
+        if (event.target === taskModal) {
+            closeDeleteModal();
+        }
+        if (event.target === workModal) {
+            closeWorkDeleteModal();
+        }
+    }
+    
+    // Optional: Simple notification function
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        } text-white`;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 
     function searchWorks() {

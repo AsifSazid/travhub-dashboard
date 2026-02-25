@@ -8,6 +8,7 @@ $workId = $_GET['work_id'];
 
 $getAllTasksForWorkApi = $ip_port . "api/tasks/tasks-for-work.php?work_id=$workId";
 $storeTasksApi = $ip_port . "api/tasks/store.php";
+$deleteTaskApi = $ip_port . "api/tasks/delete.php";
 $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?work_id=$workId";
 $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
 
@@ -290,6 +291,49 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                 </div>
             </div>
         </div>
+        
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                            <i class="fas fa-exclamation-triangle text-red-600"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mb-4">
+                        Delete Task Confirmation
+                    </h3>
+                    
+                    <div class="mt-2 px-4 py-3 bg-gray-50 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Enter Task ID to confirm deletion:
+                        </label>
+                        <input type="text" id="confirmTaskId" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                            placeholder="Enter task ID">
+                        <p class="text-xs text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Please enter the task ID <span id="displayTaskId" class="font-bold"></span> to delete
+                        </p>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-5">
+                        <button onclick="closeDeleteModal()" 
+                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none">
+                            Cancel
+                        </button>
+                        <button onclick="confirmDelete()" 
+                            id="confirmDeleteBtn"
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            Delete Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
@@ -298,6 +342,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
         const API_URL_FOR_TASK_STORE = "<?php echo $storeTasksApi; ?>";
         const API_URL_FOR_ALL_TASKS_FOR_WORK = "<?php echo $getAllTasksForWorkApi; ?>";
         const GET_FINANCIAL_STATEMENT_API = "<?php echo $getWorkFinEntriesApi; ?>";
+        const DELETE_TASK_API = "<?php echo $deleteTaskApi; ?>";
 
         // File Management Variables
         let droppedFiles = [];
@@ -904,29 +949,142 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                 });
         }
 
-        function renderCards(tasks) {
-            // Clear previous data
-            tasksContainer.innerHTML = '';
+        // function renderCards(tasks) {
+        //     // Clear previous data
+        //     tasksContainer.innerHTML = '';
 
+        //     if (tasks.length === 0) {
+        //         noResultsMessage.classList.remove('hidden');
+        //         tasksContainer.classList.add('hidden');
+        //         return;
+        //     }
+
+        //     noResultsMessage.classList.add('hidden');
+        //     tasksContainer.classList.remove('hidden');
+
+        //     tasks.forEach(task => {
+        //         const card = document.createElement('a');
+        //         card.href = `cwe_tm-financial-trxn.php?work_id=${task.work_sys_id}&task_id=${task.sys_id}`;
+        //         card.className = "group bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full hover:-translate-y-1 hover:border-blue-300 cursor-pointer";
+
+        //         // Determine category color and text
+        //         let categoryColor = 'gray';
+        //         let categoryText = 'Unknown';
+        //         let categoryIcon = 'fas fa-question-circle';
+
+        //         if (task.category == 1) {
+        //             categoryColor = 'blue';
+        //             categoryText = 'Air Ticket Issue';
+        //             categoryIcon = 'fas fa-plane';
+        //         } else if (task.category == 2) {
+        //             categoryColor = 'green';
+        //             categoryText = 'Hotel Booking';
+        //             categoryIcon = 'fas fa-hotel';
+        //         }
+
+        //         card.innerHTML = `
+        //             <div class="p-4 flex-grow">
+        //                 <!-- Date and ID -->
+        //                 <div class="mb-4">
+        //                     <div class="flex items-center justify-between mb-2">
+        //                         <span class="text-sm font-semibold text-gray-900 bg-gray-100 px-3 py-1 rounded-full task-id">
+        //                             #${task.sys_id || 'N/A'}
+        //                         </span>
+        //                         <span class="text-xs text-gray-500 task-date">
+        //                             <i class="far fa-calendar mr-1"></i>${task.created_at || 'N/A'}
+        //                         </span>
+        //                     </div>
+                            
+        //                     <!-- Task Title -->
+        //                     <h3 class="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate task-title">
+        //                         ${task.title || 'No Title'}
+        //                     </h3>
+        //                 </div>
+        
+        //                 <!-- Category Badge -->
+        //                 <div class="mb-4">
+        //                     <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-${categoryColor}-100 text-${categoryColor}-800 border border-${categoryColor}-200 task-category">
+        //                         <i class="${categoryIcon} mr-2 text-xs"></i>
+        //                         ${categoryText}
+        //                     </div>
+        //                 </div>
+        
+        //                 <!-- Work Title -->
+        //                 <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+        //                     <div class="flex items-center text-gray-700">
+        //                         <i class="fas fa-briefcase text-gray-400 mr-3 text-sm"></i>
+        //                         <div class="flex-1 min-w-0">
+        //                             <div class="text-xs text-gray-500 mb-1">Work Title</div>
+        //                             <div class="text-sm font-medium truncate task-work">${task.work_title || 'Unknown'}</div>
+        //                         </div>
+        //                     </div>
+        //                 </div>
+        
+        //                 <!-- File Info -->
+        //                 <div class="flex items-center p-3 bg-${categoryColor}-50 rounded-lg border border-${categoryColor}-100">
+        //                     <i class="fas fa-folder text-${categoryColor}-500 mr-3"></i>
+        //                     <div class="flex-1 min-w-0">
+        //                         <div class="text-xs text-${categoryColor}-700 mb-1">Files</div>
+        //                         <div class="text-sm text-gray-900 truncate task-files">${task.file_info || 'Folder'}</div>
+        //                     </div>
+        //                 </div>
+                        
+        //                 <!-- Work Owner info -->
+        //                 <div class="flex items-center work-client mt-2">
+        //                     <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
+        //                     <span class="text-sm text-gray-700 truncate">${task.performed_by || 'Not Mentioned'}</span>
+        //                 </div>
+        //             </div>
+                    
+        
+        //             <!-- Footer with action -->
+        //             <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-${categoryColor}-50 transition-colors">
+        //                 <div class="flex items-center justify-between">
+        //                     <span class="text-sm font-medium text-gray-700 group-hover:text-${categoryColor}-700 transition-colors">
+        //                         Financial Transaction
+        //                     </span>
+        //                     <div class="flex items-center">
+        //                         <i class="fas fa-calculator text-gray-400 group-hover:text-${categoryColor}-500 transition-colors mr-2"></i>
+        //                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-${categoryColor}-500 group-hover:translate-x-1 transition-all"></i>
+        //                     </div>
+        //                 </div>
+        //             </div>
+        //         `;
+
+        //         tasksContainer.appendChild(card);
+        //     });
+        // }
+        
+        function renderCards(tasks) {
+            tasksContainer.innerHTML = '';
+        
             if (tasks.length === 0) {
                 noResultsMessage.classList.remove('hidden');
                 tasksContainer.classList.add('hidden');
                 return;
             }
-
+        
             noResultsMessage.classList.add('hidden');
             tasksContainer.classList.remove('hidden');
-
+        
             tasks.forEach(task => {
-                const card = document.createElement('a');
-                card.href = `cwe_tm-financial-trxn.php?work_id=${task.work_sys_id}&task_id=${task.sys_id}`;
+                // a tag er poriborte div use korbo
+                const card = document.createElement('div');
                 card.className = "group bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full hover:-translate-y-1 hover:border-blue-300 cursor-pointer";
-
+                
+                // Click korle page e jabe
+                card.addEventListener('click', (e) => {
+                    // Delete button e click korle page change hobe na
+                    if (e.target.closest('.delete-btn')) return;
+                    
+                    window.location.href = `cwe_tm-financial-trxn.php?work_id=${task.work_sys_id}&task_id=${task.sys_id}`;
+                });
+        
                 // Determine category color and text
                 let categoryColor = 'gray';
                 let categoryText = 'Unknown';
                 let categoryIcon = 'fas fa-question-circle';
-
+        
                 if (task.category == 1) {
                     categoryColor = 'blue';
                     categoryText = 'Air Ticket Issue';
@@ -936,78 +1094,269 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                     categoryText = 'Hotel Booking';
                     categoryIcon = 'fas fa-hotel';
                 }
-
+        
                 card.innerHTML = `
-            <div class="p-4 flex-grow">
-                <!-- Date and ID -->
-                <div class="mb-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-semibold text-gray-900 bg-gray-100 px-3 py-1 rounded-full task-id">
-                            #${task.sys_id || 'N/A'}
-                        </span>
-                        <span class="text-xs text-gray-500 task-date">
-                            <i class="far fa-calendar mr-1"></i>${task.created_at || 'N/A'}
-                        </span>
-                    </div>
-                    
-                    <!-- Task Title -->
-                    <h3 class="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate task-title">
-                        ${task.title || 'No Title'}
-                    </h3>
-                </div>
-
-                <!-- Category Badge -->
-                <div class="mb-4">
-                    <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-${categoryColor}-100 text-${categoryColor}-800 border border-${categoryColor}-200 task-category">
-                        <i class="${categoryIcon} mr-2 text-xs"></i>
-                        ${categoryText}
-                    </div>
-                </div>
-
-                <!-- Work Title -->
-                <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div class="flex items-center text-gray-700">
-                        <i class="fas fa-briefcase text-gray-400 mr-3 text-sm"></i>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-xs text-gray-500 mb-1">Work Title</div>
-                            <div class="text-sm font-medium truncate task-work">${task.work_title || 'Unknown'}</div>
+                    <div class="p-4 flex-grow">
+                        <!-- Date and ID -->
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-semibold text-gray-900 bg-gray-100 px-3 py-1 rounded-full task-id">
+                                    #${task.sys_id || 'N/A'}
+                                </span>
+                                <span class="text-xs text-gray-500 task-date">
+                                    <i class="far fa-calendar mr-1"></i>${task.created_at || 'N/A'}
+                                </span>
+                            </div>
+                            
+                            <!-- Task Title -->
+                            <h3 class="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate task-title">
+                                ${task.title || 'No Title'}
+                            </h3>
+                        </div>
+        
+                        <!-- Category Badge -->
+                        <div class="mb-4">
+                            <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-${categoryColor}-100 text-${categoryColor}-800 border border-${categoryColor}-200 task-category">
+                                <i class="${categoryIcon} mr-2 text-xs"></i>
+                                ${categoryText}
+                            </div>
+                        </div>
+        
+                        <!-- Work Title -->
+                        <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div class="flex items-center text-gray-700">
+                                <i class="fas fa-briefcase text-gray-400 mr-3 text-sm"></i>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs text-gray-500 mb-1">Work Title</div>
+                                    <div class="text-sm font-medium truncate task-work">${task.work_title || 'Unknown'}</div>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <!-- File Info -->
+                        <div class="flex items-center p-3 bg-${categoryColor}-50 rounded-lg border border-${categoryColor}-100">
+                            <i class="fas fa-folder text-${categoryColor}-500 mr-3"></i>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-xs text-${categoryColor}-700 mb-1">Files</div>
+                                <div class="text-sm text-gray-900 truncate task-files">${task.file_info || 'Folder'}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Work Owner info -->
+                        <div class="flex items-center work-client mt-2">
+                            <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
+                            <span class="text-sm text-gray-700 truncate">${task.performed_by || 'Not Mentioned'}</span>
                         </div>
                     </div>
-                </div>
-
-                <!-- File Info -->
-                <div class="flex items-center p-3 bg-${categoryColor}-50 rounded-lg border border-${categoryColor}-100">
-                    <i class="fas fa-folder text-${categoryColor}-500 mr-3"></i>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs text-${categoryColor}-700 mb-1">Files</div>
-                        <div class="text-sm text-gray-900 truncate task-files">${task.file_info || 'Folder'}</div>
+                    
+        
+                    <!-- Footer with action and delete button -->
+                    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-${categoryColor}-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700 group-hover:text-${categoryColor}-700 transition-colors">
+                                Financial Transaction
+                            </span>
+                            <div class="flex items-center space-x-3">
+                                <!-- Delete Button -->
+                                <button onclick="showDeleteModal('${task.sys_id}')" class="delete-btn text-red-500 hover:text-red-700 transition-colors" title="Delete Task">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <div class="flex items-center">
+                                    <i class="fas fa-calculator text-gray-400 group-hover:text-${categoryColor}-500 transition-colors mr-2"></i>
+                                    <i class="fas fa-arrow-right text-gray-400 group-hover:text-${categoryColor}-500 group-hover:translate-x-1 transition-all"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Work Owner info -->
-                <div class="flex items-center work-client mt-2">
-                    <i class="fas fa-user text-gray-400 mr-2 text-sm"></i>
-                    <span class="text-sm text-gray-700 truncate">${task.performed_by || 'Not Mentioned'}</span>
-                </div>
-            </div>
-            
-
-            <!-- Footer with action -->
-            <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 group-hover:bg-${categoryColor}-50 transition-colors">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700 group-hover:text-${categoryColor}-700 transition-colors">
-                        Financial Transaction
-                    </span>
-                    <div class="flex items-center">
-                        <i class="fas fa-calculator text-gray-400 group-hover:text-${categoryColor}-500 transition-colors mr-2"></i>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-${categoryColor}-500 group-hover:translate-x-1 transition-all"></i>
-                    </div>
-                </div>
-            </div>
-        `;
-
+                `;
+        
                 tasksContainer.appendChild(card);
             });
+        }
+        
+        let currentTaskId = null;
+        
+        function showDeleteModal(taskId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            currentTaskId = taskId;
+            
+            // Show modal
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('hidden');
+            
+            // Display the task ID that needs to be entered
+            document.getElementById('displayTaskId').textContent = taskId;
+            
+            // Clear and focus input
+            const input = document.getElementById('confirmTaskId');
+            input.value = '';
+            input.focus();
+            
+            // Disable delete button initially
+            document.getElementById('confirmDeleteBtn').disabled = true;
+        }
+        
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            currentTaskId = null;
+        }
+        
+        // Check if entered ID matches
+        document.getElementById('confirmTaskId').addEventListener('input', function(e) {
+            const enteredId = e.target.value.trim();
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            
+            if (enteredId === currentTaskId) {
+                deleteBtn.disabled = false;
+                deleteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                deleteBtn.disabled = true;
+                deleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+        
+        // Confirm delete function
+        function confirmDelete() {
+            if (!currentTaskId) return;
+            
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+            
+            fetch(DELETE_TASK_API, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    task_id: currentTaskId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close modal
+                    closeDeleteModal();
+                    
+                    // Find and remove the card
+                    const cards = document.querySelectorAll('#tasksContainer > div');
+                    cards.forEach(card => {
+                        // You might need to find a way to identify the card
+                        // Maybe add data-task-id attribute
+                        if (card.querySelector('.task-id')?.textContent.includes(currentTaskId)) {
+                            card.remove();
+                        }
+                    });
+                    
+                    // Check if no tasks left
+                    if (tasksContainer.children.length === 0) {
+                        noResultsMessage.classList.remove('hidden');
+                        tasksContainer.classList.add('hidden');
+                    }
+                    
+                    showNotification('Task deleted successfully', 'success');
+                } else {
+                    showNotification('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error connecting to server', 'error');
+            })
+            .finally(() => {
+                deleteBtn.innerHTML = 'Delete Task';
+                deleteBtn.disabled = false;
+            });
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('deleteModal');
+            if (event.target === modal) {
+                closeDeleteModal();
+            }
+        }
+        
+        // Delete function
+        function deleteTask(event, taskId) {
+            event.preventDefault(); // Link click hoye jawa bondho korbe
+            event.stopPropagation(); // Event bubbling bondho korbe
+            
+            if (confirm('Are you sure you want to delete this task?')) {
+                // Show loading state (optional)
+                const button = event.currentTarget;
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                button.disabled = true;
+                
+                // AJAX request to delete the task
+                fetch('delete-task.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        task_id: taskId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Task delete successful - card ta remove kore dew
+                        const card = event.target.closest('a');
+                        card.style.opacity = '0.5';
+                        card.style.transition = 'opacity 0.3s';
+                        
+                        setTimeout(() => {
+                            card.remove();
+                            
+                            // Check if no tasks left
+                            if (tasksContainer.children.length === 0) {
+                                noResultsMessage.classList.remove('hidden');
+                                tasksContainer.classList.add('hidden');
+                            }
+                        }, 300);
+                        
+                        // Optional: Show success message
+                        showNotification('Task deleted successfully', 'success');
+                        loadTasks();
+                    } else {
+                        // Reset button
+                        button.innerHTML = originalHtml;
+                        button.disabled = false;
+                        
+                        // Show error message
+                        showNotification('Error deleting task: ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // Reset button
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                    
+                    // Show error message
+                    showNotification('Error connecting to server', 'error');
+                });
+            }
+        }
+        
+        // Optional: Simple notification function
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
         }
 
         function searchTasks() {

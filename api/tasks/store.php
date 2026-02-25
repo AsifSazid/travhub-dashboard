@@ -27,6 +27,10 @@ $workId         = $_POST['work_id'] ?? null;
 $taskDate         = $_POST['taskDate'] ?? null;
 
 $rawPerformedBy = $_POST['performedBy'] ?? null;
+if (!$rawPerformedBy) {
+    echo json_encode(['success' => false, 'message' => 'Task Performer missing']);
+    exit;
+}
 $performedByParts = explode('|', $rawPerformedBy);
 $performedBySysID = trim($performedByParts[0]);
 $performedByName = trim($performedByParts[1]);

@@ -1,10 +1,12 @@
 <header class="fixed top-0 left-0 right-0 h-16 bg-white shadow-sm z-30 flex items-center justify-between px-4 md:px-6">
     <div class="flex items-center">
-        <img src="../assets/images/logo/logo.png" width="40" class="hidden md:block">
-        <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">TravHub Dashboard</h1>
-        <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
-            <i class="fas fa-bars text-gray-600"></i>
-        </button>
+        <a href="index.php" class="flex items-center">
+            <img src="../assets/images/logo/logo.png" width="40" class="hidden md:block">
+            <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">TravHub Dashboard</h1>
+            <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
+                <i class="fas fa-bars text-gray-600"></i>
+            </button>
+        </a>
     </div>
 
     <div class="flex items-center space-x-2 md:space-x-4">

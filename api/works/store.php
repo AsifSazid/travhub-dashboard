@@ -17,22 +17,10 @@ if (!$input) {
     exit;
 }
 
-// extract values
+// input
 $rawClient = $input['client'] ?? null;
 $rawOwnedBy = $input['ownedBy'] ?? null;
-$parts = explode('|', $rawClient);
-$ownedByParts = explode('|', $rawOwnedBy);
-
-// ID always first part
-$clientSysID = trim($parts[0]);
-$clientName = trim($parts[1]);
-$ownedBySysID = trim($ownedByParts[0]);
-$ownedByName = trim($ownedByParts[1]);
 $workTitle = $input['work_title'] ?? null;
-
-$cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
-$cleanFullName = preg_replace('/\s+/u', '', $clientName);
-$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
 
 // validation
 if (!$rawClient) {
@@ -43,6 +31,25 @@ if (!$workTitle) {
     echo json_encode(['success' => false, 'message' => 'Work Title missing']);
     exit;
 }
+if (!$rawOwnedBy) {
+    echo json_encode(['success' => false, 'message' => 'Work Owner missing']);
+    exit;
+}
+
+// extract values
+$parts = explode('|', $rawClient);
+$ownedByParts = explode('|', $rawOwnedBy);
+
+// ID always first part
+$clientSysID = trim($parts[0]);
+$clientName = trim($parts[1]);
+$ownedBySysID = trim($ownedByParts[0]);
+$ownedByName = trim($ownedByParts[1]);
+
+$cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
+$cleanFullName = preg_replace('/\s+/u', '', $clientName);
+$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
+
 
 try {
     // 1. Get the existing info

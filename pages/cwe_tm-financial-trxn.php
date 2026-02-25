@@ -447,6 +447,11 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             <span class="text-sm text-gray-600">Task ID:</span>
                             <span class="text-sm font-semibold text-gray-900" id="taskIdDisplay"></span>
                         </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Task Name:</span>
+                            <span class="text-sm font-semibold text-gray-900" id="taskNameDisplay"></span>
+                        </div>
 
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Category:</span>
@@ -568,6 +573,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                     // Update task info card
                     document.getElementById('taskIdDisplay').textContent = task.sys_id || 'N/A';
+                    document.getElementById('taskNameDisplay').textContent = task.title || 'N/A';
 
                     // Category
                     let categoryText = 'Unknown';
