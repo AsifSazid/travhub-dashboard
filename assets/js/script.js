@@ -30,6 +30,9 @@ const UIInteractions = (function () {
     const modalClose = document.getElementById('modalClose');
     const modalTitle = document.getElementById('modalTitle');
     const modalContent = document.getElementById('modalContent');
+    
+    const AUTH_USER = "<?php echo $authUser; ?>";
+    const AUTH_USER_ID = "<?php echo $authUserId; ?>";
 
     // Modal templates for UI modals only
     const modalTemplates = {
