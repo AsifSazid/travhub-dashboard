@@ -766,15 +766,15 @@ include_once('./authenticate.php');
             showQuickGuide();
         }
 
-        // Close the modal if the user clicks anywhere outside of it
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                closeModal();
-            }
-            if (event.target == quickGuideModal) {
-                closeGuideModal();
-            }
-        }
+        // Close the modal if the user clicks anywhere outside of it [Tarek Vai told me to stop this!]
+        // window.onclick = function(event) {
+        //     if (event.target == modal) {
+        //         closeModal();
+        //     }
+        //     if (event.target == quickGuideModal) {
+        //         closeGuideModal();
+        //     }
+        // }
 
         /**
          * Handles the form submission (Save button click) and sends data to the PHP API.

@@ -427,10 +427,10 @@ document.addEventListener('DOMContentLoaded', function() {
     paidBtn.addEventListener('click', () => setAdjustmentType('paid'));
     adjustmentAmount.addEventListener('input', updateAmountPreview);
     
-    // Click outside modals to close
-    viewModal.addEventListener('click', (e) => {
-        if (e.target === viewModal) closeModalFunc(viewModal);
-    });
+    // Click outside modals to close [Tarek Vai told me to stop this!]
+    // viewModal.addEventListener('click', (e) => {
+    //     if (e.target === viewModal) closeModalFunc(viewModal);
+    // });
     
     amountChangeModal.addEventListener('click', (e) => {
         if (e.target === amountChangeModal) closeModalFunc(amountChangeModal);

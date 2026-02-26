@@ -1506,12 +1506,12 @@ $base_ip_path = trim($ip_port, "/");
             // console.log('Client selected:', client);
         }
 
-        /* Outside click */
-        document.addEventListener('click', e => {
-            if (!clientContainer.contains(e.target)) {
-                clientDropdown.classList.add('hidden');
-            }
-        });
+        /* Outside click [Tarek Vai told me to stop this!] */
+        // document.addEventListener('click', e => {
+        //     if (!clientContainer.contains(e.target)) {
+        //         clientDropdown.classList.add('hidden');
+        //     }
+        // });
 
         /* ========== UPDATED SYSTEM WORK ITEM CLIENT INFO UPDATE ========== */
         function updateSystemWorkItemClientInfo(workItemElement) {

@@ -1133,12 +1133,12 @@ async smartCopyFileToClipboard() {
             document.body.appendChild(modal);
             modal.style.display = 'flex';
             
-            // Close modal when clicking outside
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.closeCustomModal();
-                }
-            });
+            // Close modal when clicking outside [Tarek Vai told me to stop this!]
+            // modal.addEventListener('click', (e) => {
+            //     if (e.target === modal) {
+            //         this.closeCustomModal();
+            //     }
+            // });
         },
         
         closeCustomModal() {

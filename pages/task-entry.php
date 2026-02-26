@@ -1271,13 +1271,13 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             });
         }
         
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('deleteModal');
-            if (event.target === modal) {
-                closeDeleteModal();
-            }
-        }
+        // Close modal when clicking outside [Tarek Vai told me to stop this!]
+        // window.onclick = function(event) {
+        //     const modal = document.getElementById('deleteModal');
+        //     if (event.target === modal) {
+        //         closeDeleteModal();
+        //     }
+        // }
         
         // Delete function
         function deleteTask(event, taskId) {

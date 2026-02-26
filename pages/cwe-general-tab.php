@@ -528,18 +528,18 @@
         });
     }
     
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const taskModal = document.getElementById('deleteModal');
-        const workModal = document.getElementById('workDeleteModal');
+    // Close modal when clicking outside [Tarek Vai told me to stop this!]
+    // window.onclick = function(event) {
+    //     const taskModal = document.getElementById('deleteModal');
+    //     const workModal = document.getElementById('workDeleteModal');
         
-        if (event.target === taskModal) {
-            closeDeleteModal();
-        }
-        if (event.target === workModal) {
-            closeWorkDeleteModal();
-        }
-    }
+    //     if (event.target === taskModal) {
+    //         closeDeleteModal();
+    //     }
+    //     if (event.target === workModal) {
+    //         closeWorkDeleteModal();
+    //     }
+    // }
     
     // Optional: Simple notification function
     function showNotification(message, type = 'success') {

@@ -848,18 +848,18 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
                         }
                     };
 
-                    // Hide dropdown on outside click
-                    const outsideClickHandler = (e) => {
-                        if (!clientInput.contains(e.target) &&
-                            !clientDropdown.contains(e.target) &&
-                            !dropdownToggle.contains(e.target)) {
-                            clientDropdown.classList.add('hidden');
-                        }
-                    };
+                    // Hide dropdown on outside click [Tarek Vai told me to stop this!]
+                    // const outsideClickHandler = (e) => {
+                    //     if (!clientInput.contains(e.target) &&
+                    //         !clientDropdown.contains(e.target) &&
+                    //         !dropdownToggle.contains(e.target)) {
+                    //         clientDropdown.classList.add('hidden');
+                    //     }
+                    // };
 
                     clientInput.addEventListener('input', inputHandler);
                     dropdownToggle.addEventListener('click', toggleHandler);
-                    document.addEventListener('click', outsideClickHandler);
+                    // document.addEventListener('click', outsideClickHandler);
 
                     // Store for cleanup
                     this.eventListeners.push({
@@ -873,7 +873,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
                     }, {
                         element: document,
                         event: 'click',
-                        handler: outsideClickHandler
+                        // handler: outsideClickHandler
                     });
 
                 } catch (err) {
