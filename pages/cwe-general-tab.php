@@ -146,7 +146,7 @@
                 </p>
                 <p class="text-xs text-red-500 mt-2">
                     <i class="fas fa-exclamation-circle mr-1"></i>
-                    Warning: This will also delete all tasks under this work!
+                    Warning: Delete All Tasks Before Deleting This Work!
                 </p>
             </div>
             

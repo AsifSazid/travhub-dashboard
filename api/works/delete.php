@@ -32,28 +32,33 @@ try {
         $stmt->execute([$work_id]);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Delete task files
-        foreach ($tasks as $task) {
-            $files = json_decode($task['all_file_name'], true);
-            if (is_array($files)) {
-                foreach ($files as $file) {
-                    // Adjust path based on your structure
-                    $filePath = "../../clients/*/{$work_id}/tasks/{$task['sys_id']}/{$file}";
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
-                }
-                // Remove task directory
-                $taskDir = "../../clients/*/{$work_id}/tasks/{$task['sys_id']}";
-                if (is_dir($taskDir)) {
-                    rmdir($taskDir);
-                }
-            }
+        if($tasks){
+            echo json_encode(['success' => false, 'message' => 'Please Delete All Tasks Before Deleting This Work!']);
+            exit;
         }
         
-        // Delete all tasks under this work
-        $stmt = $pdo->prepare("DELETE FROM tasks WHERE work_sys_id = ?");
-        $stmt->execute([$work_id]);
+        // // Delete task files
+        // foreach ($tasks as $task) {
+        //     $files = json_decode($task['all_file_name'], true);
+        //     if (is_array($files)) {
+        //         foreach ($files as $file) {
+        //             // Adjust path based on your structure
+        //             $filePath = "../../clients/*/{$work_id}/tasks/{$task['sys_id']}/{$file}";
+        //             if (file_exists($filePath)) {
+        //                 unlink($filePath);
+        //             }
+        //         }
+        //         // Remove task directory
+        //         $taskDir = "../../clients/*/{$work_id}/tasks/{$task['sys_id']}";
+        //         if (is_dir($taskDir)) {
+        //             rmdir($taskDir);
+        //         }
+        //     }
+        // }
+        
+        // // Delete all tasks under this work
+        // $stmt = $pdo->prepare("DELETE FROM tasks WHERE work_sys_id = ?");
+        // $stmt->execute([$work_id]);
         
         // Delete the work
         $stmt = $pdo->prepare("DELETE FROM works WHERE sys_id = ?");

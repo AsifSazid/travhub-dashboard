@@ -25,6 +25,16 @@ try {
     $task = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($task) {
+        $stmt = $pdo->prepare("SELECT sys_id FROM financial_entries WHERE task_sys_id = ?");
+        $stmt->execute([$task_id]);
+        $finEntities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if($finEntities){
+            echo json_encode(['success' => false, 'message' => 'Can\'t Delete! There are financial Transaction in this Task...']);
+            exit;
+        }
+        
+        
         // Delete associated files if needed (optional)
         $files = json_decode($task['all_file_name'], true);
         if (is_array($files) && !empty($files)) {

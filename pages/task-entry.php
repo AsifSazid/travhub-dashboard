@@ -317,6 +317,10 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                             <i class="fas fa-info-circle mr-1"></i>
                             Please enter the task ID <span id="displayTaskId" class="font-bold"></span> to delete
                         </p>
+                        <p class="text-xs text-red-500 mt-2">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            Warning: If there are any Financial Entities, You Can't Delete This Task!
+                        </p>
                     </div>
                     
                     <div class="flex items-center justify-between mt-5">
@@ -393,11 +397,11 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             });
             
             // Browse button handler
-            browseButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                fileInput.click();
-            });
+            // browseButton.addEventListener('click', (e) => {
+            //     e.preventDefault();
+            //     e.stopPropagation();
+            //     fileInput.click();
+            // });
         }
 
         // Handle dropped/browsed files

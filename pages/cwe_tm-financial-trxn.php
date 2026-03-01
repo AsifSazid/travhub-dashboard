@@ -520,6 +520,97 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
             </div>
         </div>
     </main>
+    
+    <!-- Edit Transaction Modal -->
+    <div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900" id="editModalTitle">Edit Transaction</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="editTransactionForm" onsubmit="updateTransaction(event)">
+                <input type="hidden" id="edit_transaction_id">
+                <input type="hidden" id="edit_original_type">
+                <input type="hidden" id="edit_vendor_type" value="">
+                
+                <!-- Transaction Type Display -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                    <div id="edit_type_display" class="px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium"></div>
+                </div>
+                
+                <!-- Vendor/Account Selection Container (for credits only) -->
+                <div id="edit_selection_container" class="mb-4 hidden">
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Type</label>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="edit_account_type" value="vendor" class="form-radio text-blue-600" onchange="toggleEditSelection()">
+                                <span class="ml-2">Vendor</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="edit_account_type" value="own" class="form-radio text-blue-600" onchange="toggleEditSelection()">
+                                <span class="ml-2">Own Account</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Vendor Search Container (will be populated dynamically) -->
+                    <div id="edit_vendor_container">
+                        <?php include('form-selects/vendors-edit.php') ?>
+                    </div>
+                    
+                    
+                    <!-- Account Search Container (will be populated dynamically) -->
+                    <div id="edit_account_container" class="hidden">
+                        <?php include('form-selects/accounts-edit.php') ?>
+                    </div>
+                </div>
+                
+                <!-- Purpose -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                    <textarea id="edit_purpose" rows="3" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required></textarea>
+                </div>
+                
+                <!-- Amount -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
+                        <input type="number" id="edit_amount" step="0.01" min="0.01"
+                            class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            required>
+                    </div>
+                </div>
+                
+                <!-- Date -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input type="datetime-local" id="edit_date"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required>
+                </div>
+                
+                <!-- Buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                        <i class="fas fa-save mr-2"></i> Update Transaction
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
@@ -537,6 +628,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
     <script>
         const GET_CLIENT_API = "<?php echo $getClientsApi; ?>";
         const FINANCIAL_ENTRIES_STORE_API = "<?php echo $storeFinancialEntriesApi; ?>";
+        const UPDATE_FINANCIAL_ENTRY_API = "<?php echo $ip_port; ?>api/financial_entries/update.php";
         const GET_FINANCIAL_STATEMENT_API = "<?php echo $getTaskFinEntriesApi; ?>";
         const GET_TASK_API = "<?php echo $getTaskApi; ?>";
 
@@ -1370,10 +1462,236 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
             // You can implement modal preview for PDFs/images
         }
 
-        function editTransaction(id) {
-            // Implement edit functionality
-            showNotification('Edit functionality coming soon', 'info');
+        // function editTransaction(id) {
+        //     // Implement edit functionality
+        //     showNotification('Edit functionality coming soon', 'info');
+        // }
+        
+        
+        // Edit Transaction
+        async function editTransaction(id) {
+            try {
+                // Find the transaction
+                const transaction = allTransactions.find(t => t.id == id);
+                if (!transaction) {
+                    showNotification('Transaction not found', 'error');
+                    return;
+                }
+        
+                // Populate modal with transaction data
+                document.getElementById('edit_transaction_id').value = transaction.id;
+                document.getElementById('edit_original_type').value = transaction.type;
+                document.getElementById('edit_purpose').value = transaction.purpose || '';
+                document.getElementById('edit_amount').value = transaction.amount;
+                
+                // Format date for datetime-local input
+                if (transaction.date) {
+                    const dateStr = transaction.date.replace(' ', 'T');
+                    document.getElementById('edit_date').value = dateStr.substring(0, 16);
+                }
+                
+                // Set type display
+                const typeDisplay = document.getElementById('edit_type_display');
+                const type = transaction.type.toLowerCase();
+                typeDisplay.innerHTML = type === 'debit' ? 
+                    '<span class="text-green-600 font-semibold">DEBIT (Client Deposit)</span>' : 
+                    '<span class="text-red-600 font-semibold">CREDIT (Vendor Payment)</span>';
+                
+                // Handle vendor/account selection for credit transactions
+                const selectionContainer = document.getElementById('edit_selection_container');
+                if (type === 'credit') {
+                    selectionContainer.classList.remove('hidden');
+                    
+                    // Determine if it's vendor or own account
+                    const isVendor = transaction.vendor_type == 0;
+                    document.getElementById('edit_vendor_type').value = isVendor ? 'vendor' : 'own';
+                    
+                    // Set radio button
+                    const vendorRadio = document.querySelector('input[name="edit_account_type"][value="vendor"]');
+                    const ownRadio = document.querySelector('input[name="edit_account_type"][value="own"]');
+                    
+                    if (isVendor) {
+                        vendorRadio.checked = true;
+                        ownRadio.checked = false;
+                    } else {
+                        vendorRadio.checked = false;
+                        ownRadio.checked = true;
+                    }
+                    
+                    // Load the appropriate container
+                    await loadEditSelectionContainers();
+                    
+                    // Set the initial value
+                    if (isVendor && transaction.vendor_id) {
+                        const vendorName = transaction.vendor_name || 'Unknown Vendor';
+                        const vendorInput = document.getElementById('editVendorInput');
+                        if (vendorInput) {
+                            vendorInput.value = transaction.vendor_id + ' | ' + vendorName;
+                        }
+                    } else if (!isVendor && transaction.account_id) {
+                        const accountName = transaction.account_name || 'Unknown Account';
+                        const accountInput = document.getElementById('editAccountInput');
+                        if (accountInput) {
+                            accountInput.value = transaction.account_id + ' | ' + accountName;
+                        }
+                    }
+                    
+                    toggleEditSelection();
+                } else {
+                    selectionContainer.classList.add('hidden');
+                }
+                
+                // Show modal
+                document.getElementById('editModal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading transaction for edit:', error);
+                showNotification('Error loading transaction details', 'error');
+            }
         }
+        
+        // Load edit selection containers
+        async function loadEditSelectionContainers() {
+            const vendorContainer = document.getElementById('edit_vendor_container');
+            const accountContainer = document.getElementById('edit_account_container');
+            
+            // Load vendor component if not already loaded
+            if (vendorContainer.children.length === 0) {
+                const vendorResponse = await fetch('form-selects/vendors-edit.php');
+                const vendorHtml = await vendorResponse.text();
+                vendorContainer.innerHTML = vendorHtml;
+                
+                // Load vendors data
+                if (typeof loadEditVendors === 'function') {
+                    loadEditVendors();
+                }
+            }
+            
+            // Load account component if not already loaded
+            if (accountContainer.children.length === 0) {
+                const accountResponse = await fetch('form-selects/accounts-edit.php');
+                const accountHtml = await accountResponse.text();
+                accountContainer.innerHTML = accountHtml;
+                
+                // Load accounts data
+                if (typeof loadEditAccounts === 'function') {
+                    loadEditAccounts();
+                }
+            }
+        }
+        
+        // Toggle between vendor and account selection
+        function toggleEditSelection() {
+            const type = document.querySelector('input[name="edit_account_type"]:checked')?.value;
+            const vendorContainer = document.getElementById('edit_vendor_container');
+            const accountContainer = document.getElementById('edit_account_container');
+            
+            if (type === 'vendor') {
+                vendorContainer.classList.remove('hidden');
+                accountContainer.classList.add('hidden');
+                
+                // Setup vendor search if not already setup
+                if (typeof setupEditVendorSearch === 'function') {
+                    setTimeout(() => setupEditVendorSearch(), 100);
+                }
+            } else if (type === 'own') {
+                vendorContainer.classList.add('hidden');
+                accountContainer.classList.remove('hidden');
+                
+                // Setup account search if not already setup
+                if (typeof setupEditAccountSearch === 'function') {
+                    setTimeout(() => setupEditAccountSearch(), 100);
+                }
+            }
+        }
+        
+        // Update transaction
+        async function updateTransaction(event) {
+            event.preventDefault();
+            
+            try {
+                const transactionId = document.getElementById('edit_transaction_id').value;
+                const originalType = document.getElementById('edit_original_type').value;
+                const purpose = document.getElementById('edit_purpose').value.trim();
+                const amount = parseFloat(document.getElementById('edit_amount').value);
+                const dateTime = document.getElementById('edit_date').value.replace('T', ' ');
+                
+                if (!purpose || !amount || amount <= 0) {
+                    showNotification('Please enter valid purpose and amount', 'error');
+                    return;
+                }
+                
+                // Build update data
+                const updateData = {
+                    id: transactionId,
+                    purpose: purpose,
+                    amount: amount,
+                    date: dateTime
+                };
+                
+                // Add vendor/account info for credit transactions
+                if (originalType.toLowerCase() === 'credit') {
+                    const accountType = document.querySelector('input[name="edit_account_type"]:checked')?.value;
+                    
+                    if (accountType === 'vendor') {
+                        const vendorInput = document.getElementById('editVendorInput')?.value;
+                        if (!vendorInput) {
+                            showNotification('Please select a vendor', 'error');
+                            return;
+                        }
+                        const vendorData = extractIds(vendorInput);
+                        if (vendorData && vendorData.sys_id) {
+                            updateData.vendor_id = vendorData.sys_id;
+                            updateData.vendor_type = 0;
+                        }
+                    } else if (accountType === 'own') {
+                        const accountInput = document.getElementById('editAccountInput')?.value;
+                        if (!accountInput) {
+                            showNotification('Please select an account', 'error');
+                            return;
+                        }
+                        const accountData = extractIds(accountInput);
+                        if (accountData && accountData.sys_id) {
+                            updateData.account_id = accountData.sys_id;
+                            updateData.vendor_type = 1;
+                        }
+                    }
+                }
+                
+                // Send update request
+                const response = await fetch(UPDATE_FINANCIAL_ENTRY_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Transaction updated successfully!', 'success');
+                    closeEditModal();
+                    loadFinancialData(); // Reload the table
+                } else {
+                    showNotification('Error: ' + (result.message || 'Failed to update transaction'), 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error updating transaction:', error);
+                showNotification('Network error occurred', 'error');
+            }
+        }
+    
+    // Close edit modal
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        document.getElementById('editTransactionForm').reset();
+    }
+        
+        
+        
+        
 
         function deleteTransaction(id) {
             if (confirm('Are you sure you want to delete this transaction?')) {
