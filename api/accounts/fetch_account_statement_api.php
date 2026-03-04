@@ -1,69 +1,70 @@
 <?php
-// fetch_account_statement_api.php - Fetch account statement (PDO)
+require '../../server/db_connection.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// 1. DB connection (PDO)
-require '../../server/db_connection.php'; // provides $pdo
+$ledger_db_id = $_GET['ledger_db_id'] ?? '';
+$from_date = $_GET['from_date'] ?? '';
+$to_date = $_GET['to_date'] ?? '';
+$opening_only = isset($_GET['opening_only']) ? (int)$_GET['opening_only'] : 0;
 
-// 2. Get query parameters
-$ledger_db_id = $_GET['ledger_db_id'] ?? null;
-$from_date   = $_GET['from_date'] ?? null;
-$to_date     = $_GET['to_date'] ?? null;
-
-if (!$ledger_db_id) {
+if (empty($ledger_db_id)) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error'   => 'Missing ledger_db_id parameter'
+        'message' => 'ledger_db_id is required'
     ]);
     exit;
 }
 
 try {
-    /* ---------------- Build Dynamic SQL ---------------- */
-    $sql = "
-        SELECT * FROM `ac_banking_stmts`
-        WHERE `ledger_db_id` = :ledger_db_id
-    ";
-
-    $params = [
-        ':ledger_db_id' => $ledger_db_id
-    ];
-
-    if (!empty($from_date)) {
-        $sql .= " AND `date` >= :from_date";
-        $params[':from_date'] = $from_date;
+    $sql = "SELECT * FROM ac_banking_stmts WHERE ledger_db_id = :ledger_db_id";
+    $params = [':ledger_db_id' => $ledger_db_id];
+    
+    if ($opening_only) {
+        $sql .= " AND particular = 'Opening Balance'";
     }
-
-    if (!empty($to_date)) {
-        $sql .= " AND `date` <= :to_date";
+    
+    if (!empty($from_date) && !empty($to_date)) {
+        $sql .= " AND DATE(date) BETWEEN :from_date AND :to_date";
+        $params[':from_date'] = $from_date;
+        $params[':to_date'] = $to_date;
+    } elseif (!empty($from_date)) {
+        $sql .= " AND DATE(date) >= :from_date";
+        $params[':from_date'] = $from_date;
+    } elseif (!empty($to_date)) {
+        $sql .= " AND DATE(date) <= :to_date";
         $params[':to_date'] = $to_date;
     }
-
-    $sql .= " ORDER BY `date` DESC, `id` DESC";
-
-    /* ---------------- Prepare & Execute ---------------- */
+    
+    // *** এখানে পরিবর্তন: DESC ব্যবহার করা হয়েছে ***
+    $sql .= " ORDER BY date DESC, sys_id DESC";
+    
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    http_response_code(200);
+    
+    // is_historical ফিল্ড না থাকলে ডিফল্ট 0 সেট করুন
+    foreach ($data as &$row) {
+        if (!isset($row['is_historical'])) {
+            $row['is_historical'] = 0;
+        }
+    }
+    
     echo json_encode([
         'success' => true,
-        'data'    => $data
+        'data' => $data
     ]);
-
+    
 } catch (PDOException $e) {
-
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error'   => 'Database error',
-        'details' => $e->getMessage()
+        'message' => 'Database error',
+        'error' => $e->getMessage()
     ]);
 }
+?>

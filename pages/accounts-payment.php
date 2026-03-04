@@ -99,6 +99,26 @@ $base_ip_path = trim($ip_port, "/");
                         <h6 class="text-blue-700 font-semibold mb-4 flex items-center text-lg">
                             <i class="fas fa-minus-circle mr-2"></i> Make Payment
                         </h6>
+                        
+                        <!-- Rules Notice -->
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
+                            <p><i class="fas fa-info-circle mr-2"></i> <strong>নিয়মসমূহ:</strong></p>
+                            <ul class="list-disc list-inside ml-4 mt-1">
+                                <li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করা যাবে</li>
+                                <li>Opening Balance এর আগের তারিখের এন্ট্রি শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
+                                <li>ব্যাকডেটেড এন্ট্রি করলে পরবর্তী সকল এন্ট্রি স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Opening Date Info -->
+                        <div id="openingDateInfo" class="bg-purple-50 border-l-4 border-purple-400 p-2 mb-3 text-sm text-purple-700 hidden">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span id="openingDateText"></span>
+                        </div>
+                        
+                        <!-- Date Warning -->
+                        <p id="dateWarning" class="text-xs text-red-500 mt-1 mb-2 hidden"></p>
+                        
                         <form id="transactionForm" class="space-y-6">
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div class="col-span-1">
@@ -238,39 +258,39 @@ $base_ip_path = trim($ip_port, "/");
                                         <input type="date"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                             id="bftn_date" name="bftn_date">
-                                            </div>
-                                    </div>
-                                    
-                                    <!-- Particular -->
-                                    <div class="md:col-span-2 lg:col-span-3">
-                                        <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
-                                            <i class="fas fa-file-alt mr-1"></i> Particular
-                                        </label>
-                                        <textarea
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" rows="3"
-                                            id="particular" name="particular" placeholder="Enter payment description"></textarea>
                                     </div>
                                 </div>
                                 
-                                <div class="flex justify-end space-x-3 pt-4">
-                                    <button type="button" onclick="resetTransactionForm()"
-                                        class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors">
-                                        <i class="fas fa-redo mr-2"></i> Reset
-                                    </button>
-                                    <button type="button"
-                                        class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center"
-                                        id="saveTransactionBtn">
-                                        <div id="spinner" class="hidden spinner mr-2"></div>
-                                        <i class="fas fa-paper-plane mr-2"></i>
-                                        <span id="saveButtonText">Make Payment</span>
-                                    </button>
+                                <!-- Particular -->
+                                <div class="md:col-span-2 lg:col-span-3">
+                                    <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-alt mr-1"></i> Particular
+                                    </label>
+                                    <textarea
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" rows="3"
+                                        id="particular" name="particular" placeholder="Enter payment description"></textarea>
                                 </div>
-                            </form>
-                        </div>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-3 pt-4">
+                                <button type="button" onclick="resetTransactionForm()"
+                                    class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors">
+                                    <i class="fas fa-redo mr-2"></i> Reset
+                                </button>
+                                <button type="button"
+                                    class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center"
+                                    id="saveTransactionBtn">
+                                    <div id="spinner" class="hidden spinner mr-2"></div>
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    <span id="saveButtonText">Make Payment</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+    </main>
 
     <?php include '../elements/floating-menus.php'; ?>
 
@@ -282,6 +302,8 @@ $base_ip_path = trim($ip_port, "/");
             /* ================= CONFIG ================= */
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
             const API_PAYMENT_TRANSACTION = `${IP_PATH}/api/accounts/payment-transaction.php`;
+            const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
+            const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
 
             /* ================= ELEMENTS ================= */
             const transactionForm = document.getElementById('transactionForm');
@@ -314,8 +336,19 @@ $base_ip_path = trim($ip_port, "/");
             const accountNameInput = document.getElementById('account_name');
             const eftBankNameInput = document.getElementById('eft_bank_name');
             const bftnDateInput = document.getElementById('bftn_date');
+            
+            // Warning elements
+            const dateWarning = document.getElementById('dateWarning');
+            const openingDateInfo = document.getElementById('openingDateInfo');
+            const openingDateText = document.getElementById('openingDateText');
+            
+            /* ================= STATE ================= */
+            let openingDate = null;
+            let selectedAccountId = null;
         
             /* ================= UTILS ================= */
+            const ACCOUNT_MANDATORY_FROM = new Date('2026-02-01');
+            
             function extractIds(value) {
                 if (!value) return null;
                 const parts = value.split('|').map(v => v.trim());
@@ -326,7 +359,6 @@ $base_ip_path = trim($ip_port, "/");
             }
             
             function buildDateTime(dateOnly) {
-                // বাংলাদেশের সময়ে current time যোগ করুন
                 const now = new Date();
                 const bangladeshOffset = 6 * 60;
                 const localOffset = now.getTimezoneOffset();
@@ -337,6 +369,107 @@ $base_ip_path = trim($ip_port, "/");
                 
                 return `${dateOnly} ${time}`;
             }
+            
+            // ফাংশন: সর্বোচ্চ ৫ দিন আগের তারিখ পর্যন্ত সেট করা
+            function setMaxBackdatedDate() {
+                const today = new Date();
+                const maxBackdated = new Date(today);
+                maxBackdated.setDate(today.getDate() - 5);
+                
+                const minDate = maxBackdated.toISOString().split('T')[0];
+                const maxDate = today.toISOString().split('T')[0];
+                
+                transactionDate.setAttribute('min', minDate);
+                transactionDate.setAttribute('max', maxDate);
+            }
+            
+            // ফাংশন: Opening Balance এর তারিখ বের করা
+            async function fetchOpeningDate(accountId) {
+                if (!accountId) {
+                    openingDate = null;
+                    openingDateInfo.classList.add('hidden');
+                    setMaxBackdatedDate();
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${FETCH_STATEMENT}?ledger_db_id=${accountId}&opening_only=1`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data && result.data.length > 0) {
+                        openingDate = result.data[0].date;
+                        
+                        const dateObj = new Date(openingDate);
+                        const formattedDate = dateObj.toLocaleDateString('bn-BD', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                        
+                        openingDateText.innerHTML = `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে এন্ট্রি করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্সে যোগ হবে না।`;
+                        openingDateInfo.classList.remove('hidden');
+                        
+                        // Opening Balance এর আগের তারিখ এন্ট্রি করার অনুমতি দিতে min সরান
+                        transactionDate.removeAttribute('min');
+                        
+                        const today = new Date();
+                        const maxDate = today.toISOString().split('T')[0];
+                        transactionDate.setAttribute('max', maxDate);
+                    } else {
+                        openingDate = null;
+                        openingDateInfo.classList.add('hidden');
+                        setMaxBackdatedDate();
+                    }
+                } catch (error) {
+                    console.error('Error fetching opening date:', error);
+                    openingDate = null;
+                    openingDateInfo.classList.add('hidden');
+                    setMaxBackdatedDate();
+                }
+            }
+            
+            // ফাংশন: তারিখ ভ্যালিডেশন
+            function validateTransactionDate(selectedDate) {
+                const selected = new Date(selectedDate);
+                const today = new Date();
+                
+                selected.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
+                
+                const diffTime = today - selected;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                
+                // নিয়ম ১: Opening Balance এর আগের তারিখ চেক
+                if (openingDate && selectedDate < openingDate) {
+                    return {
+                        valid: true,
+                        warning: 'আপনি Opening Balance এর আগের তারিখে এন্ট্রি করছেন। এই এন্ট্রি শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।',
+                        isHistorical: true
+                    };
+                }
+                
+                // নিয়ম ২: ৫ দিনের বেশি ব্যাকডেটেড চেক
+                if (diffDays > 5) {
+                    return {
+                        valid: false,
+                        message: 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করতে পারবেন। এর বেশি পুরনো তারিখে এন্ট্রি সম্ভব নয়।'
+                    };
+                }
+                
+                return { valid: true, isHistorical: false };
+            }
+
+            /* ================= FETCH ACCOUNT ================= */
+            async function fetchAccountInfo(acc_id) {
+                try {
+                    const res = await fetch(`${FETCH_ACCOUNT}?acc_id=${acc_id}`);
+                    const json = await res.json();
+                    return json.accInfo || null;
+                } catch (e) {
+                    console.error(e);
+                    return null;
+                }
+            }
 
             /* ================= INIT ================= */
             transactionDate.value = BD_TIME.getDate();
@@ -345,6 +478,47 @@ $base_ip_path = trim($ip_port, "/");
             // Set max dates for cheque and bftn date
             chequeDateInput.min = BD_TIME.getDate();
             bftnDateInput.min = BD_TIME.getDate();
+            
+            // Initial opening date fetch when account changes
+            accountInput.addEventListener('change', function() {
+                const account = extractIds(accountInput.value);
+                if (account && account.sys_id) {
+                    selectedAccountId = account.sys_id;
+                    // Fetch opening date
+                    fetchOpeningDate(account.sys_id);
+                    
+                    // Fetch account balance (for future use)
+                    fetchAccountInfo(account.sys_id).then(accInfo => {
+                        if (accInfo) {
+                            console.log('Current balance:', accInfo.balance);
+                        }
+                    });
+                } else {
+                    openingDate = null;
+                    openingDateInfo.classList.add('hidden');
+                    setMaxBackdatedDate();
+                }
+            });
+            
+            // Date input এ পরিবর্তন হলে ওয়ার্নিং দেখানো
+            transactionDate.addEventListener('change', function() {
+                const validation = validateTransactionDate(this.value);
+                if (!validation.valid) {
+                    dateWarning.textContent = validation.message;
+                    dateWarning.classList.remove('hidden');
+                    dateWarning.classList.add('text-red-500');
+                    saveTransactionBtn.disabled = true;
+                } else if (validation.warning) {
+                    dateWarning.textContent = validation.warning;
+                    dateWarning.classList.remove('hidden');
+                    dateWarning.classList.remove('text-red-500');
+                    dateWarning.classList.add('text-yellow-600');
+                    saveTransactionBtn.disabled = false;
+                } else {
+                    dateWarning.classList.add('hidden');
+                    saveTransactionBtn.disabled = false;
+                }
+            });
         
             function togglePartySection() {
                 const type = selectType.value;
@@ -398,9 +572,9 @@ $base_ip_path = trim($ip_port, "/");
                 if(bftnDateInput) bftnDateInput.min = BD_TIME.getDate();
                 togglePartySection();
                 togglePaymentDetails();
+                dateWarning.classList.add('hidden');
+                saveTransactionBtn.disabled = false;
             };
-        
-            saveTransactionBtn.addEventListener('click', submitPayment);
         
             /* ================= VALIDATION ================= */
             function validateForm() {
@@ -437,6 +611,19 @@ $base_ip_path = trim($ip_port, "/");
                     alert('Please select a date');
                     transactionDate.focus();
                     return false;
+                }
+                
+                // Date validation
+                const dateValidation = validateTransactionDate(transactionDate.value);
+                if (!dateValidation.valid) {
+                    alert(dateValidation.message);
+                    return false;
+                }
+                
+                if (dateValidation.warning) {
+                    if (!confirm(dateValidation.warning + '\n\nতবুও কি এগিয়ে যেতে চান?')) {
+                        return false;
+                    }
                 }
         
                 // Validate Amount
@@ -508,10 +695,7 @@ $base_ip_path = trim($ip_port, "/");
             // Updated Receipt Printing Logic for 58mm POS Printers
             window.printReceipt = function(itemString) {
                 try {
-                    // স্ট্রিং থেকে অবজেক্টে রূপান্তর
                     const item = JSON.parse(decodeURIComponent(itemString));
-
-                    // আপনার বাকি প্রিন্টিং লজিক এখানে লিখুন...
                     const printWindow = window.open('', '_blank', 'width=350,height=600');
                     
                     const receiptContent = `
@@ -521,13 +705,13 @@ $base_ip_path = trim($ip_port, "/");
                             <style>
                                 @page { margin: 0; }
                                 body { 
-                                    font-family: 'Poppins', sans-serif; /* Standard sans-serif is often clearer on low DPI */
+                                    font-family: 'Poppins', sans-serif;
                                     width: 58mm; 
                                     padding: 2mm; 
                                     margin: 0; 
-                                    font-size: 14px; /* Increased base size */
+                                    font-size: 14px;
                                     color: #000;
-                                    font-weight: 600; /* Bolder text for better thermal burning */
+                                    font-weight: 600;
                                 }
                                 .logo-container { text-align: center; margin-bottom: 5px; }
                                 .logo-container img { width: 20mm; height: auto; filter: grayscale(100%) contrast(150%); }
@@ -540,6 +724,7 @@ $base_ip_path = trim($ip_port, "/");
                                 .row span:last-child { text-align: right; font-weight: 900; }
                                 .total-row { font-size: 16px; margin-top: 8px; border-top: 2px solid #000; padding-top: 5px; }
                                 .footer { text-align: center; margin-top: 15px; font-size: 11px; font-weight: normal; }
+                                .historical-badge { background: #fef3c7; color: #92400e; padding: 2px 5px; border-radius: 3px; font-size: 10px; }
                                 @media print {
                                     body { width: 58mm; -webkit-print-color-adjust: exact; }
                                 }
@@ -562,14 +747,16 @@ $base_ip_path = trim($ip_port, "/");
                                 <div class="row"><span>SYS ID:</span> <span>${item.sys_id}</span></div>
                                 <div class="row"><span>FROM:</span> <span>${item.name.toUpperCase()}</span></div>
                                 
+                                ${item.is_historical == 1 ? '<div class="row"><span class="historical-badge">ঐতিহাসিক এন্ট্রি (ক্যালকুলেশনের বাইরে)</span></div>' : ''}
+                                
                                 <div class="separator"></div>
                                 
                                 <div class="row">
                                     <span>PARTICULAR:</span> 
                                     <span>
-                                        ${item.particular.length > 16 
+                                        ${item.particular && item.particular.length > 16 
                                             ? item.particular.substring(0, 8) + '...' + item.particular.slice(-5) 
-                                            : item.particular}
+                                            : item.particular || ''}
                                     </span>
                                 </div>
                                 <div class="row"><span>METHOD:</span> <span>${item.transfer_method || 'CASH'}</span></div>
@@ -577,7 +764,7 @@ $base_ip_path = trim($ip_port, "/");
                                 <div class="row total-row">
                                     <span>TOTAL AMOUNT:</span> 
                                     <span>
-                                        ${item.deposit > 0 ? item.deposit : item.withdraw} TK
+                                        ${item.withdraw > 0 ? item.withdraw : item.deposit} TK
                                     </span>
                                 </div>
                                 
@@ -613,6 +800,9 @@ $base_ip_path = trim($ip_port, "/");
                 const client = extractIds(clientInput?.value);
                 const vendor = extractIds(vendorInput?.value);
                 const account = extractIds(accountInput.value);
+                
+                // Check if this is historical (opening balance er age)
+                const dateValidation = validateTransactionDate(transactionDate.value);
         
                 const data = {
                     accountId: account?.sys_id || null,
@@ -631,7 +821,8 @@ $base_ip_path = trim($ip_port, "/");
                     bankName: method === 'cheque' ? bankNameInput.value.trim() : null,
                     bftnAccountName: method === 'bftn-eft' ? accountNameInput.value.trim() : null,
                     eftBankName: method === 'bftn-eft' ? eftBankNameInput.value.trim() : null,
-                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null
+                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null,
+                    isHistorical: dateValidation.isHistorical ? 1 : 0  // Send historical flag
                 };
                 
                 console.log('Payment data:', data);
@@ -656,12 +847,20 @@ $base_ip_path = trim($ip_port, "/");
                         if (result.instrument) {
                             alert('Instrument recorded successfully. Payment pending clearance.');
                         } else {
-                            alert('Payment completed successfully!');
+                            let message = 'Payment completed successfully!';
+                            if (result.is_historical) {
+                                message = 'ঐতিহাসিক এন্ট্রি সংরক্ষিত হয়েছে (Opening Balance এর আগের তারিখ)। এই এন্ট্রি ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।';
+                            } else if (result.recalculated) {
+                                message = `ব্যাকডেটেড এন্ট্রি সফল হয়েছে। ${result.recalculated_date} থেকে পরবর্তী সকল এন্ট্রি পুনরায় ক্যালকুলেট করা হয়েছে।`;
+                            }
+                            alert(message);
                         }
                         resetTransactionForm();
                         
-                        const itemData = encodeURIComponent(JSON.stringify(result.item));
-                        printReceipt(itemData);
+                        if (result.item) {
+                            const itemData = encodeURIComponent(JSON.stringify(result.item));
+                            printReceipt(itemData);
+                        }
                     } else {
                         alert(result.error || result.message || 'Payment failed.');
                     }
@@ -676,6 +875,8 @@ $base_ip_path = trim($ip_port, "/");
                     saveButtonText.textContent = 'Make Payment';
                 }
             }
+            
+            saveTransactionBtn.addEventListener('click', submitPayment);
         
         });
     </script>

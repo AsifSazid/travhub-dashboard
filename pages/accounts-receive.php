@@ -95,6 +95,26 @@ $base_ip_path = trim($ip_port, "/");
                         <h6 class="text-blue-700 font-semibold mb-4 flex items-center text-lg">
                             <i class="fas fa-plus-circle mr-2"></i> Add New Transaction
                         </h6>
+                        
+                        <!-- Rules Notice -->
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
+                            <p><i class="fas fa-info-circle mr-2"></i> <strong>নিয়মসমূহ:</strong></p>
+                            <ul class="list-disc list-inside ml-4 mt-1">
+                                <li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করা যাবে</li>
+                                <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
+                                <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Opening Date Info -->
+                        <div id="openingDateInfo" class="bg-purple-50 border-l-4 border-purple-400 p-2 mb-3 text-sm text-purple-700 hidden">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span id="openingDateText"></span>
+                        </div>
+                        
+                        <!-- Date Warning -->
+                        <p id="dateWarning" class="text-xs text-red-500 mt-1 mb-2 hidden"></p>
+                        
                         <form id="transactionForm" class="space-y-6">
                             <input type="hidden" id="accountId" name="accountId">
                             <input type="hidden" id="accountName" name="accountName">
@@ -281,6 +301,7 @@ $base_ip_path = trim($ip_port, "/");
             const IP_PATH = '<?php echo htmlspecialchars($base_ip_path); ?>';
             const API_RECEIVED_TRANSACTION = `${IP_PATH}/api/accounts/receive-transaction.php`;
             const FETCH_ACCOUNT = `${IP_PATH}/api/accounts/fetch_acc_details.php`;
+            const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
         
             /* ================= ELEMENTS ================= */
             const transactionForm = document.getElementById('transactionForm');
@@ -314,6 +335,15 @@ $base_ip_path = trim($ip_port, "/");
             const accountNameInput = document.getElementById('account_name');
             const eftBankNameInput = document.getElementById('eft_bank_name');
             const bftnDateInput = document.getElementById('bftn_date');
+            
+            // Warning elements
+            const dateWarning = document.getElementById('dateWarning');
+            const openingDateInfo = document.getElementById('openingDateInfo');
+            const openingDateText = document.getElementById('openingDateText');
+            
+            /* ================= STATE ================= */
+            let openingDate = null;
+            let selectedAccountId = null;
         
             /* ================= UTILS ================= */
             const ACCOUNT_MANDATORY_FROM = new Date('2026-02-01');
@@ -330,14 +360,143 @@ $base_ip_path = trim($ip_port, "/");
             function todayDate() {
                 return new Date().toISOString().split('T')[0];
             }
+            
+            // ফাংশন: সর্বোচ্চ ৫ দিন আগের তারিখ পর্যন্ত সেট করা
+            function setMaxBackdatedDate() {
+                const today = new Date();
+                const maxBackdated = new Date(today);
+                maxBackdated.setDate(today.getDate() - 5);
+                
+                const minDate = maxBackdated.toISOString().split('T')[0];
+                const maxDate = today.toISOString().split('T')[0];
+                
+                transactionDate.setAttribute('min', minDate);
+                transactionDate.setAttribute('max', maxDate);
+            }
+            
+            // ফাংশন: Opening Balance এর তারিখ বের করা
+            async function fetchOpeningDate(accountId) {
+                if (!accountId) {
+                    openingDate = null;
+                    openingDateInfo.classList.add('hidden');
+                    setMaxBackdatedDate();
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${FETCH_STATEMENT}?ledger_db_id=${accountId}&opening_only=1`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data && result.data.length > 0) {
+                        openingDate = result.data[0].date;
+                        
+                        const dateObj = new Date(openingDate);
+                        const formattedDate = dateObj.toLocaleDateString('bn-BD', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                        
+                        openingDateText.innerHTML = `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে entry করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্সে যোগ হবে না।`;
+                        openingDateInfo.classList.remove('hidden');
+                        
+                        // Opening Balance এর আগের তারিখ entry করার অনুমতি দিতে min সরান
+                        transactionDate.removeAttribute('min');
+                        
+                        const today = new Date();
+                        const maxDate = today.toISOString().split('T')[0];
+                        transactionDate.setAttribute('max', maxDate);
+                    } else {
+                        openingDate = null;
+                        openingDateInfo.classList.add('hidden');
+                        setMaxBackdatedDate();
+                    }
+                } catch (error) {
+                    console.error('Error fetching opening date:', error);
+                    openingDate = null;
+                    openingDateInfo.classList.add('hidden');
+                    setMaxBackdatedDate();
+                }
+            }
+            
+            // ফাংশন: তারিখ ভ্যালিডেশন
+            function validateTransactionDate(selectedDate) {
+                const selected = new Date(selectedDate);
+                const today = new Date();
+                
+                selected.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
+                
+                const diffTime = today - selected;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                
+                // নিয়ম ১: Opening Balance এর আগের তারিখ চেক
+                if (openingDate && selectedDate < openingDate) {
+                    return {
+                        valid: true,
+                        warning: 'আপনি Opening Balance এর আগের তারিখে entry করছেন। এই entry শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।',
+                        isHistorical: true
+                    };
+                }
+                
+                // নিয়ম ২: ৫ দিনের বেশি ব্যাকডেটেড চেক
+                if (diffDays > 5) {
+                    return {
+                        valid: false,
+                        message: 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করতে পারবেন। এর বেশি পুরনো তারিখে entry সম্ভব নয়।'
+                    };
+                }
+                
+                return { valid: true, isHistorical: false };
+            }
         
             /* ================= INIT ================= */
-            transactionDate.value = BD_TIME.getDate();
-            transactionDate.max = BD_TIME.getDate();
+            transactionDate.value = todayDate();
+            transactionDate.max = todayDate();
             
             // Set max dates for cheque and bftn date
-            chequeDateInput.min = BD_TIME.getDate();
-            bftnDateInput.min = BD_TIME.getDate();
+            chequeDateInput.min = todayDate();
+            bftnDateInput.min = todayDate();
+            
+            // Initial opening date fetch when account changes
+            accountInput.addEventListener('change', function() {
+                const account = extractIds(accountInput.value);
+                if (account && account.sys_id) {
+                    selectedAccountId = account.sys_id;
+                    document.getElementById('accountId').value = account.sys_id;
+                    document.getElementById('accountName').value = account.name;
+                    
+                    // Fetch account balance
+                    fetchAccountInfo(account.sys_id).then(accInfo => {
+                        if (accInfo) {
+                            document.getElementById('currentAccountBalance').value = accInfo.balance;
+                        }
+                    });
+                    
+                    // Fetch opening date
+                    fetchOpeningDate(account.sys_id);
+                }
+            });
+            
+            // Date input এ পরিবর্তন হলে ওয়ার্নিং দেখানো
+            transactionDate.addEventListener('change', function() {
+                const validation = validateTransactionDate(this.value);
+                if (!validation.valid) {
+                    dateWarning.textContent = validation.message;
+                    dateWarning.classList.remove('hidden');
+                    dateWarning.classList.add('text-red-500');
+                    saveTransactionBtn.disabled = true;
+                } else if (validation.warning) {
+                    dateWarning.textContent = validation.warning;
+                    dateWarning.classList.remove('hidden');
+                    dateWarning.classList.remove('text-red-500');
+                    dateWarning.classList.add('text-yellow-600');
+                    saveTransactionBtn.disabled = false;
+                } else {
+                    dateWarning.classList.add('hidden');
+                    saveTransactionBtn.disabled = false;
+                }
+            });
         
             function togglePartySection() {
                 const type = selectType.value;
@@ -385,8 +544,10 @@ $base_ip_path = trim($ip_port, "/");
         
             window.resetTransactionForm = function () {
                 transactionForm.reset();
-                transactionDate.value = BD_TIME.getDate();
+                transactionDate.value = todayDate();
                 togglePartySection();
+                dateWarning.classList.add('hidden');
+                saveTransactionBtn.disabled = false;
             };
         
             saveTransactionBtn.addEventListener('click', submitTransaction);
@@ -418,9 +579,27 @@ $base_ip_path = trim($ip_port, "/");
                     return false;
                 }
         
+                if (!account || !account.sys_id) {
+                    alert('Please select an account');
+                    return false;
+                }
+        
                 if (!transactionDate.value) {
                     alert('Please select a date');
                     return false;
+                }
+                
+                // Date validation
+                const dateValidation = validateTransactionDate(transactionDate.value);
+                if (!dateValidation.valid) {
+                    alert(dateValidation.message);
+                    return false;
+                }
+                
+                if (dateValidation.warning) {
+                    if (!confirm(dateValidation.warning + '\n\nতবুও কি এগিয়ে যেতে চান?')) {
+                        return false;
+                    }
                 }
         
                 if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
@@ -475,13 +654,13 @@ $base_ip_path = trim($ip_port, "/");
                             <style>
                                 @page { margin: 0; }
                                 body { 
-                                    font-family: 'Poppins', sans-serif; /* Standard sans-serif is often clearer on low DPI */
+                                    font-family: 'Poppins', sans-serif;
                                     width: 58mm; 
                                     padding: 2mm; 
                                     margin: 0; 
-                                    font-size: 14px; /* Increased base size */
+                                    font-size: 14px;
                                     color: #000;
-                                    font-weight: 600; /* Bolder text for better thermal burning */
+                                    font-weight: 600;
                                 }
                                 .logo-container { text-align: center; margin-bottom: 5px; }
                                 .logo-container img { width: 20mm; height: auto; filter: grayscale(100%) contrast(150%); }
@@ -494,6 +673,7 @@ $base_ip_path = trim($ip_port, "/");
                                 .row span:last-child { text-align: right; font-weight: 900; }
                                 .total-row { font-size: 16px; margin-top: 8px; border-top: 2px solid #000; padding-top: 5px; }
                                 .footer { text-align: center; margin-top: 15px; font-size: 11px; font-weight: normal; }
+                                .historical-badge { background: #fef3c7; color: #92400e; padding: 2px 5px; border-radius: 3px; font-size: 10px; }
                                 @media print {
                                     body { width: 58mm; -webkit-print-color-adjust: exact; }
                                 }
@@ -516,14 +696,16 @@ $base_ip_path = trim($ip_port, "/");
                                 <div class="row"><span>SYS ID:</span> <span>${item.sys_id}</span></div>
                                 <div class="row"><span>NAME:</span> <span>${item.name.toUpperCase()}</span></div>
                                 
+                                ${item.is_historical == 1 ? '<div class="row"><span class="historical-badge">ঐতিহাসিক entry (ক্যালকুলেশনের বাইরে)</span></div>' : ''}
+                                
                                 <div class="separator"></div>
                                 
                                 <div class="row">
                                     <span>PARTICULAR:</span> 
                                     <span>
-                                        ${item.particular.length > 16 
+                                        ${item.particular && item.particular.length > 16 
                                             ? item.particular.substring(0, 8) + '...' + item.particular.slice(-5) 
-                                            : item.particular}
+                                            : item.particular || ''}
                                     </span>
                                 </div>
                                 <div class="row"><span>METHOD:</span> <span>${item.transfer_method || 'CASH'}</span></div>
@@ -568,6 +750,9 @@ $base_ip_path = trim($ip_port, "/");
                 const vendor = extractIds(vendorInput?.value);
                 const account = extractIds(accountInput.value);
                 
+                // Check if this is historical (opening balance er age)
+                const dateValidation = validateTransactionDate(transactionDate.value);
+                
                 const data = {
                     accountId: account?.sys_id || null,
                     accountName: account?.name || null,
@@ -585,7 +770,8 @@ $base_ip_path = trim($ip_port, "/");
                     bankName: method === 'cheque' ? bankNameInput.value.trim() : null,
                     bftnAccountName: method === 'bftn-eft' ? accountNameInput.value.trim() : null,
                     eftBankName: method === 'bftn-eft' ? eftBankNameInput.value.trim() : null,
-                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null
+                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null,
+                    isHistorical: dateValidation.isHistorical ? 1 : 0  // Send historical flag
                 };
         
                 // Disable button and show spinner
@@ -608,12 +794,20 @@ $base_ip_path = trim($ip_port, "/");
                         if (result.instrument) {
                             alert('Instrument recorded successfully. Transaction pending clearance.');
                         } else {
-                            alert('Transaction saved successfully!');
+                            let message = 'Transaction saved successfully!';
+                            if (result.is_historical) {
+                                message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে (Opening Balance এর আগের তারিখ)। এই entry ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।';
+                            } else if (result.recalculated) {
+                                message = `ব্যাকডেটেড entry সফল হয়েছে। ${result.recalculated_date} থেকে পরবর্তী সকল entry পুনরায় ক্যালকুলেট করা হয়েছে।`;
+                            }
+                            alert(message);
                         }
                         resetTransactionForm();
                         
-                        const itemData = encodeURIComponent(JSON.stringify(result.item));
-                        printReceipt(itemData);
+                        if (result.item) {
+                            const itemData = encodeURIComponent(JSON.stringify(result.item));
+                            printReceipt(itemData);
+                        }
                     } else {
                         alert(result.error || result.message || 'Transaction failed.');
                     }

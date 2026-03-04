@@ -1,5 +1,4 @@
 <?php
-// fatch_laser_statement_api.php - Add laser transaction statement (PDO)
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -32,18 +31,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($data)) {
 }
 
 // 3. Extract & validate input
-$account_row_id            = $data['accountId'] ?? null; // FIXED naming
+$account_row_id            = $data['accountId'] ?? null;
 $account_name              = $data['accountName'] ?? null;
 $particular                = $data['particular'] ?? '';
 $input_amount              = $data['balance'] ?? 0;
 $paymentType               = $data['paymentType'] ?? null;
 $current_account_balance   = $data['currentAccountBalance'] ?? 0;
-$reconciliation_type = isset($data['reconciliation_type']) ? (int)$data['reconciliation_type'] : 0;
+$isHistorical              = isset($data['is_historical']) ? (int)$data['is_historical'] : 0;
+
+// *** IMPORTANT: reconciliation_type properly handle করুন ***
+$reconciliation_type = null; // Default null
+if (isset($data['reconciliation_type']) && $data['reconciliation_type'] !== '') {
+    $reconciliation_type = (int)$data['reconciliation_type'];
+}
 
 // Time Zone
 $transaction_date = $data['transactionDate'] ?? null;
 $txnDateObj = new DateTime($transaction_date, new DateTimeZone('Asia/Dhaka'));
-
 
 if ($transaction_date) {
     $tz = new DateTimeZone('Asia/Dhaka');
@@ -58,7 +62,6 @@ if ($transaction_date) {
 
     $transaction_date = $dateTime->format('Y-m-d H:i:s');
 }
-
 
 if (!$transaction_date || !$paymentType) {
     http_response_code(400);
@@ -89,6 +92,34 @@ try {
     /* ================= START TRANSACTION ================= */
     $pdo->beginTransaction();
 
+    /* ---------------- নিয়ম ১: Opening Balance এর আগের তারিখ চেক ---------------- */
+    if (!$isHistorical) {
+        $openingQuery = "
+            SELECT MIN(date) as opening_date 
+            FROM ac_banking_stmts 
+            WHERE ledger_db_id = :account_id 
+            AND particular = 'Opening Balance'
+        ";
+        $openingStmt = $pdo->prepare($openingQuery);
+        $openingStmt->execute([':account_id' => $account_row_id]);
+        $openingDate = $openingStmt->fetch(PDO::FETCH_ASSOC)['opening_date'];
+        
+        if ($openingDate && $transaction_date < $openingDate) {
+            $isHistorical = 1;
+        }
+    }
+    
+    /* ---------------- নিয়ম ২: ৫ দিনের বেশি ব্যাকডেটেড চেক ---------------- */
+    $maxBackdatedDays = 5;
+    $dateCheckQuery = "SELECT DATEDIFF(NOW(), :transaction_date) as days_diff";
+    $dateStmt = $pdo->prepare($dateCheckQuery);
+    $dateStmt->execute([':transaction_date' => $transaction_date]);
+    $daysDiff = $dateStmt->fetch(PDO::FETCH_ASSOC)['days_diff'];
+    
+    if ($daysDiff > $maxBackdatedDays && !$isHistorical) {
+        throw new Exception('আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করতে পারবেন।');
+    }
+
     /* ---------------- Transaction Logic ---------------- */
     $withdraw        = 0.00;
     $deposit         = 0.00;
@@ -99,21 +130,28 @@ try {
 
         case 'Withdraw':
             $withdraw    = $amount;
-            $new_balance = $current_account_balance - $amount;
+            if (!$isHistorical) {
+                $new_balance = $current_account_balance - $amount;
+            }
             break;
 
         case 'Deposit':
             $deposit     = $amount;
-            $new_balance = $current_account_balance + $amount;
+            if (!$isHistorical) {
+                $new_balance = $current_account_balance + $amount;
+            }
             break;
 
         case 'Reconciliation':
-            // Static behavior (no balance change)
             $reconciliation = $amount;
-            if($reconciliation_type == 0){
-                $new_balance    = $current_account_balance + $reconciliation;
-            }elseif ($reconciliation_type == 1) {
-                $new_balance    = $current_account_balance - $reconciliation;
+            if ($reconciliation_type === 1) { // Add
+                if (!$isHistorical) {
+                    $new_balance = $current_account_balance + $amount;
+                }
+            } elseif ($reconciliation_type === 2) { // Deduct
+                if (!$isHistorical) {
+                    $new_balance = $current_account_balance - $amount;
+                }
             }
             break;
 
@@ -122,8 +160,8 @@ try {
     }
 
     /* ---------------- Update Account Balance ---------------- */
-    // Only for Withdraw & Deposit
-    if (in_array($paymentType, ['Withdraw', 'Deposit'], true)) {
+    // Only for non-historical entries
+    if (!$isHistorical && in_array($paymentType, ['Withdraw', 'Deposit'], true)) {
 
         $updateSql = "
             UPDATE ac_banking
@@ -159,7 +197,8 @@ try {
             balance,
             reconsilation,
             reconsilation_type,
-            meta_data
+            meta_data,
+            is_historical
         )
         VALUES
         (
@@ -174,7 +213,8 @@ try {
             :balance,
             :reconsilation,
             :reconsilation_type,
-            :meta_data
+            :meta_data,
+            :is_historical
         )
     ";
 
@@ -188,13 +228,30 @@ try {
         ':particular'    => $particular,
         ':withdraw'      => $withdraw,
         ':deposit'       => $deposit,
-        ':balance'       => $new_balance, // running balance
+        ':balance'       => $new_balance,
         ':reconsilation' => $reconciliation,
-        ':reconsilation_type' => $reconciliation_type,
-        ':meta_data'     => $stmtMeta
+        ':reconsilation_type' => $reconciliation_type, // Now this will be null for non-reconciliation
+        ':meta_data'     => $stmtMeta,
+        ':is_historical' => $isHistorical
     ]);
 
     $new_id = $pdo->lastInsertId();
+    
+    /* ---------------- নিয়ম ৩: ব্যাকডেটেড entry হলে রি-ক্যালকুলেশন ---------------- */
+    $recalculated = false;
+    $recalculatedDate = null;
+    
+    if (!$isHistorical && ($daysDiff > 0 || $transaction_date < date('Y-m-d'))) {
+        // এই তারিখ থেকে পরবর্তী সব ট্রানজেকশন রি-ক্যালকুলেট
+        $result = recalculateBalances($pdo, $account_row_id, $transaction_date);
+        $recalculated = true;
+        $recalculatedDate = $transaction_date;
+        $finalBalance = $result['final_balance'];
+    } elseif (!$isHistorical) {
+        $finalBalance = $new_balance;
+    } else {
+        $finalBalance = $current_account_balance;
+    }
 
     /* ================= COMMIT ================= */
     $pdo->commit();
@@ -202,10 +259,13 @@ try {
     http_response_code(200);
     echo json_encode([
         'success'        => true,
-        'message'        => 'Transaction successfully recorded',
+        'message'        => $isHistorical ? 'ঐতিহাসিক entry সংরক্ষিত হয়েছে' : 'ট্রানজেকশন সফল হয়েছে',
         'new_id'         => $new_id,
-        'new_balance'    => $new_balance,
-        'stmt_sys_id'    => $stmtIds['sys_id']
+        'new_balance'    => $finalBalance,
+        'stmt_sys_id'    => $stmtIds['sys_id'],
+        'is_historical'  => $isHistorical,
+        'recalculated'   => $recalculated,
+        'recalculated_date' => $recalculatedDate
     ]);
 
 } catch (PDOException $e) {
@@ -233,3 +293,91 @@ try {
         'error'   => $e->getMessage()
     ]);
 }
+
+/**
+ * নির্দিষ্ট তারিখ থেকে পরবর্তী সব ট্রানজেকশন রি-ক্যালকুলেট করার ফাংশন
+ */
+function recalculateBalances($pdo, $accountId, $fromDate) {
+    // ঐ তারিখের আগের শেষ ব্যালেন্স বের করা (শুধু non-historical)
+    $prevBalanceQuery = "
+        SELECT balance FROM ac_banking_stmts 
+        WHERE ledger_db_id = :account_id 
+        AND date < :from_date 
+        AND is_historical = 0
+        ORDER BY date DESC, sys_id DESC 
+        LIMIT 1
+    ";
+    $prevStmt = $pdo->prepare($prevBalanceQuery);
+    $prevStmt->execute([
+        ':account_id' => $accountId,
+        ':from_date' => $fromDate
+    ]);
+    $prevBalance = (float)$prevStmt->fetchColumn();
+    
+    if (!$prevBalance) {
+        // আগের কোনো ব্যালেন্স না থাকলে, Opening Balance থেকে শুরু
+        $openingQuery = "
+            SELECT balance FROM ac_banking_stmts 
+            WHERE ledger_db_id = :account_id 
+            AND particular = 'Opening Balance'
+            LIMIT 1
+        ";
+        $openingStmt = $pdo->prepare($openingQuery);
+        $openingStmt->execute([':account_id' => $accountId]);
+        $prevBalance = (float)$openingStmt->fetchColumn();
+    }
+    
+    // ঐ তারিখ থেকে পরবর্তী সব ট্রানজেকশন নেওয়া (ক্রমানুসারে) - শুধু non-historical
+    $transactionsQuery = "
+        SELECT sys_id, date, withdraw, deposit, reconsilation, reconsilation_type
+        FROM ac_banking_stmts 
+        WHERE ledger_db_id = :account_id 
+        AND date >= :from_date 
+        AND is_historical = 0
+        ORDER BY date ASC, sys_id ASC
+    ";
+    $transStmt = $pdo->prepare($transactionsQuery);
+    $transStmt->execute([
+        ':account_id' => $accountId,
+        ':from_date' => $fromDate
+    ]);
+    $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $runningBalance = $prevBalance;
+    
+    // প্রতিটি ট্রানজেকশনের ব্যালেন্স পুনরায় ক্যালকুলেট
+    foreach ($transactions as $trans) {
+        if ($trans['withdraw'] > 0) {
+            $runningBalance -= $trans['withdraw'];
+        } elseif ($trans['deposit'] > 0) {
+            $runningBalance += $trans['deposit'];
+        } elseif ($trans['reconsilation'] > 0) {
+            if ($trans['reconsilation_type'] == 1) {
+                $runningBalance += $trans['reconsilation'];
+            } elseif ($trans['reconsilation_type'] == 2) {
+                $runningBalance -= $trans['reconsilation'];
+            }
+        }
+        
+        // আপডেট ব্যালেন্স
+        $updateSql = "UPDATE ac_banking_stmts SET balance = :balance WHERE sys_id = :sys_id";
+        $updateStmt = $pdo->prepare($updateSql);
+        $updateStmt->execute([
+            ':balance' => $runningBalance,
+            ':sys_id' => $trans['sys_id']
+        ]);
+    }
+    
+    // মূল অ্যাকাউন্টের ব্যালেন্স আপডেট
+    $updateAccountSql = "UPDATE ac_banking SET balance = :balance WHERE sys_id = :account_id";
+    $updateAccStmt = $pdo->prepare($updateAccountSql);
+    $updateAccStmt->execute([
+        ':balance' => $runningBalance,
+        ':account_id' => $accountId
+    ]);
+    
+    return [
+        'final_balance' => $runningBalance
+    ];
+}
+?>

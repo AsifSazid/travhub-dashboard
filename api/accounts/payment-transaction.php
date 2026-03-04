@@ -42,6 +42,7 @@ $amount = $data['amount'] ?? 0;
 $particular = $data['particular'] ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
 $transferMethod = $data['transferMethod'] ?? 'cash';
+$isHistorical = isset($data['isHistorical']) ? (int)$data['isHistorical'] : 0;
 
 $deposit = 0;
 
@@ -91,6 +92,42 @@ if ($txnDateObj >= $cutoffDate) {
         ]);
         exit;
     }
+}
+
+/* ================= CHECK OPENING BALANCE DATE ================= */
+try {
+    $openingQuery = "
+        SELECT MIN(date) as opening_date 
+        FROM ac_banking_stmts 
+        WHERE ledger_db_id = :account_id 
+        AND particular = 'Opening Balance'
+    ";
+    $openingStmt = $pdo->prepare($openingQuery);
+    $openingStmt->execute([':account_id' => $accountId]);
+    $openingDate = $openingStmt->fetch(PDO::FETCH_ASSOC)['opening_date'];
+    
+    // If transaction date is before opening date, mark as historical
+    if ($openingDate && $transactionDate < $openingDate) {
+        $isHistorical = 1;
+    }
+} catch (PDOException $e) {
+    // Continue with provided isHistorical value
+}
+
+/* ================= CHECK 5-DAY BACKDATED LIMIT ================= */
+$maxBackdatedDays = 5;
+$dateCheckQuery = "SELECT DATEDIFF(NOW(), :transaction_date) as days_diff";
+$dateStmt = $pdo->prepare($dateCheckQuery);
+$dateStmt->execute([':transaction_date' => $transactionDate]);
+$daysDiff = $dateStmt->fetch(PDO::FETCH_ASSOC)['days_diff'];
+
+if ($daysDiff > $maxBackdatedDays && !$isHistorical) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করতে পারবেন।'
+    ]);
+    exit;
 }
 
 /* ================= HANDLE INSTRUMENT (Cheque/BFTN-EFT) ================= */
@@ -207,23 +244,30 @@ try {
 
     $currentBalance = $account['balance'];
     
-    // Check sufficient balance
-    if ($currentBalance < $amount) {
+    // Check sufficient balance (only for non-historical entries)
+    if (!$isHistorical && $currentBalance < $amount) {
         throw new Exception('Insufficient balance in account');
     }
     
-    $newBalance = $currentBalance - $amount;
+    // Calculate new balance (only if not historical)
+    if ($isHistorical) {
+        $newBalance = $currentBalance; // No change for historical
+    } else {
+        $newBalance = $currentBalance - $amount;
+    }
 
-    // Update account balance
-    $updateStmt = $pdo->prepare("
-        UPDATE ac_banking 
-        SET balance = :balance 
-        WHERE sys_id = :id
-    ");
-    $updateStmt->execute([
-        ':balance' => $newBalance,
-        ':id'      => $accountId
-    ]);
+    // Update account balance (only if not historical)
+    if (!$isHistorical) {
+        $updateStmt = $pdo->prepare("
+            UPDATE ac_banking 
+            SET balance = :balance 
+            WHERE sys_id = :id
+        ");
+        $updateStmt->execute([
+            ':balance' => $newBalance,
+            ':id'      => $accountId
+        ]);
+    }
 
     // Insert into bank statements
     $stmtUUIDs = generateIDs('ac_banking_stmts');
@@ -233,12 +277,12 @@ try {
         INSERT INTO ac_banking_stmts
         (
             uuid, sys_id, ledger_db_id, name, date, particular,
-            withdraw, deposit, balance, transfer_method, meta_data
+            withdraw, deposit, balance, transfer_method, meta_data, is_historical
         )
         VALUES
         (
             :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
-            :withdraw, :deposit, :balance, :transfer_method, :meta_data
+            :withdraw, :deposit, :balance, :transfer_method, :meta_data, :is_historical
         )
     ");
 
@@ -253,7 +297,8 @@ try {
         ':deposit' => $deposit,
         ':balance' => $newBalance,
         ':transfer_method' => $transferMethod,
-        ':meta_data' => $stmtMeta
+        ':meta_data' => $stmtMeta,
+        ':is_historical' => $isHistorical
     ]);
 
     $stmtSysId = $stmtUUIDs['sys_id'];
@@ -294,31 +339,49 @@ try {
         ':meta_data' => $financialMeta
     ]);
 
+    /* ================= CHECK FOR BACKDATED RECALCULATION ================= */
+    $recalculated = false;
+    $recalculatedDate = null;
+    
+    if (!$isHistorical && ($daysDiff > 0 || $transactionDate < date('Y-m-d'))) {
+        // Call recalculate function
+        $recalcResult = recalculateBalances($pdo, $accountId, $transactionDate);
+        $recalculated = true;
+        $recalculatedDate = $transactionDate;
+        $newBalance = $recalcResult['final_balance'];
+    }
+
     /* ================= COMMIT ================= */
     $pdo->commit();
+
+    // Fetch the inserted record for receipt
+    $itemData = [
+        'uuid' => $stmtUUIDs['uuid'],
+        'sys_id' => $stmtUUIDs['sys_id'],
+        'ledger_db_id' => $accountId,
+        'name' => $accountName,
+        'date' => $transactionDate,
+        'particular' => $particular,
+        'withdraw' => $amount,
+        'deposit' => $deposit,
+        'balance' => $newBalance,
+        'transfer_method' => $transferMethod,
+        'is_historical' => $isHistorical
+    ];
 
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Payment transaction recorded successfully',
+        'message' => $isHistorical ? 'ঐতিহাসিক এন্ট্রি সংরক্ষিত হয়েছে' : 'Payment transaction recorded successfully',
         'data' => [
             'bank_stmt_id' => $stmtSysId,
             'financial_entry_id' => $financialUUIDs['sys_id'],
             'new_balance' => $newBalance
         ], 
-        'item' => [
-            'uuid' => $stmtUUIDs['uuid'],
-            'sys_id' => $stmtUUIDs['sys_id'],
-            'ledger_db_id' => $accountId,
-            'name' => $accountName,
-            'date' => $transactionDate,
-            'particular' => $particular,
-            'withdraw' => $amount,
-            'deposit' => $deposit,
-            'balance' => $newBalance,
-            'transfer_method' => $transferMethod,
-            'meta_data' => $stmtMeta
-        ]
+        'item' => $itemData,
+        'is_historical' => $isHistorical,
+        'recalculated' => $recalculated,
+        'recalculated_date' => $recalculatedDate
     ]);
 
 } catch (Throwable $e) {
@@ -333,3 +396,85 @@ try {
         'message' => $e->getMessage()
     ]);
 }
+
+/**
+ * নির্দিষ্ট তারিখ থেকে পরবর্তী সব ট্রানজেকশন রি-ক্যালকুলেট করার ফাংশন
+ */
+function recalculateBalances($pdo, $accountId, $fromDate) {
+    // ঐ তারিখের আগের শেষ ব্যালেন্স বের করা (শুধু non-historical)
+    $prevBalanceQuery = "
+        SELECT balance FROM ac_banking_stmts 
+        WHERE ledger_db_id = :account_id 
+        AND date < :from_date 
+        AND is_historical = 0
+        ORDER BY date DESC, sys_id DESC 
+        LIMIT 1
+    ";
+    $prevStmt = $pdo->prepare($prevBalanceQuery);
+    $prevStmt->execute([
+        ':account_id' => $accountId,
+        ':from_date' => $fromDate
+    ]);
+    $prevBalance = (float)$prevStmt->fetchColumn();
+    
+    if (!$prevBalance) {
+        // আগের কোনো ব্যালেন্স না থাকলে, Opening Balance থেকে শুরু
+        $openingQuery = "
+            SELECT balance FROM ac_banking_stmts 
+            WHERE ledger_db_id = :account_id 
+            AND particular = 'Opening Balance'
+            LIMIT 1
+        ";
+        $openingStmt = $pdo->prepare($openingQuery);
+        $openingStmt->execute([':account_id' => $accountId]);
+        $prevBalance = (float)$openingStmt->fetchColumn();
+    }
+    
+    // ঐ তারিখ থেকে পরবর্তী সব ট্রানজেকশন নেওয়া (ক্রমানুসারে) - শুধু non-historical
+    $transactionsQuery = "
+        SELECT sys_id, date, withdraw, deposit
+        FROM ac_banking_stmts 
+        WHERE ledger_db_id = :account_id 
+        AND date >= :from_date 
+        AND is_historical = 0
+        ORDER BY date ASC, sys_id ASC
+    ";
+    $transStmt = $pdo->prepare($transactionsQuery);
+    $transStmt->execute([
+        ':account_id' => $accountId,
+        ':from_date' => $fromDate
+    ]);
+    $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $runningBalance = $prevBalance;
+    
+    // প্রতিটি ট্রানজেকশনের ব্যালেন্স পুনরায় ক্যালকুলেট
+    foreach ($transactions as $trans) {
+        if ($trans['withdraw'] > 0) {
+            $runningBalance -= $trans['withdraw'];
+        } elseif ($trans['deposit'] > 0) {
+            $runningBalance += $trans['deposit'];
+        }
+        
+        // আপডেট ব্যালেন্স
+        $updateSql = "UPDATE ac_banking_stmts SET balance = :balance WHERE sys_id = :sys_id";
+        $updateStmt = $pdo->prepare($updateSql);
+        $updateStmt->execute([
+            ':balance' => $runningBalance,
+            ':sys_id' => $trans['sys_id']
+        ]);
+    }
+    
+    // মূল অ্যাকাউন্টের ব্যালেন্স আপডেট
+    $updateAccountSql = "UPDATE ac_banking SET balance = :balance WHERE sys_id = :account_id";
+    $updateAccStmt = $pdo->prepare($updateAccountSql);
+    $updateAccStmt->execute([
+        ':balance' => $runningBalance,
+        ':account_id' => $accountId
+    ]);
+    
+    return [
+        'final_balance' => $runningBalance
+    ];
+}
+?>

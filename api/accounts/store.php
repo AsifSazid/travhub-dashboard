@@ -125,7 +125,8 @@ try {
             deposit,
             balance,
             reconsilation,
-            meta_data
+            meta_data,
+            is_historical
         )
         VALUES
         (
@@ -139,7 +140,8 @@ try {
             :deposit,
             :balance,
             :reconsilation,
-            :meta_data
+            :meta_data,
+            :is_historical
         )
     ";
 
@@ -155,7 +157,8 @@ try {
         ':deposit'       => $account['balance'],
         ':balance'       => $account['balance'],
         ':reconsilation' => 0,
-        ':meta_data'     => $stmtMeta
+        ':meta_data'     => $stmtMeta,
+        ':is_historical' => 0 // Opening Balance কখনো historical হয় না
     ]);
 
     /* ================= COMMIT ================= */
@@ -177,7 +180,6 @@ try {
         $pdo->rollBack();
     }
 
-    // Duplicate entry (main_type + acc_name)
     if ($e->getCode() == 23000) {
         http_response_code(409);
         echo json_encode([
@@ -207,3 +209,4 @@ try {
         'error'   => $e->getMessage()
     ]);
 }
+?>
