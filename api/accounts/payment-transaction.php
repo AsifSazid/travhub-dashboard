@@ -58,7 +58,7 @@ $accountNameEFT = $data['bftnAccountName'] ?? '';
 $eftBankName = $data['eftBankName'] ?? '';
 $bftnDate = $data['bftnDate'] ?? '';
 
-/* ================= VALIDATION ================= */
+/* ================= BASIC VALIDATION ================= */
 if (!is_numeric($amount) || $amount <= 0) {
     http_response_code(400);
     echo json_encode([
@@ -92,42 +92,6 @@ if ($txnDateObj >= $cutoffDate) {
         ]);
         exit;
     }
-}
-
-/* ================= CHECK OPENING BALANCE DATE ================= */
-try {
-    $openingQuery = "
-        SELECT MIN(date) as opening_date 
-        FROM ac_banking_stmts 
-        WHERE ledger_db_id = :account_id 
-        AND particular = 'Opening Balance'
-    ";
-    $openingStmt = $pdo->prepare($openingQuery);
-    $openingStmt->execute([':account_id' => $accountId]);
-    $openingDate = $openingStmt->fetch(PDO::FETCH_ASSOC)['opening_date'];
-    
-    // If transaction date is before opening date, mark as historical
-    if ($openingDate && $transactionDate < $openingDate) {
-        $isHistorical = 1;
-    }
-} catch (PDOException $e) {
-    // Continue with provided isHistorical value
-}
-
-/* ================= CHECK 5-DAY BACKDATED LIMIT ================= */
-$maxBackdatedDays = 5;
-$dateCheckQuery = "SELECT DATEDIFF(NOW(), :transaction_date) as days_diff";
-$dateStmt = $pdo->prepare($dateCheckQuery);
-$dateStmt->execute([':transaction_date' => $transactionDate]);
-$daysDiff = $dateStmt->fetch(PDO::FETCH_ASSOC)['days_diff'];
-
-if ($daysDiff > $maxBackdatedDays && !$isHistorical) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করতে পারবেন।'
-    ]);
-    exit;
 }
 
 /* ================= HANDLE INSTRUMENT (Cheque/BFTN-EFT) ================= */
@@ -217,7 +181,7 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Instrument recorded successfully. Transaction pending.',
+        'message' => 'Instrument recorded successfully. Payment pending clearance.',
         'instrument' => $instrumentData
     ]);
     exit;
@@ -227,8 +191,7 @@ try {
     /* ================= START TRANSACTION ================= */
     $pdo->beginTransaction();
 
-    /* ================= 1. BANK LEDGER ENTRY ================= */
-    // Fetch current account balance
+    /* ================= 1. FETCH ACCOUNT BALANCE ================= */
     $accStmt = $pdo->prepare("
         SELECT balance 
         FROM ac_banking 
@@ -243,20 +206,52 @@ try {
     }
 
     $currentBalance = $account['balance'];
-    
-    // Check sufficient balance (only for non-historical entries)
-    if (!$isHistorical && $currentBalance < $amount) {
-        throw new Exception('Insufficient balance in account');
+
+    /* ================= 2. CHECK OPENING BALANCE DATE ================= */
+    try {
+        $openingQuery = "
+            SELECT MIN(date) as opening_date 
+            FROM ac_banking_stmts 
+            WHERE ledger_db_id = :account_id 
+            AND particular = 'Opening Balance'
+        ";
+        $openingStmt = $pdo->prepare($openingQuery);
+        $openingStmt->execute([':account_id' => $accountId]);
+        $openingDate = $openingStmt->fetch(PDO::FETCH_ASSOC)['opening_date'];
+        
+        // If transaction date is before opening date, mark as historical
+        if ($openingDate && $transactionDate < $openingDate) {
+            $isHistorical = 1;
+        }
+    } catch (PDOException $e) {
+        // Continue with provided isHistorical value
     }
-    
-    // Calculate new balance (only if not historical)
+
+    /* ================= 3. CHECK 5-DAY BACKDATED LIMIT ================= */
+    $maxBackdatedDays = 5;
+    $dateCheckQuery = "SELECT DATEDIFF(NOW(), :transaction_date) as days_diff";
+    $dateStmt = $pdo->prepare($dateCheckQuery);
+    $dateStmt->execute([':transaction_date' => $transactionDate]);
+    $daysDiff = $dateStmt->fetch(PDO::FETCH_ASSOC)['days_diff'];
+
+    // Only check 5-day limit if not historical (opening balance er age)
+    if (!$isHistorical && $daysDiff > $maxBackdatedDays) {
+        throw new Exception('আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করতে পারবেন।');
+    }
+
+    /* ================= 4. CALCULATE NEW BALANCE ================= */
+    // For historical entries, balance doesn't change
     if ($isHistorical) {
-        $newBalance = $currentBalance; // No change for historical
+        $newBalance = $currentBalance;
     } else {
+        // Check sufficient balance for non-historical
+        if ($currentBalance < $amount) {
+            throw new Exception('Insufficient balance in account');
+        }
         $newBalance = $currentBalance - $amount;
     }
 
-    // Update account balance (only if not historical)
+    /* ================= 5. UPDATE ACCOUNT BALANCE (ONLY IF NOT HISTORICAL) ================= */
     if (!$isHistorical) {
         $updateStmt = $pdo->prepare("
             UPDATE ac_banking 
@@ -269,7 +264,7 @@ try {
         ]);
     }
 
-    // Insert into bank statements
+    /* ================= 6. INSERT INTO BANK STATEMENTS ================= */
     $stmtUUIDs = generateIDs('ac_banking_stmts');
     $stmtMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
@@ -303,7 +298,7 @@ try {
 
     $stmtSysId = $stmtUUIDs['sys_id'];
 
-    /* ================= 2. FINANCIAL ENTRIES ================= */
+    /* ================= 7. INSERT INTO FINANCIAL ENTRIES ================= */
     $financialUUIDs = generateIDs('financial_entries');
     $financialMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
@@ -311,6 +306,7 @@ try {
     $userName = $clientName ?? $vendorName;
     $userType = $clientId ? 'client' : 'vendor';
 
+    // financial_entries এ is_historical ব্যবহার করা হচ্ছে না
     $financialStmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
@@ -339,7 +335,7 @@ try {
         ':meta_data' => $financialMeta
     ]);
 
-    /* ================= CHECK FOR BACKDATED RECALCULATION ================= */
+    /* ================= 8. CHECK FOR BACKDATED RECALCULATION ================= */
     $recalculated = false;
     $recalculatedDate = null;
     

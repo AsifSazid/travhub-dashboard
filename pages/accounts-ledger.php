@@ -237,7 +237,8 @@ $base_ip_path = trim($ip_port, "/");
                     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
                         <p><i class="fas fa-info-circle mr-2"></i> <strong>নিয়মসমূহ:</strong></p>
                         <ul class="list-disc list-inside ml-4 mt-1">
-                            <li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করা যাবে</li>
+                            <!--<li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করা যাবে</li>-->
+                            <li>Backdated entries can be made up to a maximum of 8 days.</li>
                             <li><span class="font-semibold">Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</span></li>
                             <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
                         </ul>
@@ -444,7 +445,8 @@ $base_ip_path = trim($ip_port, "/");
                 
                 // সর্বোচ্চ ৫ দিন আগের তারিখ
                 const maxBackdated = new Date(today);
-                maxBackdated.setDate(today.getDate() - 5);
+                maxBackdated.setDate(today.getDate() - 8);
+                // maxBackdated.setDate(today.getDate() - 5);
                 
                 const minDate = maxBackdated.toISOString().split('T')[0];
                 const maxDate = today.toISOString().split('T')[0];
@@ -519,10 +521,12 @@ $base_ip_path = trim($ip_port, "/");
                 }
                 
                 // নিয়ম ২: ৫ দিনের বেশি ব্যাকডেটেড চেক (শুধু নন-হিস্টোরিক্যাল entryর জন্য)
-                if (diffDays > 5) {
+                // if (diffDays > 5) {
+                if (diffDays > 8) {
                     return {
                         valid: false,
-                        message: 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করতে পারবেন। এর বেশি পুরনো তারিখে entry সম্ভব নয়।'
+                        message: 'You can make backdated entries up to a maximum of 8 (EIGHT) days. Entry older than this is not possible.'
+                        // message: 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করতে পারবেন। এর বেশি পুরনো তারিখে entry সম্ভব নয়।'
                     };
                 }
                 

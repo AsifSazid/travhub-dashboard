@@ -104,9 +104,10 @@ $base_ip_path = trim($ip_port, "/");
                         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
                             <p><i class="fas fa-info-circle mr-2"></i> <strong>নিয়মসমূহ:</strong></p>
                             <ul class="list-disc list-inside ml-4 mt-1">
-                                <li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করা যাবে</li>
-                                <li>Opening Balance এর আগের তারিখের এন্ট্রি শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
-                                <li>ব্যাকডেটেড এন্ট্রি করলে পরবর্তী সকল এন্ট্রি স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
+                                <!--<li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করা যাবে</li>-->
+                                <li>Backdated entries can be made up to a maximum of 8 days.</li>
+                                <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
+                                <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
                             </ul>
                         </div>
                         
@@ -374,7 +375,8 @@ $base_ip_path = trim($ip_port, "/");
             function setMaxBackdatedDate() {
                 const today = new Date();
                 const maxBackdated = new Date(today);
-                maxBackdated.setDate(today.getDate() - 5);
+                maxBackdated.setDate(today.getDate() - 8);
+                // maxBackdated.setDate(today.getDate() - 5);
                 
                 const minDate = maxBackdated.toISOString().split('T')[0];
                 const maxDate = today.toISOString().split('T')[0];
@@ -385,10 +387,11 @@ $base_ip_path = trim($ip_port, "/");
             
             // ফাংশন: Opening Balance এর তারিখ বের করা
             async function fetchOpeningDate(accountId) {
+                alert(accountId)
                 if (!accountId) {
                     openingDate = null;
                     openingDateInfo.classList.add('hidden');
-                    setMaxBackdatedDate();
+                    setMaxBackdatedDate(); // No account -> 5 days limit
                     return;
                 }
                 
@@ -406,10 +409,10 @@ $base_ip_path = trim($ip_port, "/");
                             day: 'numeric'
                         });
                         
-                        openingDateText.innerHTML = `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে এন্ট্রি করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্সে যোগ হবে না।`;
+                        openingDateText.innerHTML = `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে entry করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।`;
                         openingDateInfo.classList.remove('hidden');
                         
-                        // Opening Balance এর আগের তারিখ এন্ট্রি করার অনুমতি দিতে min সরান
+                        // Opening Balance এর আগের তারিখ entry করার অনুমতি দিতে
                         transactionDate.removeAttribute('min');
                         
                         const today = new Date();
@@ -418,14 +421,16 @@ $base_ip_path = trim($ip_port, "/");
                     } else {
                         openingDate = null;
                         openingDateInfo.classList.add('hidden');
-                        setMaxBackdatedDate();
+                        setMaxBackdatedDate(); // No opening balance -> 5 days limit
                     }
                 } catch (error) {
                     console.error('Error fetching opening date:', error);
                     openingDate = null;
                     openingDateInfo.classList.add('hidden');
-                    setMaxBackdatedDate();
+                    setMaxBackdatedDate(); // Error -> 5 days limit
                 }
+                
+                console.log(openingDate)
             }
             
             // ফাংশন: তারিখ ভ্যালিডেশন
@@ -443,32 +448,22 @@ $base_ip_path = trim($ip_port, "/");
                 if (openingDate && selectedDate < openingDate) {
                     return {
                         valid: true,
-                        warning: 'আপনি Opening Balance এর আগের তারিখে এন্ট্রি করছেন। এই এন্ট্রি শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।',
+                        warning: 'আপনি Opening Balance এর আগের তারিখে entry করছেন। এই entry শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।',
                         isHistorical: true
                     };
                 }
                 
-                // নিয়ম ২: ৫ দিনের বেশি ব্যাকডেটেড চেক
-                if (diffDays > 5) {
+                // নিয়ম ২: ৫ দিনের বেশি ব্যাকডেটেড চেক (শুধু নন-হিস্টোরিক্যাল entryর জন্য)
+                // if (diffDays > 5) {
+                if (diffDays > 8) {
                     return {
                         valid: false,
-                        message: 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করতে পারবেন। এর বেশি পুরনো তারিখে এন্ট্রি সম্ভব নয়।'
+                        message: 'You can make backdated entries up to a maximum of 8 (EIGHT) days. Entry older than this is not possible.'
+                        // message: 'আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করতে পারবেন। এর বেশি পুরনো তারিখে entry সম্ভব নয়।'
                     };
                 }
                 
                 return { valid: true, isHistorical: false };
-            }
-
-            /* ================= FETCH ACCOUNT ================= */
-            async function fetchAccountInfo(acc_id) {
-                try {
-                    const res = await fetch(`${FETCH_ACCOUNT}?acc_id=${acc_id}`);
-                    const json = await res.json();
-                    return json.accInfo || null;
-                } catch (e) {
-                    console.error(e);
-                    return null;
-                }
             }
 
             /* ================= INIT ================= */
@@ -479,8 +474,78 @@ $base_ip_path = trim($ip_port, "/");
             chequeDateInput.min = BD_TIME.getDate();
             bftnDateInput.min = BD_TIME.getDate();
             
+            /* ================= ACCOUNT SELECTION HANDLER ================= */
+            // This will catch both manual typing and dropdown selection
+            function setupAccountHandler() {
+                const accountInput = document.getElementById('accountInput');
+                
+                if (!accountInput) return;
+                
+                // Handle input changes (including from dropdown)
+                accountInput.addEventListener('input', function() {
+                    // Clear any pending timer
+                    if (this.accountTimer) {
+                        clearTimeout(this.accountTimer);
+                    }
+                    
+                    // Set timer to process after typing stops
+                    this.accountTimer = setTimeout(() => {
+                        processAccountSelection(this.value);
+                    }, 500);
+                });
+                
+                // Handle direct changes (when dropdown selects)
+                accountInput.addEventListener('change', function() {
+                    processAccountSelection(this.value);
+                });
+                
+                // Also handle blur to catch final value
+                accountInput.addEventListener('blur', function() {
+                    processAccountSelection(this.value);
+                });
+            }
+            
+            function processAccountSelection(value) {
+                console.log('Processing account:', value);
+                
+                const account = extractIds(value);
+                
+                if (account && account.sys_id) {
+                    selectedAccountId = account.sys_id;
+                    
+                    // Set hidden fields
+                    if (document.getElementById('accountId')) {
+                        document.getElementById('accountId').value = account.sys_id;
+                    }
+                    if (document.getElementById('accountName')) {
+                        document.getElementById('accountName').value = account.name;
+                    }
+                    
+                    // Fetch opening date
+                    fetchOpeningDate(account.sys_id);
+                    
+                    // Fetch account balance
+                    fetchAccountInfo(account.sys_id).then(accInfo => {
+                        if (accInfo && document.getElementById('currentAccountBalance')) {
+                            document.getElementById('currentAccountBalance').value = accInfo.balance;
+                            console.log('Current balance:', accInfo.balance);
+                        }
+                    });
+                } else {
+                    openingDate = null;
+                    if (document.getElementById('openingDateInfo')) {
+                        document.getElementById('openingDateInfo').classList.add('hidden');
+                    }
+                    setMaxBackdatedDate();
+                }
+            }
+            
+            // Call this after DOM is loaded
+            setupAccountHandler();
+            
             // Initial opening date fetch when account changes
             accountInput.addEventListener('change', function() {
+                console.log('action');
                 const account = extractIds(accountInput.value);
                 if (account && account.sys_id) {
                     selectedAccountId = account.sys_id;
@@ -747,7 +812,7 @@ $base_ip_path = trim($ip_port, "/");
                                 <div class="row"><span>SYS ID:</span> <span>${item.sys_id}</span></div>
                                 <div class="row"><span>FROM:</span> <span>${item.name.toUpperCase()}</span></div>
                                 
-                                ${item.is_historical == 1 ? '<div class="row"><span class="historical-badge">ঐতিহাসিক এন্ট্রি (ক্যালকুলেশনের বাইরে)</span></div>' : ''}
+                                ${item.is_historical == 1 ? '<div class="row"><span class="historical-badge">ঐতিহাসিক entry (ক্যালকুলেশনের বাইরে)</span></div>' : ''}
                                 
                                 <div class="separator"></div>
                                 
@@ -849,9 +914,9 @@ $base_ip_path = trim($ip_port, "/");
                         } else {
                             let message = 'Payment completed successfully!';
                             if (result.is_historical) {
-                                message = 'ঐতিহাসিক এন্ট্রি সংরক্ষিত হয়েছে (Opening Balance এর আগের তারিখ)। এই এন্ট্রি ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।';
+                                message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে (Opening Balance এর আগের তারিখ)। এই entry ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।';
                             } else if (result.recalculated) {
-                                message = `ব্যাকডেটেড এন্ট্রি সফল হয়েছে। ${result.recalculated_date} থেকে পরবর্তী সকল এন্ট্রি পুনরায় ক্যালকুলেট করা হয়েছে।`;
+                                message = `ব্যাকডেটেড entry সফল হয়েছে। ${result.recalculated_date} থেকে পরবর্তী সকল entry পুনরায় ক্যালকুলেট করা হয়েছে।`;
                             }
                             alert(message);
                         }
