@@ -6,7 +6,7 @@ $host = 'localhost';
 // $password = '';
 
 // FOR SERVER
-$dbname = 'travhub_dashboard';
+$dbname = 'travhub_admin';
 $username = 'root';
 $password = 'travhub2025';
 
