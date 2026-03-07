@@ -11,6 +11,7 @@ $clientId = $_GET['client_id'];
 // $showClientApi = $ip_port . "api/clients/show.php";
 $getClientsWorksApi = $ip_port . "api/works/client-works.php?client_id=$clientId";
 $getClientFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$clientId";
+$createWorkApi = $ip_port . "api/works/client-work-store.php?cid=$clientId";
 // $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.php?client_id=$clientId";
 
 ?>
@@ -278,7 +279,7 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                const firstTabId = tabButtons[3].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

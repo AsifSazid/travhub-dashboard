@@ -2,7 +2,7 @@
     <div class="flex items-center">
         <a href="index.php" class="flex items-center">
             <img src="../assets/images/logo/logo.png" width="40" class="hidden md:block">
-            <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">TravHub Dashboard</h1>
+            <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">Dev Dashboard</h1>
             <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
                 <i class="fas fa-bars text-gray-600"></i>
             </button>
