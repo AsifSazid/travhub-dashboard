@@ -1,10 +1,12 @@
 <header class="fixed top-0 left-0 right-0 h-16 bg-white shadow-sm z-30 flex items-center justify-between px-4 md:px-6">
     <div class="flex items-center">
-        <img src="../assets/images/logo/logo.png" width="40" class="hidden md:block">
-        <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">TravHub Dashboard</h1>
-        <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
-            <i class="fas fa-bars text-gray-600"></i>
-        </button>
+        <a href="index.php" class="flex items-center">
+            <img src="../assets/images/logo/logo.png" width="40" class="hidden md:block">
+            <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">Dev Dashboard</h1>
+            <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
+                <i class="fas fa-bars text-gray-600"></i>
+            </button>
+        </a>
     </div>
 
     <div class="flex items-center space-x-2 md:space-x-4">
@@ -70,15 +72,20 @@
         <div class="relative hidden md:block">
             <button id="userMenuBtn" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100">
                 <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">TI</div>
-                <span class="text-gray-700 hidden lg:inline">Tarekul Islam</span>
+                <span class="text-gray-700 hidden lg:inline"><?php echo $_SESSION['user_name'] ?></span>
                 <i class="fas fa-chevron-down text-gray-500 text-xs"></i>
             </button>
 
             <!-- User Menu -->
             <div id="userMenu" class="user-menu absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-40 hidden">
-                <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <a href="profile.php?employee_id=<?php echo $_SESSION['user_id'] ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     <i class="fas fa-user mr-3 text-gray-400"></i>
                     <span>Profile</span>
+                </a>
+                <a href="../auth/logout.php"
+                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" title="logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket mr-3 text-gray-400"></i>
+                    <span>Logout</span>
                 </a>
                 <!-- More items... -->
             </div>
@@ -91,7 +98,7 @@
     <div class="flex items-center px-4 py-3 border-b border-gray-200">
         <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">JD</div>
         <div class="ml-3">
-            <p class="text-gray-800 font-medium">Tarekul Islam</p>
+            <p class="text-gray-800 font-medium"><?php echo $_SESSION['user_name'] ?></p>
             <p class="text-gray-500 text-sm">Managing Director</p>
         </div>
     </div>

@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -104,7 +105,7 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const API_URL_FOR_ALL_VENDORS = "<?php echo $storeAllVendorApi; ?>";
@@ -129,6 +130,22 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
         function renderDropdown(list) {
             // আগের ডাটা মুছে ফেলা
             tableBody.innerHTML = '';
+            
+            if (!list || list.length === 0) {
+                const tr = document.createElement('tr');
+        
+                tr.innerHTML = `
+                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-users-slash text-3xl text-gray-400"></i>
+                            <p class="text-sm">No Vendors Found!</p>
+                        </div>
+                    </td>
+                `;
+        
+                tableBody.appendChild(tr);
+                return;
+            }
 
             list.forEach((vendor, index) => {
                 const phoneObj = JSON.parse(vendor.phone);

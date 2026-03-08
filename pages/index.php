@@ -1,4 +1,6 @@
 <?php
+include_once('./authenticate.php');
+
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -16,7 +18,6 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
     <script src="../assets/tailwind/script.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
@@ -86,6 +87,9 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
 
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
+    
+    <!-- Preview Modal -->
+    <?php include '../elements/preview-model.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
@@ -453,17 +457,17 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
 
     <!-- Custom JavaScript Library -->
     <script>
-        const API_URL_FOR_ALL_LEADS  = "<?php echo $getAllLeadsApi; ?>";           
+        const API_URL_FOR_ALL_LEADS  = "<?php echo $getAllLeadsApi; ?>";         
+        const time = Date.now();
     </script>
         
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script src="../assets/js/functional/dashboard.js"></script>
 
     <script>
-
         // Initialize both when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            UIInteractions.init();
+            // UIInteractions.init();
             DashboardApp.init();
 
             // Optional: Auto-refresh leads every 30 seconds

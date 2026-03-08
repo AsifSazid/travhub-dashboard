@@ -1,3 +1,6 @@
+<?php
+include_once('./authenticate.php');
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -525,7 +528,7 @@
 
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         // Data structure for the dynamic categories
@@ -533,9 +536,11 @@
             'Assets (DR)>B/L': [
                 'Accounts Receivable/Debtors',
                 'Current Assets',
-                'Cash at bank and in hand',
+                'Cash in Hand',
+                'Bank Account',
+                'MFS - Mobile Financial Services',
                 'Fixed Assets',
-                'Non-current assets'
+                'Non-current Assets'
             ],
             'Liabilities(CR)>B/L': [
                 'Creditors',
@@ -761,15 +766,15 @@
             showQuickGuide();
         }
 
-        // Close the modal if the user clicks anywhere outside of it
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                closeModal();
-            }
-            if (event.target == quickGuideModal) {
-                closeGuideModal();
-            }
-        }
+        // Close the modal if the user clicks anywhere outside of it [Tarek Vai told me to stop this!]
+        // window.onclick = function(event) {
+        //     if (event.target == modal) {
+        //         closeModal();
+        //     }
+        //     if (event.target == quickGuideModal) {
+        //         closeGuideModal();
+        //     }
+        // }
 
         /**
          * Handles the form submission (Save button click) and sends data to the PHP API.

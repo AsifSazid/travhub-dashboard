@@ -12,6 +12,9 @@ header("Content-Type: application/json");
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
+date_default_timezone_set('Asia/Dhaka');
+$now = date('d-m-Y H:i:s');
+
 // Get raw JSON input
 $input = file_get_contents("php://input");
 $data = json_decode($input, true);
@@ -26,35 +29,48 @@ if (!$data) {
 require '../../server/db_connection.php';
 
 // UUID generator
-require '../../server/uuid_generator.php';
+require '../../server/uuid_with_system_id_generator.php';
+require '../../server/generate_meta_data.php';
 
+
+// var_dump($data);
+// die;
 try {
-    $uuid = generateUUID();
+    $uuid = generateIDs('leads');
+    
+    $metaDataJson = buildMetaData(
+        null,
+        $_SESSION['user_name'] ?? 'system'
+    );
 
     // Prepare SQL
     $sql = "INSERT INTO leads (
                 uuid,
+                sys_id,
                 service_count, 
                 service_type, 
                 client_info, 
                 service_data, 
                 lead_info, 
                 lead_status,
-                metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                meta_data,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $pdo->prepare($sql);
 
     // Ensure all arrays/objects are properly json_encoded
     $stmt->execute([
-        $uuid,
+        $uuid['uuid'],
+        $uuid['sys_id'],
         isset($data['serviceCount']) ? $data['serviceCount'] : null,
         isset($data['serviceType']) ? json_encode($data['serviceType'], JSON_UNESCAPED_UNICODE) : null,
         isset($data['clientInfo']) ? json_encode($data['clientInfo'], JSON_UNESCAPED_UNICODE) : null,
         isset($data['serviceData']) ? json_encode($data['serviceData'], JSON_UNESCAPED_UNICODE) : null,
         isset($data['leadInfo']) ? json_encode($data['leadInfo'], JSON_UNESCAPED_UNICODE) : null,
         'pending',
-        isset($data['metadata']) ? json_encode($data['metadata'], JSON_UNESCAPED_UNICODE) : null
+        $metaDataJson,
+        $now
     ]);
 
     // Clean output buffer before sending JSON

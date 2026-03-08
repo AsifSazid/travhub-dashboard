@@ -2,7 +2,7 @@
 $servername = "localhost";
 $username = "root";
 $password = "travhub2025";
-$dbname = "travhub_dev";
+$dbname = "travhub_dashboard";
 
 // Create connection
 $conn = new mysqli($servername, $username, $password,$dbname);

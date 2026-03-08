@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -8,7 +9,6 @@ $workId = $_GET['work_id'];
 $taskId = $_GET['task_id'];
 
 $getClientsApi = $ip_port . "api/clients/get-client.php?work_id=$workId";
-$getAllVendorsApi = $ip_port . "api/vendors/all-vendors.php";
 $getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=$taskId";
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
 $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
@@ -153,6 +153,21 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
+    
+    <!-- Preview Modal -->
+    <div id="previewModal" class="preview-modal">
+        <div class="preview-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
+                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modalPreviewContent" class="p-4">
+                <!-- Preview content will be loaded here -->
+            </div>
+        </div>
+    </div>
 
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
         <!-- Task Overview Section -->
@@ -172,6 +187,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors flex items-center">
                             <i class="fas fa-print mr-2"></i> Print Report
                         </button>
+                        <a href="create-vendor.php"
+                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-plus mr-2"></i> Create a New Vendor
+                        </a>
                     </div>
                 </div>
 
@@ -223,10 +242,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
                                         <i class="fas fa-bullseye mr-1"></i> Purpose
                                     </label>
-                                    <input type="text"
+                                    <textarea type="text"
                                         id="client_purpose"
-                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="10"
+                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
                                 </div>
 
                                 <div>
@@ -254,10 +273,16 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                                 </div>
 
-                                <button onclick="recordTransaction('debit')"
-                                    class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                    <i class="fas fa-plus-circle mr-2"></i> Record Debit
-                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button onclick="refundTransaction('credit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Refund
+                                    </button>
+                                    <button onclick="recordTransaction('debit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Record Debit
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -278,22 +303,45 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                         <div class="p-5">
                             <div class="mb-4">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                                        <i class="fa-solid fa-shapes mr-1"></i> Select Type
+                                    </label>
+                                    
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <input type="radio" id="type-vendor" name="account_type" value="vendor" class="hidden peer" checked required>
+                                            <label for="type-vendor" class="flex flex-col items-center justify-center p-4 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                                <i class="fa-solid fa-shop mb-2 text-2xl"></i>
+                                                <span class="text-sm font-semibold">Vendor</span>
+                                            </label>
+                                        </div>
+                                
+                                        <div>
+                                            <input type="radio" id="type-own" name="account_type" value="own" class="hidden peer">
+                                            <label for="type-own" class="flex flex-col items-center justify-center p-4 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                                <i class="fa-solid fa-user mb-2 text-2xl"></i>
+                                                <span class="text-sm font-semibold">Own Account</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Vendor section - visible by default -->
+                            <div id="vendorSection" class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     <i class="fas fa-building mr-1"></i> Vendor
                                 </label>
-                                <div class="relative w-full">
-                                    <div class="flex">
-                                        <input
-                                            type="text"
-                                            id="vendorInput"
-                                            placeholder="Search for a vendor..."
-                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-all duration-200"
-                                            autocomplete="off">
-                                    </div>
-                                    <ul id="vendorDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto shadow-lg hidden z-50">
-                                        <!-- JS will populate options here -->
-                                    </ul>
-                                </div>
+                                <?php include('form-selects/vendors.php') ?>
+                            </div>
+                            
+                            <!-- Own Account section - hidden by default -->
+                            <div id="accountSection" class="mb-4 hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-building mr-1"></i> Own Account
+                                </label>
+                                <?php include('form-selects/accounts.php') ?>
                             </div>
 
                             <div class="space-y-4">
@@ -301,10 +349,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
                                         <i class="fas fa-bullseye mr-1"></i> Purpose
                                     </label>
-                                    <input type="text"
+                                    <textarea type="text"
                                         id="vendor_purpose"
-                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee" rows="5"
+                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"></textarea>
                                 </div>
 
                                 <div>
@@ -332,10 +380,16 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
                                 </div>
 
-                                <button onclick="recordTransaction('credit')"
-                                    class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                    <i class="fas fa-plus-circle mr-2"></i> Record Credit
-                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button onclick="refundTransaction('debit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Refund
+                                    </button>
+                                    <button onclick="recordTransaction('credit')"
+                                        class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
+                                        <i class="fas fa-plus-circle mr-2"></i> Record Credit
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -392,6 +446,11 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Task ID:</span>
                             <span class="text-sm font-semibold text-gray-900" id="taskIdDisplay"></span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Task Name:</span>
+                            <span class="text-sm font-semibold text-gray-900" id="taskNameDisplay"></span>
                         </div>
 
                         <div class="flex justify-between items-center">
@@ -461,6 +520,97 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
             </div>
         </div>
     </main>
+    
+    <!-- Edit Transaction Modal -->
+    <div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900" id="editModalTitle">Edit Transaction</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="editTransactionForm" onsubmit="updateTransaction(event)">
+                <input type="hidden" id="edit_transaction_id">
+                <input type="hidden" id="edit_original_type">
+                <input type="hidden" id="edit_vendor_type" value="">
+                
+                <!-- Transaction Type Display -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                    <div id="edit_type_display" class="px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium"></div>
+                </div>
+                
+                <!-- Vendor/Account Selection Container (for credits only) -->
+                <div id="edit_selection_container" class="mb-4 hidden">
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Type</label>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="edit_account_type" value="vendor" class="form-radio text-blue-600" onchange="toggleEditSelection()">
+                                <span class="ml-2">Vendor</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="edit_account_type" value="own" class="form-radio text-blue-600" onchange="toggleEditSelection()">
+                                <span class="ml-2">Own Account</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Vendor Search Container (will be populated dynamically) -->
+                    <div id="edit_vendor_container">
+                        <?php include('form-selects/vendors-edit.php') ?>
+                    </div>
+                    
+                    
+                    <!-- Account Search Container (will be populated dynamically) -->
+                    <div id="edit_account_container" class="hidden">
+                        <?php include('form-selects/accounts-edit.php') ?>
+                    </div>
+                </div>
+                
+                <!-- Purpose -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                    <textarea id="edit_purpose" rows="3" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required></textarea>
+                </div>
+                
+                <!-- Amount -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
+                        <input type="number" id="edit_amount" step="0.01" min="0.01"
+                            class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            required>
+                    </div>
+                </div>
+                
+                <!-- Date -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input type="datetime-local" id="edit_date"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required>
+                </div>
+                
+                <!-- Buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                        <i class="fas fa-save mr-2"></i> Update Transaction
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
@@ -473,26 +623,24 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         </button>
     </div>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const GET_CLIENT_API = "<?php echo $getClientsApi; ?>";
-        const GET_ALL_VENDOR_API = "<?php echo $getAllVendorsApi; ?>";
         const FINANCIAL_ENTRIES_STORE_API = "<?php echo $storeFinancialEntriesApi; ?>";
+        const UPDATE_FINANCIAL_ENTRY_API = "<?php echo $ip_port; ?>api/financial_entries/update.php";
         const GET_FINANCIAL_STATEMENT_API = "<?php echo $getTaskFinEntriesApi; ?>";
         const GET_TASK_API = "<?php echo $getTaskApi; ?>";
 
         const WORK_ID = "<?php echo $workId; ?>";
         const TASK_ID = "<?php echo $taskId; ?>";
 
-        let vendorsData = [];
         let allTransactions = [];
         let currentClientId = null;
-        let selectedVendorLi = null;
+        let clientName = null;
+        let task = null;
 
         // DOM Elements
-        const vendorInput = document.getElementById('vendorInput');
-        const vendorDropdown = document.getElementById('vendorDropdown');
         const taskMetaSection = document.getElementById('taskMetaSection');
         const fileAttachments = document.getElementById('fileAttachments');
         const financialSummary = document.getElementById('financialSummary');
@@ -502,7 +650,6 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         document.addEventListener('DOMContentLoaded', function() {
             loadTaskMetaData();
             loadClientData();
-            loadVendors();
             loadFinancialData();
             setupEventListeners();
         });
@@ -514,10 +661,11 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 const data = await response.json();
 
                 if (data.success && data.task) {
-                    const task = data.task;
+                    task = data.task;
 
                     // Update task info card
                     document.getElementById('taskIdDisplay').textContent = task.sys_id || 'N/A';
+                    document.getElementById('taskNameDisplay').textContent = task.title || 'N/A';
 
                     // Category
                     let categoryText = 'Unknown';
@@ -569,10 +717,19 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 </div>
                 
                 <div class="stat-card bg-gradient-to-r from-green-50 to-green-100 border-green-200 p-4 rounded-lg">
-                    <div class="flex items-center justify-between">
+                    <div class="items-center justify-between">
                         <div>
                             <p class="text-sm text-green-600 font-medium">Work Title</p>
-                            <p class="text-lg font-semibold text-green-900 truncate">${task.work_title || 'N/A'}</p>
+                            <div class="relative group">
+                                <p class="text-lg font-semibold text-green-900 truncate">
+                                    ${task.work_title || 'N/A'}
+                                </p>
+                            
+                                <div class="absolute left-0 top-full mt-1 hidden group-hover:block 
+                                            bg-black text-white text-xs px-2 py-1 rounded z-10">
+                                    ${task.work_title || 'N/A'}
+                                </div>
+                            </div>
                         </div>
                         <i class="fas fa-briefcase text-green-400 text-2xl"></i>
                     </div>
@@ -605,8 +762,14 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                 </div>
             `;
         }
-
+        
         function loadTaskFiles(task) {
+            
+            if (!task || !clientName || !currentClientId) {
+                console.warn('Task files skipped: client data not ready');
+                return;
+            }
+    
             try {
                 const files = task.all_file_name ? JSON.parse(task.all_file_name) : [];
 
@@ -636,30 +799,39 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             icon = 'fas fa-file-alt';
                             color = 'indigo';
                         }
-
+                        
                         // Escape special characters
-                        const safeFilePath = file.replace(/'/g, "\\'").replace(/"/g, '\\"');
-
+                        const cleanClientName = clientName.replace(/\s+/g, '');
+                        // const cleanWorkTitle  = WORK_TITLE.replace(/\s+/g, '_');
+                        
+                        const safeFilePath =
+                            `/travhub-admin/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}/tasks/${TASK_ID}/` +
+                            file.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                            
                         return `
-                    <div class="file-chip cursor-pointer hover:shadow-sm" 
-                         onclick="previewFile('${safeFilePath}')" 
-                         title="${fileName}">
-                        <i class="${icon} text-${color}-500 mr-1"></i>
-                        <span class="truncate max-w-[150px]">${fileName}</span>
-                    </div>
-                `;
+                            <a class="file-chip cursor-pointer hover:shadow-sm" 
+                                 href="${safeFilePath}" target="_blank"
+                                 title="${fileName}">
+                                <i class="${icon} text-${color}-500 mr-1"></i>
+                                <span class="truncate max-w-[150px]">${fileName}</span>
+                            </a>
+                            <button class="file-chip cursor-pointer hover:shadow-sm" >
+                                <i class="fas fa-plus mr-1"></i>
+                                <span class="truncate max-w-[150px]">Add New File</span>
+                            </button>
+                        `;
                     }).join('');
 
                     fileAttachments.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-medium text-gray-700">
-                        <i class="fas fa-paperclip mr-1"></i> Attached Files (${files.length})
-                    </h4>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    ${filesHTML}
-                </div>
-            `;
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-medium text-gray-700">
+                                <i class="fas fa-paperclip mr-1"></i> Attached Files (${files.length})
+                            </h4>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            ${filesHTML}
+                        </div>
+                    `;
                 } else {
                     fileAttachments.innerHTML = `
                 <div class="text-center py-4 text-gray-500">
@@ -678,7 +850,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         `;
             }
         }
-
+        
         // Load Client Data
         async function loadClientData() {
             try {
@@ -691,7 +863,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                     currentClientId = client.sys_id;
 
-                    const clientName = `${client.name}`;
+                    clientName = `${client.name}`;
                     const workName = work.title;
 
                     document.getElementById('clientWorkInfo').innerHTML = `
@@ -712,235 +884,81 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         </div>
                     `;
                 }
+                
+                if (task) {
+                    loadTaskFiles(task);
+                }
             } catch (error) {
                 console.error('Error loading client data:', error);
             }
         }
-
-        // Load Vendors
-        function loadVendors() {
-            fetch(GET_ALL_VENDOR_API)
-                .then(res => res.json())
-                .then(data => {
-
-                    if (data.vendors && Array.isArray(data.vendors)) {
-                        vendorsData = data.vendors;
-
-                    } else {
-                        console.error('Invalid vendors data format:', data);
-                        vendorsData = [];
-                    }
-                })
-                .catch(err => {
-                    console.error('Error fetching vendors:', err);
-                    vendorsData = [];
-                });
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadVendors();
-
-            // Setup event listeners
-            setupVendorSearch();
-        });
-
-        function setupVendorSearch() {
-            if (!vendorInput || !vendorDropdown) {
-                console.error('Vendor search elements not found');
-                return;
+        
+        function extractIds(value) {
+            if (!value || typeof value !== 'string') return null;
+            
+            // Split by pipe and trim
+            const parts = value.split('|').map(v => v.trim());
+            
+            // Ensure we have at least 2 parts (ID and Name)
+            if (parts.length < 2) {
+                // Try to extract ID from the beginning if format is different
+                const idMatch = value.match(/^(\d+)/);
+                if (idMatch) {
+                    return {
+                        sys_id: idMatch[1],
+                        name: value.substring(idMatch[1].length).trim()
+                    };
+                }
+                return null;
             }
-
-            setupOutsideClickHandler();
-
-            // Track tab key press
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Tab') {
-                    isTabKeyPressed = true;
-                    // Add small delay to allow focus to move
-                    setTimeout(() => {
-                        const activeElement = document.activeElement;
-                        const vendorContainer = document.querySelector('.vendor-search-container') ||
-                            vendorInput.closest('.relative.w-full');
-
-                        // If focus moved outside vendor container, hide dropdown
-                        if (vendorContainer && !vendorContainer.contains(activeElement)) {
-                            vendorDropdown.classList.add('hidden');
-                        }
-                        isTabKeyPressed = false;
-                    }, 10);
-                }
-            });
-
-            // Input typing with debounce
-            let typingTimer;
-            vendorInput.addEventListener('input', () => {
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(() => {
-                    const value = vendorInput.value.toLowerCase().trim();
-
-                    if (value === '') {
-                        // Show all vendors when empty
-                        renderDropdown(vendorsData);
-                        vendorDropdown.classList.remove('hidden');
-                        return;
-                    }
-
-                    const filtered = vendorsData.filter(vendor => {
-                        // Get vendor properties safely
-                        const vendorId = vendor.id ? vendor.id.toString() : '';
-                        const vendorName = vendor.name || '';
-                        const vendorPhone = vendor.phone || '';
-
-                        // Check if any property contains the search term
-                        return vendorId.toLowerCase().includes(value) ||
-                            vendorName.toLowerCase().includes(value) ||
-                            vendorPhone.toString().toLowerCase().includes(value);
-                    });
-
-                    renderDropdown(filtered);
-                    vendorDropdown.classList.remove('hidden');
-                }, 300);
-            });
-
-            // Enter key to select first item
-            vendorInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && vendorDropdown.children.length > 0) {
-                    e.preventDefault();
-                    const firstItem = vendorDropdown.children[0];
-                    if (firstItem) {
-                        firstItem.click();
-                    }
-                }
-
-                // Escape to close dropdown
-                if (e.key === 'Escape') {
-                    vendorDropdown.classList.add('hidden');
-                }
-            });
-
-            // Focus to show all vendors
-            vendorInput.addEventListener('focus', () => {
-                if (vendorsData.length > 0) {
-                    renderDropdown(vendorsData);
-                    vendorDropdown.classList.remove('hidden');
-                }
-            });
+            
+            return {
+                sys_id: parts[0] || null,
+                name: parts[1] || null,
+            };
         }
-
-        function renderDropdown(list) {
-            vendorDropdown.innerHTML = '';
-
-            if (!list || list.length === 0) {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div class="px-4 py-3 text-center text-gray-500">
-                        <i class="fas fa-search text-gray-400 mb-1"></i>
-                        <p class="text-sm">No vendors found</p>
-                        <p class="text-xs text-gray-400 mt-1">Try a different search term</p>
-                    </div>
-                `;
-                vendorDropdown.appendChild(li);
-                return;
+        
+        // Toggle between vendor and account sections
+        function setupTypeToggle() {
+            const vendorRadio = document.getElementById('type-vendor');
+            const ownRadio = document.getElementById('type-own');
+            const vendorSection = document.getElementById('vendorSection');
+            const accountSection = document.getElementById('accountSection');
+            
+            // Set initial state
+            if (vendorRadio.checked) {
+                vendorSection.classList.remove('hidden');
+                accountSection.classList.add('hidden');
+            } else {
+                vendorSection.classList.add('hidden');
+                accountSection.classList.remove('hidden');
             }
-
-            list.forEach(vendor => {
-                // Parse vendor data
-                let vendorName = '';
-                let vendorPhone = '';
-                let vendorId = vendor.sys_id || 'N/A';
-
-                try {
-                    if (vendor.name) {
-                        if (typeof vendor.name === 'string' && vendor.name.startsWith('{')) {
-                            const nameObj = JSON.parse(vendor.name);
-                            vendorName = nameObj.primary || 'Unnamed Vendor';
-                        } else {
-                            vendorName = vendor.name.toString();
-                        }
-                    } else {
-                        vendorName = 'Unnamed Vendor';
-                    }
-
-                    // Check if phone is JSON string
-                    if (vendor.phone) {
-                        if (typeof vendor.phone === 'string' && vendor.phone.startsWith('{')) {
-                            const phoneObj = JSON.parse(vendor.phone);
-                            vendorPhone = phoneObj.primary_no || '';
-                        } else {
-                            vendorPhone = vendor.phone.toString();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error parsing vendor data:', error);
-                    vendorName = 'Error parsing data';
+            
+            // Add event listeners for radio buttons
+            vendorRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    vendorSection.classList.remove('hidden');
+                    accountSection.classList.add('hidden');
                 }
-
-                const li = document.createElement('li');
-                li.className = "px-4 py-3 cursor-pointer hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150";
-                li.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                                ${vendorName.charAt(0).toUpperCase()}
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <div class="font-medium text-gray-900">${vendorName}</div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                <div class="flex items-center">
-                                    <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-2">
-                                        ID: ${vendorId}
-                                    </span>
-                                    ${vendorPhone ? `<span class="flex items-center"><i class="fas fa-phone mr-1 text-xs"></i>${vendorPhone}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-check text-purple-500 text-sm opacity-0 group-hover:opacity-100"></i>
-                        </div>
-                    </div>
-                `;
-
-                li.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent event bubbling
-                    vendorInput.value = `${vendorId} | ${vendorName}`;
-                    vendorDropdown.classList.add('hidden');
-                    li.setAttribute('data-sys-id', vendor.sys_id);
-
-                    // Highlight selected item
-                    const allItems = vendorDropdown.querySelectorAll('li');
-                    allItems.forEach(item => item.classList.remove('bg-purple-100'));
-                    li.classList.add('bg-purple-100');
-
-                    selectedVendorLi = li;
-                });
-
-                // Add hover effect
-                li.addEventListener('mouseenter', () => {
-                    li.classList.add('bg-purple-50');
-                });
-
-                li.addEventListener('mouseleave', () => {
-                    li.classList.remove('bg-purple-50');
-                });
-
-                vendorDropdown.appendChild(li);
+            });
+            
+            ownRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    vendorSection.classList.add('hidden');
+                    accountSection.classList.remove('hidden');
+                }
             });
         }
-
-        // Improved outside click handler
-        function setupOutsideClickHandler() {
-            // Single global click handler
-            document.addEventListener('click', function(e) {
-                // Check if click is outside vendor search area
-                const vendorSearchArea = document.querySelector('.relative.w-full');
-                const isClickInside = vendorSearchArea && vendorSearchArea.contains(e.target);
-
-                if (!isClickInside && !vendorDropdown.classList.contains('hidden')) {
-                    vendorDropdown.classList.add('hidden');
-                }
-            });
+        
+        function buildDateTime(dateOnly) {
+            const now = new Date();
+        
+            const time =
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+        
+            return `${dateOnly} ${time}`;
         }
 
         // Record Transaction
@@ -971,25 +989,101 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
-                        date: date || new Date().toISOString().split('T')[0]
+                        date: buildDateTime(date)
                     };
 
                     await saveTransaction(transactionData, 'Debit');
 
                     // Clear form
-                    // document.getElementById('client_purpose').value = '';
-                    // document.getElementById('client_amount').value = '';
+                    document.getElementById('client_purpose').value = '';
+                    document.getElementById('client_amount').value = '';
 
                 } else if (type === 'credit') {
                     const purpose = document.getElementById('vendor_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('vendor_amount').value);
                     const date = document.getElementById('vendor_date').value;
-                    const vendorInputValue = document.getElementById('vendorInput').value;
+                    const vendorType = document.querySelector('input[name="account_type"]:checked').value;
+                    
+                    let vendorId = null;
+                    let accountId = null;
+                    
+                    if (vendorType === 'vendor') {
+                        const vendorValue = document.getElementById('vendorInput').value;
+                        if (!vendorValue) {
+                            showNotification('Please select a vendor', 'error');
+                            return;
+                        }
+                        const vendorData = extractIds(vendorValue);
+                        if (!vendorData || !vendorData.sys_id) {
+                            showNotification('Invalid vendor selected', 'error');
+                            return;
+                        }
+                        vendorId = vendorData.sys_id;
+                    } else if (vendorType === 'own') {
+                        const accountValue = document.getElementById('accountInput').value;
+                        if (!accountValue) {
+                            showNotification('Please select an account', 'error');
+                            return;
+                        }
+                        const accountData = extractIds(accountValue);
+                        if (!accountData || !accountData.sys_id) {
+                            showNotification('Invalid account selected', 'error');
+                            return;
+                        }
+                        accountId = accountData.sys_id;
+                    }
 
-                    const vendorId = selectedVendorLi.getAttribute('data-sys-id'); // or selectedVendorLi.dataset.sysId
+                    if (!purpose || !amount || amount <= 0) {
+                        showNotification('Please enter valid purpose and amount', 'error');
+                        return;
+                    }
 
-                    if (!vendorId) {
-                        showNotification('Please select a valid vendor', 'error');
+                    const transactionData = {
+                        type: 'credit',
+                        amount: amount,
+                        purpose: purpose,
+                        vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
+                        work_id: workId,
+                        task_id: taskId,
+                        date: buildDateTime(date)
+                    };
+
+                    // Add vendor_id or account_id based on type
+                    if (vendorType === 'vendor' && vendorId) {
+                        transactionData.vendor_id = vendorId;
+                    } else if (vendorType === 'own' && accountId) {
+                        transactionData.account_id = accountId;
+                    }
+                    
+                    console.log(transactionData);
+
+                    await saveTransaction(transactionData, 'Credit');
+
+                    // Clear form
+                    document.getElementById('vendor_purpose').value = '';
+                    document.getElementById('vendor_amount').value = '';
+                    document.getElementById('vendorInput').value = '';
+                    document.getElementById('accountInput').value = '';
+                }
+
+            } catch (error) {
+                console.error('Error recording transaction:', error);
+                showNotification('An error occurred while recording the transaction', 'error');
+            }
+        }
+        
+        async function refundTransaction(type) {
+            try {
+                const workId = WORK_ID;
+                const taskId = TASK_ID;
+
+                if (type === 'credit') {
+                    const purpose = document.getElementById('client_purpose').value.trim();
+                    const amount = parseFloat(document.getElementById('client_amount').value);
+                    const date = document.getElementById('client_date').value;
+
+                    if (!currentClientId) {
+                        showNotification('Client ID not found', 'error');
                         return;
                     }
 
@@ -1002,18 +1096,84 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         type: 'credit',
                         amount: amount,
                         purpose: purpose,
-                        vendor_id: vendorId,
+                        client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
-                        date: date || new Date().toISOString().split('T')[0]
+                        date: buildDateTime(date)
                     };
 
                     await saveTransaction(transactionData, 'Credit');
 
                     // Clear form
-                    // document.getElementById('vendor_purpose').value = '';
-                    // document.getElementById('vendor_amount').value = '';
-                    // document.getElementById('vendorInput').value = '';
+                    document.getElementById('client_purpose').value = '';
+                    document.getElementById('client_amount').value = '';
+
+                } else if (type === 'debit') {
+                    const purpose = document.getElementById('vendor_purpose').value.trim();
+                    const amount = parseFloat(document.getElementById('vendor_amount').value);
+                    const date = document.getElementById('vendor_date').value;
+                    const vendorType = document.querySelector('input[name="account_type"]:checked').value;
+                    
+                    let vendorId = null;
+                    let accountId = null;
+                    
+                    if (vendorType === 'vendor') {
+                        const vendorValue = document.getElementById('vendorInput').value;
+                        if (!vendorValue) {
+                            showNotification('Please select a vendor', 'error');
+                            return;
+                        }
+                        const vendorData = extractIds(vendorValue);
+                        if (!vendorData || !vendorData.sys_id) {
+                            showNotification('Invalid vendor selected', 'error');
+                            return;
+                        }
+                        vendorId = vendorData.sys_id;
+                    } else if (vendorType === 'own') {
+                        const accountValue = document.getElementById('accountInput').value;
+                        if (!accountValue) {
+                            showNotification('Please select an account', 'error');
+                            return;
+                        }
+                        const accountData = extractIds(accountValue);
+                        if (!accountData || !accountData.sys_id) {
+                            showNotification('Invalid account selected', 'error');
+                            return;
+                        }
+                        accountId = accountData.sys_id;
+                    }
+
+                    if (!purpose || !amount || amount <= 0) {
+                        showNotification('Please enter valid purpose and amount', 'error');
+                        return;
+                    }
+
+                    const transactionData = {
+                        type: 'debit',
+                        amount: amount,
+                        purpose: purpose,
+                        vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
+                        work_id: workId,
+                        task_id: taskId,
+                        date: buildDateTime(date)
+                    };
+
+                    // Add vendor_id or account_id based on type
+                    if (vendorType === 'vendor' && vendorId) {
+                        transactionData.vendor_id = vendorId;
+                    } else if (vendorType === 'own' && accountId) {
+                        transactionData.account_id = accountId;
+                    }
+                    
+                    console.log(transactionData);
+
+                    await saveTransaction(transactionData, 'Debit');
+
+                    // Clear form
+                    document.getElementById('vendor_purpose').value = '';
+                    document.getElementById('vendor_amount').value = '';
+                    document.getElementById('vendorInput').value = '';
+                    document.getElementById('accountInput').value = '';
                 }
 
             } catch (error) {
@@ -1024,6 +1184,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
         async function saveTransaction(data, type) {
             try {
+                console.log(type);
                 const response = await fetch(FINANCIAL_ENTRIES_STORE_API, {
                     method: 'POST',
                     headers: {
@@ -1111,7 +1272,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             <div class="text-sm font-medium text-gray-900">${transaction.purpose || 'No Data'}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${transaction.client_name || transaction.vendor_name || 'Unknown'}</div>
+                            <div class="text-sm text-gray-900">${transaction.user_name || 'Unknown'}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -1283,6 +1444,9 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
             document.getElementById('vendor_amount').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') recordTransaction('credit');
             });
+            
+            // Setup type toggle
+            setupTypeToggle();
         }
 
         function scrollToTop() {
@@ -1302,10 +1466,236 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
             // You can implement modal preview for PDFs/images
         }
 
-        function editTransaction(id) {
-            // Implement edit functionality
-            showNotification('Edit functionality coming soon', 'info');
+        // function editTransaction(id) {
+        //     // Implement edit functionality
+        //     showNotification('Edit functionality coming soon', 'info');
+        // }
+        
+        
+        // Edit Transaction
+        async function editTransaction(id) {
+            try {
+                // Find the transaction
+                const transaction = allTransactions.find(t => t.id == id);
+                if (!transaction) {
+                    showNotification('Transaction not found', 'error');
+                    return;
+                }
+        
+                // Populate modal with transaction data
+                document.getElementById('edit_transaction_id').value = transaction.id;
+                document.getElementById('edit_original_type').value = transaction.type;
+                document.getElementById('edit_purpose').value = transaction.purpose || '';
+                document.getElementById('edit_amount').value = transaction.amount;
+                
+                // Format date for datetime-local input
+                if (transaction.date) {
+                    const dateStr = transaction.date.replace(' ', 'T');
+                    document.getElementById('edit_date').value = dateStr.substring(0, 16);
+                }
+                
+                // Set type display
+                const typeDisplay = document.getElementById('edit_type_display');
+                const type = transaction.type.toLowerCase();
+                typeDisplay.innerHTML = type === 'debit' ? 
+                    '<span class="text-green-600 font-semibold">DEBIT (Client Deposit)</span>' : 
+                    '<span class="text-red-600 font-semibold">CREDIT (Vendor Payment)</span>';
+                
+                // Handle vendor/account selection for credit transactions
+                const selectionContainer = document.getElementById('edit_selection_container');
+                if (type === 'credit') {
+                    selectionContainer.classList.remove('hidden');
+                    
+                    // Determine if it's vendor or own account
+                    const isVendor = transaction.vendor_type == 0;
+                    document.getElementById('edit_vendor_type').value = isVendor ? 'vendor' : 'own';
+                    
+                    // Set radio button
+                    const vendorRadio = document.querySelector('input[name="edit_account_type"][value="vendor"]');
+                    const ownRadio = document.querySelector('input[name="edit_account_type"][value="own"]');
+                    
+                    if (isVendor) {
+                        vendorRadio.checked = true;
+                        ownRadio.checked = false;
+                    } else {
+                        vendorRadio.checked = false;
+                        ownRadio.checked = true;
+                    }
+                    
+                    // Load the appropriate container
+                    await loadEditSelectionContainers();
+                    
+                    // Set the initial value
+                    if (isVendor && transaction.vendor_id) {
+                        const vendorName = transaction.vendor_name || 'Unknown Vendor';
+                        const vendorInput = document.getElementById('editVendorInput');
+                        if (vendorInput) {
+                            vendorInput.value = transaction.vendor_id + ' | ' + vendorName;
+                        }
+                    } else if (!isVendor && transaction.account_id) {
+                        const accountName = transaction.account_name || 'Unknown Account';
+                        const accountInput = document.getElementById('editAccountInput');
+                        if (accountInput) {
+                            accountInput.value = transaction.account_id + ' | ' + accountName;
+                        }
+                    }
+                    
+                    toggleEditSelection();
+                } else {
+                    selectionContainer.classList.add('hidden');
+                }
+                
+                // Show modal
+                document.getElementById('editModal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading transaction for edit:', error);
+                showNotification('Error loading transaction details', 'error');
+            }
         }
+        
+        // Load edit selection containers
+        async function loadEditSelectionContainers() {
+            const vendorContainer = document.getElementById('edit_vendor_container');
+            const accountContainer = document.getElementById('edit_account_container');
+            
+            // Load vendor component if not already loaded
+            if (vendorContainer.children.length === 0) {
+                const vendorResponse = await fetch('form-selects/vendors-edit.php');
+                const vendorHtml = await vendorResponse.text();
+                vendorContainer.innerHTML = vendorHtml;
+                
+                // Load vendors data
+                if (typeof loadEditVendors === 'function') {
+                    loadEditVendors();
+                }
+            }
+            
+            // Load account component if not already loaded
+            if (accountContainer.children.length === 0) {
+                const accountResponse = await fetch('form-selects/accounts-edit.php');
+                const accountHtml = await accountResponse.text();
+                accountContainer.innerHTML = accountHtml;
+                
+                // Load accounts data
+                if (typeof loadEditAccounts === 'function') {
+                    loadEditAccounts();
+                }
+            }
+        }
+        
+        // Toggle between vendor and account selection
+        function toggleEditSelection() {
+            const type = document.querySelector('input[name="edit_account_type"]:checked')?.value;
+            const vendorContainer = document.getElementById('edit_vendor_container');
+            const accountContainer = document.getElementById('edit_account_container');
+            
+            if (type === 'vendor') {
+                vendorContainer.classList.remove('hidden');
+                accountContainer.classList.add('hidden');
+                
+                // Setup vendor search if not already setup
+                if (typeof setupEditVendorSearch === 'function') {
+                    setTimeout(() => setupEditVendorSearch(), 100);
+                }
+            } else if (type === 'own') {
+                vendorContainer.classList.add('hidden');
+                accountContainer.classList.remove('hidden');
+                
+                // Setup account search if not already setup
+                if (typeof setupEditAccountSearch === 'function') {
+                    setTimeout(() => setupEditAccountSearch(), 100);
+                }
+            }
+        }
+        
+        // Update transaction
+        async function updateTransaction(event) {
+            event.preventDefault();
+            
+            try {
+                const transactionId = document.getElementById('edit_transaction_id').value;
+                const originalType = document.getElementById('edit_original_type').value;
+                const purpose = document.getElementById('edit_purpose').value.trim();
+                const amount = parseFloat(document.getElementById('edit_amount').value);
+                const dateTime = document.getElementById('edit_date').value.replace('T', ' ');
+                
+                if (!purpose || !amount || amount <= 0) {
+                    showNotification('Please enter valid purpose and amount', 'error');
+                    return;
+                }
+                
+                // Build update data
+                const updateData = {
+                    id: transactionId,
+                    purpose: purpose,
+                    amount: amount,
+                    date: dateTime
+                };
+                
+                // Add vendor/account info for credit transactions
+                if (originalType.toLowerCase() === 'credit') {
+                    const accountType = document.querySelector('input[name="edit_account_type"]:checked')?.value;
+                    
+                    if (accountType === 'vendor') {
+                        const vendorInput = document.getElementById('editVendorInput')?.value;
+                        if (!vendorInput) {
+                            showNotification('Please select a vendor', 'error');
+                            return;
+                        }
+                        const vendorData = extractIds(vendorInput);
+                        if (vendorData && vendorData.sys_id) {
+                            updateData.vendor_id = vendorData.sys_id;
+                            updateData.vendor_type = 0;
+                        }
+                    } else if (accountType === 'own') {
+                        const accountInput = document.getElementById('editAccountInput')?.value;
+                        if (!accountInput) {
+                            showNotification('Please select an account', 'error');
+                            return;
+                        }
+                        const accountData = extractIds(accountInput);
+                        if (accountData && accountData.sys_id) {
+                            updateData.account_id = accountData.sys_id;
+                            updateData.vendor_type = 1;
+                        }
+                    }
+                }
+                
+                // Send update request
+                const response = await fetch(UPDATE_FINANCIAL_ENTRY_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Transaction updated successfully!', 'success');
+                    closeEditModal();
+                    loadFinancialData(); // Reload the table
+                } else {
+                    showNotification('Error: ' + (result.message || 'Failed to update transaction'), 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error updating transaction:', error);
+                showNotification('Network error occurred', 'error');
+            }
+        }
+    
+    // Close edit modal
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        document.getElementById('editTransactionForm').reset();
+    }
+        
+        
+        
+        
 
         function deleteTransaction(id) {
             if (confirm('Are you sure you want to delete this transaction?')) {

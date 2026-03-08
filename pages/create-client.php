@@ -1,4 +1,6 @@
 <?php
+
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -65,7 +67,7 @@ $storeClientApi = $ip_port . "api/clients/store.php";
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
         <div class="p-6">
             <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-12 bg-white rounded-lg shadow p-4">
+                <div class="col-span-6 bg-white rounded-lg shadow p-4">
                     <!-- Header -->
                     <div class="mb-6 border-b pb-4">
                         <h1 class="text-2xl font-bold text-gray-800">Add New Client</h1>
@@ -140,7 +142,7 @@ $storeClientApi = $ip_port . "api/clients/store.php";
         </div>
     </main>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const API_URL_FOR_CLIENT_STORE = "<?php echo $storeClientApi; ?>";

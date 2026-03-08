@@ -1,12 +1,13 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 $getAllWorksApi = $ip_port . "api/works/all-works.php";
 $storeWorkApi = $ip_port . "api/works/store.php";
+$deleteWorkApi = $ip_port . "api/works/delete.php";
 
 ?>
 
@@ -92,7 +93,7 @@ $storeWorkApi = $ip_port . "api/works/store.php";
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
 </body>
 

@@ -2,6 +2,7 @@
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
+require '../../server/make-dir.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -10,35 +11,16 @@ header('Access-Control-Allow-Origin: *');
 // get POST data (JSON)
 $input = json_decode(file_get_contents('php://input'), true);
 
-$rootPath = $_SERVER['DOCUMENT_ROOT'];
-
 
 if (!$input) {
     echo json_encode(['success' => false, 'message' => 'No data received']);
     exit;
 }
 
-// extract values
+// input
 $rawClient = $input['client'] ?? null;
-$parts = explode('|', $rawClient);
-
-// ID always first part
-$clientId = trim($parts[0]);
-$clientSysID = trim($parts[3]);
-$clientName = trim($parts[1]);
+$rawOwnedBy = $input['ownedBy'] ?? null;
 $workTitle = $input['work_title'] ?? null;
-
-$clientFolderName = trim(str_replace(' ', '', $parts[3])) . '_' . trim(str_replace(' ', '', $parts[1]));
-
-$folderDirectory = $rootPath . '/storage/clients/' . $clientFolderName . '/';
-
-if (!is_dir($folderDirectory)) {
-    mkdir($folderDirectory, 0755, true);
-}
-
-$workFileName = str_replace(' ', '_', $workTitle);
-
-$workDirectory = $folderDirectory . "/" . $workFileName;
 
 // validation
 if (!$rawClient) {
@@ -49,11 +31,30 @@ if (!$workTitle) {
     echo json_encode(['success' => false, 'message' => 'Work Title missing']);
     exit;
 }
+if (!$rawOwnedBy) {
+    echo json_encode(['success' => false, 'message' => 'Work Owner missing']);
+    exit;
+}
+
+// extract values
+$parts = explode('|', $rawClient);
+$ownedByParts = explode('|', $rawOwnedBy);
+
+// ID always first part
+$clientSysID = trim($parts[0]);
+$clientName = trim($parts[1]);
+$ownedBySysID = trim($ownedByParts[0]);
+$ownedByName = trim($ownedByParts[1]);
+
+$cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
+$cleanFullName = preg_replace('/\s+/u', '', $clientName);
+$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
+
 
 try {
     // 1. Get the existing info
-    $gettingClientPreviousWork = $pdo->prepare("SELECT work_name FROM clients WHERE id = ?");
-    $gettingClientPreviousWork->execute([$clientId]);
+    $gettingClientPreviousWork = $pdo->prepare("SELECT work_name FROM clients WHERE sys_id = ?");
+    $gettingClientPreviousWork->execute([$clientSysID]);
     $previousWorks = $gettingClientPreviousWork->fetch(PDO::FETCH_ASSOC);
 
     if ($previousWorks) {
@@ -62,8 +63,8 @@ try {
         $updatedWorkName = empty($oldWork) ? $workTitle : $oldWork . ", " . $workTitle;
 
         // 3. UPDATE the database
-        $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE id = ?");
-        $updateStmt->execute([$updatedWorkName, $clientId]);
+        $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE sys_id = ?");
+        $updateStmt->execute([$updatedWorkName, $clientSysID]);
 
         $uuid = generateIDs('works');
 
@@ -71,6 +72,11 @@ try {
             null,
             $_SESSION['user_name'] ?? 'system'
         );
+        
+        $sysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
+        // $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
+
+        makeDir($clientFolderName, $sysId);
 
         $workStoreSql = "INSERT INTO works (
                 uuid,
@@ -79,8 +85,9 @@ try {
                 client_sys_id, 
                 client_name, 
                 title,
+                owned_by,
                 meta_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         $workStoreStmt = $pdo->prepare($workStoreSql);
 
@@ -91,6 +98,7 @@ try {
             isset($clientSysID) ? $clientSysID : null,
             isset($clientName) ? $clientName : null,
             isset($workTitle) ? $workTitle : null,
+            isset($rawOwnedBy) ? $rawOwnedBy : null,
             isset($metaDataJson) ? $metaDataJson : null
         ]);
 

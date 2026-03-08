@@ -2,6 +2,7 @@
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
+require '../../server/make-dir.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -17,12 +18,22 @@ $GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 // ---------------- GET DATA ----------------
 $uuid           = generateIDs('tasks');
+$taskTitle       = $_POST['task_title'] ?? "No Title Entry";
 $category       = $_POST['task_category'] ?? null;
 $infoFileName   = $_POST['info_file_name'] ?? null;
 $infoDetails    = $_POST['information'] ?? null;
 $pastedText     = $_POST['pasted_text'] ?? null;
 $workId         = $_POST['work_id'] ?? null;
 $taskDate         = $_POST['taskDate'] ?? null;
+
+$rawPerformedBy = $_POST['performedBy'] ?? null;
+if (!$rawPerformedBy) {
+    echo json_encode(['success' => false, 'message' => 'Task Performer missing']);
+    exit;
+}
+$performedByParts = explode('|', $rawPerformedBy);
+$performedBySysID = trim($performedByParts[0]);
+$performedByName = trim($performedByParts[1]);
 
 // ---------------- VALIDATION ----------------
 if (!$category || !$workId) {
@@ -40,20 +51,49 @@ if (empty($work['title']) || empty($work['sys_id'])) {
     exit;
 }
 
-$rootPath = $_SERVER['DOCUMENT_ROOT'];
+// make directory
+// Clean folder name parts
+$cleanSysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
+$clientSysId = preg_replace('/\s+/u', '', $work['client_sys_id']);   
+$clientName  = preg_replace('/\s+/u', '', $work['client_name']);     
+$workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);          
+$workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
-$clientFolderName = trim(str_replace(' ', '', $work['client_sys_id'])) . '_' . trim(str_replace(' ', '', $work['client_name'])) . '/' . str_replace(' ', '_', $work['title']);
-
-$taskDirectory = $rootPath . '/storage/clients/' . $clientFolderName . '/tasks/' . $uuid['sys_id'];
-
-// ---------------- CREATE DIRECTORIES ----------------
-if (!is_dir($taskDirectory)) {
-    mkdir($taskDirectory, 0755, true);
-}
+// Build folder path
+$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}/tasks";
+$taskDirectory = makeDir($clientFolderName, $cleanSysId);
 
 // ---------------- FILE UPLOAD ----------------
 $uploadedFiles = [];
 $filesToProcess = []; // Store files for Gemini processing
+
+// ---------------- SAVE INFO FILE IF PROVIDED ----------------
+if ($infoFileName && $infoDetails) {
+    // ফাইলনেম থেকে এক্সটেনশন আলাদা করুন
+    $fileExtension = pathinfo($infoFileName, PATHINFO_EXTENSION);
+    
+    // যদি এক্সটেনশন না থাকে, তাহলে .txt করে দিন
+    if (empty($fileExtension)) {
+        $infoFileName = $infoFileName . '.txt';
+    }
+    
+    // সেফ ফাইলনেম তৈরি করুন
+    $safeInfoFileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $infoFileName);
+    $infoFilePath = $taskDirectory . '/' . $safeInfoFileName;
+    
+    // ফাইলে $infoDetails লিখুন
+    file_put_contents($infoFilePath, $infoDetails);
+    
+    // ফাইলটিকে আপলোডেড ফাইলের তালিকায় যোগ করুন
+    $uploadedFiles[] = $infoFilePath;
+    
+    // এই ফাইলটিও Gemini-তে প্রসেস করার জন্য তালিকায় যোগ করুন
+    $filesToProcess[] = $infoFilePath;
+    
+    // ডিবাগিং জন্য (পরবর্তীতে মুছে ফেলবেন)
+    error_log("Info file created: " . $infoFilePath);
+}
+
 
 if (!empty($_FILES['files']['name'][0])) {
     foreach ($_FILES['files']['name'] as $key => $name) {
@@ -74,6 +114,7 @@ if (!empty($pastedText)) {
     $textFile = $taskDirectory . '/pasted_text.txt';
     file_put_contents($textFile, $pastedText);
     $uploadedFiles[] = $textFile;
+    $filesToProcess[] = $textFile; // এটিকেও Gemini-তে প্রসেস করুন
 }
 
 // ---------------- PROCESS WITH GEMINI AI ----------------
@@ -82,19 +123,11 @@ $extractedData = null;
 
 if (!empty($filesToProcess)) {
     $geminiResponse = processFilesWithGemini($filesToProcess, $category);
-
+    
     if ($geminiResponse && isset($geminiResponse['success']) && $geminiResponse['success']) {
         $extractedData = $geminiResponse['data'];
     }
 }
-
-// ---------------- SAVE EXTRACTED DATA TO FILE ----------------
-if ($extractedData) {
-    $dataFile = $taskDirectory . '/extracted_data.json';
-    file_put_contents($dataFile, json_encode($extractedData, JSON_PRETTY_PRINT));
-    $uploadedFiles[] = $dataFile;
-}
-
 
 // ---------------- FUNCTION: PROCESS WITH GEMINI ----------------
 function processFilesWithGemini($files, $category)
@@ -107,7 +140,25 @@ function processFilesWithGemini($files, $category)
     foreach ($files as $file) {
         if (!file_exists($file)) continue;
 
-        $mimeType = mime_content_type($file);
+        // $mimeType = mime_content_type($file);
+        if (function_exists('mime_content_type')) {
+            $mimeType = mime_content_type($file);
+        } else {
+            $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            $mime_types = [
+                'pdf'  => 'application/pdf',
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+                'txt'  => 'text/plain',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'json' => 'application/json'
+            ];
+            $mimeType = $mime_types[$extension] ?? 'application/octet-stream';
+        }
+        
+        
+        
         $fileData = base64_encode(file_get_contents($file));
 
         // Gemini handles PDF, Images, and Text natively via 'inline_data'
@@ -130,7 +181,7 @@ function processFilesWithGemini($files, $category)
                 'response_mime_type' => 'application/json'
             ]
         ];
-
+        
         $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$GEMINI_MODEL}:generateContent?key={$GEMINI_API_KEY}";
 
         $ch = curl_init($apiUrl);
@@ -154,7 +205,7 @@ function processFilesWithGemini($files, $category)
             }
         }
     }
-
+    
     return [
         'success' => !empty($responses),
         'data' => $responses
@@ -199,7 +250,8 @@ function getPromptForCategory($category)
         2. If field is not found, leave empty string
         3. For dates, use format: DDMMMYY (e.g., 16DEC25)
         4. If multiple flights, add to itinerary_information array
-        5. If multiple passengers, add to other_applicants array";
+        5. If multiple passengers, add to other_applicants array
+        6. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
     } elseif ($category == 2) { // Hotel Booking
         return "Extract information from this hotel booking document and return ONLY valid JSON in this exact format:
         {
@@ -272,7 +324,8 @@ function getPromptForCategory($category)
         3. For dates, use format: YYYY-MM-DD
         4. Count should be numbers only
         5. PCN = Portal Confirmation Number
-        6. HCN = Hotel Confirmation Number";
+        6. HCN = Hotel Confirmation Number
+        7. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
     }
 
     return "Extract all relevant information from this document and return as JSON.";
@@ -282,7 +335,8 @@ function getPromptForCategory($category)
 try {
     // Convert uploaded files to relative paths
     $relativePaths = array_map(function ($path) {
-        return str_replace($_SERVER['DOCUMENT_ROOT'] . '/', '', $path);
+        // return str_replace($_SERVER['DOCUMENT_ROOT'] . '/', '', $path);
+        return basename($path);
     }, $uploadedFiles);
 
     $filesJson = json_encode($relativePaths);
@@ -307,6 +361,7 @@ try {
         INSERT INTO tasks (
             uuid, 
             sys_id, 
+            title, 
             category, 
             info_file_name, 
             info_details, 
@@ -316,9 +371,10 @@ try {
             air_ticket_info, 
             all_file_name, 
             status, 
+            performed_by,
             meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     if ($category == 1) {
@@ -332,6 +388,7 @@ try {
     $stmt->execute([
         $uuid['uuid'],
         $uuid['sys_id'],
+        $taskTitle,
         $category,
         $infoFileName,
         $infoDetails,
@@ -341,6 +398,7 @@ try {
         $airTicketInfo,
         $filesJson,
         'pending',
+        $rawPerformedBy,
         $metaDataJson,
     ]);
 

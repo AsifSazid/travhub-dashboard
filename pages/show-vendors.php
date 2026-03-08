@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -7,7 +8,7 @@ if (empty($ip_port)) {
 $vendorId = $_GET['vendor_id'];
 
 
-$getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.php?vendor_id=$vendorId";
+$getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$vendorId";
 
 ?>
 
@@ -109,7 +110,7 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.p
                 <div class="mb-6">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center">
                         <i class="fas fa-user-circle mr-2 text-purple-600"></i>
-                        Client's Profile
+                        Vendor's Profile
                     </h2>
                     <p class="text-sm text-gray-600">Manage traveler information, documents, and related data</p>
                 </div>
@@ -173,10 +174,7 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.p
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
-                                    <i class="fas fa-calculator text-4xl text-orange-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Accounting Content</h3>
-                                    <p class="text-gray-600">Financial information will be displayed here</p>
-
+                                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions</h2>
                                     <?php include('sv-accounting.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
@@ -210,7 +208,7 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/vendor-fin-entries.p
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         // Tab switching functionality

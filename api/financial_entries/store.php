@@ -1,5 +1,7 @@
 <?php
-require '../../server/db_connection.php'; // <-- PDO connection
+session_start();
+
+require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 
@@ -11,41 +13,27 @@ header('Access-Control-Allow-Headers: Content-Type');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-function validateInput($data)
+// ------------------ Validator ------------------
+function validateInput(array $data): array
 {
     $errors = [];
 
-    if (empty($data['type']) || !in_array($data['type'], ['credit', 'debit'])) {
-        $errors[] = "Valid type (credit/debit) is required";
+    if (!isset($data['type']) || !in_array($data['type'], ['credit', 'debit'], true)) {
+        $errors[] = 'Valid type (credit/debit) is required';
     }
 
-    if (empty($data['amount']) || !is_numeric($data['amount']) || $data['amount'] <= 0) {
-        $errors[] = "Valid positive amount is required";
+    if (!isset($data['amount']) || !is_numeric($data['amount']) || $data['amount'] <= 0) {
+        $errors[] = 'Valid positive amount is required';
     }
 
-    if (empty($data['purpose'])) {
-        $errors[] = "Purpose is required";
-    }
-
-    if (empty($data['work_id'])) {
-        $errors[] = "Work ID is required";
-    }
-
-    if (empty($data['task_id'])) {
-        $errors[] = "Task ID is required";
-    }
-
-    if ($data['type'] === 'debit' && empty($data['client_id'])) {
-        $errors[] = "Client ID is required for debit transactions";
-    }
-
-    if ($data['type'] === 'credit' && empty($data['vendor_id'])) {
-        $errors[] = "Vendor ID is required for credit transactions";
+    if (empty(trim($data['purpose'] ?? ''))) {
+        $errors[] = 'Purpose is required';
     }
 
     return $errors;
 }
 
+// ------------------ Method Guard ------------------
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -53,13 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input) {
-        $input = $_POST;
-    }
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
     $errors = validateInput($input);
-    if (!empty($errors)) {
+    if ($errors) {
         http_response_code(400);
         echo json_encode([
             'success' => false,
@@ -71,113 +56,117 @@ try {
 
     // ------------------ Extract ------------------
     $type    = $input['type'];
-    $amount  = (float)$input['amount'];
+    $amount  = (float) $input['amount'];
     $purpose = trim($input['purpose']);
-    $workId  = $input['work_id'];
-    $taskId  = $input['task_id'];
     $date    = $input['date'] ?? date('Y-m-d');
 
-    $clientId = $clientUuid = $clientName = null;
-    $vendorId = $vendorUuid = $vendorName = null;
-    $taskTitle = $workTitle = null;
+    $clientId = $input['client_id'] ?? null;
+    $vendorId = $input['vendor_id'] ?? null;
+    $vendorType = $input['vendor_type'] ?? null;
+    $accountId = $input['account_id'] ?? null;
+    $workId   = $input['work_id'] ?? null;
+    $taskId   = $input['task_id'] ?? null;
+    
+    $ref     = $input['ref'] ?? $accountId ?? null;
 
+    $clientName = $vendorName = $taskTitle = $workTitle = null;
+    $userType = '';
+    
     // ------------------ Work ------------------
-    $stmt = $pdo->prepare("SELECT title FROM works WHERE sys_id = ?");
-    $stmt->execute([$workId]);
-    $work = $stmt->fetch(PDO::FETCH_ASSOC);
-    $workTitle = $work['title'] ?? null;
+    if ($workId) {
+        $stmt = $pdo->prepare("SELECT title FROM works WHERE sys_id = ?");
+        $stmt->execute([$workId]);
+        $workTitle = $stmt->fetchColumn();
+    }
 
     // ------------------ Task ------------------
-    $stmt = $pdo->prepare("SELECT title FROM tasks WHERE sys_id = ?");
-    $stmt->execute([$taskId]);
-    $task = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$task) {
-        throw new Exception("Task not found");
+    if ($taskId) {
+        $stmt = $pdo->prepare("SELECT title FROM tasks WHERE sys_id = ?");
+        $stmt->execute([$taskId]);
+        $taskTitle = $stmt->fetchColumn();
     }
 
-    $taskTitle = $task['title'];
+    // ------------------ Client ------------------
+    if ($clientId) {
+        $stmt = $pdo->prepare("SELECT name FROM clients WHERE sys_id = ?");
+        $stmt->execute([$clientId]);
+        $clientName = $stmt->fetchColumn();
+        $userType = 'client';
 
-    // ------------------ Debit (Client) ------------------
-    if ($type === 'debit') {
-        $clientId = $input['client_id'];
-
-        $stmt = $pdo->prepare("
-            SELECT c.uuid, c.name
-            FROM clients c
-            INNER JOIN works w ON c.sys_id = w.client_sys_id
-            WHERE w.sys_id = ? AND c.sys_id = ?
-        ");
-        $stmt->execute([$workId, $clientId]);
-        $client = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$client) {
-            // fallback: just get client by sys_id
-            $stmt = $pdo->prepare("SELECT uuid, name FROM clients WHERE sys_id = ?");
-            $stmt->execute([$clientId]);
-            $client = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$client) {
-                throw new Exception("Client not found");
-            }
+        if (!$clientName) {
+            throw new Exception('Client not found');
         }
-
-        $clientUuid = $client['uuid'];
-        $clientName = $client['name'];
     }
 
-    // ------------------ Credit (Vendor) ------------------
-    if ($type === 'credit') {
-        $vendorId = $input['vendor_id'];
-
-        $stmt = $pdo->prepare("SELECT uuid, name FROM vendors WHERE sys_id = ?");
+    // ------------------ Vendor ------------------
+    if ($vendorId) {
+        $stmt = $pdo->prepare("SELECT name FROM vendors WHERE sys_id = ?");
         $stmt->execute([$vendorId]);
-        $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
+        $vendorName = $stmt->fetchColumn();
+        $userType = 'vendor';
 
-        if (!$vendor) {
-            throw new Exception("Vendor not found");
+        if (!$vendorName) {
+            throw new Exception('Vendor not found');
         }
+    }
 
-        $vendorUuid = $vendor['uuid'];
-        $vendorName = $vendor['name'];
+    // ------------------ Account ------------------
+    if ($accountId) {
+        $stmt = $pdo->prepare("SELECT acc_name, balance FROM ac_banking WHERE sys_id = ?");
+        $stmt->execute([$accountId]);
+        $accountInfo = $stmt->fetch();
+        $accountName = $accountInfo['acc_name'];
+        $oldBalance = $accountInfo['balance'];
+        $userType = 'account';
+        
+        if (!$accountInfo) {
+            throw new Exception('Vendor not found');
+        }
+    }
+    
+    if ($date) {
+        $tz = new DateTimeZone('Asia/Dhaka');
+    
+        // API date + current time
+        $dateTime = new DateTime($date, $tz);
+        $currentTime = (new DateTime('now', $tz))->format('H:i:s');
+    
+        $dateTime->setTime(
+            ...explode(':', $currentTime)
+        );
+    
+        $date = $dateTime->format('Y-m-d H:i:s');
     }
 
     // ------------------ Insert ------------------
     $ids = generateIDs('financial_entries');
-    $uuid = $ids['uuid']; // ensure it's a string
-
-    $metaDataJson = buildMetaData(
-        null,
-        $_SESSION['user_name'] ?? 'system'
-    );
+    $metaDataJson = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
     $stmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
-            client_sys_id, client_name,
-            vendor_sys_id, vendor_name,
+            user_sys_id, user_name, user_type, vendor_type,
             task_sys_id, task_title,
             work_sys_id, work_title,
-            date, purpose, type, amount,
+            date, purpose, type, amount, ref,
             meta_data
         ) VALUES (
             :uuid, :sys_id,
-            :client_sys_id, :client_name,
-            :vendor_sys_id, :vendor_name,
+            :user_sys_id, :user_name, :user_type, :vendor_type,
             :task_sys_id, :task_title,
             :work_sys_id, :work_title,
-            :date, :purpose, :type, :amount,
+            :date, :purpose, :type, :amount, :ref,
             :meta_data
         )
     ");
 
     $stmt->execute([
-        ':uuid' => $uuid,
+        ':uuid' => $ids['uuid'],
         ':sys_id' => $ids['sys_id'],
-        ':client_sys_id' => $clientId,
-        ':client_name' => $clientName,
-        ':vendor_sys_id' => $vendorId,
-        ':vendor_name' => $vendorName,
+        ':user_sys_id' => $clientId ?? $vendorId ?? $accountId ?? null,
+        ':user_name' => $clientName ?? $vendorName ?? $accountName ?? null,
+        ':user_type' => $userType ?? null,
+        ':vendor_type' => $vendorType ?? null,
         ':task_sys_id' => $taskId,
         ':task_title' => $taskTitle,
         ':work_sys_id' => $workId,
@@ -186,17 +175,156 @@ try {
         ':purpose' => $purpose,
         ':type' => $type,
         ':amount' => $amount,
+        ':ref' => $ref,
         ':meta_data' => $metaDataJson
     ]);
+    
+    if($vendorType == 1 && $accountId)
+    {
+        /* ---------------- Generate IDs & Meta ---------------- */
+        $stmtIds = generateIDs('ac_banking_stmts');
+    
+        $user = $_SESSION['user_name'] ?? $data['user'] ?? 'system';
+        $stmtMeta = buildMetaData(null, $user);
+
+        if($type == 'credit'){
+            $withdraw = $amount;
+            $newBalance = $oldBalance - $withdraw;
+            $updateSql = "
+                UPDATE ac_banking
+                SET balance = :balance
+                WHERE sys_id = :account_row_id
+            ";
+    
+            $updateStmt = $pdo->prepare($updateSql);
+            $updateStmt->execute([
+                ':balance'         => $newBalance,
+                ':account_row_id'  => $accountId
+            ]);
+            
+            /* ---------------- Insert Statement ---------------- */
+            $insertSql = "
+                INSERT INTO ac_banking_stmts
+                (
+                    uuid,
+                    sys_id,
+                    ledger_db_id,
+                    name,
+                    date,
+                    particular,
+                    withdraw,
+                    balance,
+                    meta_data,
+                    ref
+                )
+                VALUES
+                (
+                    :uuid,
+                    :sys_id,
+                    :ledger_db_id,
+                    :name,
+                    :date,
+                    :particular,
+                    :withdraw,
+                    :balance,
+                    :meta_data,
+                    :ref
+                )
+            ";
+        
+            $stmt = $pdo->prepare($insertSql);
+            $stmt->execute([
+                ':uuid'          => $stmtIds['uuid'],
+                ':sys_id'        => $stmtIds['sys_id'],
+                ':ledger_db_id'  => $accountId,
+                ':name'          => $accountName,
+                ':date'          => $date,
+                ':particular'    => $purpose,
+                ':withdraw'      => $withdraw,
+                ':balance'       => $newBalance, // running balance
+                ':meta_data'     => $stmtMeta,
+                ':ref'     => $ids['sys_id'],
+            ]);
+            
+            
+        }else if($type == 'debit'){
+            $deposit = $amount;
+            $newBalance = $oldBalance + $deposit;
+            $updateSql = "
+                UPDATE ac_banking
+                SET balance = :balance
+                WHERE sys_id = :account_row_id
+            ";
+    
+            $updateStmt = $pdo->prepare($updateSql);
+            $updateStmt->execute([
+                ':balance'         => $newBalance,
+                ':account_row_id'  => $accountId
+            ]);
+            
+            /* ---------------- Insert Statement ---------------- */
+            $insertSql = "
+                INSERT INTO ac_banking_stmts
+                (
+                    uuid,
+                    sys_id,
+                    ledger_db_id,
+                    name,
+                    date,
+                    particular,
+                    deposit,
+                    balance,
+                    meta_data,
+                    ref
+                )
+                VALUES
+                (
+                    :uuid,
+                    :sys_id,
+                    :ledger_db_id,
+                    :name,
+                    :date,
+                    :particular,
+                    :deposit,
+                    :balance,
+                    :meta_data,
+                    :ref
+                )
+            ";
+        
+            $stmt = $pdo->prepare($insertSql);
+            $stmt->execute([
+                ':uuid'          => $stmtIds['uuid'],
+                ':sys_id'        => $stmtIds['sys_id'],
+                ':ledger_db_id'  => $accountId,
+                ':name'          => $accountName,
+                ':date'          => $date,
+                ':particular'    => $purpose,
+                ':deposit'       => $deposit,
+                ':balance'       => $newBalance, // running balance
+                ':meta_data'     => $stmtMeta,
+                ':ref'           => $ids['sys_id'],
+            ]);
+            
+            
+        }else{
+            echo json_encode([
+                'success' => false,
+                'message' => 'Server error',
+                'error' => "Balance Problem!"
+            ]);
+        }
+    }
 
     http_response_code(201);
     echo json_encode([
         'success' => true,
         'message' => ucfirst($type) . ' transaction recorded successfully',
         'transaction_id' => $pdo->lastInsertId(),
-        'uuid' => $uuid
+        'uuid' => $ids['uuid']
     ]);
-} catch (Exception $e) {
+
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,

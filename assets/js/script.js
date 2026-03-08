@@ -1,7 +1,7 @@
 // UI Interactions JavaScript - Handles all UI interactions only
 const UIInteractions = (function () {
     // Private variables
-    let sidebarCollapsed = false;
+    let sidebarCollapsed = true;
     let notificationOpen = false;
     let userMenuOpen = false;
     let mobileMenuOpen = false;
@@ -10,8 +10,8 @@ const UIInteractions = (function () {
     
     // Accordion state
     let accordions = {
-        'working-area': true,  // Default open
-        'finance': true       // Default open
+        'working-area': false,  // Default open
+        'finance': false       // Default open
     };
 
     // DOM Elements
@@ -30,6 +30,9 @@ const UIInteractions = (function () {
     const modalClose = document.getElementById('modalClose');
     const modalTitle = document.getElementById('modalTitle');
     const modalContent = document.getElementById('modalContent');
+    
+    const AUTH_USER = "<?php echo $authUser; ?>";
+    const AUTH_USER_ID = "<?php echo $authUserId; ?>";
 
     // Modal templates for UI modals only
     const modalTemplates = {
@@ -546,3 +549,31 @@ const UIInteractions = (function () {
 document.addEventListener('DOMContentLoaded', function() {
     UIInteractions.init();
 });
+
+window.BD_TIME = {
+    getDate: function() {
+        const now = new Date();
+        return new Date(now.getTime() + (6 * 60 * 60 * 1000)) // UTC+6
+            .toISOString().split('T')[0];
+    },
+    
+    getDateTime: function() {
+        const now = new Date();
+        const bdTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+        const date = bdTime.toISOString().split('T')[0];
+        const time = bdTime.toTimeString().split(' ')[0];
+        return `${date} ${time}`;
+    },
+    
+    formatForAPI: function(dateStr) {
+        // যদি শুধু তারিখ থাকে, বাংলাদেশ সময় যোগ করুন
+        if (dateStr && !dateStr.includes(' ')) {
+            const time = new Date().toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Dhaka',
+                hour12: false
+            });
+            return `${dateStr} ${time}`;
+        }
+        return dateStr;
+    }
+};

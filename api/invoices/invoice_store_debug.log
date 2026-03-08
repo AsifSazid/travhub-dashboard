@@ -1,0 +1,2464 @@
+[2026-01-18 19:30:12] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary2udXThLMwojq7bMN
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:30:37] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary21GuHnB6rotbu1XB
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:31:04] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryBz86IoAssIPQltuJ
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:31:38] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryj4WsSE5DFyRqKJjp
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:31:38] RAW INPUT:
+
+
+[2026-01-18 19:31:38] ERROR: Invoice Store Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'SELECT' in /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php:131
+Stack Trace:
+#0 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(131): PDO->prepare()
+#1 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(197): getClientInfo()
+#2 {main}
+========================================
+
+[2026-01-18 19:36:40] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarytYA4Nt2uwtHLSA0M
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:36:40] RAW INPUT:
+
+
+[2026-01-18 19:36:40] ERROR: Invoice Store Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'SELECT' in /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php:131
+Stack Trace:
+#0 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(131): PDO->prepare()
+#1 /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php(197): getClientInfo()
+#2 {main}
+========================================
+
+[2026-01-18 19:37:30] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryySyf6viXsgGeZP0n
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:37:30] RAW INPUT:
+
+
+[2026-01-18 19:38:36] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryMD2YcRdwYZjc1JO4
+POST Data: {
+    "invoice_no": "THR-IN-26-00K017",
+    "date": "2026-01-18",
+    "client_title": "THR-CL-26-00K002",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "15000.00",
+    "paid_amount": "12000",
+    "due_amount": "3000.00",
+    "work_title": [
+        "Air Ticket"
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "15000"
+    ],
+    "work_particular": [
+        "Aehyhejnuwgh"
+    ],
+    "amount": [
+        "15000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-18 19:38:36] RAW INPUT:
+
+
+[2026-01-18 17:38:36] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 17
+Invoice No: THR-IN-26-00K017
+Client: Assaduzzaman Porag
+Total Amount: 15000
+========================================
+
+[2026-01-25 15:10:30] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarygM6vybnbgiV4SB0A
+POST Data: {
+    "invoice_no": "THR-IN-26-00K018",
+    "date": "2026-01-25",
+    "client_title": "THR-CL-26-00K006",
+    "client_phone_no": "",
+    "client_cc": "Pintu Ranjan Bhowmik",
+    "total_amount": "76200.00",
+    "paid_amount": "0",
+    "due_amount": "76200.00",
+    "work_title": [
+        "Dhaka - Kolkata by Indigo Air",
+        "Kolkata - Delhi by Indigo Air"
+    ],
+    "work_qty": [
+        "2",
+        "2"
+    ],
+    "work_rate": [
+        "17800",
+        "20300"
+    ],
+    "work_particular": [
+        "Travelers: M SHAHID HOSSAIN, MAIMUNA HOSSAIN \r\nTravel Date: 27 Jan 2026 \r\nIncluded: Seat - Extra Legroom | Meal \r\nItinerary: 27 JAN DAC – CCU 18:15 PM – 19:00 PM",
+        "Travelers: M SHAHID HOSSAIN, MAIMUNA HOSSAIN \r\nItinerary: 30 JAN CCU – DEL 12:00 PM – 14:30 PM \r\nIncluded: Seat - Business | Extra Legroom | Meal"
+    ],
+    "amount": [
+        "35600.00",
+        "40600.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-25 15:10:30] RAW INPUT:
+
+
+[2026-01-25 13:10:30] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 18
+Invoice No: THR-IN-26-00K018
+Client: Dekko Isho Group
+Total Amount: 76200
+========================================
+
+[2026-01-26 16:36:24] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryTVMVXIJ93N29fate
+POST Data: {
+    "invoice_no": "THR-IN-26-00K019",
+    "date": "2026-01-26",
+    "client_title": "THR-CL-26-00K004",
+    "client_phone_no": "",
+    "client_cc": "Sadikuz Zaman",
+    "total_amount": "222999.98",
+    "paid_amount": "0",
+    "due_amount": "222999.98",
+    "work_title": [
+        ""
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "0"
+    ],
+    "work_particular": [
+        ""
+    ],
+    "amount": [
+        "0.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-26 16:36:24] RAW INPUT:
+
+
+[2026-01-26 14:36:24] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 19
+Invoice No: THR-IN-26-00K019
+Client: BONAFIDE KNITTING MILLS LTD
+Total Amount: 222999.98
+========================================
+
+[2026-01-26 21:51:07] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary7LTuXMbpA4Uhm6CS
+POST Data: {
+    "invoice_no": "THR-IN-26-00K021",
+    "date": "2026-01-26",
+    "client_title": "THR-CL-26-00K001",
+    "client_phone_no": "01751906710",
+    "client_cc": "travhub.asif@gmail.com",
+    "total_amount": "440500.00",
+    "paid_amount": "0",
+    "due_amount": "440500.00",
+    "work_title": [
+        ""
+    ],
+    "work_qty": [
+        "1"
+    ],
+    "work_rate": [
+        "0"
+    ],
+    "work_particular": [
+        ""
+    ],
+    "amount": [
+        "0.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-26 21:51:07] RAW INPUT:
+
+
+[2026-01-26 19:51:07] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 21
+Invoice No: THR-IN-26-00K021
+Client: Major Mehedi Hasan
+Total Amount: 440500
+========================================
+
+[2026-01-26 22:13:52] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary92hr4BzZQ00Cj6l6
+POST Data: {
+    "invoice_no": "THR-IN-26-00K022",
+    "date": "2026-01-26",
+    "client_title": "THR-CL-26-00K001",
+    "client_phone_no": "",
+    "client_cc": "",
+    "total_amount": "440500.00",
+    "paid_amount": "0",
+    "due_amount": "440500.00",
+    "work_title": [
+        "Air Ticket Issue",
+        "Hotel Booking"
+    ],
+    "work_qty": [
+        "1",
+        "1"
+    ],
+    "work_rate": [
+        "416500.00",
+        "24000.00"
+    ],
+    "work_particular": [
+        "Dhaka - Medina\/\/ Jeddha - Dhaka Airticket on Saudi Airlines",
+        "Umrah Visa for Runa Laila"
+    ],
+    "amount": [
+        "416500.00",
+        "24000.00"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-26 22:13:52] RAW INPUT:
+
+
+[2026-01-26 20:13:52] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 22
+Invoice No: THR-IN-26-00K022
+Client: Major Mehedi Hasan
+Total Amount: 440500
+========================================
+
+[2026-01-26 22:42:36] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryUPiGkgfZorrfopTT
+POST Data: {
+    "invoice_no": "THR-IN-26-00K020",
+    "date": "2026-01-26",
+    "client_title": "THR-CL-26-00K004",
+    "client_phone_no": "",
+    "client_cc": "",
+    "total_amount": "222999.98",
+    "paid_amount": "0",
+    "due_amount": "222999.98",
+    "work_title": [
+        "",
+        "",
+        ""
+    ],
+    "work_qty": [
+        "1",
+        "1",
+        "1"
+    ],
+    "work_rate": [
+        "186000.00",
+        "24000.00",
+        "12999.98"
+    ],
+    "work_particular": [
+        "DAC-JED\/MED-DAC by Saudi Arabian Airlines | SARKAR\/MD ALAMGIR KABIR MR",
+        "Umrah Visa With Nusuk Approval",
+        "Airport Transfer"
+    ],
+    "amount": [
+        "186000.00",
+        "24000.00",
+        "12999.98"
+    ],
+    "bank": "[]",
+    "mfs": "[]"
+}
+========================================
+
+[2026-01-26 22:42:36] RAW INPUT:
+
+
+[2026-01-26 20:42:36] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 23
+Invoice No: THR-IN-26-00K020
+Client: BONAFIDE KNITTING MILLS LTD
+Total Amount: 222999.98
+========================================
+
+[2026-01-26 22:43:53] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryxf4mcBocLIyt5yWK
+POST Data:
+invoice_no: THR-IN-26-00K020...
+date: 2026-01-26...
+client_title: THR-CL-26-00K004...
+client_phone_no: ...
+client_cc: ...
+total_amount: 222999.98...
+paid_amount: 0...
+due_amount: 222999.98...
+work_title: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 186000.00
+    [1] => 24000.00
+    [2] => 12999.98
+)
+
+work_particular: Array
+(
+    [0] => DAC-JED/MED-DAC by Saudi Arabian Airlines | SARKAR/MD ALAMGIR KABIR MR
+    [1] => Umrah Visa With Nusuk Approval
+    [2] => Airport Transfer
+)
+
+amount: Array
+(
+    [0] => 186000.00
+    [1] => 24000.00
+    [2] => 12999.98
+)
+
+bank: []...
+mfs: []...
+========================================
+
+[2026-01-26 22:43:53] RAW INPUT:
+
+
+[2026-01-26 22:43:53] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-26 20:43:53] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 24
+Invoice No: THR-IN-26-00K020
+Client: BONAFIDE KNITTING MILLS LTD
+Total Amount: 222999.98
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-01-26 23:08:11] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryBUNaE1FgAQLAAf9p
+POST Data:
+invoice_no: THR-IN-26-00K021...
+date: 2026-01-26...
+client_title: THR-CL-26-00K001...
+client_phone_no: ...
+client_cc: ...
+total_amount: 24000.00...
+paid_amount: 0...
+due_amount: 24000.00...
+work_title: Array
+(
+    [0] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 24000.00
+)
+
+========================================
+
+[2026-01-26 23:16:01] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryiXWrPjBXaMGw0yxX
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-26...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => 
+    [1] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 24000.00
+)
+
+total_amount: 24000.00...
+paid_amount: 0...
+due_amount: 24000.00...
+========================================
+
+[2026-01-26 23:20:57] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarytuAgEtyiewSJjxpV
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-26...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => 
+    [1] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 24000.00
+)
+
+total_amount: 24000.00...
+paid_amount: 0...
+due_amount: 24000.00...
+========================================
+
+[2026-01-26 23:51:02] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryl1BuEDIMEdYHcyIR
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-26...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => 
+    [1] => Air Ticket Issue
+    [2] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [2] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-26 23:51:18] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryA2fuX8XRZX1lEYLT
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-26...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => 
+    [1] => Air Ticket Issue
+    [2] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [2] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-26 23:51:35] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarypbyQKXoCYj8uURpw
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-26...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => 
+    [1] => Air Ticket Issue
+    [2] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [2] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-26 23:51:35] RAW INPUT:
+
+
+[2026-01-26 23:51:35] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-26 21:51:35] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 25
+Invoice No: THR-IN-26-00K021
+Client: Major Mehedi Hasan
+Total Amount: 440500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-01-26 23:52:33] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryg5HB7PavZZStKxKb
+POST Data:
+invoice_no: THR-IN-26-00K022...
+client_title: THR-CL-26-00K004...
+date: 2026-01-26...
+client_phone_no: ...
+client_cc: Sadikuz Zaman...
+work_title: Array
+(
+    [0] => 
+    [1] => Airticket
+    [2] => Visa
+    [3] => Airport Transfer
+    [4] => Hotel
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+    [3] => 1
+    [4] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 186000.00
+    [2] => 24000.00
+    [3] => 20000
+    [4] => 51000
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => DAC-JED/MED-DAC by Saudi Arabian Airlines | SARKAR/MD ALAMGIR KABIR MR
+    [2] => Umrah Visa With Nusuk Approval
+    [3] => Airport Transfer
+Private Car
+    [4] => Room Category Change for 1 Room
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 186000.00
+    [2] => 24000.00
+    [3] => 20000.00
+    [4] => 51000.00
+)
+
+total_amount: 281000.00...
+paid_amount: 0...
+due_amount: 281000.00...
+========================================
+
+[2026-01-26 23:52:33] RAW INPUT:
+
+
+[2026-01-26 23:52:33] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-26 21:52:33] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 26
+Invoice No: THR-IN-26-00K022
+Client: BONAFIDE KNITTING MILLS LTD
+Total Amount: 281000
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-01-27 14:14:59] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryKqlaOYpQZVcfO6J1
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-27...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => 
+    [1] => Air Ticket Issue
+    [2] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 0
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => 
+    [1] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [2] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 0.00
+    [1] => 416500.00
+    [2] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-27 14:14:59] RAW INPUT:
+
+
+[2026-01-27 14:14:59] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-27 12:14:59] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 27
+Invoice No: THR-IN-26-00K021
+Client: Major Mehedi Hasan
+Total Amount: 440500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-01-27 17:22:01] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary2cIJygKECa6QKTzS
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K001...
+date: 2026-01-27...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Air Ticket Issue
+    [1] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 416500.00
+    [1] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [1] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 416500.00
+    [1] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-27 17:22:01] RAW INPUT:
+
+
+[2026-01-27 17:22:01] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-27 15:22:01] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 28
+Invoice No: THR-IN-26-00K021
+Client: Major Mehedi Hasan
+Total Amount: 440500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-01-27 17:30:57] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryUvIxBkGrKw5m8WBx
+POST Data:
+invoice_no: THR-IN-26-00K022...
+client_title: THR-CL-26-00K001...
+date: 2026-01-27...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Air Ticket Issue
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 416500.00
+)
+
+work_particular: Array
+(
+    [0] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+)
+
+amount: Array
+(
+    [0] => 416500.00
+)
+
+total_amount: 416500.00...
+paid_amount: 0...
+due_amount: 416500.00...
+========================================
+
+[2026-01-27 17:30:57] RAW INPUT:
+
+
+[2026-01-27 17:30:57] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-27 15:30:57] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 29
+Invoice No: THR-IN-26-00K022
+Client: Major Mehedi Hasan
+Total Amount: 416500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-01-31 21:05:42] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarySlR9nX5FqgBB30wy
+POST Data:
+invoice_no: THR-IN-26-00K020...
+client_title: THR-CL-26-00K001...
+date: 2026-01-31...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Air Ticket Issue
+    [1] => Hotel Booking
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 416500.00
+    [1] => 24000.00
+)
+
+work_particular: Array
+(
+    [0] => Dhaka - Medina// Jeddha - Dhaka Airticket on Saudi Airlines
+    [1] => Umrah Visa for Runa Laila
+)
+
+amount: Array
+(
+    [0] => 416500.00
+    [1] => 24000.00
+)
+
+total_amount: 440500.00...
+paid_amount: 0...
+due_amount: 440500.00...
+========================================
+
+[2026-01-31 21:05:42] RAW INPUT:
+
+
+[2026-01-31 21:05:42] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-01-31 19:05:42] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 30
+Invoice No: THR-IN-26-00K020
+Client: Major Mehedi Hasan
+Total Amount: 440500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-02 17:33:12] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryaq6sHHaCqKqYKu9T
+POST Data:
+invoice_no: THR-IN-26-00K020...
+client_title: THR-CL-26-00K005...
+date: 2026-02-02...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Sri Lanka ETA
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 3000.00
+)
+
+work_particular: Array
+(
+    [0] => MR ABDUR ROUF
+260112VI14951521
+)
+
+amount: Array
+(
+    [0] => 3000.00
+)
+
+total_amount: 3000.00...
+paid_amount: 0...
+due_amount: 3000.00...
+========================================
+
+[2026-02-02 17:33:12] RAW INPUT:
+
+
+[2026-02-02 17:33:12] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-02 15:33:12] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 31
+Invoice No: THR-IN-26-00K020
+Client: Walton Hi-Tech Industries PLC
+Total Amount: 3000
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 17:22:49] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary0KSzBROuwNYSKRkC
+POST Data:
+invoice_no: THR-IN-26-00K021...
+client_title: THR-CL-26-00K013...
+date: 2026-02-07...
+client_phone_no: +8801678-049258...
+client_cc: Khademul Islam...
+work_title: Array
+(
+    [0] => Malaysia Visa
+    [1] => DAC-KUL-DAC Air Ticket On Biman Bangladesh
+    [2] => Malaysia Hotel 
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 5000.00
+    [1] => 62500.00
+    [2] => 27500.00
+)
+
+work_particular: Array
+(
+    [0] => 6 Month Multiple Entry E-Visa
+Applicant Name: MD MONIR HOSSAIN
+E-VISA Expire Date: 04 AUG 2026
+    [1] => Traveler: HOSSAIN/MD MONIR MR
+Tr. Dt: 09 FEB 2026 
+Rt. Dt: 14 FEB 2026
+EUXVPR / 9975074385817
+    [2] => Hotel Name: Flora by Crossroads Hotel
+C/In: 9 Feb
+C/Out: 14 Feb
+Room: Forest View Room (14sqm)
+Breakfast: Not Included
+)
+
+amount: Array
+(
+    [0] => 5000.00
+    [1] => 62500.00
+    [2] => 27500.00
+)
+
+total_amount: 95000.00...
+paid_amount: 0...
+due_amount: 95000.00...
+========================================
+
+[2026-02-07 17:22:49] RAW INPUT:
+
+
+[2026-02-07 17:22:49] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 15:22:49] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 32
+Invoice No: THR-IN-26-00K021
+Client: Remark HB Limited
+Total Amount: 95000
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 18:03:55] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryGxrE0ZLcjOE0BEce
+POST Data:
+invoice_no: THR-IN-26-00K022...
+client_title: THR-CL-26-00K014...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: Asaduzzaman Soikot...
+work_title: Array
+(
+    [0] => China 2 Years Multiple Entry Business Visa
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 75000.00
+)
+
+work_particular: Array
+(
+    [0] => Applicant: Golam Murhsed
+Expiry Date: 14 JAN 2028
+Visa Number: M8616988
+)
+
+amount: Array
+(
+    [0] => 75000.00
+)
+
+total_amount: 75000.00...
+paid_amount: 0...
+due_amount: 75000.00...
+========================================
+
+[2026-02-07 18:03:55] RAW INPUT:
+
+
+[2026-02-07 18:03:55] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 16:03:55] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 33
+Invoice No: THR-IN-26-00K022
+Client: TST WHITE HOUSE
+Total Amount: 75000
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 20:09:41] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryAkr45o4u1JGEaXdv
+POST Data:
+invoice_no: THR-IN-26-00K023...
+client_title: THR-CL-26-00K015...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Dhaka - Bangkok - Dhaka Air Ticket by US Bangla
+    [1] => Thailand Tour Package | 6 Nights 7 Day
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 103236.00
+    [1] => 143000.00
+)
+
+work_particular: Array
+(
+    [0] => Passengers: MOHAMMAD EASIR ARAFAT, KHANDAKAR MAKSURAT ANWAR, MUJADDID ALFSANI
+Tr. Dt: 10 Feb 2026
+Rt. Dt: 16 Feb 2026
+097CTA / 7792411413246/7792411413247/7792411413248
+    [1] => Destination: Pattaya and Bangkok
+No of Pax: 2 Adults 1 child
+Hotel: Discovery Beach Pattaya (2N), Royal Benja (4N)
+Inclusions:
+- All transfers
+- Hotel
+- Nong Nooch Garden
+- Safari World
+- Dinner Cruise
+)
+
+amount: Array
+(
+    [0] => 103236.00
+    [1] => 143000.00
+)
+
+total_amount: 246236.00...
+paid_amount: 0...
+due_amount: 246236.00...
+========================================
+
+[2026-02-07 20:09:41] RAW INPUT:
+
+
+[2026-02-07 20:09:41] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 18:09:41] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 34
+Invoice No: THR-IN-26-00K023
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 246236
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 22:47:39] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary4JSIxaE5ORtBA2A2
+POST Data:
+invoice_no: THR-IN-26-00K024...
+client_title: THR-CL-26-00K015...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => DAC-IST-LHR-DAC by Turkish Air
+    [1] => Dhaka - Chittagong By BG
+    [2] => Chittagong - Dhaka by Novo
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 441500
+    [1] => 4249
+    [2] => 9500
+)
+
+work_particular: Array
+(
+    [0] => Multiple financial statements:
+1. Discount - -৳5000.00 (credit)
+2. Passangers: ARAFAT, MOHAMMAD EASIR MR, ALFSANI, MUJADDID MSTR, ANWAR, KHANDAKAR MAKSURAT MRS 
+Dates: 08 Mar 26/16 Mar 26/5 Apr 26
+WF55UJ (TK)/ FS9FWW (Gal)
+2355060483480/2355060483481/2355060483482 - +৳446500.00 (debit)
+Net Total: ৳441500.00
+    [1] => PASSENGER: MOHAMMAD EASIR ARAFAT
+03-Feb-2026 | 08:00
+NUOOIS / 9975853199523 (debit)
+    [2] => PASSENGER: MOHAMMAD EASIR ARAFAT
+03-Feb-2026 | 14:40
+LAVQXJ / 8551016725178 (debit)
+)
+
+amount: Array
+(
+    [0] => 441500.00
+    [1] => 4249.00
+    [2] => 9500.00
+)
+
+total_amount: 455249.00...
+paid_amount: 0...
+due_amount: 455249.00...
+========================================
+
+[2026-02-07 22:47:39] RAW INPUT:
+
+
+[2026-02-07 22:47:39] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 20:47:39] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 35
+Invoice No: THR-IN-26-00K024
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 455249
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-07 22:50:15] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarygUTmSvjcNNlj89gd
+POST Data:
+invoice_no: THR-IN-26-00K024...
+client_title: THR-CL-26-00K015...
+date: 2026-02-07...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => DAC-IST-LHR-DAC by Turkish Air
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 441500
+)
+
+work_particular: Array
+(
+    [0] => Multiple financial statements:
+1. Discount - (-) 5000.00 (credit)
+2. Passangers: ARAFAT, MOHAMMAD EASIR MR, ALFSANI, MUJADDID MSTR, ANWAR, KHANDAKAR MAKSURAT MRS 
+Dates: 08 Mar 26/16 Mar 26/5 Apr 26
+WF55UJ (TK)/ FS9FWW (Gal)
+2355060483480/2355060483481/2355060483482 - (+) 446500.00 (debit)
+Net Total: ৳441500.00
+)
+
+amount: Array
+(
+    [0] => 441500.00
+)
+
+total_amount: 441500.00...
+paid_amount: 0...
+due_amount: 441500.00...
+========================================
+
+[2026-02-07 22:50:15] RAW INPUT:
+
+
+[2026-02-07 22:50:15] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-07 20:50:15] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 36
+Invoice No: THR-IN-26-00K024
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 441500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-17 14:54:39] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarycwX8yXgFB5vGBQKu
+POST Data:
+invoice_no: THR-IN-26-00K024...
+client_title: THR-CL-26-00K017...
+date: 2026-02-17...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Hotel Boss
+    [1] => Dhaka to Singapore to Dhaka by SQ
+    [2] => Singapore Visa
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 51000
+    [1] => 150000
+    [2] => 13000
+)
+
+work_particular: Array
+(
+    [0] => Multiple financial statements:
+1. Service Charge -> (+)1000.00 (debit)
+2. Hotel Boss 
+Check -in - 12 Feb 2026.
+Check out- 15 Feb 2026
+Room Name   -   Superior Twin - 3D Advance Purchase - Room Only. -> (+)50000.00 (debit)
+Net Total: ৳51000.00
+    [1] => Travelers: RAFI/SHEIKH TANHEEYAT MSTR (CHD), ROUF MIA/MD ABDUR MR
+Travel Date- 11 feb 26, RT - 15 Feb 2026, 
+SQ Booking Reference: E9MQN4
+Ticket Number: 618 2473243411-2 (debit)
+    [2] => Multiple financial statements:
+1. Singapore 2 month Double Entry SIN visa Gust name-- ROUF MIA/MD ABDUR MR & RAFI/SHEIKH TANHEEYAT MSTR (Child) -> (+)6500.00 (debit)
+2. Singapore 2 month Double Entry SIN visa 
+Gust name-- ROUF MIA/MD ABDUR MR &
+RAFI/SHEIKH TANHEEYAT MSTR (Child) -> (+)6500.00 (debit)
+Net Total: ৳13000.00
+)
+
+amount: Array
+(
+    [0] => 51000.00
+    [1] => 150000.00
+    [2] => 13000.00
+)
+
+total_amount: 214000.00...
+paid_amount: 0...
+due_amount: 214000.00...
+========================================
+
+[2026-02-17 14:54:39] RAW INPUT:
+
+
+[2026-02-17 14:54:39] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-17 12:54:39] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 37
+Invoice No: THR-IN-26-00K024
+Client: MD ABDUR  ROUF MIA
+Total Amount: 214000
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-17 19:17:36] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarylOuApP2khsMBdLZL
+POST Data:
+invoice_no: THR-IN-26-00K025...
+client_title: THR-CL-26-00K005...
+date: 2026-02-17...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Hotel at Bangkok 
+    [1] => Wanda Vista Changsha
+    [2] => Date Change Wanda Vista Changsha
+    [3] => New Hotel Confirm
+    [4] => Extended Stay
+)
+
+work_qty: Array
+(
+    [0] => 3
+    [1] => 2
+    [2] => 1
+    [3] => 2
+    [4] => 1
+)
+
+work_rate: Array
+(
+    [0] => 30935
+    [1] => 17600
+    [2] => 3000
+    [3] => 9850
+    [4] => 10000
+)
+
+work_particular: Array
+(
+    [0] => Grande Centre Point Hotel Terminal 21 
+C/In: 26 Jan 26 | C/Out: 29 Jan 26 | 3 Nights
+Without Breakfast | Non Refundable 
+    [1] => Nishat Tasnim Shuchi 
+C/In: 19 Jan 2026 | C/Out - 21 Jan 2026 
+2 Nights | 1 Room | 1 Guest Deluxe King Room | With Breakfast
+    [2] => Nishat Tasnim Shuchi 
+C/In: 19 Jan 2026 | C/Out - 21 Jan 2026 
+2 Nights | 1 Room | 1 Guest Deluxe King Room | With Breakfast
+    [3] => Hampton By Hilton Guangzhou Xintang Railway Station
+C/In: 21 Jan | C/Out: 23 Jan
+2 Nights | 1 Room | 1 Guest Hollywood King Room | Breakfast Included
+    [4] => Hampton By Hilton Guangzhou Xintang Railway Station 
+Nishat Tasnim Shuchi 
+C/In: 23 Jan | C/Out: 24 Jan | 1 Nights 
+1 Room | 1 Guest Hollywood King Room | Breakfast Included
+)
+
+amount: Array
+(
+    [0] => 92805.00
+    [1] => 35200.00
+    [2] => 3000.00
+    [3] => 19700.00
+    [4] => 10000.00
+)
+
+total_amount: 160705.00...
+paid_amount: 0...
+due_amount: 160705.00...
+========================================
+
+[2026-02-17 19:17:36] RAW INPUT:
+
+
+[2026-02-17 19:17:36] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-17 17:17:36] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 38
+Invoice No: THR-IN-26-00K025
+Client: Walton Hi-Tech Industries PLC
+Total Amount: 160705
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-19 13:10:18] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarymLAXULGCMUksG0Am
+POST Data:
+invoice_no: THR-IN-26-00K026...
+client_title: THR-CL-26-00K010...
+date: 2026-02-19...
+client_phone_no: +880 1769-702758...
+client_cc: ...
+work_title: Array
+(
+    [0] => New Air ticket on Singapore Airlines
+    [1] => Dhaka - Singapore - Dhaka on Biman Bangladesh
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+)
+
+work_rate: Array
+(
+    [0] => 132400
+    [1] => 15700
+)
+
+work_particular: Array
+(
+    [0] => Dhaka - Singapore - Dhaka on SQ
+Travelers: IFTAKHAR/MD SHAMIM MR, ISLAM/SHAFIQUL MR
+Tr. Dt: 23 Feb 26 | Rt. Dt: 01 Mar 26
+ETK76H / 618 2473480883-84 
+    [1] => Refund Charge for DAC-SIN-DAC on Biman Bangladesh
+Traveler: IFTAKHAR/MD SHAMIM MR
+Tr. Dt.: 2 Feb 26 | Rt. Dt: 10 Feb 26
+NDBXCM / 9975074385781 
+)
+
+amount: Array
+(
+    [0] => 132400.00
+    [1] => 15700.00
+)
+
+total_amount: 148100.00...
+paid_amount: 0...
+due_amount: 148100.00...
+========================================
+
+[2026-02-19 13:10:18] RAW INPUT:
+
+
+[2026-02-19 13:10:18] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-19 11:10:18] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 39
+Invoice No: THR-IN-26-00K026
+Client: MD Mizanur Rahman
+Total Amount: 148100
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-19 18:02:15] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryYjNtIUHQ9Zq4fcLQ
+POST Data:
+invoice_no: THR-IN-26-00K027...
+client_title: THR-CL-26-00K021...
+date: 2025-09-07...
+client_phone_no: +880 1818-054544...
+client_cc: ...
+work_title: Array
+(
+    [0] => Hotel at Miami
+    [1] => Daily Dinner at Hotel
+    [2] => Airport Pick and Drop
+    [3] => Key West Day Trip with Pickup at Selected Hotels
+)
+
+work_qty: Array
+(
+    [0] => 5
+    [1] => 5
+    [2] => 1
+    [3] => 1
+)
+
+work_rate: Array
+(
+    [0] => 25500
+    [1] => 5500
+    [2] => 13500
+    [3] => 12000
+)
+
+work_particular: Array
+(
+    [0] => Beach Park Hotel
+CHECK IN - Mon 18 Aug 2025
+CHECK OUT - Sat 23 Aug 2025
+5 Nights | 1 Adult | 1 Room
+Deluxe Double Room, 1 Queen Bed
+Room with Breakfast
+    [1] => Standard, three-course dinner- USD 45 Per meal
+    [2] => Inclusions: 
+- Miami Airport to Miami Hotel 
+- Miami Hotel to Miami Airport
+    [3] => Inclusions:
+- Pickup and drop-off at selected hotels
+- Round-trip air-conditioned transportation
+- Tour guide in English and Spanish languages
+)
+
+amount: Array
+(
+    [0] => 127500.00
+    [1] => 27500.00
+    [2] => 13500.00
+    [3] => 12000.00
+)
+
+total_amount: 180500.00...
+paid_amount: 0...
+due_amount: 180500.00...
+========================================
+
+[2026-02-19 18:02:15] RAW INPUT:
+
+
+[2026-02-19 18:02:15] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-19 16:02:15] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 40
+Invoice No: THR-IN-26-00K027
+Client: WAHID AHMED SADI
+Total Amount: 180500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-20 18:30:51] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarypx4P5zt1VaPGrrUZ
+POST Data:
+invoice_no: THR-IN-26-00K028...
+client_title: THR-CL-26-00K015...
+date: 2026-02-20...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => DAC-CGP By Air Astra
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 4750
+)
+
+work_particular: Array
+(
+    [0] => Travelers: MOHAMMAD EASIR ARAFAT
+Tr. Dt: 21 Feb 26
+00KDLD (2A)/ 6102416252602 (debit)
+)
+
+amount: Array
+(
+    [0] => 4750.00
+)
+
+total_amount: 4750.00...
+paid_amount: 0...
+due_amount: 4750.00...
+========================================
+
+[2026-02-20 18:30:51] RAW INPUT:
+
+
+[2026-02-20 18:30:51] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-20 16:30:51] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 41
+Invoice No: THR-IN-26-00K028
+Client: MOHAMMAD EASIR ARAFAT 
+Total Amount: 4750
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-02-22 14:49:37] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary53dv5L75k25DgmxT
+POST Data:
+invoice_no: THR-IN-26-00K029...
+client_title: THR-CL-26-00K005...
+date: 2026-02-22...
+client_phone_no: ...
+client_cc: Khademul Islam...
+work_title: Array
+(
+    [0] => US Visa Fee
+    [1] => Expedite Appointment
+    [2] => Service Charge
+)
+
+work_qty: Array
+(
+    [0] => 1
+    [1] => 1
+    [2] => 1
+)
+
+work_rate: Array
+(
+    [0] => 23125
+    [1] => 23000
+    [2] => 1000
+)
+
+work_particular: Array
+(
+    [0] => Applicant: Md Touhidur Rahman Rad
+DS-160 Confirmation No: AA00F73ANZ
+    [1] => Appointment Date: 2/16/2026 1:45:00 PM
+Expedition Type: Within 1 Month
+    [2] => 
+)
+
+amount: Array
+(
+    [0] => 23125.00
+    [1] => 23000.00
+    [2] => 1000.00
+)
+
+total_amount: 47125.00...
+paid_amount: 0...
+due_amount: 47125.00...
+========================================
+
+[2026-02-22 14:49:37] RAW INPUT:
+
+
+[2026-02-22 14:49:37] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-02-22 12:49:37] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 42
+Invoice No: THR-IN-26-00K029
+Client: Walton Hi-Tech Industries PLC
+Total Amount: 47125
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-03-04 12:24:57] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundary9DT35rj6Xgv691L7
+POST Data:
+invoice_no: THR-IN-26-00K030...
+client_title: THR-CL-26-00K022...
+date: 2026-03-04...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Thailand Visa
+)
+
+work_qty: Array
+(
+    [0] => 1
+)
+
+work_rate: Array
+(
+    [0] => 6500
+)
+
+work_particular: Array
+(
+    [0] => 3 Months Single Entry Tourist Visa
+Ariq Mansur
+)
+
+amount: Array
+(
+    [0] => 6500.00
+)
+
+total_amount: 6500.00...
+paid_amount: 0...
+due_amount: 6500.00...
+========================================
+
+[2026-03-04 12:24:57] RAW INPUT:
+
+
+[2026-03-04 12:24:57] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-03-04 10:24:57] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 43
+Invoice No: THR-IN-26-00K030
+Client: Devour Ltd
+Total Amount: 6500
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-03-04 13:44:02] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundarysqC2n8gncA5pmlxM
+POST Data:
+invoice_no: THR-IN-26-00K031...
+client_title: THR-CL-26-00K005...
+date: 2026-02-27...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Airport Pick and Drop
+    [1] => Full Day Phi Phi Island Tour
+    [2] => Dinner Curise at Bangkok
+)
+
+work_qty: Array
+(
+    [0] => 4
+    [1] => 15
+    [2] => 15
+)
+
+work_rate: Array
+(
+    [0] => 2250
+    [1] => 1800
+    [2] => 1150
+)
+
+work_particular: Array
+(
+    [0] => Phuket x 2 | Bangkok x 2
+    [1] => Speed Boat 
+Snorkeling and Mayabay
+Lunch
+    [2] => Meridian Cruise
+International Buffet
+)
+
+amount: Array
+(
+    [0] => 9000.00
+    [1] => 27000.00
+    [2] => 17250.00
+)
+
+total_amount: 53250.00...
+paid_amount: 0...
+due_amount: 53250.00...
+========================================
+
+[2026-03-04 13:44:02] RAW INPUT:
+
+
+[2026-03-04 13:44:02] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-03-04 11:44:02] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 44
+Invoice No: THR-IN-26-00K031
+Client: Walton Hi-Tech Industries PLC
+Total Amount: 53250
+Bank Count: 0
+MFS Count: 0
+========================================
+
+[2026-03-04 15:54:52] INVOICE STORE REQUEST START
+========================================
+Method: POST
+Content Type: multipart/form-data; boundary=----WebKitFormBoundaryzKaWAAE3pJ4Y65Ys
+POST Data:
+invoice_no: THR-IN-26-00K032...
+client_title: THR-CL-26-00K003...
+date: 2026-03-04...
+client_phone_no: ...
+client_cc: ...
+work_title: Array
+(
+    [0] => Thailand Visa
+    [1] => Air Ticket on USBangla
+    [2] => Air Ticket on USBangla
+    [3] => Hotel At Bangkok | Arawana Regency Park Sukhumvit
+    [4] => Thailand Visa | November
+    [5] => Singapore Visa
+)
+
+work_qty: Array
+(
+    [0] => 2
+    [1] => 1
+    [2] => 1
+    [3] => 3
+    [4] => 1
+    [5] => 2
+)
+
+work_rate: Array
+(
+    [0] => 6500
+    [1] => 65304
+    [2] => 47350
+    [3] => 6500
+    [4] => 6500
+    [5] => 6500
+)
+
+work_particular: Array
+(
+    [0] => 3 Months Single Entry
+Applicant: Sayma Anwar and AKM Naziullah Jewel
+    [1] => Route: Dhaka (DAC) - Bangkok (BKK)
+Travelers: AKM NAZIULLAH JEWEL 
+Tr. Dt: 13 Jan 26 | Rt. Dt: 16 Jan 26
+
+    [2] => Route: Dhaka (DAC) - Bangkok (BKK)
+Travelers: AKM NAZIULLAH JEWEL 
+Tr. Dt: 10 Dec 25 | Rt. Dt: 13 Dec 25
+    [3] => Guest: AKM NAZIULLAH JEWEL
+CHECK IN - Wed 10 Dec 2025
+CHECK OUT - Sat 13 Dec 2025
+3 Nights | 1 Adult | 1 Room
+Deluxe King Room
+    [4] => 3 Months Single Entry
+Applicant: AKM Naziullah Jewel
+    [5] => 2 Months Double Entry
+Applicants: AKM Naziullah Jewel and Sayma Anwar
+)
+
+amount: Array
+(
+    [0] => 13000.00
+    [1] => 65304.00
+    [2] => 47350.00
+    [3] => 19500.00
+    [4] => 6500.00
+    [5] => 13000.00
+)
+
+total_amount: 164654.00...
+paid_amount: 0...
+due_amount: 164654.00...
+========================================
+
+[2026-03-04 15:54:52] RAW INPUT:
+
+
+[2026-03-04 15:54:52] PROCESSED BANK/MFS DATA:
+Array
+(
+    [banks] => Array
+        (
+        )
+
+    [mfs] => Array
+        (
+        )
+
+)
+
+
+[2026-03-04 13:54:52] INVOICE SAVED SUCCESSFULLY
+Invoice ID: 45
+Invoice No: THR-IN-26-00K032
+Client: International Associates
+Total Amount: 164654
+Bank Count: 0
+MFS Count: 0
+========================================
+

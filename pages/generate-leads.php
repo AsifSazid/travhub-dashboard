@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -6,7 +7,6 @@ if (empty($ip_port)) {
 
 $leadStore = $ip_port . "api/leads/store.php";
 $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
-
 ?>
 
 
@@ -69,6 +69,9 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
+    
+    <!-- Preview Modal -->
+    <?php include '../elements/preview-model.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
@@ -511,23 +514,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
                                 <!-- Client Search Section -->
                                 <div id="clientSearchSection" class="relative w-full mt-4 mb-2">
-                                    <div class="flex">
-                                        <input
-                                            type="text"
-                                            id="clientInput"
-                                            placeholder="Search for a client..."
-                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                                            autocomplete="off">
-                                        <button
-                                            id="dropdownToggle"
-                                            class="px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg bg-gray-100 hover:bg-gray-200"
-                                            type="button">
-                                            ▼
-                                        </button>
-                                    </div>
-                                    <ul id="clientDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto hidden z-50">
-                                        <!-- JS will populate options here -->
-                                    </ul>
+                                    <?php include('form-selects/clients.php') ?>
                                 </div>
 
                                 <!-- New Client Section -->
@@ -728,7 +715,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
         </div>
     </div>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <!-- Custom JavaScript -->
     <script>
         const API_LEAD_STORE = "<?php echo $leadStore; ?>";
@@ -861,18 +848,18 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
                         }
                     };
 
-                    // Hide dropdown on outside click
-                    const outsideClickHandler = (e) => {
-                        if (!clientInput.contains(e.target) &&
-                            !clientDropdown.contains(e.target) &&
-                            !dropdownToggle.contains(e.target)) {
-                            clientDropdown.classList.add('hidden');
-                        }
-                    };
+                    // Hide dropdown on outside click [Tarek Vai told me to stop this!]
+                    // const outsideClickHandler = (e) => {
+                    //     if (!clientInput.contains(e.target) &&
+                    //         !clientDropdown.contains(e.target) &&
+                    //         !dropdownToggle.contains(e.target)) {
+                    //         clientDropdown.classList.add('hidden');
+                    //     }
+                    // };
 
                     clientInput.addEventListener('input', inputHandler);
                     dropdownToggle.addEventListener('click', toggleHandler);
-                    document.addEventListener('click', outsideClickHandler);
+                    // document.addEventListener('click', outsideClickHandler);
 
                     // Store for cleanup
                     this.eventListeners.push({
@@ -886,7 +873,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
                     }, {
                         element: document,
                         event: 'click',
-                        handler: outsideClickHandler
+                        // handler: outsideClickHandler
                     });
 
                 } catch (err) {
@@ -986,25 +973,36 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
             }
 
             collectServiceData() {
-                // Collect from all forms, not just active tab
+                // Clear previous service data first
+                this.collectedData.serviceData = {};
+                
                 const services = ['visa', 'hotel', 'air', 'tour'];
-
+            
                 services.forEach(service => {
                     const form = document.getElementById(service + 'Form');
+                    
+                    // Only collect from forms that are visible AND have data
                     if (form && !form.classList.contains('hidden')) {
+                        let serviceData = null;
+                        
                         switch (service) {
                             case 'visa':
-                                this.collectedData.serviceData.visa = this.collectVisaData();
+                                serviceData = this.collectVisaData();
                                 break;
                             case 'hotel':
-                                this.collectedData.serviceData.hotel = this.collectHotelData();
+                                serviceData = this.collectHotelData();
                                 break;
                             case 'air':
-                                this.collectedData.serviceData.air = this.collectAirTicketData();
+                                serviceData = this.collectAirTicketData();
                                 break;
                             case 'tour':
-                                this.collectedData.serviceData.tour = this.collectTourPackageData();
+                                serviceData = this.collectTourPackageData();
                                 break;
+                        }
+                        
+                        // Only add if serviceData is not null and has meaningful data
+                        if (serviceData && this.hasServiceData(serviceData, service)) {
+                            this.collectedData.serviceData[service] = serviceData;
                         }
                     }
                 });
@@ -1132,21 +1130,34 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
             hasServiceData(data, serviceType) {
                 if (!data) return false;
-
+            
                 switch (serviceType) {
                     case 'visa':
-                        return Object.values(data).some(val =>
-                            (typeof val === 'string' && val.trim() !== '') ||
-                            (typeof val === 'number' && val > 0));
+                        // Check if at least one meaningful field has data
+                        const visaFields = ['country', 'visaCategory', 'dateOfTravel', 'dateOfReturn'];
+                        return visaFields.some(field => 
+                            data[field] && data[field].toString().trim() !== ''
+                        );
+                        
                     case 'hotel':
-                        return data.bookings && data.bookings.length > 0;
+                        return data.bookings && data.bookings.length > 0 && 
+                               data.bookings.some(booking => 
+                                   booking.destination && booking.destination.trim() !== ''
+                               );
+                               
                     case 'air':
-                        return (data.adult > 0 || data.child > 0 || data.infant > 0 ||
-                            (data.routes && data.routes.length > 0));
+                        return (data.adult > 0 || data.child > 0 || data.infant > 0) &&
+                               data.routes && data.routes.length > 0 &&
+                               data.routes.some(route => 
+                                   route.route && route.route.trim() !== ''
+                               );
+                               
                     case 'tour':
-                        return Object.values(data).some(val =>
-                            (typeof val === 'string' && val.trim() !== '') ||
-                            (typeof val === 'number' && val > 0));
+                        const tourFields = ['destination', 'tourType', 'hotelCategory', 'travelDate'];
+                        return tourFields.some(field => 
+                            data[field] && data[field].toString().trim() !== ''
+                        );
+                        
                     default:
                         return false;
                 }

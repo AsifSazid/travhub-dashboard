@@ -1,3 +1,6 @@
+<?php
+include_once('./authenticate.php');
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -204,7 +207,7 @@
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         // Tab switching functionality

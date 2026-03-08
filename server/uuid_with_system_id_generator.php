@@ -3,7 +3,9 @@ require 'db_connection.php'; // PDO connection
 
 function generateIDs(string $tag): array
 {
-    $sysData = generateUUID($tag); // returns ['uuid' => ..., 'sys_id' => ...]
+    global $pdo;
+    
+    $sysData = generateUUID($pdo, $tag); // returns ['sys_id' => ...]
 
     return [
         'uuid'   => uuidV4(), // ✅ pure UUID v4
@@ -11,16 +13,15 @@ function generateIDs(string $tag): array
     ];
 }
 
-function generateUUID(string $tag): string
+function generateUUID(PDO $pdo, string $tag): string
 {
-    require 'db_connection.php'; // $pdo
-
     $map = [
         // Core Modules
         'clients'   => ['table' => 'clients',   'column' => 'sys_id', 'short' => 'CL'],
         'vendors'   => ['table' => 'vendors',   'column' => 'sys_id', 'short' => 'VR'],
         'works'     => ['table' => 'works',     'column' => 'sys_id', 'short' => 'WK'],
         'travelers' => ['table' => 'travelers', 'column' => 'sys_id', 'short' => 'TR'],
+        'hotel_bookings' => ['table' => 'hotel_bookings', 'column' => 'sys_id', 'short' => 'HB'],
 
         // Sales & Marketing
         'leads'     => ['table' => 'leads',     'column' => 'sys_id', 'short' => 'LD'],
@@ -37,6 +38,9 @@ function generateUUID(string $tag): string
         'financial_entries'  => ['table' => 'financial_entries',  'column' => 'sys_id', 'short' => 'FE'],
         'ac_banking'  => ['table' => 'ac_banking',  'column' => 'sys_id', 'short' => 'AC'],
         'ac_banking_stmts'  => ['table' => 'ac_banking_stmts',  'column' => 'sys_id', 'short' => 'AS'],
+        'AIT'  => ['table' => 'ac_instrument_tracking',  'column' => 'sys_id', 'short' => 'AT'], // account instrument tracking... eg. cheque, bftn/eft
+        'payroll_finals'  => ['table' => 'payroll_finals',  'column' => 'sys_id', 'short' => 'PS'],
+        'petty_cash'  => ['table' => 'petty_cashes',  'column' => 'sys_id', 'short' => 'PC'],
 
         // Operations
         'bookings'  => ['table' => 'bookings',  'column' => 'sys_id', 'short' => 'BK'],
@@ -48,6 +52,11 @@ function generateUUID(string $tag): string
         // Inventory
         'products'  => ['table' => 'products',  'column' => 'sys_id', 'short' => 'PD'],
         'orders'    => ['table' => 'orders',    'column' => 'sys_id', 'short' => 'OR'],
+
+        // HRM
+        'eps_structures'    => ['table' => 'eps_structures',    'column' => 'sys_id', 'short' => 'EP'],
+        
+
     ];
 
     if (!isset($map[$tag])) {
@@ -84,20 +93,19 @@ function generateUUID(string $tag): string
         $serial = $blockSerial[1];    // 999
 
 
-        if ($serial >= 999) {
-            $block = str_pad((int) $block + 1, 2, '0', STR_PAD_LEFT);
-            $serial = (int) 001;
+        if ((int)$serial >= 999) {
+            $block  = str_pad((int)$block + 1, 2, '0', STR_PAD_LEFT);
+            $serial = '001'; // always string with leading zeros
         } else {
-            $serial = str_pad((int) $serial + 1, 3, '0', STR_PAD_LEFT);
+            $serial = str_pad((int)$serial + 1, 3, '0', STR_PAD_LEFT);
         }
     } else {
         // 🔹 New year or empty table
-        $block  = (int) 00;
-        $serial = (int) 001;
+        $block  = '00';
+        $serial = '001';
     }
-
+    
     $sys_id = "{$company}-{$short}-{$year}-{$block}K{$serial}";
-
 
     return $sys_id;
 }

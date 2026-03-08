@@ -1,10 +1,11 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeAllClientApi = $ip_port . "api/clients/all-clients.php";
+$storeAllClientApi = $ip_port . "api/travelers/all-travelers.php";
 $storeVendorApi = $ip_port . "api/vendors/client-store.php";
 $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
 
@@ -101,22 +102,22 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
-        const API_URL_FOR_ALL_CLIENTS = "<?php echo $storeAllClientApi; ?>";
+        const API_URL_FOR_ALL_travelers = "<?php echo $storeAllClientApi; ?>";
         const API_URL_FOR_VENDOR_STORE = "<?php echo $storeVendorApi; ?>";
         const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
 
         // Client
         const tableBody = document.getElementById('clientTableBody');
 
-        let clientsData = [];
-        fetch(API_URL_FOR_ALL_CLIENTS)
+        let travelersData = [];
+        fetch(API_URL_FOR_ALL_travelers)
             .then(res => res.json())
             .then(data => {
-                clientsData = data.clients;
-                renderDropdown(clientsData);
+                travelersData = data.travelers;
+                renderDropdown(travelersData);
             })
             .catch(err => console.error(err));
 
@@ -138,7 +139,7 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                 tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <a href="show-clients.php?client_id=${client.id}" title="Details">
+                    <a href="show-travelers.php?client_id=${client.id}" title="Details">
                         ${client.given_name || 'No Title'} ${client.sur_name}
                     </a>
                 </td>
@@ -161,7 +162,7 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                     </label>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="show-clients.php?client_id=${client.id}" title="Details">
+                    <a href="show-travelers.php?client_id=${client.id}" title="Details">
                         <i class="fas fa-eye"></i>
                     </a>
                 </td>

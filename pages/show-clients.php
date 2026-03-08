@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -9,7 +10,9 @@ $clientId = $_GET['client_id'];
 
 // $showClientApi = $ip_port . "api/clients/show.php";
 $getClientsWorksApi = $ip_port . "api/works/client-works.php?client_id=$clientId";
-$getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.php?client_id=$clientId";
+$getClientFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$clientId";
+$createWorkApi = $ip_port . "api/works/client-work-store.php?cid=$clientId";
+// $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.php?client_id=$clientId";
 
 ?>
 
@@ -88,23 +91,8 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
 
-    <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
-        </div>
-    </div>
-
     <!-- Main Content -->
-    <main id="mainContent" class=" pl-64 transition-all duration-300">
+    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300">
         <div class="p-6">
             <div class="bg-white rounded-lg shadow p-4 flex flex-col h-[400px] md:h-[calc(100vh-8rem)]">
                 <!-- Header -->
@@ -252,7 +240,7 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
     <!-- Floating Quick Access Tab -->
     <?php include '../elements/floating-menus.php'; ?>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         // Tab switching functionality
@@ -291,7 +279,7 @@ $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.p
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                const firstTabId = tabButtons[3].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

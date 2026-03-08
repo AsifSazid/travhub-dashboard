@@ -1,4 +1,5 @@
 <?php
+include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -47,19 +48,7 @@ $storeVendorApi = $ip_port . "api/vendors/store.php";
     <?php include '../elements/aside.php'; ?>
 
     <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
-        </div>
-    </div>
+    <?php include '../elements/preview-model.php'; ?>
 
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
@@ -120,7 +109,7 @@ $storeVendorApi = $ip_port . "api/vendors/store.php";
         </div>
     </main>
 
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
         const API_URL_FOR_VENDOR_STORE = "<?php echo $storeVendorApi; ?>";

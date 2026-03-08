@@ -587,10 +587,10 @@
         }
 
         setupEventListeners() {
-            // Close context menu on click outside
-            document.addEventListener('click', () => {
-                document.getElementById('context-menu').classList.add('hidden');
-            });
+            // Close context menu on click outside [Tarek Vai told me to stop this!]
+            // document.addEventListener('click', () => {
+            //     document.getElementById('context-menu').classList.add('hidden');
+            // });
 
             // Handle escape key
             document.addEventListener('keydown', (e) => {
