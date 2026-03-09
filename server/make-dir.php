@@ -1,4 +1,5 @@
 <?php
+
 function makeDir($directory, $folderOrFileName)
 {
     $rootPath = preg_replace('/\s+/u', '', $_SERVER['DOCUMENT_ROOT']);

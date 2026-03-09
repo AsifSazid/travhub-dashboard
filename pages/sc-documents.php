@@ -8,9 +8,7 @@
                         Select Document
                     </label>
 
-                    <select
-                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700
-               focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
+                    <select class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
                         <option value="" selected disabled>-- Select --</option>
                         <option value="trade_license">Trade License</option>
                         <option value="trade_license_translated">Trade License (Translated and Notarized)</option>

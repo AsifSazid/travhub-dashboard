@@ -8,7 +8,7 @@ if (empty($ip_port)) {
 $workId = $_GET['work_id'];
 $taskId = $_GET['task_id'];
 
-$getClientsApi = $ip_port . "api/clients/get-client.php?work_id=$workId";
+$getClientsApi = $ip_port . "api/clients/get-client-info.php?work_id=$workId";
 $getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=$taskId";
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
 $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
@@ -1204,11 +1204,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     // Reload financial data
                     loadFinancialData();
                 } else {
-<<<<<<< HEAD
                     showNotification('Error: ' + (result.message || 'Unknown error'), 'error');
-=======
-                    showNotification('Error5: ' + (result.message || 'Unknown error'), 'error');
->>>>>>> server
                 }
             } catch (error) {
                 console.error('Error saving transaction:', error);

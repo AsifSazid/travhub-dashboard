@@ -669,6 +669,8 @@
             ownedBy: ownedByValue,
             work_title: workTitle
         };
+        
+        console.log(payload);
 
         // Send data to API
         fetch(API_URL_FOR_WORK_STORE, {
