@@ -98,58 +98,67 @@ const UIInteractions = (function () {
     // Private methods
     function toggleSidebar() {
         sidebarCollapsed = !sidebarCollapsed;
-
+    
         if (sidebarCollapsed) {
             sidebar.classList.remove('w-64');
             sidebar.classList.add('w-16', 'sidebar-collapsed');
             mainContent.classList.remove('pl-64');
             mainContent.classList.add('pl-16');
-
-            document.querySelectorAll('#sidebar nav ul li a').forEach(link => {
-                link.classList.add('justify-center');
-                link.classList.remove('justify-start');
-                const icon = link.querySelector('i');
+    
+            // Hide all text elements
+            document.querySelectorAll('.sidebar-text, .user-info-text').forEach(text => {
+                text.classList.add('hidden');
+            });
+    
+            // Hide accordion arrows
+            document.querySelectorAll('.accordion-arrow').forEach(arrow => {
+                arrow.classList.add('hidden');
+            });
+    
+            // Hide accordion content
+            document.querySelectorAll('.accordion-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+    
+            // Adjust icon margins
+            document.querySelectorAll('#sidebar nav ul li a, .accordion-toggle').forEach(element => {
+                const icon = element.querySelector('i:first-child');
                 if (icon) {
                     icon.classList.remove('mr-3');
                 }
             });
-
-            // Hide sidebar text when collapsed
-            document.querySelectorAll('.sidebar-text').forEach(text => {
-                text.classList.add('hidden');
-            });
-
-            // Hide accordion content when sidebar collapsed
-            document.querySelectorAll('.accordion-content').forEach(content => {
-                content.classList.add('hidden');
-            });
+    
         } else {
             sidebar.classList.remove('w-16', 'sidebar-collapsed');
             sidebar.classList.add('w-64');
             mainContent.classList.remove('pl-16');
             mainContent.classList.add('pl-64');
-
-            document.querySelectorAll('#sidebar nav ul li a').forEach(link => {
-                link.classList.remove('justify-center');
-                link.classList.add('justify-start');
-                const icon = link.querySelector('i');
-                if (icon) {
-                    icon.classList.add('mr-3');
-                }
-            });
-
-            // Show sidebar text when expanded
-            document.querySelectorAll('.sidebar-text').forEach(text => {
+    
+            // Show all text elements
+            document.querySelectorAll('.sidebar-text, .user-info-text').forEach(text => {
                 text.classList.remove('hidden');
             });
-
-            // Show accordion content when sidebar expanded (if open)
+    
+            // Show accordion arrows
+            document.querySelectorAll('.accordion-arrow').forEach(arrow => {
+                arrow.classList.remove('hidden');
+            });
+    
+            // Show accordion content if they were open
             document.querySelectorAll('.accordion-item').forEach(item => {
                 const accordionId = item.getAttribute('data-accordion');
                 const content = item.querySelector('.accordion-content');
                 if (accordions[accordionId] && content) {
                     content.classList.remove('hidden');
                     content.style.maxHeight = content.scrollHeight + 'px';
+                }
+            });
+    
+            // Restore icon margins
+            document.querySelectorAll('#sidebar nav ul li a, .accordion-toggle').forEach(element => {
+                const icon = element.querySelector('i:first-child');
+                if (icon) {
+                    icon.classList.add('mr-3');
                 }
             });
         }

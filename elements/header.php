@@ -3,10 +3,10 @@
         <a href="index.php" class="flex items-center">
             <img src="../assets/images/logo/logo.png" width="40" class="hidden md:block">
             <h1 class="text-lg md:text-xl font-semibold text-gray-800 ml-2 truncate max-w-[150px] md:max-w-none">Dev Dashboard</h1>
-            <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
-                <i class="fas fa-bars text-gray-600"></i>
-            </button>
         </a>
+        <button id="sidebarToggle" class="p-2 rounded-lg hover:bg-gray-100 ml-2">
+            <i class="fas fa-bars text-gray-600"></i>
+        </button>
     </div>
 
     <div class="flex items-center space-x-2 md:space-x-4">
@@ -71,7 +71,7 @@
         <!-- Desktop user menu -->
         <div class="relative hidden md:block">
             <button id="userMenuBtn" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100">
-                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">TI</div>
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold"><?php echo $initialName ?></div>
                 <span class="text-gray-700 hidden lg:inline"><?php echo $_SESSION['user_name'] ?></span>
                 <i class="fas fa-chevron-down text-gray-500 text-xs"></i>
             </button>
@@ -96,7 +96,7 @@
 <!-- Mobile Menu -->
 <div id="mobileMenu" class="fixed top-16 right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-40 w-48 hidden">
     <div class="flex items-center px-4 py-3 border-b border-gray-200">
-        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">JD</div>
+        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold"><?php echo $initialName ?></div>
         <div class="ml-3">
             <p class="text-gray-800 font-medium"><?php echo $_SESSION['user_name'] ?></p>
             <p class="text-gray-500 text-sm">Managing Director</p>
