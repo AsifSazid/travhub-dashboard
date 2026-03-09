@@ -1,3 +1,9 @@
 /storage
 gemini-apikey.txt
 ippath.txt
+
+/auth
+/server/db_connection.php
+/elements/header.php
+index.php
+dev.txt
