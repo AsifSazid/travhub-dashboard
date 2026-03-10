@@ -23,9 +23,9 @@ $GEMINI_MODEL = "gemini-2.0-flash-lite";
 function fileSaveinSMB($fileName, $filePath){
     $omv = new OMV_SMB_Manager();
     
-    $paste_status = $omv->paste_file($fileName, "$filePath"."/".$fileName);
+    $paste_status = $omv->paste_file($fileName, $filePath);
     if ($paste_status === true) {
-        echo "✅ File 'data.pdf' pasted successfully <br>";
+        echo "File " . $filePath . " pasted successfully <br>";
     } else {
         echo "❌ " . $paste_status . "<br>";
     }
@@ -75,8 +75,11 @@ $workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);
 $workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
 // Build folder path
+$clientFolder = "dev-clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle";
 $clientFolderName = "dev-clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle/tasks";
 $taskDirectory = makeDir($clientFolderName, $cleanSysId);
+makeSMBDir($clientFolder, 'tasks');
+$fullPath = makeSMBDir($clientFolderName, $cleanSysId);
 
 // ---------------- FILE UPLOAD ----------------
 $uploadedFiles = [];
@@ -105,8 +108,6 @@ if ($infoFileName && $infoDetails) {
     // এই ফাইলটিও Gemini-তে প্রসেস করার জন্য তালিকায় যোগ করুন
     $filesToProcess[] = $infoFilePath;
     
-    fileSaveinSMB($infoDetails, $infoFilePath);
-    
     // ডিবাগিং জন্য (পরবর্তীতে মুছে ফেলবেন)
     error_log("Info file created: " . $infoFilePath);
 }
@@ -118,11 +119,12 @@ if (!empty($_FILES['files']['name'][0])) {
             $safeName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $name);
             $target = $taskDirectory . '/' . $safeName;
             
-            fileSaveinSMB($safeName, $target);
-
             if (move_uploaded_file($_FILES['files']['tmp_name'][$key], $target)) {
                 $uploadedFiles[] = $target;
                 $filesToProcess[] = $target; // Add to processing list
+                
+                
+                fileSaveinSMB($target, $fullPath. '/' . $safeName);
             }
         }
     }
