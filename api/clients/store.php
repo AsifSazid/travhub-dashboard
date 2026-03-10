@@ -3,6 +3,7 @@ require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
+require '../../server/make-smb-dir.php';
 
 
 header('Content-Type: application/json');
@@ -46,7 +47,8 @@ try {
     // Make folder name
     $clientFolderName = $cleanSysId . '_' . $cleanFullName;
     
-    makeDir('clients', $clientFolderName);
+    makeDir('dev-clients', $clientFolderName);
+    makeSMBDir('clients', $clientFolderName);
     
     // Prepare SQL
     $stmt = $pdo->prepare("

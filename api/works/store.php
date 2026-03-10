@@ -3,6 +3,7 @@ require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
+require '../../server/make-smb-dir.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -48,7 +49,7 @@ $ownedByName = trim($ownedByParts[1]);
 
 $cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
 $cleanFullName = preg_replace('/\s+/u', '', $clientName);
-$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
+$clientFolderName = 'dev-clients/' . $cleanSysId . '_' . $cleanFullName;
 
 
 try {
@@ -74,10 +75,11 @@ try {
         );
         
         $sysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
-        // $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
+        $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
 
-        makeDir($clientFolderName, $sysId);
-
+        makeDir($clientFolderName, $workFolderName);
+        $fullPath = makeSMBDir($clientFolderName, $workFolderName);
+        
         $workStoreSql = "INSERT INTO works (
                 uuid,
                 sys_id,
@@ -105,7 +107,7 @@ try {
         mkdir($workDirectory, 0755, true);
         ob_clean();
 
-        echo json_encode(['success' => true, 'message' => 'Work updated successfully']);
+        echo json_encode(['success' => true, 'message' => 'Work updated successfully!' . $fullPath]);
     } else {
         ob_clean();
         echo json_encode(['success' => false, 'message' => 'Client not found in DB!']);

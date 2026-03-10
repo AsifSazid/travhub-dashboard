@@ -281,7 +281,7 @@ $getClient = $ip_port . "api/clients/get-client.php?cid=$clientId";
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[3].getAttribute('data-tab');
+                const firstTabId = tabButtons[4].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

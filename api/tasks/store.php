@@ -3,6 +3,8 @@ require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
+require '../../server/make-smb-dir.php';
+require_once '../../server/live_storage.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -15,6 +17,19 @@ ini_set('display_errors', 1);
 // $GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
 $GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt')); // Replace with your actual API key
 $GEMINI_MODEL = "gemini-2.0-flash-lite";
+
+
+// ---------------- File Save ----------------
+function fileSaveinSMB($fileName, $filePath){
+    $omv = new OMV_SMB_Manager();
+    
+    $paste_status = $omv->paste_file($fileName, "$filePath"."/".$fileName);
+    if ($paste_status === true) {
+        echo "✅ File 'data.pdf' pasted successfully <br>";
+    } else {
+        echo "❌ " . $paste_status . "<br>";
+    }
+}
 
 // ---------------- GET DATA ----------------
 $uuid           = generateIDs('tasks');
@@ -60,7 +75,7 @@ $workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);
 $workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
 // Build folder path
-$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}/tasks";
+$clientFolderName = "dev-clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle/tasks";
 $taskDirectory = makeDir($clientFolderName, $cleanSysId);
 
 // ---------------- FILE UPLOAD ----------------
@@ -90,6 +105,8 @@ if ($infoFileName && $infoDetails) {
     // এই ফাইলটিও Gemini-তে প্রসেস করার জন্য তালিকায় যোগ করুন
     $filesToProcess[] = $infoFilePath;
     
+    fileSaveinSMB($infoDetails, $infoFilePath);
+    
     // ডিবাগিং জন্য (পরবর্তীতে মুছে ফেলবেন)
     error_log("Info file created: " . $infoFilePath);
 }
@@ -100,6 +117,8 @@ if (!empty($_FILES['files']['name'][0])) {
         if ($_FILES['files']['error'][$key] === UPLOAD_ERR_OK) {
             $safeName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $name);
             $target = $taskDirectory . '/' . $safeName;
+            
+            fileSaveinSMB($safeName, $target);
 
             if (move_uploaded_file($_FILES['files']['tmp_name'][$key], $target)) {
                 $uploadedFiles[] = $target;
