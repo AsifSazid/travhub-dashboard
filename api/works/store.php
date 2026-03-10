@@ -49,7 +49,8 @@ $ownedByName = trim($ownedByParts[1]);
 
 $cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
 $cleanFullName = preg_replace('/\s+/u', '', $clientName);
-$clientFolderName = 'dev-clients/' . $cleanSysId . '_' . $cleanFullName;
+$SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
+$clientFolderName = 'staging-clients/' . $cleanSysId . '_' . $cleanFullName;
 
 
 try {

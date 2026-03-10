@@ -47,8 +47,9 @@ try {
     // Make folder name
     $clientFolderName = $cleanSysId . '_' . $cleanFullName;
     
-    makeDir('dev-clients', $clientFolderName);
-    makeSMBDir('clients', $clientFolderName);
+    $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
+    makeDir('clients', $clientFolderName);
+    makeSMBDir("{$SERVER_CUS_PATH}-clients", $clientFolderName);
     
     // Prepare SQL
     $stmt = $pdo->prepare("

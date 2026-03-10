@@ -28,6 +28,8 @@ class FileExplorerAPI
 
     private function initWorkDirectory(): void
     {
+        $SERVER_CUS_PATH = trim(file_get_contents('../server-name.txt')); // Server Naming 
+
         $stmt = $this->pdo->prepare(
             "SELECT title, sys_id, client_sys_id, client_name 
              FROM works 
@@ -40,7 +42,7 @@ class FileExplorerAPI
             $this->sendError('Work not found', 404);
         }
 
-        $root = realpath(__DIR__ . '/../storage/clients');
+        $root = realpath(__DIR__ . "/../storage/{$SERVER_CUS_PATH}-clients");
         if (!$root) {
             $this->sendError('Storage root missing', 500);
         }
@@ -52,7 +54,7 @@ class FileExplorerAPI
         $this->workFolder = str_replace(' ', '_', $work['sys_id']);
 
         $this->basePath = $root . '/' . $this->clientFolder . '/' . $this->workFolder;
-        
+
         if (!is_dir($this->basePath)) {
             mkdir($this->basePath, 0755, true);
         }
