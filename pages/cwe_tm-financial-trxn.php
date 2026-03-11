@@ -1689,22 +1689,18 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         document.getElementById('editTransactionForm').reset();
     }
         
-        
-        
-        
-
-        function deleteTransaction(id) {
-            if (confirm('Are you sure you want to delete this transaction?')) {
-                // Implement delete functionality
-                showNotification('Delete functionality coming soon', 'info');
-            }
+    function deleteTransaction(id) {
+        if (confirm('Are you sure you want to delete this transaction?')) {
+            // Implement delete functionality
+            showNotification('Delete functionality coming soon', 'info');
         }
+    }
 
-        // Reload function
-        function reloadFinancialTable() {
-            loadFinancialData();
-            showNotification('Data refreshed', 'success');
-        }
+    // Reload function
+    function reloadFinancialTable() {
+        loadFinancialData();
+        showNotification('Data refreshed', 'success');
+    }
     </script>
 </body>
 

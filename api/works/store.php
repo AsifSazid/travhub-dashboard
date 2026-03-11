@@ -50,8 +50,9 @@ $ownedByName = trim($ownedByParts[1]);
 $cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
 $cleanFullName = preg_replace('/\s+/u', '', $clientName);
 $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
-$clientFolderName = 'staging-clients/' . $cleanSysId . '_' . $cleanFullName;
+$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
 
+$cloudPath = $SERVER_CUS_PATH . "_" . $clientFolderName;
 
 try {
     // 1. Get the existing info
@@ -79,7 +80,7 @@ try {
         $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
 
         makeDir($clientFolderName, $workFolderName);
-        $fullPath = makeSMBDir($clientFolderName, $workFolderName);
+        $fullPath = makeSMBDir($cloudPath, $workFolderName);
         
         $workStoreSql = "INSERT INTO works (
                 uuid,

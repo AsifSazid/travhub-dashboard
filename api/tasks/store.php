@@ -16,7 +16,7 @@ ini_set('display_errors', 1);
 // ---------------- CONFIGURATION ----------------
 // $GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
 $GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt')); // Replace with your actual API key
-$SERVER_CUS_PATH = trim(file_get_contents('../../staging.txt')); // Replace with your actual API key
+$SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Replace with your actual API key
 $GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 
@@ -26,9 +26,9 @@ function fileSaveinSMB($fileName, $filePath){
     
     $paste_status = $omv->paste_file($fileName, $filePath);
     if ($paste_status === true) {
-        echo "File " . $filePath . " pasted successfully <br>";
+        $fileStoreInCloud = "File " . $filePath . " Created Successfully <br>";
     } else {
-        echo "❌ " . $paste_status . "<br>";
+        error_log("❌ SMB Error: " . $paste_status);
     }
 }
 
@@ -76,11 +76,16 @@ $workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);
 $workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
 // Build folder path
-$clientFolder = "dev-clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle";
-$clientFolderName = "dev-clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle/tasks";
-$taskDirectory = makeDir($clientFolderName, $cleanSysId);
-makeSMBDir($clientFolder, 'tasks');
-$fullPath = makeSMBDir($clientFolderName, $cleanSysId);
+$taskFolderName = $cleanSysId . "+" . $taskTitle;
+
+// For Server Storage
+$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle/tasks";
+$taskDirectory = makeDir($clientFolderName, $taskFolderName);
+
+// For Cloud Storage
+$clientCloudFolderName = "{$SERVER_CUS_PATH}_clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle";
+$clientCloudFullFolderName = makeSMBDir($clientCloudFolderName, 'tasks');
+$fullPath = makeSMBDir($clientCloudFullFolderName, $cleanSysId);
 
 // ---------------- FILE UPLOAD ----------------
 $uploadedFiles = [];
@@ -112,7 +117,6 @@ if ($infoFileName && $infoDetails) {
     // ডিবাগিং জন্য (পরবর্তীতে মুছে ফেলবেন)
     error_log("Info file created: " . $infoFilePath);
 }
-
 
 if (!empty($_FILES['files']['name'][0])) {
     foreach ($_FILES['files']['name'] as $key => $name) {

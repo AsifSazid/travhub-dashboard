@@ -48,8 +48,8 @@ try {
     $clientFolderName = $cleanSysId . '_' . $cleanFullName;
     
     $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
-    makeDir('clients', $clientFolderName);
-    makeSMBDir("{$SERVER_CUS_PATH}-clients", $clientFolderName);
+    $server_client_path = makeDir('clients', $clientFolderName);
+    $cloud_client_path = makeSMBDir("{$SERVER_CUS_PATH}_clients", $clientFolderName);
     
     // Prepare SQL
     $stmt = $pdo->prepare("
