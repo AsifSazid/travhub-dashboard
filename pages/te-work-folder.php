@@ -1,3 +1,6 @@
+<?php
+    $api_file_explorer = $ip_port . "api/file-explorer.php";
+?>
 <style>
     .context-menu-item {
         cursor: pointer;
@@ -582,6 +585,8 @@
 
 <script>
     const workId = `<?php echo $workId; ?>`;
+    const SERVER_NAME = `<?php echo $_SESSION['scp']; ?>`;
+    const API_FILE_EXPLORER = `<?php echo $api_file_explorer; ?>`;
 
     // File Explorer Singleton
     const FileExplorer = {
@@ -608,8 +613,8 @@
         },
         
         config: {
-            apiBaseUrl: `../api/file-explorer.php`,
-            baseStoragePath: `/travhub-admin/storage/clients/`,
+            apiBaseUrl: `${API_FILE_EXPLORER}`,
+            baseStoragePath: `/${SERVER_NAME}/storage/clients/`,
             maxFileSizeForClipboard: 5 * 1024 * 1024 // 5MB limit
         },
         
@@ -630,6 +635,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    console.log(data)
                     this.state.currentPath = data.currentPath || data.path || '';
                     this.state.clientFolder = data.clientFolder || '';
                     this.state.workFolder = data.workFolder || '';
@@ -695,7 +701,9 @@
                 this.showToast('Folder name cannot be empty', 'error');
                 return;
             }
-            
+
+            console.log(this.config.apiBaseUrl + `?work_id=${workId}`);
+
             try {
                 const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
                     method: 'POST',
@@ -858,69 +866,69 @@
         },
         
         // Smart copy function that handles different file types
-     /*   async smartCopyFileToClipboard() {
+        /*  async smartCopyFileToClipboard() {
+                const file = this.state.contextItem;
+                if (!file) return;
+                
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension);
+                const isPDF = fileExtension === 'pdf';
+                const isText = ['txt', 'md', 'json', 'xml', 'csv', 'html', 'htm'].includes(fileExtension);
+                
+                if (isImage) {
+                    // Images can be copied directly
+                    await this.copyImageToClipboard(file);
+                } else if (isPDF) {
+                    // For PDFs, show options modal
+                    this.showPDFOptionsModal(file);
+                } else if (isText) {
+                    // For text files, read content and copy as text
+                    await this.copyTextFileContent(file);
+                } else {
+                    // For other files, show unsupported modal
+                    this.showUnsupportedFileModal(file);
+                }
+            },   */ 
+        
+        
+        
+        // estiak created //
+        async smartCopyFileToClipboard() {
             const file = this.state.contextItem;
             if (!file) return;
             
             const fileExtension = file.name.split('.').pop().toLowerCase();
             const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension);
-            const isPDF = fileExtension === 'pdf';
-            const isText = ['txt', 'md', 'json', 'xml', 'csv', 'html', 'htm'].includes(fileExtension);
             
+            // Extensions that should only copy the URL
+            const isDocument = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv'].includes(fileExtension);
+        
             if (isImage) {
-                // Images can be copied directly
+                // KEEP PREVIOUS MODEL FOR IMAGES: Copy image data directly
                 await this.copyImageToClipboard(file);
-            } else if (isPDF) {
-                // For PDFs, show options modal
-                this.showPDFOptionsModal(file);
-            } else if (isText) {
-                // For text files, read content and copy as text
-                await this.copyTextFileContent(file);
+            } else if (isDocument) {
+                // FOR PDF/DOC/EXCEL: Directly copy the live URL only
+                const fileUrl = this.getFullFilePath(file);
+                const absoluteUrl = window.location.origin + fileUrl;
+                
+                try {
+                    await navigator.clipboard.writeText(absoluteUrl);
+                    this.showToast('File link copied to clipboard!', 'success');
+                    // This ensures any open context menu or modal is closed immediately
+                    this.hideContextMenu();
+                } catch (err) {
+                    console.error('Failed to copy link:', err);
+                    this.showToast('Failed to copy link', 'error');
+                }
             } else {
-                // For other files, show unsupported modal
-                this.showUnsupportedFileModal(file);
+                // For other files, maintain your current unsupported logic or copy link as fallback
+                const fileUrl = this.getFullFilePath(file);
+                const absoluteUrl = window.location.origin + fileUrl;
+                await navigator.clipboard.writeText(absoluteUrl);
+                this.showToast('Link copied to clipboard', 'success');
             }
-        },   */ 
-        
-        
-        
-       // estiak created //
-async smartCopyFileToClipboard() {
-    const file = this.state.contextItem;
-    if (!file) return;
-    
-    const fileExtension = file.name.split('.').pop().toLowerCase();
-    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension);
-    
-    // Extensions that should only copy the URL
-    const isDocument = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv'].includes(fileExtension);
-
-    if (isImage) {
-        // KEEP PREVIOUS MODEL FOR IMAGES: Copy image data directly
-        await this.copyImageToClipboard(file);
-    } else if (isDocument) {
-        // FOR PDF/DOC/EXCEL: Directly copy the live URL only
-        const fileUrl = this.getFullFilePath(file);
-        const absoluteUrl = window.location.origin + fileUrl;
-        
-        try {
-            await navigator.clipboard.writeText(absoluteUrl);
-            this.showToast('File link copied to clipboard!', 'success');
-            // This ensures any open context menu or modal is closed immediately
-            this.hideContextMenu();
-        } catch (err) {
-            console.error('Failed to copy link:', err);
-            this.showToast('Failed to copy link', 'error');
-        }
-    } else {
-        // For other files, maintain your current unsupported logic or copy link as fallback
-        const fileUrl = this.getFullFilePath(file);
-        const absoluteUrl = window.location.origin + fileUrl;
-        await navigator.clipboard.writeText(absoluteUrl);
-        this.showToast('Link copied to clipboard', 'success');
-    }
-},
-    // estiak created  stop //
+        },
+        // estiak created  stop //
         
         async copyImageToClipboard(file) {
             this.showClipboardModal('Loading image...');

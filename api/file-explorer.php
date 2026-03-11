@@ -8,11 +8,12 @@ require_once __DIR__ . '/../server/db_connection.php';
 
 class FileExplorerAPI
 {
-    private PDO $pdo;
+    private PDO    $pdo;
     private string $workId;
     private string $basePath;
     private string $clientFolder;
     private string $workFolder;
+    private string $serverCusPath; // ✅ FIX: store as class property
 
     public function __construct(PDO $pdo)
     {
@@ -28,7 +29,8 @@ class FileExplorerAPI
 
     private function initWorkDirectory(): void
     {
-        $SERVER_CUS_PATH = trim(file_get_contents('../server-name.txt')); // Server Naming 
+        // ✅ FIX: Store in class property so other methods can use it
+        $this->serverCusPath = trim(file_get_contents('../server-name.txt'));
 
         $stmt = $this->pdo->prepare(
             "SELECT title, sys_id, client_sys_id, client_name 
@@ -37,21 +39,26 @@ class FileExplorerAPI
         );
         $stmt->execute([$this->workId]);
         $work = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$work) {
             $this->sendError('Work not found', 404);
         }
 
-        $root = realpath(__DIR__ . "/../storage/{$SERVER_CUS_PATH}-clients");
+        $root = realpath(__DIR__ . "/../storage/clients");
+        // $root = realpath(__DIR__ . "/../storage/{$this->serverCusPath}-clients");
         if (!$root) {
             $this->sendError('Storage root missing', 500);
         }
 
-        $this->clientFolder = 
+        // Client folder: "C001_AcmeCorp"
+        $this->clientFolder =
             preg_replace('/\s+/', '', $work['client_sys_id']) . '_' .
             preg_replace('/\s+/', '', $work['client_name']);
 
-        $this->workFolder = str_replace(' ', '_', $work['sys_id']);
+        // ✅ FIX: Work folder must match how tasks create it: "{sys_id}+{title}"
+        $cleanWorkSysId     = preg_replace('/\s+/', '', $work['sys_id']);
+        $cleanWorkTitle     = preg_replace('/\s+/', '_', $work['title']);
+        $this->workFolder   = $cleanWorkSysId . '+' . $cleanWorkTitle;
 
         $this->basePath = $root . '/' . $this->clientFolder . '/' . $this->workFolder;
 
@@ -60,16 +67,19 @@ class FileExplorerAPI
         }
     }
 
+    /* ================= REQUEST ROUTER ================= */
+
     public function handleRequest(): void
     {
-        // Handle preflight requests
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             http_response_code(200);
             exit;
         }
 
         $method = $_SERVER['REQUEST_METHOD'];
-        $action = $_GET['action'] ?? '';
+        // $action = $_GET['action'] ?? '';
+        $action = $this->resolveAction($method); // আগে ছিল: $_GET['action'] ?? ''
+
 
         match ($method) {
             'GET'    => $this->handleGet($action),
@@ -84,10 +94,10 @@ class FileExplorerAPI
         $path = $_GET['path'] ?? '';
 
         match ($action) {
-            'list' => $this->listContents($path),
-            'file_info' => $this->getFileInfo($path, $_GET['name'] ?? ''),
+            'list'         => $this->listContents($path),
+            'file_info'    => $this->getFileInfo($path, $_GET['name'] ?? ''),
             'list_folders' => $this->listAllFolders(),
-            default => $this->sendError('Invalid action', 400),
+            default        => $this->sendError('Invalid action', 400),
         };
     }
 
@@ -120,17 +130,19 @@ class FileExplorerAPI
         $this->deleteItem($data);
     }
 
+    /* ================= FILE UPLOAD ================= */
+
     private function handleUpload(): void
     {
-        $path = $_POST['path'] ?? '';
+        $path       = $_POST['path'] ?? '';
         $uploadPath = $this->safePath($path);
-        
+
         if (!is_dir($uploadPath)) {
             mkdir($uploadPath, 0755, true);
         }
 
         $uploadedFiles = [];
-        $errors = [];
+        $errors        = [];
 
         foreach ($_FILES as $file) {
             if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -138,13 +150,13 @@ class FileExplorerAPI
                 continue;
             }
 
-            $filename = $this->sanitizeFilename($file['name']);
+            $filename   = $this->sanitizeFilename($file['name']);
             $targetFile = $uploadPath . '/' . $filename;
 
             // If file exists, rename with timestamp
             if (file_exists($targetFile)) {
-                $info = pathinfo($filename);
-                $filename = $info['filename'] . '_' . time() . '.' . $info['extension'];
+                $info       = pathinfo($filename);
+                $filename   = $info['filename'] . '_' . time() . '.' . ($info['extension'] ?? '');
                 $targetFile = $uploadPath . '/' . $filename;
             }
 
@@ -157,15 +169,15 @@ class FileExplorerAPI
 
         if (empty($errors)) {
             $this->sendResponse([
-                'success' => true,
-                'message' => count($uploadedFiles) . ' file(s) uploaded successfully',
-                'uploaded' => $uploadedFiles
+                'success'  => true,
+                'message'  => count($uploadedFiles) . ' file(s) uploaded successfully',
+                'uploaded' => $uploadedFiles,
             ]);
         } else {
             $this->sendResponse([
-                'success' => false,
-                'error' => implode(', ', $errors),
-                'uploaded' => $uploadedFiles
+                'success'  => false,
+                'error'    => implode(', ', $errors),
+                'uploaded' => $uploadedFiles,
             ]);
         }
     }
@@ -181,72 +193,70 @@ class FileExplorerAPI
         }
 
         $items = [];
-        $files = scandir($dir);
-        
-        foreach ($files as $file) {
+        foreach (scandir($dir) as $file) {
             if ($file === '.' || $file === '..') continue;
 
-            $full = $dir . '/' . $file;
+            $full    = $dir . '/' . $file;
+            $isDir   = is_dir($full);
             $items[] = [
-                'name' => $file,
-                'type' => is_dir($full) ? 'folder' : 'file',
-                'size' => is_dir($full) ? '-' : $this->formatSize(filesize($full)),
+                'name'         => $file,
+                'type'         => $isDir ? 'folder' : 'file',
+                'size'         => $isDir ? '-' : $this->formatSize(filesize($full)),
                 'lastModified' => date('Y-m-d H:i:s', filemtime($full)),
-                'path' => trim($relativePath . '/' . $file, '/'),
-                'icon' => $this->getFileIcon($file),
-                'extension' => is_dir($full) ? '' : strtolower(pathinfo($file, PATHINFO_EXTENSION))
+                'path'         => trim($relativePath . '/' . $file, '/'),
+                'icon'         => $this->getFileIcon($file),
+                'extension'    => $isDir ? '' : strtolower(pathinfo($file, PATHINFO_EXTENSION)),
             ];
         }
 
-        // Sort: folders first, then files
-        usort(
-            $items,
-            function($a, $b) {
-                if ($a['type'] === $b['type']) {
-                    return strcasecmp($a['name'], $b['name']);
-                }
-                return $a['type'] === 'folder' ? -1 : 1;
+        // Sort: folders first, then files alphabetically
+        usort($items, function ($a, $b) {
+            if ($a['type'] === $b['type']) {
+                return strcasecmp($a['name'], $b['name']);
             }
-        );
+            return $a['type'] === 'folder' ? -1 : 1;
+        });
 
+        // ✅ FIX: Use $this->serverCusPath in displayPath
         $this->sendResponse([
-            'success' => true,
-            'path' => $relativePath,
+            'success'     => true,
+            'path'        => $relativePath,
             'currentPath' => $relativePath,
-            'contents' => $items,
-            'totalItems' => count($items),
+            'contents'    => $items,
+            'totalItems'  => count($items),
             'clientFolder' => $this->clientFolder,
-            'workFolder' => $this->workFolder,
-            'displayPath' => '\\storage\\clients\\' . $this->clientFolder . '\\' . $this->workFolder . 
-                            ($relativePath ? '\\' . str_replace('/', '\\', $relativePath) : '')
+            'workFolder'   => $this->workFolder,
+            'displayPath'  => "\\storage\\{$this->serverCusPath}-clients\\" .
+                              $this->clientFolder . '\\' . $this->workFolder .
+                              ($relativePath ? '\\' . str_replace('/', '\\', $relativePath) : ''),
         ]);
     }
 
     private function getFileInfo(string $relativePath, string $filename): void
     {
-        $baseDir = $this->safePath($relativePath);
+        $baseDir  = $this->safePath($relativePath);
         $filePath = $baseDir . '/' . $filename;
 
         if (!file_exists($filePath)) {
             $this->sendError('File not found', 404);
         }
 
-        $info = [
-            'name' => $filename,
-            'type' => is_dir($filePath) ? 'folder' : 'file',
-            'size' => filesize($filePath),
-            'sizeFormatted' => is_dir($filePath) ? '-' : $this->formatSize(filesize($filePath)),
-            'lastModified' => date('Y-m-d H:i:s', filemtime($filePath)),
-            'path' => trim($relativePath . '/' . $filename, '/'),
-            'icon' => $this->getFileIcon($filename),
-            'extension' => is_dir($filePath) ? '' : strtolower(pathinfo($filename, PATHINFO_EXTENSION)),
-            'permissions' => substr(sprintf('%o', fileperms($filePath)), -4),
-            'created' => date('Y-m-d H:i:s', filectime($filePath))
-        ];
+        $isDir = is_dir($filePath);
 
         $this->sendResponse([
             'success' => true,
-            'info' => $info
+            'info'    => [
+                'name'          => $filename,
+                'type'          => $isDir ? 'folder' : 'file',
+                'size'          => filesize($filePath),
+                'sizeFormatted' => $isDir ? '-' : $this->formatSize(filesize($filePath)),
+                'lastModified'  => date('Y-m-d H:i:s', filemtime($filePath)),
+                'path'          => trim($relativePath . '/' . $filename, '/'),
+                'icon'          => $this->getFileIcon($filename),
+                'extension'     => $isDir ? '' : strtolower(pathinfo($filename, PATHINFO_EXTENSION)),
+                'permissions'   => substr(sprintf('%o', fileperms($filePath)), -4),
+                'created'       => date('Y-m-d H:i:s', filectime($filePath)),
+            ],
         ]);
     }
 
@@ -255,14 +265,11 @@ class FileExplorerAPI
         $folders = [];
         $this->scanFolders($this->basePath, '', $folders);
 
-        // Sort alphabetically
-        usort($folders, function($a, $b) {
-            return strcasecmp($a['path'], $b['path']);
-        });
+        usort($folders, fn($a, $b) => strcasecmp($a['path'], $b['path']));
 
         $this->sendResponse([
             'success' => true,
-            'folders' => $folders
+            'folders' => $folders,
         ]);
     }
 
@@ -270,19 +277,18 @@ class FileExplorerAPI
     {
         if (!is_dir($dir)) return;
 
-        $items = scandir($dir);
-        foreach ($items as $item) {
+        foreach (scandir($dir) as $item) {
             if ($item === '.' || $item === '..') continue;
 
             $fullPath = $dir . '/' . $item;
             if (is_dir($fullPath)) {
+                $rel       = trim($relativePath . '/' . $item, '/');
                 $folders[] = [
-                    'name' => $item,
-                    'path' => trim($relativePath . '/' . $item, '/'),
-                    'fullPath' => $fullPath
+                    'name'     => $item,
+                    'path'     => $rel,
+                    'fullPath' => $fullPath,
                 ];
-                // Recursively scan subfolders
-                $this->scanFolders($fullPath, trim($relativePath . '/' . $item, '/'), $folders);
+                $this->scanFolders($fullPath, $rel, $folders);
             }
         }
     }
@@ -306,15 +312,12 @@ class FileExplorerAPI
             $this->sendError('Failed to create folder', 500);
         }
 
-        $this->sendResponse([
-            'success' => true,
-            'message' => 'Folder created successfully'
-        ]);
+        $this->sendResponse(['success' => true, 'message' => 'Folder created successfully']);
     }
 
     private function renameItem(array $data): void
     {
-        $path = $data['path'] ?? '';
+        $path    = $data['path'] ?? '';
         $oldName = $data['oldName'] ?? '';
         $newName = $this->sanitizeFilename($data['newName'] ?? '');
 
@@ -338,10 +341,7 @@ class FileExplorerAPI
             $this->sendError('Failed to rename', 500);
         }
 
-        $this->sendResponse([
-            'success' => true,
-            'message' => 'Item renamed successfully'
-        ]);
+        $this->sendResponse(['success' => true, 'message' => 'Item renamed successfully']);
     }
 
     private function moveItem(array $data): void
@@ -366,7 +366,7 @@ class FileExplorerAPI
             $this->sendError('Target already exists', 409);
         }
 
-        // Check if trying to move into itself
+        // Prevent moving a folder into itself
         if (is_dir($sourceFull) && strpos($targetFull . '/', $sourceFull . '/') === 0) {
             $this->sendError('Cannot move a folder into itself', 400);
         }
@@ -375,10 +375,7 @@ class FileExplorerAPI
             $this->sendError('Failed to move item', 500);
         }
 
-        $this->sendResponse([
-            'success' => true,
-            'message' => 'Item moved successfully'
-        ]);
+        $this->sendResponse(['success' => true, 'message' => 'Item moved successfully']);
     }
 
     private function copyItem(array $data): void
@@ -399,20 +396,15 @@ class FileExplorerAPI
             $this->sendError('Target already exists', 409);
         }
 
-        if (is_dir($sourceFull)) {
-            if (!$this->copyDirectory($sourceFull, $targetFull)) {
-                $this->sendError('Failed to copy directory', 500);
-            }
-        } else {
-            if (!copy($sourceFull, $targetFull)) {
-                $this->sendError('Failed to copy file', 500);
-            }
+        $success = is_dir($sourceFull)
+            ? $this->copyDirectory($sourceFull, $targetFull)
+            : copy($sourceFull, $targetFull);
+
+        if (!$success) {
+            $this->sendError('Failed to copy item', 500);
         }
 
-        $this->sendResponse([
-            'success' => true,
-            'message' => 'Item copied successfully'
-        ]);
+        $this->sendResponse(['success' => true, 'message' => 'Item copied successfully']);
     }
 
     private function duplicateItem(array $data): void
@@ -422,20 +414,20 @@ class FileExplorerAPI
         $targetName = $this->sanitizeFilename($data['targetName'] ?? '');
 
         $sourceFull = $this->safePath($sourcePath) . '/' . $sourceName;
-        
+
         if (!file_exists($sourceFull)) {
             $this->sendError('Source not found', 404);
         }
 
-        // Generate new name if not provided
+        // Auto-generate duplicate name if not provided
         if (empty($targetName)) {
-            $ext = pathinfo($sourceName, PATHINFO_EXTENSION);
+            $ext           = pathinfo($sourceName, PATHINFO_EXTENSION);
             $nameWithoutExt = pathinfo($sourceName, PATHINFO_FILENAME);
-            $targetName = $nameWithoutExt . ' - Copy.' . $ext;
-            
+            $targetName    = $nameWithoutExt . ' - Copy' . ($ext ? '.' . $ext : '');
+
             $counter = 1;
             while (file_exists($this->safePath($sourcePath) . '/' . $targetName)) {
-                $targetName = $nameWithoutExt . ' - Copy (' . $counter . ').' . $ext;
+                $targetName = $nameWithoutExt . ' - Copy (' . $counter . ')' . ($ext ? '.' . $ext : '');
                 $counter++;
             }
         }
@@ -446,20 +438,15 @@ class FileExplorerAPI
             $this->sendError('Target already exists', 409);
         }
 
-        if (is_dir($sourceFull)) {
-            if (!$this->copyDirectory($sourceFull, $targetFull)) {
-                $this->sendError('Failed to duplicate directory', 500);
-            }
-        } else {
-            if (!copy($sourceFull, $targetFull)) {
-                $this->sendError('Failed to duplicate file', 500);
-            }
+        $success = is_dir($sourceFull)
+            ? $this->copyDirectory($sourceFull, $targetFull)
+            : copy($sourceFull, $targetFull);
+
+        if (!$success) {
+            $this->sendError('Failed to duplicate item', 500);
         }
 
-        $this->sendResponse([
-            'success' => true,
-            'message' => 'Item duplicated successfully'
-        ]);
+        $this->sendResponse(['success' => true, 'message' => 'Item duplicated successfully']);
     }
 
     private function deleteItem(array $data): void
@@ -477,84 +464,64 @@ class FileExplorerAPI
             $this->sendError('Item not found', 404);
         }
 
-        if (is_dir($target)) {
-            if (!$this->deleteDirectory($target)) {
-                $this->sendError('Failed to delete directory', 500);
-            }
-        } else {
-            if (!unlink($target)) {
-                $this->sendError('Failed to delete file', 500);
-            }
+        $success = is_dir($target) ? $this->deleteDirectory($target) : unlink($target);
+
+        if (!$success) {
+            $this->sendError('Failed to delete item', 500);
         }
 
-        $this->sendResponse([
-            'success' => true,
-            'message' => 'Item deleted successfully'
-        ]);
+        $this->sendResponse(['success' => true, 'message' => 'Item deleted successfully']);
     }
 
     /* ================= HELPER FUNCTIONS ================= */
 
     private function copyDirectory(string $source, string $dest): bool
     {
-        if (!is_dir($source)) {
-            return false;
-        }
+        if (!is_dir($source)) return false;
 
         if (!is_dir($dest)) {
-            if (!mkdir($dest, 0755, true)) {
-                return false;
-            }
+            if (!mkdir($dest, 0755, true)) return false;
         }
 
         $dir = opendir($source);
         while (($file = readdir($dir)) !== false) {
-            if ($file == '.' || $file == '..') continue;
+            if ($file === '.' || $file === '..') continue;
 
-            $srcFile = $source . '/' . $file;
+            $srcFile  = $source . '/' . $file;
             $destFile = $dest . '/' . $file;
 
-            if (is_dir($srcFile)) {
-                if (!$this->copyDirectory($srcFile, $destFile)) {
-                    return false;
-                }
-            } else {
-                if (!copy($srcFile, $destFile)) {
-                    return false;
-                }
+            $ok = is_dir($srcFile)
+                ? $this->copyDirectory($srcFile, $destFile)
+                : copy($srcFile, $destFile);
+
+            if (!$ok) {
+                closedir($dir);
+                return false;
             }
         }
         closedir($dir);
-        
+
         return true;
     }
 
     private function deleteDirectory(string $dir): bool
     {
-        if (!is_dir($dir)) {
-            return false;
+        if (!is_dir($dir)) return false;
+
+        foreach (array_diff(scandir($dir), ['.', '..']) as $file) {
+            $path = $dir . '/' . $file;
+            is_dir($path) ? $this->deleteDirectory($path) : unlink($path);
         }
 
-        $files = array_diff(scandir($dir), ['.', '..']);
-        
-        foreach ($files as $file) {
-            $path = $dir . '/' . $file;
-            if (is_dir($path)) {
-                $this->deleteDirectory($path);
-            } else {
-                unlink($path);
-            }
-        }
-        
         return rmdir($dir);
     }
 
     private function safePath(string $relative): string
     {
-        $relative = trim($relative, '/\\');
-        $requestedPath = $this->basePath . ($relative ? DIRECTORY_SEPARATOR . $relative : '');
+        $relative        = trim($relative, '/\\');
+        $requestedPath   = $this->basePath . ($relative ? DIRECTORY_SEPARATOR . $relative : '');
         $realRequestedPath = realpath($requestedPath);
-        
+
         if ($realRequestedPath === false) {
             $realRequestedPath = $this->normalizePathManual($requestedPath);
         }
@@ -564,75 +531,54 @@ class FileExplorerAPI
         if (stripos($realRequestedPath, $realBasePath) !== 0) {
             $this->sendError('Access denied: Path traversal attempt', 403);
         }
-        
+
         return $realRequestedPath;
     }
 
-    private function normalizePathManual(string $path): string 
+    private function normalizePathManual(string $path): string
     {
-        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+        $path  = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
         $parts = explode(DIRECTORY_SEPARATOR, $path);
-        $safe = [];
+        $safe  = [];
+
         foreach ($parts as $part) {
             if ($part === '.' || $part === '') continue;
-            if ($part === '..') {
-                array_pop($safe);
-                continue;
-            }
+            if ($part === '..') { array_pop($safe); continue; }
             $safe[] = $part;
         }
-        return (strpos($path, DIRECTORY_SEPARATOR) === 0 ? DIRECTORY_SEPARATOR : '') . implode(DIRECTORY_SEPARATOR, $safe);
+
+        return (str_starts_with($path, DIRECTORY_SEPARATOR) ? DIRECTORY_SEPARATOR : '')
+            . implode(DIRECTORY_SEPARATOR, $safe);
     }
 
     private function sanitizeFilename(string $filename): string
     {
-        // Remove dangerous characters but keep spaces, dots, dashes, and underscores
         $filename = preg_replace('/[^\p{L}\p{N}\s\.\-_]/u', '', $filename);
-        $filename = trim($filename);
-        
-        // Replace multiple spaces with single space
         $filename = preg_replace('/\s+/', ' ', $filename);
-        
-        return $filename;
+        return trim($filename);
     }
 
     private function getFileIcon(string $file): string
     {
-        $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-        
-        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
-        $pdfExtensions = ['pdf'];
-        $archiveExtensions = ['zip', 'rar', 'tar', 'gz', '7z'];
-        $documentExtensions = ['doc', 'docx', 'txt', 'rtf', 'odt'];
-        $spreadsheetExtensions = ['xls', 'xlsx', 'csv'];
-        $audioExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
-        $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv'];
-        
-        if (in_array($extension, $imageExtensions)) {
-            return 'image';
-        } elseif (in_array($extension, $pdfExtensions)) {
-            return 'pdf';
-        } elseif (in_array($extension, $archiveExtensions)) {
-            return 'archive';
-        } elseif (in_array($extension, $documentExtensions)) {
-            return 'document';
-        } elseif (in_array($extension, $spreadsheetExtensions)) {
-            return 'spreadsheet';
-        } elseif (in_array($extension, $audioExtensions)) {
-            return 'audio';
-        } elseif (in_array($extension, $videoExtensions)) {
-            return 'video';
-        } elseif ($extension === '') {
-            return 'folder';
-        } else {
-            return 'file';
-        }
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+        return match (true) {
+            in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp']) => 'image',
+            in_array($ext, ['pdf'])                                              => 'pdf',
+            in_array($ext, ['zip', 'rar', 'tar', 'gz', '7z'])                  => 'archive',
+            in_array($ext, ['doc', 'docx', 'txt', 'rtf', 'odt'])               => 'document',
+            in_array($ext, ['xls', 'xlsx', 'csv'])                              => 'spreadsheet',
+            in_array($ext, ['mp3', 'wav', 'ogg', 'm4a'])                       => 'audio',
+            in_array($ext, ['mp4', 'avi', 'mov', 'wmv', 'flv'])                => 'video',
+            $ext === ''                                                          => 'folder',
+            default                                                              => 'file',
+        };
     }
 
     private function formatSize(int $bytes): string
     {
         if ($bytes === 0) return '0 B';
-        $i = floor(log($bytes, 1024));
+        $i     = floor(log($bytes, 1024));
         $sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         return round($bytes / pow(1024, $i), 2) . ' ' . $sizes[$i];
     }
@@ -647,13 +593,28 @@ class FileExplorerAPI
     private function sendError(string $msg, int $code): void
     {
         http_response_code($code);
-        echo json_encode([
-            'success' => false, 
-            'error' => $msg,
-            'code' => $code
-        ]);
+        echo json_encode(['success' => false, 'error' => $msg, 'code' => $code]);
         exit;
     }
+    
+    private function resolveAction(string $method): string
+    {
+        // সবসময় URL param আগে চেক করো
+        if (!empty($_GET['action'])) {
+            return $_GET['action'];
+        }
+    
+        // POST/DELETE এ JSON body থেকেও action নাও
+        if (in_array($method, ['POST', 'DELETE'])) {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (!empty($data['action'])) {
+                return $data['action'];
+            }
+        }
+    
+        return '';
+    }
+
 }
 
 /* ================= RUN ================= */
