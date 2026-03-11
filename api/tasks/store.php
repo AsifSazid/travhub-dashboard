@@ -242,44 +242,137 @@ function processFilesWithGemini($files, $category)
 function getPromptForCategory($category)
 {
     if ($category == 1) { // Air Ticket
-        return "Extract information from this document and return ONLY valid JSON in this exact format:
-        {
-            \"applicant_sur_name\": \"\",
-            \"applicant_given_name\": \"\",
-            \"applicant_salutation\": \"\",
-            \"applicant_passport_no\": \"\",
-            \"other_applicants\": [
-                {
-                    \"applicant_sur_name\": \"\",
-                    \"applicant_given_name\": \"\",
-                    \"applicant_salutation\": \"\",
-                    \"applicant_passport_no\": \"\"
-                }
-            ],
-            \"itinerary_information\": [
-                {
-                    \"departure_from\": \"\",
-                    \"departure_at\": \"\",
-                    \"arrival_in\": \"\",
-                    \"arrival_at\": \"\",
-                    \"flight_no\": \"\",
-                    \"flight_info\": \"\"
-                }
-            ],
-            \"airline_pnr\": \"\",
-            \"galileo_pnr\": \"\",
-            \"date_of_issue\": \"\"
-        }
-
-        Rules:
-        1. Return ONLY the JSON, no other text
-        2. If field is not found, leave empty string
-        3. For dates, use format: DDMMMYY (e.g., 16DEC25)
-        4. If multiple flights, add to itinerary_information array
-        5. If multiple passengers, add to other_applicants array
-        6. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
+        return "Extract all flight itinerary details from this PDF and return ONLY a JSON object.
+               The PDF may contain single or multiple flights, round trips, multi-city journeys, or complex itineraries.
+               Ensure you capture ALL flight segments in chronological order.
+               
+               Use this comprehensive schema:
+               {
+                 \"booking_details\": {
+                   \"booking_reference_pnr\": \"\",
+                   \"booking_platform\": \"\", 
+                   \"booking_number\": \"\",
+                   \"date_of_issue\": \"YYYY-MM-DD\"
+                 },
+                 \"airline_details\": {
+                   \"primary_airline\": \"\",
+                   \"airline_pnr\": \"\",
+                   \"galileo_pnr\": \"\"
+                 },
+                 \"passengers\": [
+                   {
+                     \"name\": {\"first\": \"\", \"last\": \"\"},
+                     \"full_name\": \"\",
+                     \"type\": \"Adult/Child/Infant\",
+                     \"ticket_number\": \"\",
+                     \"passport_number\": \"\",
+                     \"frequent_flyer_number\": \"\",
+                     \"seat_assignment\": \"\"
+                   }
+                 ],
+                 \"journey\": {
+                   \"type\": \"One-way/Return/Multi-city\",
+                   \"total_passengers\": 0,
+                   \"flights\": [
+                     {
+                       \"segment_id\": 1,
+                       \"flight_number\": \"\",
+                       \"operating_airline\": \"\",
+                       \"marketing_airline\": \"\",
+                       \"departure\": {
+                         \"city\": \"\",
+                         \"airport\": \"\",
+                         \"airport_code\": \"\",
+                         \"terminal\": \"\",
+                         \"date\": \"YYYY-MM-DD\",
+                         \"time\": \"HH:MM\",
+                         \"full_datetime\": \"\"
+                       },
+                       \"arrival\": {
+                         \"city\": \"\",
+                         \"airport\": \"\",
+                         \"airport_code\": \"\",
+                         \"terminal\": \"\",
+                         \"date\": \"YYYY-MM-DD\",
+                         \"time\": \"HH:MM\",
+                         \"full_datetime\": \"\"
+                       },
+                       \"duration\": \"\",
+                       \"class\": \"\",
+                       \"status\": \"\",
+                       \"aircraft\": \"\",
+                       \"meal\": \"\",
+                       \"stops\": 0,
+                       \"stopover_info\": [],
+                       \"baggage_info\": {
+                         \"checked\": \"\",
+                         \"cabin\": \"\",
+                         \"personal_item\": \"\",
+                         \"details\": \"\"
+                       },
+                       \"special_services\": \"\"
+                     }
+                   ],
+                   \"transfers\": [
+                     {
+                       \"from_flight\": 1,
+                       \"to_flight\": 2,
+                       \"transfer_location\": \"\",
+                       \"transfer_duration\": \"\",
+                       \"transfer_notes\": \"\",
+                       \"baggage_checked_through\": true/false
+                     }
+                   ]
+                 },
+                 \"baggage_allowance\": {
+                   \"summary\": \"\",
+                   \"per_passenger\": [
+                     {
+                       \"passenger_name\": \"\",
+                       \"checked_baggage\": \"\",
+                       \"cabin_baggage\": \"\",
+                       \"personal_item\": \"\",
+                       \"total_weight_allowance\": \"\",
+                       \"restrictions\": \"\"
+                     }
+                   ]
+                 },
+                 \"fare_details\": {
+                   \"base_fare\": {\"amount\": 0, \"currency\": \"\"},
+                   \"taxes\": {\"amount\": 0, \"breakdown\": []},
+                   \"total_fare\": {\"amount\": 0, \"currency\": \"\"},
+                   \"fare_rules\": {
+                     \"refundable\": true/false,
+                     \"changeable\": true/false,
+                     \"cancellation_penalty\": \"\",
+                     \"validity\": \"\"
+                   }
+                 },
+                 \"important_notes\": [
+                   {
+                     \"type\": \"check-in/visa/baggage/other\",
+                     \"message\": \"\"
+                   }
+                 ],
+                 \"raw_extracted_text\": \"\"
+               }
+               
+               Important Instructions:
+               1. Extract ALL flight segments in correct chronological order
+               2. For multi-city trips (e.g., Dhaka→Singapore→Bali), include all segments
+               3. Capture transfer information between connecting flights
+               4. Include baggage allowance per passenger if specified
+               5. Extract fare details if available
+               6. Note any special conditions or restrictions
+               7. Include passenger details with full names
+               8. Capture all booking references and PNRs
+               
+               If any field is not found in the PDF, use empty string or null.";
     } elseif ($category == 2) { // Hotel Booking
-        return "Extract information from this hotel booking document and return ONLY valid JSON in this exact format:
+        return "Extract all details from this hotel voucher PDF and return ONLY a JSON object. 
+               If the PDF contains an image of the hotel or a logo, try to identify the hotel image URL if mentioned, 
+               otherwise leave the 'hotel_image_url' empty.
+               Use this exact schema:
         {
             \"hotel_name\": \"\",
             \"hotel_address\": [
