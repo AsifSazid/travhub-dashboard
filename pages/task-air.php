@@ -26,7 +26,8 @@ if ($http_code == 200 && !empty($response)) {
     if (json_last_error() === JSON_ERROR_NONE && isset($resData['success']) && $resData['success'] === true) {
         if (isset($resData['ticket_json'])) {
         
-            $raw_json = $resData['ticket_json'];
+            $raw_json = $resData['ticket_json']["air_ticket_info"];
+            // var_dump(json_decode($raw_json));
         
             // 1st decode
             if (is_string($raw_json)) {
@@ -50,18 +51,6 @@ if ($http_code == 200 && !empty($response)) {
         die("Failed to decode API response. JSON error: " . json_last_error_msg());
     }
 } 
- 
- 
-var_dump($data);
- 
- 
- 
- 
- 
- 
- 
- 
- 
 
 function val($path, $default = "N/A") {
     global $data;

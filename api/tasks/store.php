@@ -34,13 +34,13 @@ function fileSaveinSMB($fileName, $filePath){
 
 // ---------------- GET DATA ----------------
 $uuid           = generateIDs('tasks');
-$taskTitle       = $_POST['task_title'] ?? "No Title Entry";
+$taskTitle      = $_POST['task_title'] ?? "No Title Entry";
 $category       = $_POST['task_category'] ?? null;
 $infoFileName   = $_POST['info_file_name'] ?? null;
 $infoDetails    = $_POST['information'] ?? null;
 $pastedText     = $_POST['pasted_text'] ?? null;
 $workId         = $_POST['work_id'] ?? null;
-$taskDate         = $_POST['taskDate'] ?? null;
+$taskDate       = $_POST['taskDate'] ?? null;
 
 $rawPerformedBy = $_POST['performedBy'] ?? null;
 if (!$rawPerformedBy) {

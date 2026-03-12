@@ -347,7 +347,8 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
         const API_URL_FOR_ALL_TASKS_FOR_WORK = "<?php echo $getAllTasksForWorkApi; ?>";
         const GET_FINANCIAL_STATEMENT_API = "<?php echo $getWorkFinEntriesApi; ?>";
         const DELETE_TASK_API = "<?php echo $deleteTaskApi; ?>";
-
+        const pdfDownloader = `<?php echo $ip_port?>`;
+        
         // File Management Variables
         let droppedFiles = [];
         let pastedItems = [];
@@ -1070,6 +1071,8 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
         
             noResultsMessage.classList.add('hidden');
             tasksContainer.classList.remove('hidden');
+            
+            const fragment = document.createDocumentFragment();
         
             tasks.forEach(task => {
                 // a tag er poriborte div use korbo
@@ -1080,6 +1083,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                 card.addEventListener('click', (e) => {
                     // Delete button e click korle page change hobe na
                     if (e.target.closest('.delete-btn')) return;
+                    if (e.target.closest('.download-btn')) return;
                     
                     window.location.href = `cwe_tm-financial-trxn.php?work_id=${task.work_sys_id}&task_id=${task.sys_id}`;
                 });
@@ -1161,6 +1165,12 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                                 Financial Transaction
                             </span>
                             <div class="flex items-center space-x-3">
+                                <!-- Download Button -->
+                                <button onclick="downloadPdf('${task.sys_id}', '${task.category}')"
+                                        class="download-btn text-primary-500 hover:text-primary-700 transition-colors"
+                                        title="Download as PDF">
+                                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                                </button>
                                 <!-- Delete Button -->
                                 <button onclick="showDeleteModal('${task.sys_id}')" class="delete-btn text-red-500 hover:text-red-700 transition-colors" title="Delete Task">
                                     <i class="fas fa-trash-alt"></i>
@@ -1174,11 +1184,27 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                     </div>
                 `;
         
-                tasksContainer.appendChild(card);
+                fragment.appendChild(card);
             });
+            
+            tasksContainer.appendChild(fragment);
         }
         
         let currentTaskId = null;
+        
+        function downloadPdf(taskId, category){
+            const pages = {
+                1: 'air.php',
+                2: 'hotel.php'
+            };
+        
+            if(!pages[category]) return;
+
+            // pdfDownloader ব্যবহার করুন (pdfdDownloader না)
+            let url = `${pdfDownloader}/pages/task-${pages[category]}?task_id=${taskId}`;
+            
+            window.open(url, '_blank');
+        }
         
         function showDeleteModal(taskId) {
             event.preventDefault();
