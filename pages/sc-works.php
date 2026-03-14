@@ -98,7 +98,6 @@
     // API URLs
     const API_URL_FOR_CLIENTS_WORKS = "<?php echo $getClientsWorksApi; ?>";
     const STORE_WORK_API = "<?php echo $storeWorkApi; ?>";
-    const GET_CLIENT_INFO_API = "<?php echo $getClient; ?>";
     
     // Global variables
     let allWorks = [];           // All works fetched from API
@@ -109,7 +108,6 @@
     let hasMore = true;
     let searchTerm = '';
     let debounceTimer;
-    let clientName = '';
     let observer;
     
     // Skeleton loader HTML
@@ -141,19 +139,6 @@
         document.getElementById('workTableBody').innerHTML = skeletonLoader;
     }
     
-    // ==================== FETCH CLIENT DATA ====================
-    
-    async function fetchClientData() {
-        try {
-            const response = await fetch(GET_CLIENT_INFO_API);
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            clientName = data.client.name;
-        } catch (error) {
-            console.error('Error fetching client data:', error);
-        }
-    }
-    fetchClientData();
     
     // ==================== FETCH ALL WORKS ====================
     
@@ -221,7 +206,7 @@
             });
         }
         
-        console.log(`Found ${filteredWorks.length} results`);
+        // console.log(`Found ${filteredWorks.length} results`);
         
         // Reset pagination
         currentPage = 1;

@@ -87,6 +87,27 @@ $getClient = $ip_port . "api/clients/get-client.php?cid=$clientId";
 </head>
 
 <body class="bg-gray-50 font-sans">
+    <script>
+        const IP_PATH = `<?php echo $ip_port; ?>`;
+        const GET_CLIENT_INFO_API = "<?php echo $getClient; ?>";
+
+        let clientName = '';
+        
+        // ==================== FETCH CLIENT DATA ====================
+    
+        async function fetchClientData() {
+            try {
+                const response = await fetch(GET_CLIENT_INFO_API);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                clientName = data.client.name;
+            } catch (error) {
+                console.error('Error fetching client data:', error);
+            }
+        }
+        fetchClientData();
+    </script>
+    
     <!-- Top Navigation -->
     <?php include '../elements/header.php'; ?>
 
