@@ -1201,7 +1201,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
             if(!pages[category]) return;
 
             // pdfDownloader ব্যবহার করুন (pdfdDownloader না)
-            let url = `${pdfDownloader}/pages/task-${pages[category]}?task_id=${taskId}`;
+            let url = `${pdfDownloader}pages/task-${pages[category]}?task_id=${taskId}`;
             
             window.open(url, '_blank');
         }
