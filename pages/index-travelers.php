@@ -5,10 +5,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeAllClientApi = $ip_port . "api/travelers/all-travelers.php";
-$storeVendorApi = $ip_port . "api/vendors/client-store.php";
-$storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
-
+$storeAllTravelerApi = $ip_port . "api/traveler-profiles/all-travelers.php";
 ?>
 
 <!DOCTYPE html>
@@ -73,24 +70,23 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                         <div class="flex-1 min-w-0">
                             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Traveller Lists</h2>
                         </div>
-                        <a href="create-client.php" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
-                            <i class="fas fa-plus-circle mr-3"></i>Add New Client
+                        <a href="create-traveler.php" class="hidden md:flex w-48 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-md rounded-lg shadow-md hover:shadow-lg transition-all duration-300 items-center justify-center">
+                            <i class="fas fa-plus-circle mr-3"></i>Add New Traveler
                         </a>
                     </div>
 
                     <div class="overflow-x-auto table-container">
-                        <table id="clientTable" class="min-w-full divide-y divide-gray-200">
+                        <table id="travelerTable" class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl No</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Traveler Name</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone No</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Is Vendor</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="clientTableBody" class="bg-white divide-y divide-gray-200">
+                            <tbody id="travelerTableBody" class="bg-white divide-y divide-gray-200">
                             </tbody>
                         </table>
                     </div>
@@ -105,12 +101,10 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
-        const API_URL_FOR_ALL_travelers = "<?php echo $storeAllClientApi; ?>";
-        const API_URL_FOR_VENDOR_STORE = "<?php echo $storeVendorApi; ?>";
-        const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
+        const API_URL_FOR_ALL_travelers = "<?php echo $storeAllTravelerApi; ?>";
 
-        // Client
-        const tableBody = document.getElementById('clientTableBody');
+        // Traveler
+        const tableBody = document.getElementById('travelerTableBody');
 
         let travelersData = [];
         fetch(API_URL_FOR_ALL_travelers)
@@ -125,11 +119,11 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
             // আগের ডাটা মুছে ফেলা
             tableBody.innerHTML = '';
 
-            list.forEach((client, index) => {
-                const phoneObj = JSON.parse(client.phone);
+            list.forEach((traveler, index) => {
+                const phoneObj = JSON.parse(traveler.phone);
                 const primaryPhone = phoneObj.primary_no;
 
-                const emailObj = JSON.parse(client.email);
+                const emailObj = JSON.parse(traveler.email);
                 const primaryEmail = phoneObj.primary;
 
                 const tr = document.createElement('tr');
@@ -139,30 +133,14 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
                 tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <a href="show-travelers.php?client_id=${client.id}" title="Details">
-                        ${client.given_name || 'No Title'} ${client.sur_name}
+                    <a href="show-travelers.php?traveler_id=${traveler.id}" title="Details">
+                        ${traveler.name || 'No Name'}
                     </a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input 
-                            type="checkbox"
-                            class="sr-only peer"
-                            ${client.is_vendor == 1 ? 'checked' : ''}
-                            onchange="toggleVendor(${client.id}, this)"
-                        >
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
-                            peer-checked:bg-green-600 
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                            after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                            peer-checked:after:translate-x-full relative">
-                        </div>
-                    </label>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a href="show-travelers.php?client_id=${client.id}" title="Details">
+                    <a href="show-travelers.php?traveler_id=${traveler.sys_id}" title="Details">
                         <i class="fas fa-eye"></i>
                     </a>
                 </td>
@@ -170,36 +148,6 @@ $storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
 
                 tableBody.appendChild(tr);
             });
-        }
-
-        function toggleVendor(clientId, checkbox) {
-            const url = checkbox.checked ?
-                API_URL_FOR_VENDOR_STORE :
-                API_URL_FOR_VENDOR_DELETE;
-
-            fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        client_id: clientId
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Vendor added successfully');
-                    } else {
-                        alert('Failed to add vendor');
-                        checkbox.checked = false;
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    checkbox.checked = false;
-                    alert('Something went wrong');
-                });
         }
     </script>
 </body>
