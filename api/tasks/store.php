@@ -384,10 +384,12 @@ function getPromptForCategory($category)
                     \"address_zip_code\": \"\"
                 }
             ]
-            \"hotel_phone_no\": \"\",
+            \"hotel_phone\": \"\",
             \"hotel_email\": \"\",
             \"hotel_room_no\": \"\",
-            \"hotel_room_type\": \"\",
+            \"room_type\": \"\",
+            \"total_rooms\": 1,
+            \"guest_names\": [],
             \"sur_name\": \"\",
             \"given_name\": \"\",
             \"address\": {
@@ -410,8 +412,8 @@ function getPromptForCategory($category)
                     }
                 ]
             },
-            \"check_in\": \"\",
-            \"check_out\": \"\",
+            \"check_in_date\": \"\",
+            \"check_out_date\": \"\",
             \"occupancy\": \"\",
             \"room_info\": \"\",
             \"meal_plan\": \"\",
@@ -435,6 +437,12 @@ function getPromptForCategory($category)
             \"terms_n_conditions\": \"\",
             \"pcn\": \"\",
             \"hcn\": \"\"
+            
+            \"booking_id\": \"\",
+            \"hotel_image_url\": \"\",
+            \"cancellation_policy\": \"\",
+            \"total_price\": \"\",
+            \"currency\": \"\"
         }
 
         Rules:
