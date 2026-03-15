@@ -146,14 +146,24 @@
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="receive" checked 
                                onchange="toggleTransactionType('receive')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Purchase/Receive Service (from Vendor)</span>
+                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Receive Money (from Vendor)</span>
                     </label>
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="payment" 
                                onchange="toggleTransactionType('payment')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Make Payment (to Vendor)</span>
+                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Purchase/Make Payment (to Vendor)</span>
                     </label>
                 </div>
+            </div>
+
+            <!-- Rules Notice -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
+                <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
+                <ul class="list-disc list-inside ml-4 mt-1">
+                    <li>Backdated entries can be made up to a maximum of 8 days.</li>
+                    <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
+                    <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
+                </ul>
             </div>
 
             <!-- Opening Date Info -->
@@ -184,6 +194,27 @@
                         <span id="vendorName" class="block text-sm font-medium text-center text-gray-700 mb-2"></span>
                     </div>
 
+                    <!-- From/To Account (Based on transaction type) -->
+                    <div class="col-span-1">
+                        <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-wallet mr-1"></i> From Account
+                        </label>
+                        <?php include('form-selects/accounts.php') ?>
+                    </div>
+
+                    <!-- Transfer Method -->
+                    <div class="col-span-1">
+                        <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-money-check-alt mr-1"></i> Payment Method
+                        </label>
+                        <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="cash" selected>Cash</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="npsb-rtgs">NPSB/RTGS</option>
+                            <option value="bftn-eft">BFTN/EFT</option>
+                        </select>
+                    </div>
+
                     <!-- Date -->
                     <div class="col-span-1">
                         <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
@@ -202,48 +233,6 @@
                         <input type="number" step="0.01" min="0"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             id="balance" name="balance" required placeholder="0.00">
-                    </div>
-                    
-                    <!-- Payment Section - Only shown for Payment transactions -->
-                    <div id="paymentSection" class="hidden w-full md:col-span-2 lg:col-span-3">
-                        
-                        <!-- Rules Notice -->
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
-                            <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
-                            <ul class="list-disc list-inside ml-4 mt-1">
-                                <li>Backdated entries can be made up to a maximum of 10 days.</li>
-                                <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
-                                <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
-                            </ul>
-                        </div>
-            
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                <i class="fas fa-credit-card mr-2 text-blue-600"></i>Payment Details
-                            </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- From Account (Payment) -->
-                                <div class="col-span-1">
-                                    <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-wallet mr-1"></i> From Account
-                                    </label>
-                                    <?php include('form-selects/accounts.php') ?>
-                                </div>
-
-                                <!-- Transfer Method (Payment) -->
-                                <div class="col-span-1">
-                                    <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-money-check-alt mr-1"></i> Payment Method
-                                    </label>
-                                    <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                        <option value="cash" selected>Cash</option>
-                                        <option value="cheque">Cheque</option>
-                                        <option value="npsb-rtgs">NPSB/RTGS</option>
-                                        <option value="bftn-eft">BFTN/EFT</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Cheque Details Section -->
@@ -429,8 +418,6 @@
     let isFiltering = false; // Track if we're in filtering mode
     let runningBalances = new Map(); // Store running balances for all transactions
     let finalBalance = 0; // Store final balance
-    let currentTransactionType = 'receive';
-    const vendorId = "<?php echo isset($vendorId) ? $vendorId : ''; ?>";
 
     // DOM Elements
     const finTableBody = document.getElementById('finTableBody');
@@ -817,8 +804,11 @@
 
     // Transaction Modal Functionality
     function addTrnx() {
-        openTransactionModal('receive');
-    }
+        openTransactionModal();
+    }    
+    
+    let currentTransactionType = 'receive';
+    const vendorId = "<?php echo isset($vendorId) ? $vendorId : ''; ?>";
 
     function openTransactionModal(type = 'receive') {
         const modal = document.getElementById('transactionModal');
@@ -829,23 +819,6 @@
         // Set modal title and labels based on type
         updateTransactionUI(type);
         
-        // Set initial visibility of payment section
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (type === 'payment') {
-                paymentSection.classList.remove('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
-        
         // Show modal
         modal.classList.remove('hidden');
         setTimeout(() => modal.classList.add('show'), 10);
@@ -855,10 +828,9 @@
         
         // Set default date
         const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate) {
-            const today = new Date().toISOString().split('T')[0];
-            transactionDate.value = today;
-            transactionDate.max = today;
+        if (transactionDate && typeof BD_TIME !== 'undefined' && BD_TIME.getDate) {
+            transactionDate.value = BD_TIME.getDate();
+            transactionDate.max = BD_TIME.getDate();
         }
     }
     
@@ -891,32 +863,7 @@
     
     function toggleTransactionType(type) {
         currentTransactionType = type;
-        
-        // Update UI based on transaction type
         updateTransactionUI(type);
-        
-        // Show/hide payment section
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (type === 'payment') {
-                // Show payment section for payment transactions
-                paymentSection.classList.remove('hidden');
-                
-                // Make account and payment method required for payment
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                // Hide payment section for receive transactions
-                paymentSection.classList.add('hidden');
-                
-                // Remove required attribute for receive
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
     }
     
     function resetTransactionModal() {
@@ -925,9 +872,8 @@
         
         // Reset date
         const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate) {
-            const today = new Date().toISOString().split('T')[0];
-            transactionDate.value = today;
+        if (transactionDate && typeof BD_TIME !== 'undefined' && BD_TIME.getDate) {
+            transactionDate.value = BD_TIME.getDate();
         }
         
         // Reset warnings
@@ -943,29 +889,12 @@
         
         if (chequeSection) chequeSection.classList.add('hidden');
         if (bftnSection) bftnSection.classList.add('hidden');
-        
-        // Reset payment section based on current type
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (currentTransactionType === 'payment') {
-                paymentSection.classList.remove('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
     }
     
     // Setup transaction form
     function setupTransactionForm() {
-        const API_PURCHASE = `${IP_PATH}/api/vendors/ve-ac-purchase-store.php`;
-        const API_PAYMENT = `${IP_PATH}/api/vendors/ve-ac-payment-store.php`;
+        const API_RECEIVE = `${IP_PATH}/api/accounts/receive-transaction.php`;
+        const API_PAYMENT = `${IP_PATH}/api/accounts/payment-transaction.php`;
         const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
         
         const accountInput = document.getElementById('accountInput');
@@ -975,7 +904,7 @@
         const spinner = document.getElementById('spinner');
         const saveButtonText = document.getElementById('saveButtonText');
         
-        if (!saveBtn) return;
+        if (!accountInput || !transactionDate || !transferMethod || !saveBtn) return;
         
         let openingDate = null;
         
@@ -1021,7 +950,7 @@
                     if (info) info.classList.remove('hidden');
                     
                     // Allow dates before opening balance
-                    if (transactionDate) transactionDate.removeAttribute('min');
+                    transactionDate.removeAttribute('min');
                 }
             } catch (error) {
                 console.error('Error fetching opening date:', error);
@@ -1060,7 +989,7 @@
         
         // Toggle payment method sections
         function togglePaymentDetails() {
-            const method = transferMethod ? transferMethod.value : 'cash';
+            const method = transferMethod.value;
             const chequeSection = document.getElementById('cheque-details-section');
             const bftnSection = document.getElementById('bftn-details-section');
             
@@ -1122,18 +1051,13 @@
         
         // Form validation
         function validateForm() {
-            // Only validate account and payment method for payment transactions
-            if (currentTransactionType === 'payment') {
-                const account = extractIds(accountInput?.value);
-                if (!account || !account.sys_id) {
-                    alert('Please select an account');
-                    return false;
-                }
-                
-                if (!transferMethod?.value) {
-                    alert('Please select a payment method');
-                    return false;
-                }
+            const account = extractIds(accountInput?.value);
+            const amount = document.getElementById('balance')?.value;
+            const particular = document.getElementById('particular')?.value;
+            
+            if (!account || !account.sys_id) {
+                alert('Please select an account');
+                return false;
             }
             
             if (!transactionDate?.value) {
@@ -1147,13 +1071,11 @@
                 return false;
             }
             
-            const amount = document.getElementById('balance')?.value;
             if (!amount || parseFloat(amount) <= 0) {
                 alert('Please enter a valid amount');
                 return false;
             }
             
-            const particular = document.getElementById('particular')?.value;
             if (!particular || !particular.trim()) {
                 alert('Please enter particulars');
                 return false;
@@ -1181,20 +1103,16 @@
                 
                 // Prepare common data
                 const data = {
+                    accountId: account?.sys_id,
+                    accountName: account?.name,
                     vendorId: vendorId,
                     vendorName: vendorName,
                     amount: document.getElementById('balance')?.value,
                     particular: document.getElementById('particular')?.value.trim(),
                     transactionDate: buildDateTime(transactionDate?.value),
+                    transferMethod: method,
                     isHistorical: dateValidation.isHistorical ? 1 : 0
                 };
-                
-                // Add account info only for payment transactions
-                if (type === 'payment') {
-                    data.accountId = account?.sys_id;
-                    data.accountName = account?.name;
-                    data.transferMethod = method;
-                }
                 
                 // Add method-specific fields
                 if (method === 'cheque') {
@@ -1214,7 +1132,7 @@
                 if (saveButtonText) saveButtonText.textContent = 'Processing...';
                 
                 try {
-                    const apiUrl = type === 'receive' ? API_PURCHASE : API_PAYMENT;
+                    const apiUrl = type === 'receive' ? API_RECEIVE : API_PAYMENT;
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

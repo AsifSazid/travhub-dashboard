@@ -145,24 +145,14 @@
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="receive" checked 
                                onchange="toggleTransactionType('receive')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Receive Money</span>
+                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Receive Money (from Client)</span>
                     </label>
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="payment" 
                                onchange="toggleTransactionType('payment')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Sale/Make Payment</span>
+                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Sale/Provide Service (to Client)</span>
                     </label>
                 </div>
-            </div>
-
-            <!-- Rules Notice -->
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
-                <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
-                <ul class="list-disc list-inside ml-4 mt-1">
-                    <li>Backdated entries can be made up to a maximum of 8 days.</li>
-                    <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
-                    <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
-                </ul>
             </div>
 
             <!-- Opening Date Info -->
@@ -190,30 +180,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fa-solid fa-user"></i> Client
                         </label>
-                        <!--<div class="flex items-center space-x-2">-->
-                            <span id="clientName" class="block text-sm font-medium text-center text-gray-700 mb-2"></span>
-                        <!--</div>-->
-                    </div>
-
-                    <!-- From/To Account (Based on transaction type) -->
-                    <div class="col-span-1">
-                        <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-wallet mr-1"></i> From Account
-                        </label>
-                        <?php include('form-selects/accounts.php') ?>
-                    </div>
-
-                    <!-- Transfer Method -->
-                    <div class="col-span-1">
-                        <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-money-check-alt mr-1"></i> Payment Method
-                        </label>
-                        <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                            <option value="cash" selected>Cash</option>
-                            <option value="cheque">Cheque</option>
-                            <option value="npsb-rtgs">NPSB/RTGS</option>
-                            <option value="bftn-eft">BFTN/EFT</option>
-                        </select>
+                        <span id="clientName" class="block text-sm font-medium text-center text-gray-700 mb-2"></span>
                     </div>
 
                     <!-- Date -->
@@ -234,6 +201,48 @@
                         <input type="number" step="0.01" min="0"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             id="balance" name="balance" required placeholder="0.00">
+                    </div>
+                    
+                    <!-- Payment Section - Only shown for Receive transactions -->
+                    <div id="paymentSection" class="hidden w-full md:col-span-2 lg:col-span-3">
+                        
+                        <!-- Rules Notice -->
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
+                            <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
+                            <ul class="list-disc list-inside ml-4 mt-1">
+                                <li>Backdated entries can be made up to a maximum of 10 days.</li>
+                                <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
+                                <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
+                            </ul>
+                        </div>
+            
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-credit-card mr-2 text-blue-600"></i>Payment Details
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- From Account (Payment) -->
+                                <div class="col-span-1">
+                                    <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-wallet mr-1"></i> From Account
+                                    </label>
+                                    <?php include('form-selects/accounts.php') ?>
+                                </div>
+
+                                <!-- Transfer Method (Payment) -->
+                                <div class="col-span-1">
+                                    <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-money-check-alt mr-1"></i> Payment Method
+                                    </label>
+                                    <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="cash" selected>Cash</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="npsb-rtgs">NPSB/RTGS</option>
+                                        <option value="bftn-eft">BFTN/EFT</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Cheque Details Section -->
@@ -418,6 +427,8 @@
     const incrementAmount = 5; // How many to load each time
     let isFiltering = false; // Track if we're in filtering mode
     let searchTimeout = null; // For debouncing search input
+    let currentTransactionType = 'receive';
+    const clientId = "<?php echo isset($clientId) ? $clientId : ''; ?>";
 
     // DOM Elements
     const finTableBody = document.getElementById('finTableBody');
@@ -779,13 +790,10 @@
     
     // NEW Transactions Here
     function addTrnx() {
-        openTransactionModal();
+        openTransactionModal('receive');
     }
     
     // Transaction Modal Functionality
-    let currentTransactionType = 'receive';
-    const clientId = "<?php echo isset($clientId) ? $clientId : ''; ?>";
-    
     function openTransactionModal(type = 'receive') {
         const modal = document.getElementById('transactionModal');
         if (!modal) return;
@@ -794,6 +802,23 @@
         
         // Set modal title and labels based on type
         updateTransactionUI(type);
+        
+        // Set initial visibility of payment section - only show for Receive
+        const paymentSection = document.getElementById('paymentSection');
+        const accountInput = document.getElementById('accountInput');
+        const transferMethod = document.getElementById('transfer_method');
+        
+        if (paymentSection) {
+            if (type === 'receive') {
+                paymentSection.classList.remove('hidden');
+                if (accountInput) accountInput.setAttribute('required', 'required');
+                if (transferMethod) transferMethod.setAttribute('required', 'required');
+            } else {
+                paymentSection.classList.add('hidden');
+                if (accountInput) accountInput.removeAttribute('required');
+                if (transferMethod) transferMethod.removeAttribute('required');
+            }
+        }
         
         // Show modal
         modal.classList.remove('hidden');
@@ -804,9 +829,10 @@
         
         // Set default date
         const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate && typeof BD_TIME !== 'undefined') {
-            transactionDate.value = BD_TIME.getDate();
-            transactionDate.max = BD_TIME.getDate();
+        if (transactionDate) {
+            const today = new Date().toISOString().split('T')[0];
+            transactionDate.value = today;
+            transactionDate.max = today;
         }
     }
     
@@ -840,6 +866,23 @@
     function toggleTransactionType(type) {
         currentTransactionType = type;
         updateTransactionUI(type);
+        
+        // Show/hide payment section - show for Receive, hide for Payment
+        const paymentSection = document.getElementById('paymentSection');
+        const accountInput = document.getElementById('accountInput');
+        const transferMethod = document.getElementById('transfer_method');
+        
+        if (paymentSection) {
+            if (type === 'receive') {
+                paymentSection.classList.remove('hidden');
+                if (accountInput) accountInput.setAttribute('required', 'required');
+                if (transferMethod) transferMethod.setAttribute('required', 'required');
+            } else {
+                paymentSection.classList.add('hidden');
+                if (accountInput) accountInput.removeAttribute('required');
+                if (transferMethod) transferMethod.removeAttribute('required');
+            }
+        }
     }
     
     function resetTransactionModal() {
@@ -848,8 +891,9 @@
         
         // Reset date
         const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate && typeof BD_TIME !== 'undefined') {
-            transactionDate.value = BD_TIME.getDate();
+        if (transactionDate) {
+            const today = new Date().toISOString().split('T')[0];
+            transactionDate.value = today;
         }
         
         // Reset warnings
@@ -865,12 +909,29 @@
         
         if (chequeSection) chequeSection.classList.add('hidden');
         if (bftnSection) bftnSection.classList.add('hidden');
+        
+        // Reset payment section based on current type
+        const paymentSection = document.getElementById('paymentSection');
+        const accountInput = document.getElementById('accountInput');
+        const transferMethod = document.getElementById('transfer_method');
+        
+        if (paymentSection) {
+            if (currentTransactionType === 'receive') {
+                paymentSection.classList.remove('hidden');
+                if (accountInput) accountInput.setAttribute('required', 'required');
+                if (transferMethod) transferMethod.setAttribute('required', 'required');
+            } else {
+                paymentSection.classList.add('hidden');
+                if (accountInput) accountInput.removeAttribute('required');
+                if (transferMethod) transferMethod.removeAttribute('required');
+            }
+        }
     }
     
     // Setup transaction form
     function setupTransactionForm() {
-        const API_RECEIVE = `${IP_PATH}/api/accounts/receive-transaction.php`;
-        const API_PAYMENT = `${IP_PATH}/api/accounts/payment-transaction.php`;
+        const API_RECEIVE = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
+        const API_SALE = `${IP_PATH}/api/clients/cl-ac-sale-store.php`;
         const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
         
         const accountInput = document.getElementById('accountInput');
@@ -880,7 +941,7 @@
         const spinner = document.getElementById('spinner');
         const saveButtonText = document.getElementById('saveButtonText');
         
-        if (!accountInput || !transactionDate || !transferMethod || !saveBtn) return;
+        if (!saveBtn) return;
         
         let openingDate = null;
         
@@ -926,7 +987,7 @@
                     if (info) info.classList.remove('hidden');
                     
                     // Allow dates before opening balance
-                    transactionDate.removeAttribute('min');
+                    if (transactionDate) transactionDate.removeAttribute('min');
                 }
             } catch (error) {
                 console.error('Error fetching opening date:', error);
@@ -952,11 +1013,11 @@
                 };
             }
             
-            // Check max backdated (8 days)
-            if (diffDays > 8) {
+            // Check max backdated (10 days)
+            if (diffDays > 10) {
                 return {
                     valid: false,
-                    message: 'You can make backdated entries up to a maximum of 8 days.'
+                    message: 'You can make backdated entries up to a maximum of 10 days.'
                 };
             }
             
@@ -965,7 +1026,7 @@
         
         // Toggle payment method sections
         function togglePaymentDetails() {
-            const method = transferMethod.value;
+            const method = transferMethod ? transferMethod.value : 'cash';
             const chequeSection = document.getElementById('cheque-details-section');
             const bftnSection = document.getElementById('bftn-details-section');
             
@@ -979,58 +1040,69 @@
             }
         }
         
-        transferMethod.addEventListener('change', togglePaymentDetails);
+        if (transferMethod) {
+            transferMethod.addEventListener('change', togglePaymentDetails);
+        }
         
         // Account change handler
-        accountInput.addEventListener('change', function() {
-            const account = extractIds(accountInput.value);
-            if (account && account.sys_id) {
-                const idField = document.getElementById('accountId');
-                const nameField = document.getElementById('accountName');
-                
-                if (idField) idField.value = account.sys_id;
-                if (nameField) nameField.value = account.name;
-                
-                fetchOpeningDate(account.sys_id);
-            }
-        });
+        if (accountInput) {
+            accountInput.addEventListener('change', function() {
+                const account = extractIds(accountInput.value);
+                if (account && account.sys_id) {
+                    const idField = document.getElementById('accountId');
+                    const nameField = document.getElementById('accountName');
+                    
+                    if (idField) idField.value = account.sys_id;
+                    if (nameField) nameField.value = account.name;
+                    
+                    fetchOpeningDate(account.sys_id);
+                }
+            });
+        }
         
         // Date validation
-        transactionDate.addEventListener('change', function() {
-            const warning = document.getElementById('dateWarning');
-            if (!warning) return;
-            
-            const validation = validateTransactionDate(this.value);
-            
-            if (!validation.valid) {
-                warning.textContent = validation.message;
-                warning.classList.remove('hidden');
-                warning.classList.add('text-red-500');
-                if (saveBtn) saveBtn.disabled = true;
-            } else if (validation.warning) {
-                warning.textContent = validation.warning;
-                warning.classList.remove('hidden');
-                warning.classList.remove('text-red-500');
-                warning.classList.add('text-yellow-600');
-                if (saveBtn) saveBtn.disabled = false;
-            } else {
-                warning.classList.add('hidden');
-                if (saveBtn) saveBtn.disabled = false;
-            }
-        });
+        if (transactionDate) {
+            transactionDate.addEventListener('change', function() {
+                const warning = document.getElementById('dateWarning');
+                if (!warning) return;
+                
+                const validation = validateTransactionDate(this.value);
+                
+                if (!validation.valid) {
+                    warning.textContent = validation.message;
+                    warning.classList.remove('hidden');
+                    warning.classList.add('text-red-500');
+                    if (saveBtn) saveBtn.disabled = true;
+                } else if (validation.warning) {
+                    warning.textContent = validation.warning;
+                    warning.classList.remove('hidden');
+                    warning.classList.remove('text-red-500');
+                    warning.classList.add('text-yellow-600');
+                    if (saveBtn) saveBtn.disabled = false;
+                } else {
+                    warning.classList.add('hidden');
+                    if (saveBtn) saveBtn.disabled = false;
+                }
+            });
+        }
         
         // Form validation
         function validateForm() {
-            const account = extractIds(accountInput.value);
-            const amount = document.getElementById('balance')?.value;
-            const particular = document.getElementById('particular')?.value;
-            
-            if (!account || !account.sys_id) {
-                alert('Please select an account');
-                return false;
+            // Only validate account and payment method for Receive transactions
+            if (currentTransactionType === 'receive') {
+                const account = extractIds(accountInput?.value);
+                if (!account || !account.sys_id) {
+                    alert('Please select an account');
+                    return false;
+                }
+                
+                if (!transferMethod?.value) {
+                    alert('Please select a payment method');
+                    return false;
+                }
             }
             
-            if (!transactionDate.value) {
+            if (!transactionDate?.value) {
                 alert('Please select a date');
                 return false;
             }
@@ -1041,11 +1113,13 @@
                 return false;
             }
             
+            const amount = document.getElementById('balance')?.value;
             if (!amount || parseFloat(amount) <= 0) {
                 alert('Please enter a valid amount');
                 return false;
             }
             
+            const particular = document.getElementById('particular')?.value;
             if (!particular || !particular.trim()) {
                 alert('Please enter particulars');
                 return false;
@@ -1062,78 +1136,84 @@
         }
         
         // Submit form
-        saveBtn.addEventListener('click', async function() {
-            if (!validateForm()) return;
-            
-            const type = currentTransactionType;
-            const method = transferMethod.value;
-            const account = extractIds(accountInput.value);
-            const dateValidation = validateTransactionDate(transactionDate.value);
-            
-            // Prepare common data
-            const data = {
-                accountId: account?.sys_id,
-                accountName: account?.name,
-                clientId: clientId,
-                clientName: clientName,
-                amount: document.getElementById('balance')?.value,
-                particular: document.getElementById('particular')?.value.trim(),
-                transactionDate: buildDateTime(transactionDate.value),
-                transferMethod: method,
-                isHistorical: dateValidation.isHistorical ? 1 : 0
-            };
-            
-            // Add method-specific fields
-            if (method === 'cheque') {
-                data.chequeNo = document.getElementById('cheque_no')?.value;
-                data.chequeDate = document.getElementById('cheque_date')?.value;
-                data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
-                data.bankName = document.getElementById('bank_name')?.value;
-            } else if (method === 'bftn-eft') {
-                data.bftnAccountName = document.getElementById('account_name')?.value;
-                data.eftBankName = document.getElementById('eft_bank_name')?.value;
-                data.bftnDate = document.getElementById('bftn_date')?.value;
-            }
-            
-            // Disable button
-            if (saveBtn) saveBtn.disabled = true;
-            if (spinner) spinner.classList.remove('hidden');
-            if (saveButtonText) saveButtonText.textContent = 'Processing...';
-            
-            try {
-                const apiUrl = type === 'receive' ? API_RECEIVE : API_PAYMENT;
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function() {
+                if (!validateForm()) return;
                 
-                const result = await response.json();
+                const type = currentTransactionType;
+                const method = transferMethod?.value || 'cash';
+                const account = extractIds(accountInput?.value);
+                const dateValidation = validateTransactionDate(transactionDate?.value);
                 
-                if (response.ok && result.success) {
-                    let message = type === 'receive' ? 'Money received successfully!' : 'Payment completed successfully!';
-                    
-                    if (result.is_historical) {
-                        message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে।';
-                    }
-                    
-                    alert(message);
-                    closeTransactionModal();
-                    
-                    // Refresh the page
-                    location.reload();
-                } else {
-                    alert(result.error || result.message || 'Transaction failed.');
+                // Prepare common data
+                const data = {
+                    clientId: clientId,
+                    clientName: clientName,
+                    amount: document.getElementById('balance')?.value,
+                    particular: document.getElementById('particular')?.value.trim(),
+                    transactionDate: buildDateTime(transactionDate?.value),
+                    isHistorical: dateValidation.isHistorical ? 1 : 0
+                };
+                
+                // Add account info only for Receive transactions
+                if (type === 'receive') {
+                    data.accountId = account?.sys_id;
+                    data.accountName = account?.name;
+                    data.transferMethod = method;
                 }
-            } catch (error) {
-                console.error('Transaction error:', error);
-                alert('Network error. Please check your connection.');
-            } finally {
-                if (saveBtn) saveBtn.disabled = false;
-                if (spinner) spinner.classList.add('hidden');
-                if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
-            }
-        });
+                
+                // Add method-specific fields
+                if (method === 'cheque') {
+                    data.chequeNo = document.getElementById('cheque_no')?.value;
+                    data.chequeDate = document.getElementById('cheque_date')?.value;
+                    data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
+                    data.bankName = document.getElementById('bank_name')?.value;
+                } else if (method === 'bftn-eft') {
+                    data.bftnAccountName = document.getElementById('account_name')?.value;
+                    data.eftBankName = document.getElementById('eft_bank_name')?.value;
+                    data.bftnDate = document.getElementById('bftn_date')?.value;
+                }
+                
+                // Disable button
+                if (saveBtn) saveBtn.disabled = true;
+                if (spinner) spinner.classList.remove('hidden');
+                if (saveButtonText) saveButtonText.textContent = 'Processing...';
+                
+                try {
+                    const apiUrl = type === 'receive' ? API_RECEIVE : API_SALE;
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                        let message = type === 'receive' ? 'Money received successfully!' : 'Sale completed successfully!';
+                        
+                        if (result.is_historical) {
+                            message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে।';
+                        }
+                        
+                        alert(message);
+                        closeTransactionModal();
+                        
+                        // Refresh the page
+                        location.reload();
+                    } else {
+                        alert(result.error || result.message || 'Transaction failed.');
+                    }
+                } catch (error) {
+                    console.error('Transaction error:', error);
+                    alert('Network error. Please check your connection.');
+                } finally {
+                    if (saveBtn) saveBtn.disabled = false;
+                    if (spinner) spinner.classList.add('hidden');
+                    if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+                }
+            });
+        }
     }
 
     // Initialize everything when DOM is loaded

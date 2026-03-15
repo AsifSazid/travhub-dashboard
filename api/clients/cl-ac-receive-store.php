@@ -43,11 +43,10 @@ $particular = $data['particular'] ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
 $transferMethod = $data['transferMethod'] ?? 'cash';
 $isHistorical = isset($data['isHistorical']) ? (int)$data['isHistorical'] : 0;
+$withdraw = 0;
 
-$deposit = 0;
-
-// Payment type is always Withdraw for payment
-$paymentType = 'Withdraw';
+// Payment type is always Deposit for received
+$paymentType = 'Deposit';
 
 // Cheque/BFTN details
 $chequeNo = $data['chequeNo'] ?? '';
@@ -80,8 +79,7 @@ if (!$clientId && !$vendorId) {
 
 // Check account (mandatory from 2026-02-01)
 $cutoffDate = new DateTime('2026-02-01 00:00:00', new DateTimeZone('Asia/Dhaka'));
-$tz = new DateTimeZone('Asia/Dhaka');
-$txnDateObj = new DateTime($transactionDate, $tz);
+$txnDateObj = new DateTime($transactionDate, new DateTimeZone('Asia/Dhaka'));
 
 if ($txnDateObj >= $cutoffDate) {
     if (!$accountId || !$accountName) {
@@ -132,9 +130,9 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
         "status"          => 'pending',
         "date"            => date('Y-m-d'),
         "remarks"         => $particular,
-        "related_type"    => 'payment',
-        "related_from"    => $accountId . ' || ' . $accountName,
-        "related_to"      => $clientId ? ($clientId . ' || ' . $clientName) : ($vendorId . ' || ' . $vendorName),
+        "related_type"    => 'received',
+        "related_from"    => $clientId ? ($clientId . ' || ' . $clientName) : ($vendorId . ' || ' . $vendorName),
+        "related_to"      => $accountId . ' || ' . $accountName,
         "amount"          => $amount
     ];
 
@@ -181,7 +179,7 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Instrument recorded successfully. Payment pending clearance.',
+        'message' => 'Instrument recorded successfully. Transaction pending.',
         'instrument' => $instrumentData
     ]);
     exit;
@@ -244,11 +242,7 @@ try {
     if ($isHistorical) {
         $newBalance = $currentBalance;
     } else {
-        // Check sufficient balance for non-historical
-        if ($currentBalance < $amount) {
-            throw new Exception('Insufficient balance in account');
-        }
-        $newBalance = $currentBalance - $amount;
+        $newBalance = $currentBalance + $amount;
     }
 
     /* ================= 5. UPDATE ACCOUNT BALANCE (ONLY IF NOT HISTORICAL) ================= */
@@ -288,8 +282,8 @@ try {
         ':name' => $accountName,
         ':date' => $transactionDate,
         ':particular' => $particular,
-        ':withdraw' => $amount,
-        ':deposit' => $deposit,
+        ':withdraw' => $withdraw,
+        ':deposit' => $amount,
         ':balance' => $newBalance,
         ':transfer_method' => $transferMethod,
         ':meta_data' => $stmtMeta,
@@ -306,7 +300,6 @@ try {
     $userName = $clientName ?? $vendorName;
     $userType = $clientId ? 'client' : 'vendor';
 
-    // financial_entries এ is_historical ব্যবহার করা হচ্ছে না
     $financialStmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
@@ -329,7 +322,7 @@ try {
         ':user_type' => $userType,
         ':date' => $transactionDate,
         ':purpose' => $particular,
-        ':type' => 'debit',
+        ':type' => 'credit',
         ':amount' => $amount,
         ':ref' => $stmtSysId,
         ':meta_data' => $financialMeta
@@ -358,8 +351,8 @@ try {
         'name' => $accountName,
         'date' => $transactionDate,
         'particular' => $particular,
-        'withdraw' => $amount,
-        'deposit' => $deposit,
+        'withdraw' => $withdraw,
+        'deposit' => $amount,
         'balance' => $newBalance,
         'transfer_method' => $transferMethod,
         'is_historical' => $isHistorical
@@ -368,12 +361,12 @@ try {
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => $isHistorical ? 'ঐতিহাসিক এন্ট্রি সংরক্ষিত হয়েছে' : 'Payment transaction recorded successfully',
+        'message' => $isHistorical ? 'ঐতিহাসিক এন্ট্রি সংরক্ষিত হয়েছে' : 'Received transaction recorded successfully',
         'data' => [
             'bank_stmt_id' => $stmtSysId,
             'financial_entry_id' => $financialUUIDs['sys_id'],
             'new_balance' => $newBalance
-        ], 
+        ],
         'item' => $itemData,
         'is_historical' => $isHistorical,
         'recalculated' => $recalculated,

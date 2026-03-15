@@ -226,7 +226,7 @@ try {
     }
 
     /* ================= 3. CHECK 5-DAY BACKDATED LIMIT ================= */
-    $maxBackdatedDays = 5;
+    $maxBackdatedDays = 10;
     $dateCheckQuery = "SELECT DATEDIFF(NOW(), :transaction_date) as days_diff";
     $dateStmt = $pdo->prepare($dateCheckQuery);
     $dateStmt->execute([':transaction_date' => $transactionDate]);
@@ -234,7 +234,7 @@ try {
 
     // Only check 5-day limit if not historical (opening balance er age)
     if (!$isHistorical && $daysDiff > $maxBackdatedDays) {
-        throw new Exception('আপনি সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড এন্ট্রি করতে পারবেন।');
+        throw new Exception('You can make backdated entries up to 5 days.');
     }
 
     /* ================= 4. CALCULATE NEW BALANCE ================= */

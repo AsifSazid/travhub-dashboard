@@ -105,7 +105,7 @@ $base_ip_path = trim($ip_port, "/");
                             <p><i class="fas fa-info-circle mr-2"></i> <strong>নিয়মসমূহ:</strong></p>
                             <ul class="list-disc list-inside ml-4 mt-1">
                                 <!--<li>সর্বোচ্চ ৫ দিন পর্যন্ত ব্যাকডেটেড entry করা যাবে</li>-->
-                                <li>Backdated entries can be made up to a maximum of 8 days.</li>
+                                <li>Backdated entries can be made up to a maximum of 10 days.</li>
                                 <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
                                 <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
                             </ul>

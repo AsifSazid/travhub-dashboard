@@ -15,7 +15,6 @@
         <p id="total-outstanding" class="font-semibold text-yellow-800">1</p>
         <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
     </div>
-    
     <button onclick="addTrnx()">
         <div class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <p id="total-outstanding" class="font-semibold text-blue-800">+ Add New Trnx</p>
@@ -34,15 +33,15 @@
     </button>
 </div>
 
+
 <div class="bg-white rounded-lg shadow p-4 flex flex-col">
-    <!-- Header with Search and Filters -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-        <h2 class="text-2xl font-semibold text-gray-800">Vendor Transactions</h2>
+        <h2 class="text-2xl font-semibold text-gray-800">Financial Transactions</h2>
         
         <!-- Search and Filter Section -->
         <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <!-- Search Input -->
-            <div class="relative flex-1 sm:flex-none">
+            <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-gray-400"></i>
                 </div>
@@ -50,19 +49,19 @@
                     type="text" 
                     id="searchInput"
                     class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-                    placeholder="Search vendor transactions..."
+                    placeholder="Search transactions..."
                 >
             </div>
             
-            <!-- Type Filter -->
+            <!-- Filter Dropdown -->
             <div class="relative">
                 <select 
                     id="filterType" 
                     class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
                 >
                     <option value="all">All Types</option>
-                    <option value="credit">Credit</option>
-                    <option value="debit">Debit</option>
+                    <option value="debit">Credit</option>
+                    <option value="credit">Debit</option>
                 </select>
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <i class="fas fa-chevron-down text-gray-400"></i>
@@ -72,16 +71,16 @@
             <!-- Reset Button -->
             <button 
                 id="resetFilters"
-                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center whitespace-nowrap"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
                 <i class="fas fa-redo mr-2"></i>Reset
             </button>
         </div>
     </div>
 
-    <div class="table-container">
+    <div class="overflow-x-auto table-container">
         <table id="finTable" class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50 sticky top-0 z-10">
+            <thead class="bg-gray-50">
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Purpose</th>
@@ -96,7 +95,8 @@
             <!-- Total Row -->
             <tfoot class="bg-gray-50 font-semibold">
                 <tr>
-                    <td colspan="5" class="px-6 py-4 text-right text-sm text-gray-700">Final Balance:</td>
+                    <td colspan="4" class="px-6 py-4 text-right text-sm text-gray-700">Total:</td>
+                    <td id="total-amount" class="px-6 py-4 text-sm text-gray-900">0.00</td>
                     <td id="final-outstanding" class="px-6 py-4 text-sm text-yellow-700 font-bold">0.00</td>
                 </tr>
             </tfoot>
@@ -106,7 +106,7 @@
         <div id="noResultsMessage" class="hidden px-6 py-10 text-center text-gray-500">
             <div class="flex flex-col items-center gap-2">
                 <i class="fas fa-search text-3xl text-gray-400"></i>
-                <p class="text-sm">No vendor transactions match your search criteria</p>
+                <p class="text-sm">No transactions match your search criteria</p>
             </div>
         </div>
         
@@ -123,7 +123,6 @@
     </div>
 </div>
 
-<!-- Transaction Modal -->
 <div id="transactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
     <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-lg bg-white">
         
@@ -146,14 +145,24 @@
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="receive" checked 
                                onchange="toggleTransactionType('receive')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Purchase/Receive Service (from Vendor)</span>
+                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Receive Money</span>
                     </label>
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="payment" 
                                onchange="toggleTransactionType('payment')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Make Payment (to Vendor)</span>
+                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Sale/Make Payment</span>
                     </label>
                 </div>
+            </div>
+
+            <!-- Rules Notice -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
+                <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
+                <ul class="list-disc list-inside ml-4 mt-1">
+                    <li>Backdated entries can be made up to a maximum of 8 days.</li>
+                    <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
+                    <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
+                </ul>
             </div>
 
             <!-- Opening Date Info -->
@@ -174,14 +183,37 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     
                     <!-- Party Type (Client/Vendor) - Hidden now, will be auto-detected -->
-                    <input type="hidden" id="select_type" value="vendor">
+                    <input type="hidden" id="select_type" value="client">
                     
-                    <!-- Vendor (Auto-detected, shown for reference) -->
-                    <div id="vendor-section" class="col-span-1">
+                    <!-- Client (Auto-detected, shown for reference) -->
+                    <div id="client-section" class="col-span-1">
                         <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fa-solid fa-user-tie"></i> Vendor
+                            <i class="fa-solid fa-user"></i> Client
                         </label>
-                        <span id="vendorName" class="block text-sm font-medium text-center text-gray-700 mb-2"></span>
+                        <!--<div class="flex items-center space-x-2">-->
+                            <span id="clientName" class="block text-sm font-medium text-center text-gray-700 mb-2"></span>
+                        <!--</div>-->
+                    </div>
+
+                    <!-- From/To Account (Based on transaction type) -->
+                    <div class="col-span-1">
+                        <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-wallet mr-1"></i> From Account
+                        </label>
+                        <?php include('form-selects/accounts.php') ?>
+                    </div>
+
+                    <!-- Transfer Method -->
+                    <div class="col-span-1">
+                        <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-money-check-alt mr-1"></i> Payment Method
+                        </label>
+                        <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="cash" selected>Cash</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="npsb-rtgs">NPSB/RTGS</option>
+                            <option value="bftn-eft">BFTN/EFT</option>
+                        </select>
                     </div>
 
                     <!-- Date -->
@@ -202,48 +234,6 @@
                         <input type="number" step="0.01" min="0"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             id="balance" name="balance" required placeholder="0.00">
-                    </div>
-                    
-                    <!-- Payment Section - Only shown for Payment transactions -->
-                    <div id="paymentSection" class="hidden w-full md:col-span-2 lg:col-span-3">
-                        
-                        <!-- Rules Notice -->
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
-                            <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
-                            <ul class="list-disc list-inside ml-4 mt-1">
-                                <li>Backdated entries can be made up to a maximum of 10 days.</li>
-                                <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
-                                <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
-                            </ul>
-                        </div>
-            
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                <i class="fas fa-credit-card mr-2 text-blue-600"></i>Payment Details
-                            </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- From Account (Payment) -->
-                                <div class="col-span-1">
-                                    <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-wallet mr-1"></i> From Account
-                                    </label>
-                                    <?php include('form-selects/accounts.php') ?>
-                                </div>
-
-                                <!-- Transfer Method (Payment) -->
-                                <div class="col-span-1">
-                                    <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-money-check-alt mr-1"></i> Payment Method
-                                    </label>
-                                    <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                        <option value="cash" selected>Cash</option>
-                                        <option value="cheque">Cheque</option>
-                                        <option value="npsb-rtgs">NPSB/RTGS</option>
-                                        <option value="bftn-eft">BFTN/EFT</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Cheque Details Section -->
@@ -420,17 +410,14 @@
 </style>
 
 <script>
-    // Vendor Transactions JavaScript
-    const GET_FINANCIAL_STATEMENT_BY_VENDOR_API = "<?php echo $getVendorFinEntriesApi; ?>";
-    let originalFinStmts = []; // Store original vendor data for filtering
+    // Financial Transactions Search and Filter
+    const GET_FINANCIAL_STATEMENT_BY_CLIENT_API = "<?php echo $getClientFinEntriesApi; ?>";
+    let originalFinStmts = []; // Store original data for filtering
     let displayedFinStmts = []; // Store currently displayed data
     let currentOffset = 0; // Start from newest
     const incrementAmount = 5; // How many to load each time
     let isFiltering = false; // Track if we're in filtering mode
-    let runningBalances = new Map(); // Store running balances for all transactions
-    let finalBalance = 0; // Store final balance
-    let currentTransactionType = 'receive';
-    const vendorId = "<?php echo isset($vendorId) ? $vendorId : ''; ?>";
+    let searchTimeout = null; // For debouncing search input
 
     // DOM Elements
     const finTableBody = document.getElementById('finTableBody');
@@ -438,45 +425,44 @@
     const filterType = document.getElementById('filterType');
     const resetFilters = document.getElementById('resetFilters');
     const noResultsMessage = document.getElementById('noResultsMessage');
+    const finalOutstanding = document.getElementById('final-outstanding');
     const loadMoreContainer = document.getElementById('loadMoreContainer');
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     const loadMoreSpinner = document.getElementById('loadMoreSpinner');
-    const finalOutstanding = document.getElementById('final-outstanding');
 
+    // Main function to load data
     function reloadFinancialTable() {
         // Show skeleton loaders while fetching
         showSkeletonLoaders();
         
-        fetch(GET_FINANCIAL_STATEMENT_BY_VENDOR_API)
+        fetch(GET_FINANCIAL_STATEMENT_BY_CLIENT_API)
             .then(res => res.json())
             .then(data => {
                 if (!data.success) {
                     console.error('API returned unsuccessful:', data);
                     return;
                 }
-
-                // API থেকে ডেটা নিই এবং নতুন থেকে পুরানো সাজাই (নতুন তারিখ আগে)
-                originalFinStmts = (data.finStmts || []).sort((a, b) => {
-                    // প্রথমে তারিখ নতুন থেকে পুরানো
+                
+                // Store all transactions in original array
+                originalFinStmts = data.finStmts || [];
+                
+                // Sort by date descending (newest first)
+                originalFinStmts.sort((a, b) => {
                     const dateA = new Date(a.date);
                     const dateB = new Date(b.date);
                     if (dateA.getTime() !== dateB.getTime()) {
-                        return dateB - dateA; // নতুন তারিখ আগে
+                        return dateB - dateA;
                     }
-                    // তারিখ একই হলে id বড় থেকে ছোট (নতুন id আগে)
                     return (b.id || 0) - (a.id || 0);
                 });
 
-                // Calculate running balances for all transactions
-                calculateRunningBalances(originalFinStmts);
-
-                // প্রাথমিকভাবে নতুন ৫টি ট্রানজেকশন দেখাবো (0 থেকে 5)
+                // Initially display first 5 transactions
                 currentOffset = 0;
                 displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-                renderFinTable(displayedFinStmts, originalFinStmts); // পুরো ডেটা ক্যালকুলেশনের জন্য পাঠাই
-                updateSummary(originalFinStmts); // সামারি সবসময় পুরো ডেটার উপর ভিত্তি করে
+                renderFinTable(displayedFinStmts, originalFinStmts);
+                updateSummary(originalFinStmts);
                 
-                // Load More বাটন দেখানোর সিদ্ধান্ত
+                // Toggle Load More button
                 toggleLoadMoreButton();
             })
             .catch(error => {
@@ -484,7 +470,7 @@
                 showErrorState();
             });
     }
-    
+
     // Show skeleton loading state
     function showSkeletonLoaders() {
         if (!finTableBody) return;
@@ -520,98 +506,70 @@
             </tr>
         `;
     }
-    
-    function calculateRunningBalances(list) {
-        // STEP 1: ক্যালকুলেশনের জন্য পুরানো থেকে নতুন সাজাই
-        const sortedForCalculation = [...list].sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            if (dateA.getTime() !== dateB.getTime()) {
-                return dateA - dateB; // পুরানো তারিখ আগে
-            }
-            return (a.id || 0) - (b.id || 0); // একই তারিখে ছোট id আগে
-        });
-        
-        // STEP 2: প্রতিটি transaction এর জন্য running balance calculate করি
-        let cumulativeBalance = 0;
-        runningBalances.clear();
-        
-        sortedForCalculation.forEach((entry) => {
-            const type = (entry.type || '').toLowerCase();
-            const amount = Number(entry.amount) || 0;
-            
-            // এখন transaction apply করি
-            if (type === 'credit') {
-                // CREDIT: Balance বাড়ে (Company vendor কে দিলে)
-                cumulativeBalance += amount;
-            } else if (type === 'debit') {
-                // DEBIT: Balance কমে (Vendor company কে দিলে)
-                cumulativeBalance -= amount;
-            }
-            
-            // এই transaction এর পরে running balance store করি
-            runningBalances.set(entry.id, cumulativeBalance);
-        });
-        
-        // Final balance store করি
-        finalBalance = cumulativeBalance;
-    }
-    
+
+    // Update summary cards
     function updateSummary(list) {
         const totalTrnx = document.getElementById('total-trnx'); 
         const totalCredit = document.getElementById('total-credit'); 
         const totalDebit = document.getElementById('total-debit'); 
-        const totalOutstanding = document.getElementById('total-outstanding'); 
+        const totalOutstanding = document.getElementById('total-outstanding');
+        const totalAmount = document.getElementById('total-amount');
         
-        if (!totalTrnx || !totalCredit || !totalDebit || !totalOutstanding) return;
+        if (!totalTrnx || !totalCredit || !totalDebit || !totalOutstanding || !totalAmount) return;
         
         let totalTrnxCount = list.length;
         let totalCreditAmount = 0;
         let totalDebitAmount = 0;
-        let totalOutstandingAmount = 0;
+        let totalAmountSum = 0;
 
         list.forEach(finSingleEntry => {
             const type = (finSingleEntry.type || '').toLowerCase();
             const amount = Number(finSingleEntry.amount) || 0;
             
-            if (type === 'credit') {
+            totalAmountSum += amount;
+            
+            if (type === 'debit') {
                 totalCreditAmount += amount;
             }
-            if (type === 'debit') {
+            if (type === 'credit') {
                 totalDebitAmount += amount;
             }
         });
         
-        totalOutstandingAmount = totalCreditAmount - totalDebitAmount;
+        const totalOutstandingAmount = totalCreditAmount - totalDebitAmount;
         
         totalTrnx.textContent = totalTrnxCount;
         totalCredit.textContent = totalCreditAmount.toFixed(2);
         totalDebit.textContent = totalDebitAmount.toFixed(2);
         totalOutstanding.textContent = totalOutstandingAmount.toFixed(2);
+        totalAmount.textContent = totalAmountSum.toFixed(2);
     }
 
+    // Filter transactions based on search and type
     function filterTransactions() {
-        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const selectedType = filterType ? filterType.value : 'all';
         
         // Clear any pending timeout
-        if (window.debounceTimer) {
-            clearTimeout(window.debounceTimer);
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
         }
         
         // Debounce search for better performance
-        window.debounceTimer = setTimeout(() => {
+        searchTimeout = setTimeout(() => {
             isFiltering = searchTerm !== '' || selectedType !== 'all';
             
             if (isFiltering) {
-                // সার্চ বা ফিল্টার করা হলে পুরো ডেটা থেকে ফলাফল দেখাবে
+                // Filter locally from stored array
                 let filteredList = originalFinStmts.filter(entry => {
-                    // Search filter - vendor specific fields
+                    // Search filter - check multiple fields
                     const matchesSearch = searchTerm === '' || 
                         (entry.purpose && entry.purpose.toLowerCase().includes(searchTerm)) ||
                         (entry.work_title && entry.work_title.toLowerCase().includes(searchTerm)) ||
                         (entry.date && entry.date.toLowerCase().includes(searchTerm)) ||
-                        (entry.amount && entry.amount.toString().includes(searchTerm));
+                        (entry.amount && entry.amount.toString().includes(searchTerm)) ||
+                        (entry.client_name && entry.client_name.toLowerCase().includes(searchTerm)) ||
+                        (entry.vendor_name && entry.vendor_name.toLowerCase().includes(searchTerm));
                     
                     // Type filter
                     const matchesType = selectedType === 'all' || 
@@ -620,111 +578,123 @@
                     return matchesSearch && matchesType;
                 });
                 
-                // Calculate running balances for filtered list
-                calculateRunningBalances(filteredList);
-                
-                // ফিল্টার মোডে সব দেখাবে, নতুন থেকে পুরানো সাজিয়ে
-                displayedFinStmts = filteredList.sort((a, b) => {
-                    const dateA = new Date(a.date);
-                    const dateB = new Date(b.date);
-                    if (dateA.getTime() !== dateB.getTime()) {
-                        return dateB - dateA; // নতুন তারিখ আগে
-                    }
-                    return (b.id || 0) - (a.id || 0); // নতুন id আগে
-                });
+                // Show all filtered results (no pagination in filter mode)
+                displayedFinStmts = filteredList;
                 
                 renderFinTable(displayedFinStmts, filteredList);
                 updateSummary(filteredList);
                 
                 // Show/hide no results message
                 if (noResultsMessage) {
-                    if (filteredList.length === 0 && originalFinStmts.length > 0) {
+                    if (filteredList.length === 0) {
                         noResultsMessage.classList.remove('hidden');
                         if (finTableBody) finTableBody.innerHTML = '';
                         if (finalOutstanding) finalOutstanding.textContent = '0.00';
                         if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
                     } else {
                         noResultsMessage.classList.add('hidden');
-                        if (loadMoreContainer) loadMoreContainer.classList.add('hidden'); // ফিল্টার মোডে Load More দেখাবে না
+                        if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
                     }
                 }
             } else {
-                // ফিল্টার না করা হলে নতুন থেকে পুরানো সাজিয়ে নির্দিষ্ট পরিমাণ দেখাবে
-                isFiltering = false;
+                // No filters - show paginated results
+                currentOffset = 0;
                 displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
                 renderFinTable(displayedFinStmts, originalFinStmts);
                 updateSummary(originalFinStmts);
                 if (noResultsMessage) noResultsMessage.classList.add('hidden');
                 toggleLoadMoreButton();
             }
-        }, 300);
+        }, 300); // 300ms debounce
     }
 
+    // Render the table with data
     function renderFinTable(displayList, calculationList) {
         if (!finTableBody) return;
         
         finTableBody.innerHTML = '';
         
         if (!displayList || displayList.length === 0) {
-            const tr = document.createElement('tr');
-    
-            tr.innerHTML = `
-                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                    <div class="flex flex-col items-center gap-2">
-                        <i class="fas fa-users-slash text-3xl text-gray-400"></i>
-                        <p class="text-sm">No Transaction Found!</p>
-                    </div>
-                </td>
+            finTableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-search text-3xl text-gray-400"></i>
+                            <p class="text-sm">No transactions found</p>
+                        </div>
+                    </td>
+                </tr>
             `;
-    
-            finTableBody.appendChild(tr);
             if (finalOutstanding) finalOutstanding.textContent = '0.00';
             return;
         }
-
+        
+        // Calculate running balances using calculationList (sorted oldest to newest)
+        const sortedForCalculation = [...calculationList].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            if (dateA.getTime() !== dateB.getTime()) {
+                return dateA - dateB; // Oldest first
+            }
+            return (a.id || 0) - (b.id || 0);
+        });
+        
+        // Calculate running balances
+        let cumulativeBalance = 0;
+        const runningBalances = new Map();
+        
+        sortedForCalculation.forEach((entry) => {
+            const type = (entry.type || '').toLowerCase();
+            const amount = Number(entry.amount) || 0;
+            
+            if (type === 'debit') { // Credit/Receive increases balance
+                cumulativeBalance += amount;
+            } else if (type === 'credit') { // Debit/Payment decreases balance
+                cumulativeBalance -= amount;
+            }
+            
+            runningBalances.set(entry.id, cumulativeBalance);
+        });
+        
+        const finalBalance = cumulativeBalance;
+        
+        // Render displayList (already sorted newest to oldest)
         displayList.forEach(finSingleEntry => {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50";
-
+            tr.className = "hover:bg-gray-50 transition-colors";
+    
             const type = (finSingleEntry.type || '').toLowerCase();
             const amount = Number(finSingleEntry.amount) || 0;
-            
-            // এই transaction এর running balance Map থেকে নিই
             const runningOutstanding = runningBalances.get(finSingleEntry.id) || 0;
-            
+    
+            // Determine party name (client or vendor)
             const partyName = finSingleEntry.user_name || 'N/A';
-
-            let typeBadge = `
-                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                    UNKNOWN
-                </span>
-            `;
-
+            
+            // Style based on transaction type
+            let typeBadge = '';
             if (type === 'debit') {
                 typeBadge = `
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                        DEBIT
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        Credit
                     </span>
                 `;
             } else if (type === 'credit') {
                 typeBadge = `
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                        CREDIT
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        Debit
+                    </span>
+                `;
+            } else {
+                typeBadge = `
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                        UNKNOWN
                     </span>
                 `;
             }
-            
-            // Format running outstanding with color based on value
-            let outstandingClass = "text-gray-700";
-            if (runningOutstanding > 0) {
-                outstandingClass = "text-green-700 font-semibold";
-            } else if (runningOutstanding < 0) {
-                outstandingClass = "text-red-700 font-semibold";
-            }
-
+    
             const purpose = finSingleEntry.purpose || 'No Data Found';
             const workTitle = finSingleEntry.work_title || 'No Data Found';
-
+    
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     ${finSingleEntry.date || 'N/A'}
@@ -739,36 +709,30 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${typeBadge}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${type === 'credit' ? 'text-green-600' : 'text-red-600'}">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${type === 'debit' ? 'text-green-600' : 'text-red-600'}">
                     ${amount.toFixed(2)}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm ${outstandingClass}">
+                <td class="px-6 py-4 whitespace-nowrap text-sm ${runningOutstanding >= 0 ? 'text-green-700' : 'text-red-700'} font-semibold">
                     ${runningOutstanding.toFixed(2)}
                 </td>
             `;
-
+    
             finTableBody.appendChild(tr);
         });
-        
-        // Update final outstanding in footer
+    
+        // Update final outstanding
         if (finalOutstanding) {
             finalOutstanding.textContent = finalBalance.toFixed(2);
-            
-            // Color code final outstanding
-            if (finalBalance > 0) {
-                finalOutstanding.className = "px-6 py-4 text-sm text-green-700 font-bold";
-            } else if (finalBalance < 0) {
-                finalOutstanding.className = "px-6 py-4 text-sm text-red-700 font-bold";
-            } else {
-                finalOutstanding.className = "px-6 py-4 text-sm text-yellow-700 font-bold";
-            }
+            finalOutstanding.className = finalBalance >= 0 
+                ? "px-6 py-4 text-sm text-green-700 font-bold" 
+                : "px-6 py-4 text-sm text-red-700 font-bold";
         }
     }
 
+    // Toggle Load More button visibility
     function toggleLoadMoreButton() {
-        if (!loadMoreContainer) return;
+        if (!loadMoreContainer || !loadMoreBtn) return;
         
-        // শুধুমাত্র ফিল্টার মোডে না থাকলে এবং আরো ডেটা থাকলে Load More বাটন দেখাবে
         if (!isFiltering && originalFinStmts && (currentOffset + incrementAmount) < originalFinStmts.length) {
             loadMoreContainer.classList.remove('hidden');
         } else {
@@ -776,21 +740,19 @@
         }
     }
 
+    // Load more transactions
     function loadMoreTransactions() {
-        if (!loadMoreSpinner || !loadMoreBtn) return;
+        if (isFiltering || !loadMoreSpinner || !loadMoreBtn) return;
         
         loadMoreSpinner.classList.remove('hidden');
         loadMoreBtn.disabled = true;
         
-        // নতুন ডেটা লোড করি (পুরানো ডেটার দিকে যাবো)
-        currentOffset += incrementAmount;
-        
-        // পরবর্তী ৫টি ট্রানজেকশন যোগ করি
-        const nextBatch = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-        displayedFinStmts = [...displayedFinStmts, ...nextBatch];
-        
-        // কিছুক্ষণ পরে UI আপডেট করি (লোডিং ইফেক্টের জন্য)
+        // Simulate loading delay for better UX
         setTimeout(() => {
+            currentOffset += incrementAmount;
+            const nextBatch = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
+            displayedFinStmts = [...displayedFinStmts, ...nextBatch];
+            
             renderFinTable(displayedFinStmts, originalFinStmts);
             updateSummary(originalFinStmts);
             toggleLoadMoreButton();
@@ -799,27 +761,31 @@
             loadMoreBtn.disabled = false;
         }, 300);
     }
-
+    
     // Reset all filters
     function resetFiltersAndSearch() {
         if (searchInput) searchInput.value = '';
         if (filterType) filterType.value = 'all';
-        currentOffset = 0; // রিসেট করলে আবার নতুন ডেটা থেকে শুরু হবে
+        currentOffset = 0;
         isFiltering = false;
-        // Recalculate running balances for original data
-        calculateRunningBalances(originalFinStmts);
+        
+        // Trigger filter
         filterTransactions();
         
         // Scroll to top of table
         const container = document.querySelector('.table-container');
         if (container) container.scrollTop = 0;
     }
-
-    // Transaction Modal Functionality
+    
+    // NEW Transactions Here
     function addTrnx() {
-        openTransactionModal('receive');
+        openTransactionModal();
     }
-
+    
+    // Transaction Modal Functionality
+    let currentTransactionType = 'receive';
+    const clientId = "<?php echo isset($clientId) ? $clientId : ''; ?>";
+    
     function openTransactionModal(type = 'receive') {
         const modal = document.getElementById('transactionModal');
         if (!modal) return;
@@ -829,36 +795,18 @@
         // Set modal title and labels based on type
         updateTransactionUI(type);
         
-        // Set initial visibility of payment section
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (type === 'payment') {
-                paymentSection.classList.remove('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
-        
         // Show modal
         modal.classList.remove('hidden');
         setTimeout(() => modal.classList.add('show'), 10);
         
-        const vendorNameSpan = document.getElementById('vendorName');
-        if (vendorNameSpan) vendorNameSpan.innerHTML = vendorName;
+        const clientNameSpan = document.getElementById('clientName');
+        if (clientNameSpan) clientNameSpan.innerHTML = clientName;
         
         // Set default date
         const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate) {
-            const today = new Date().toISOString().split('T')[0];
-            transactionDate.value = today;
-            transactionDate.max = today;
+        if (transactionDate && typeof BD_TIME !== 'undefined') {
+            transactionDate.value = BD_TIME.getDate();
+            transactionDate.max = BD_TIME.getDate();
         }
     }
     
@@ -879,11 +827,11 @@
         if (!modalTitle || !accountLabel || !paymentType) return;
         
         if (type === 'receive') {
-            modalTitle.innerHTML = `<i class="fas fa-plus-circle text-green-600 mr-2"></i>Receive Money from ${vendorName}`;
+            modalTitle.innerHTML = `<i class="fas fa-plus-circle text-green-600 mr-2"></i>Receive Money for ${clientName}`;
             accountLabel.innerHTML = '<i class="fas fa-sign-in-alt mr-1"></i> Deposit To Account';
             paymentType.value = 'Deposit';
         } else {
-            modalTitle.innerHTML = `<i class="fas fa-minus-circle text-red-600 mr-2"></i>Make Payment to ${vendorName}`;
+            modalTitle.innerHTML = `<i class="fas fa-minus-circle text-red-600 mr-2"></i>Make Payment for ${clientName}`;
             accountLabel.innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i> Withdraw From Account';
             paymentType.value = 'Withdraw';
         }
@@ -891,32 +839,7 @@
     
     function toggleTransactionType(type) {
         currentTransactionType = type;
-        
-        // Update UI based on transaction type
         updateTransactionUI(type);
-        
-        // Show/hide payment section
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (type === 'payment') {
-                // Show payment section for payment transactions
-                paymentSection.classList.remove('hidden');
-                
-                // Make account and payment method required for payment
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                // Hide payment section for receive transactions
-                paymentSection.classList.add('hidden');
-                
-                // Remove required attribute for receive
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
     }
     
     function resetTransactionModal() {
@@ -925,9 +848,8 @@
         
         // Reset date
         const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate) {
-            const today = new Date().toISOString().split('T')[0];
-            transactionDate.value = today;
+        if (transactionDate && typeof BD_TIME !== 'undefined') {
+            transactionDate.value = BD_TIME.getDate();
         }
         
         // Reset warnings
@@ -943,29 +865,12 @@
         
         if (chequeSection) chequeSection.classList.add('hidden');
         if (bftnSection) bftnSection.classList.add('hidden');
-        
-        // Reset payment section based on current type
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (currentTransactionType === 'payment') {
-                paymentSection.classList.remove('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
     }
     
     // Setup transaction form
     function setupTransactionForm() {
-        const API_PURCHASE = `${IP_PATH}/api/vendors/ve-ac-purchase-store.php`;
-        const API_PAYMENT = `${IP_PATH}/api/vendors/ve-ac-payment-store.php`;
+        const API_RECEIVE = `${IP_PATH}/api/accounts/receive-transaction.php`;
+        const API_PAYMENT = `${IP_PATH}/api/accounts/payment-transaction.php`;
         const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
         
         const accountInput = document.getElementById('accountInput');
@@ -975,7 +880,7 @@
         const spinner = document.getElementById('spinner');
         const saveButtonText = document.getElementById('saveButtonText');
         
-        if (!saveBtn) return;
+        if (!accountInput || !transactionDate || !transferMethod || !saveBtn) return;
         
         let openingDate = null;
         
@@ -1021,7 +926,7 @@
                     if (info) info.classList.remove('hidden');
                     
                     // Allow dates before opening balance
-                    if (transactionDate) transactionDate.removeAttribute('min');
+                    transactionDate.removeAttribute('min');
                 }
             } catch (error) {
                 console.error('Error fetching opening date:', error);
@@ -1060,7 +965,7 @@
         
         // Toggle payment method sections
         function togglePaymentDetails() {
-            const method = transferMethod ? transferMethod.value : 'cash';
+            const method = transferMethod.value;
             const chequeSection = document.getElementById('cheque-details-section');
             const bftnSection = document.getElementById('bftn-details-section');
             
@@ -1074,69 +979,58 @@
             }
         }
         
-        if (transferMethod) {
-            transferMethod.addEventListener('change', togglePaymentDetails);
-        }
+        transferMethod.addEventListener('change', togglePaymentDetails);
         
         // Account change handler
-        if (accountInput) {
-            accountInput.addEventListener('change', function() {
-                const account = extractIds(accountInput.value);
-                if (account && account.sys_id) {
-                    const idField = document.getElementById('accountId');
-                    const nameField = document.getElementById('accountName');
-                    
-                    if (idField) idField.value = account.sys_id;
-                    if (nameField) nameField.value = account.name;
-                    
-                    fetchOpeningDate(account.sys_id);
-                }
-            });
-        }
+        accountInput.addEventListener('change', function() {
+            const account = extractIds(accountInput.value);
+            if (account && account.sys_id) {
+                const idField = document.getElementById('accountId');
+                const nameField = document.getElementById('accountName');
+                
+                if (idField) idField.value = account.sys_id;
+                if (nameField) nameField.value = account.name;
+                
+                fetchOpeningDate(account.sys_id);
+            }
+        });
         
         // Date validation
-        if (transactionDate) {
-            transactionDate.addEventListener('change', function() {
-                const warning = document.getElementById('dateWarning');
-                if (!warning) return;
-                
-                const validation = validateTransactionDate(this.value);
-                
-                if (!validation.valid) {
-                    warning.textContent = validation.message;
-                    warning.classList.remove('hidden');
-                    warning.classList.add('text-red-500');
-                    if (saveBtn) saveBtn.disabled = true;
-                } else if (validation.warning) {
-                    warning.textContent = validation.warning;
-                    warning.classList.remove('hidden');
-                    warning.classList.remove('text-red-500');
-                    warning.classList.add('text-yellow-600');
-                    if (saveBtn) saveBtn.disabled = false;
-                } else {
-                    warning.classList.add('hidden');
-                    if (saveBtn) saveBtn.disabled = false;
-                }
-            });
-        }
+        transactionDate.addEventListener('change', function() {
+            const warning = document.getElementById('dateWarning');
+            if (!warning) return;
+            
+            const validation = validateTransactionDate(this.value);
+            
+            if (!validation.valid) {
+                warning.textContent = validation.message;
+                warning.classList.remove('hidden');
+                warning.classList.add('text-red-500');
+                if (saveBtn) saveBtn.disabled = true;
+            } else if (validation.warning) {
+                warning.textContent = validation.warning;
+                warning.classList.remove('hidden');
+                warning.classList.remove('text-red-500');
+                warning.classList.add('text-yellow-600');
+                if (saveBtn) saveBtn.disabled = false;
+            } else {
+                warning.classList.add('hidden');
+                if (saveBtn) saveBtn.disabled = false;
+            }
+        });
         
         // Form validation
         function validateForm() {
-            // Only validate account and payment method for payment transactions
-            if (currentTransactionType === 'payment') {
-                const account = extractIds(accountInput?.value);
-                if (!account || !account.sys_id) {
-                    alert('Please select an account');
-                    return false;
-                }
-                
-                if (!transferMethod?.value) {
-                    alert('Please select a payment method');
-                    return false;
-                }
+            const account = extractIds(accountInput.value);
+            const amount = document.getElementById('balance')?.value;
+            const particular = document.getElementById('particular')?.value;
+            
+            if (!account || !account.sys_id) {
+                alert('Please select an account');
+                return false;
             }
             
-            if (!transactionDate?.value) {
+            if (!transactionDate.value) {
                 alert('Please select a date');
                 return false;
             }
@@ -1147,13 +1041,11 @@
                 return false;
             }
             
-            const amount = document.getElementById('balance')?.value;
             if (!amount || parseFloat(amount) <= 0) {
                 alert('Please enter a valid amount');
                 return false;
             }
             
-            const particular = document.getElementById('particular')?.value;
             if (!particular || !particular.trim()) {
                 alert('Please enter particulars');
                 return false;
@@ -1170,84 +1062,78 @@
         }
         
         // Submit form
-        if (saveBtn) {
-            saveBtn.addEventListener('click', async function() {
-                if (!validateForm()) return;
+        saveBtn.addEventListener('click', async function() {
+            if (!validateForm()) return;
+            
+            const type = currentTransactionType;
+            const method = transferMethod.value;
+            const account = extractIds(accountInput.value);
+            const dateValidation = validateTransactionDate(transactionDate.value);
+            
+            // Prepare common data
+            const data = {
+                accountId: account?.sys_id,
+                accountName: account?.name,
+                clientId: clientId,
+                clientName: clientName,
+                amount: document.getElementById('balance')?.value,
+                particular: document.getElementById('particular')?.value.trim(),
+                transactionDate: buildDateTime(transactionDate.value),
+                transferMethod: method,
+                isHistorical: dateValidation.isHistorical ? 1 : 0
+            };
+            
+            // Add method-specific fields
+            if (method === 'cheque') {
+                data.chequeNo = document.getElementById('cheque_no')?.value;
+                data.chequeDate = document.getElementById('cheque_date')?.value;
+                data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
+                data.bankName = document.getElementById('bank_name')?.value;
+            } else if (method === 'bftn-eft') {
+                data.bftnAccountName = document.getElementById('account_name')?.value;
+                data.eftBankName = document.getElementById('eft_bank_name')?.value;
+                data.bftnDate = document.getElementById('bftn_date')?.value;
+            }
+            
+            // Disable button
+            if (saveBtn) saveBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (saveButtonText) saveButtonText.textContent = 'Processing...';
+            
+            try {
+                const apiUrl = type === 'receive' ? API_RECEIVE : API_PAYMENT;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
                 
-                const type = currentTransactionType;
-                const method = transferMethod?.value || 'cash';
-                const account = extractIds(accountInput?.value);
-                const dateValidation = validateTransactionDate(transactionDate?.value);
+                const result = await response.json();
                 
-                // Prepare common data
-                const data = {
-                    vendorId: vendorId,
-                    vendorName: vendorName,
-                    amount: document.getElementById('balance')?.value,
-                    particular: document.getElementById('particular')?.value.trim(),
-                    transactionDate: buildDateTime(transactionDate?.value),
-                    isHistorical: dateValidation.isHistorical ? 1 : 0
-                };
-                
-                // Add account info only for payment transactions
-                if (type === 'payment') {
-                    data.accountId = account?.sys_id;
-                    data.accountName = account?.name;
-                    data.transferMethod = method;
-                }
-                
-                // Add method-specific fields
-                if (method === 'cheque') {
-                    data.chequeNo = document.getElementById('cheque_no')?.value;
-                    data.chequeDate = document.getElementById('cheque_date')?.value;
-                    data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
-                    data.bankName = document.getElementById('bank_name')?.value;
-                } else if (method === 'bftn-eft') {
-                    data.bftnAccountName = document.getElementById('account_name')?.value;
-                    data.eftBankName = document.getElementById('eft_bank_name')?.value;
-                    data.bftnDate = document.getElementById('bftn_date')?.value;
-                }
-                
-                // Disable button
-                if (saveBtn) saveBtn.disabled = true;
-                if (spinner) spinner.classList.remove('hidden');
-                if (saveButtonText) saveButtonText.textContent = 'Processing...';
-                
-                try {
-                    const apiUrl = type === 'receive' ? API_PURCHASE : API_PAYMENT;
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
+                if (response.ok && result.success) {
+                    let message = type === 'receive' ? 'Money received successfully!' : 'Payment completed successfully!';
                     
-                    const result = await response.json();
-                    
-                    if (response.ok && result.success) {
-                        let message = type === 'receive' ? 'Money received successfully!' : 'Payment completed successfully!';
-                        
-                        if (result.is_historical) {
-                            message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে।';
-                        }
-                        
-                        alert(message);
-                        closeTransactionModal();
-                        
-                        // Refresh the page
-                        location.reload();
-                    } else {
-                        alert(result.error || result.message || 'Transaction failed.');
+                    if (result.is_historical) {
+                        message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে।';
                     }
-                } catch (error) {
-                    console.error('Transaction error:', error);
-                    alert('Network error. Please check your connection.');
-                } finally {
-                    if (saveBtn) saveBtn.disabled = false;
-                    if (spinner) spinner.classList.add('hidden');
-                    if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+                    
+                    alert(message);
+                    closeTransactionModal();
+                    
+                    // Refresh the page
+                    location.reload();
+                } else {
+                    alert(result.error || result.message || 'Transaction failed.');
                 }
-            });
-        }
+            } catch (error) {
+                console.error('Transaction error:', error);
+                alert('Network error. Please check your connection.');
+            } finally {
+                if (saveBtn) saveBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+                if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+            }
+        });
     }
 
     // Initialize everything when DOM is loaded
