@@ -17,7 +17,7 @@
     </div>
     <button onclick="addTrnx()">
         <div class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <p id="total-outstanding" class="font-semibold text-blue-800">+ Add Trnx</p>
+            <p id="total-outstanding" class="font-semibold text-blue-800">+ Add New Trnx</p>
         </div>
     </button>
 </div>
@@ -150,7 +150,7 @@
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="radio" name="transactionType" value="payment" 
                                onchange="toggleTransactionType('payment')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Make Payment</span>
+                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Sale/Make Payment</span>
                     </label>
                 </div>
             </div>
@@ -377,51 +377,145 @@
     #transactionModal.show > div {
         transform: scale(1);
     }
+    
+    /* Add to your existing styles */
+    mark {
+        background-color: #fef3c7;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+    
+    #searchInput:focus {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .table-container {
+        scroll-behavior: smooth;
+    }
+    
+    /* Loading animation */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    /* Transition for filter changes */
+    #finTableBody tr {
+        transition: background-color 0.2s ease;
+    }
 </style>
 
 <script>
+    // Financial Transactions Search and Filter
     const GET_FINANCIAL_STATEMENT_BY_CLIENT_API = "<?php echo $getClientFinEntriesApi; ?>";
     let originalFinStmts = []; // Store original data for filtering
     let displayedFinStmts = []; // Store currently displayed data
     let currentOffset = 0; // Start from newest
     const incrementAmount = 5; // How many to load each time
     let isFiltering = false; // Track if we're in filtering mode
+    let searchTimeout = null; // For debouncing search input
 
+    // DOM Elements
+    const finTableBody = document.getElementById('finTableBody');
+    const searchInput = document.getElementById('searchInput');
+    const filterType = document.getElementById('filterType');
+    const resetFilters = document.getElementById('resetFilters');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const finalOutstanding = document.getElementById('final-outstanding');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const loadMoreSpinner = document.getElementById('loadMoreSpinner');
+
+    // Main function to load data
     function reloadFinancialTable() {
+        // Show skeleton loaders while fetching
+        showSkeletonLoaders();
+        
         fetch(GET_FINANCIAL_STATEMENT_BY_CLIENT_API)
             .then(res => res.json())
             .then(data => {
-                if (!data.success) return;
+                if (!data.success) {
+                    console.error('API returned unsuccessful:', data);
+                    return;
+                }
                 
-                // API থেকে ডেটা নিই এবং নতুন থেকে পুরানো সাজাই (নতুন তারিখ আগে)
-                originalFinStmts = data.finStmts.sort((a, b) => {
-                    // প্রথমে তারিখ নতুন থেকে পুরানো
+                // Store all transactions in original array
+                originalFinStmts = data.finStmts || [];
+                
+                // Sort by date descending (newest first)
+                originalFinStmts.sort((a, b) => {
                     const dateA = new Date(a.date);
                     const dateB = new Date(b.date);
                     if (dateA.getTime() !== dateB.getTime()) {
-                        return dateB - dateA; // নতুন তারিখ আগে
+                        return dateB - dateA;
                     }
-                    // তারিখ একই হলে id বড় থেকে ছোট (নতুন id আগে)
-                    return b.id - a.id;
+                    return (b.id || 0) - (a.id || 0);
                 });
 
-                // প্রাথমিকভাবে নতুন ৫টি ট্রানজেকশন দেখাবো (0 থেকে 5)
+                // Initially display first 5 transactions
                 currentOffset = 0;
                 displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-                renderFinTable(displayedFinStmts, originalFinStmts); // পুরো ডেটা ক্যালকুলেশনের জন্য পাঠাই
-                updateSummary(originalFinStmts); // সামারি সবসময় পুরো ডেটার উপর ভিত্তি করে
+                renderFinTable(displayedFinStmts, originalFinStmts);
+                updateSummary(originalFinStmts);
                 
-                // Load More বাটন দেখানোর সিদ্ধান্ত
+                // Toggle Load More button
                 toggleLoadMoreButton();
             })
+            .catch(error => {
+                console.error('Error fetching transactions:', error);
+                showErrorState();
+            });
     }
-    
+
+    // Show skeleton loading state
+    function showSkeletonLoaders() {
+        if (!finTableBody) return;
+        
+        finTableBody.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const tr = document.createElement('tr');
+            tr.className = "animate-pulse";
+            tr.innerHTML = `
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-48"></div></td>
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-32"></div></td>
+                <td class="px-6 py-4"><div class="h-6 bg-gray-200 rounded-full w-16"></div></td>
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            `;
+            finTableBody.appendChild(tr);
+        }
+    }
+
+    // Show error state
+    function showErrorState() {
+        if (!finTableBody) return;
+        
+        finTableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                    <div class="flex flex-col items-center gap-2">
+                        <i class="fas fa-exclamation-triangle text-3xl text-red-400"></i>
+                        <p class="text-sm">Error loading transactions. Please try again.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    // Update summary cards
     function updateSummary(list) {
         const totalTrnx = document.getElementById('total-trnx'); 
         const totalCredit = document.getElementById('total-credit'); 
         const totalDebit = document.getElementById('total-debit'); 
         const totalOutstanding = document.getElementById('total-outstanding');
         const totalAmount = document.getElementById('total-amount');
+        
+        if (!totalTrnx || !totalCredit || !totalDebit || !totalOutstanding || !totalAmount) return;
         
         let totalTrnxCount = list.length;
         let totalCreditAmount = 0;
@@ -442,7 +536,7 @@
             }
         });
         
-        totalOutstandingAmount = totalCreditAmount - totalDebitAmount;
+        const totalOutstandingAmount = totalCreditAmount - totalDebitAmount;
         
         totalTrnx.textContent = totalTrnxCount;
         totalCredit.textContent = totalCreditAmount.toFixed(2);
@@ -451,233 +545,214 @@
         totalAmount.textContent = totalAmountSum.toFixed(2);
     }
 
-    const finTableBody = document.getElementById('finTableBody');
-    const searchInput = document.getElementById('searchInput');
-    const filterType = document.getElementById('filterType');
-    const resetFilters = document.getElementById('resetFilters');
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    const finalOutstanding = document.getElementById('final-outstanding');
-    const loadMoreContainer = document.getElementById('loadMoreContainer');
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    const loadMoreSpinner = document.getElementById('loadMoreSpinner');
-
+    // Filter transactions based on search and type
     function filterTransactions() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const selectedType = filterType.value;
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const selectedType = filterType ? filterType.value : 'all';
         
-        isFiltering = searchTerm !== '' || selectedType !== 'all';
-        
-        if (isFiltering) {
-            // সার্চ বা ফিল্টার করা হলে পুরো ডেটা থেকে ফলাফল দেখাবে
-            let filteredList = originalFinStmts.filter(entry => {
-                // Search filter
-                const matchesSearch = searchTerm === '' || 
-                    (entry.purpose && entry.purpose.toLowerCase().includes(searchTerm)) ||
-                    (entry.work_title && entry.work_title.toLowerCase().includes(searchTerm)) ||
-                    (entry.date && entry.date.toLowerCase().includes(searchTerm));
-                
-                // Type filter
-                const matchesType = selectedType === 'all' || 
-                    (entry.type && entry.type.toLowerCase() === selectedType);
-                
-                return matchesSearch && matchesType;
-            });
-            
-            // ফিল্টার মোডে সব দেখাবে, নতুন থেকে পুরানো সাজিয়ে
-            displayedFinStmts = filteredList.sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                if (dateA.getTime() !== dateB.getTime()) {
-                    return dateB - dateA; // নতুন তারিখ আগে
-                }
-                return b.id - a.id; // নতুন id আগে
-            });
-            
-            renderFinTable(displayedFinStmts, filteredList);
-            updateSummary(filteredList);
-            
-            // Show/hide no results message
-            if (filteredList.length === 0 && originalFinStmts.length > 0) {
-                noResultsMessage.classList.remove('hidden');
-                finTableBody.innerHTML = '';
-                finalOutstanding.textContent = '0.00';
-                loadMoreContainer.classList.add('hidden');
-            } else {
-                noResultsMessage.classList.add('hidden');
-                loadMoreContainer.classList.add('hidden'); // ফিল্টার মোডে Load More দেখাবে না
-            }
-        } else {
-            // ফিল্টার না করা হলে নতুন থেকে পুরানো সাজিয়ে নির্দিষ্ট পরিমাণ দেখাবে
-            isFiltering = false;
-            displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-            renderFinTable(displayedFinStmts, originalFinStmts);
-            updateSummary(originalFinStmts);
-            noResultsMessage.classList.add('hidden');
-            toggleLoadMoreButton();
+        // Clear any pending timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
         }
+        
+        // Debounce search for better performance
+        searchTimeout = setTimeout(() => {
+            isFiltering = searchTerm !== '' || selectedType !== 'all';
+            
+            if (isFiltering) {
+                // Filter locally from stored array
+                let filteredList = originalFinStmts.filter(entry => {
+                    // Search filter - check multiple fields
+                    const matchesSearch = searchTerm === '' || 
+                        (entry.purpose && entry.purpose.toLowerCase().includes(searchTerm)) ||
+                        (entry.work_title && entry.work_title.toLowerCase().includes(searchTerm)) ||
+                        (entry.date && entry.date.toLowerCase().includes(searchTerm)) ||
+                        (entry.amount && entry.amount.toString().includes(searchTerm)) ||
+                        (entry.client_name && entry.client_name.toLowerCase().includes(searchTerm)) ||
+                        (entry.vendor_name && entry.vendor_name.toLowerCase().includes(searchTerm));
+                    
+                    // Type filter
+                    const matchesType = selectedType === 'all' || 
+                        (entry.type && entry.type.toLowerCase() === selectedType);
+                    
+                    return matchesSearch && matchesType;
+                });
+                
+                // Show all filtered results (no pagination in filter mode)
+                displayedFinStmts = filteredList;
+                
+                renderFinTable(displayedFinStmts, filteredList);
+                updateSummary(filteredList);
+                
+                // Show/hide no results message
+                if (noResultsMessage) {
+                    if (filteredList.length === 0) {
+                        noResultsMessage.classList.remove('hidden');
+                        if (finTableBody) finTableBody.innerHTML = '';
+                        if (finalOutstanding) finalOutstanding.textContent = '0.00';
+                        if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
+                    } else {
+                        noResultsMessage.classList.add('hidden');
+                        if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
+                    }
+                }
+            } else {
+                // No filters - show paginated results
+                currentOffset = 0;
+                displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
+                renderFinTable(displayedFinStmts, originalFinStmts);
+                updateSummary(originalFinStmts);
+                if (noResultsMessage) noResultsMessage.classList.add('hidden');
+                toggleLoadMoreButton();
+            }
+        }, 300); // 300ms debounce
     }
 
+    // Render the table with data
     function renderFinTable(displayList, calculationList) {
+        if (!finTableBody) return;
+        
         finTableBody.innerHTML = '';
         
         if (!displayList || displayList.length === 0) {
-            const tr = document.createElement('tr');
-    
-            tr.innerHTML = `
-                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                    <div class="flex flex-col items-center gap-2">
-                        <i class="fas fa-users-slash text-3xl text-gray-400"></i>
-                        <p class="text-sm">No Transaction Found!</p>
-                    </div>
-                </td>
+            finTableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-search text-3xl text-gray-400"></i>
+                            <p class="text-sm">No transactions found</p>
+                        </div>
+                    </td>
+                </tr>
             `;
-    
-            finTableBody.appendChild(tr);
-            finalOutstanding.textContent = '0.00';
+            if (finalOutstanding) finalOutstanding.textContent = '0.00';
             return;
         }
         
-        // STEP 1: ক্যালকুলেশনের জন্য পুরানো থেকে নতুন সাজাই
-        // প্রথমে তারিখ পুরানো থেকে নতুন
+        // Calculate running balances using calculationList (sorted oldest to newest)
         const sortedForCalculation = [...calculationList].sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             if (dateA.getTime() !== dateB.getTime()) {
-                return dateA - dateB; // পুরানো তারিখ আগে
+                return dateA - dateB; // Oldest first
             }
-            return a.id - b.id; // একই তারিখে ছোট id আগে
+            return (a.id || 0) - (b.id || 0);
         });
         
-        // STEP 2: প্রতিটি transaction এর জন্য running balance calculate করি
+        // Calculate running balances
         let cumulativeBalance = 0;
-        const runningBalances = new Map(); // Map হিসেবে store করবো id অনুযায়ী
+        const runningBalances = new Map();
         
         sortedForCalculation.forEach((entry) => {
             const type = (entry.type || '').toLowerCase();
             const amount = Number(entry.amount) || 0;
             
-            // এখন transaction apply করি
-            if (type === 'debit') {
-                // CREDIT: Balance বাড়ে
+            if (type === 'debit') { // Credit/Receive increases balance
                 cumulativeBalance += amount;
-            } else if (type === 'credit') {
-                // DEBIT: Balance কমে
+            } else if (type === 'credit') { // Debit/Payment decreases balance
                 cumulativeBalance -= amount;
             }
             
-            // এই transaction এর পরে running balance store করি
             runningBalances.set(entry.id, cumulativeBalance);
         });
         
-        // Final balance store করি
         const finalBalance = cumulativeBalance;
         
-        // STEP 3: ডিসপ্লের জন্য displayList কে নতুন থেকে পুরানো সাজাই (ইতিমধ্যে সাজানো)
-        // displayList ইতিমধ্যে নতুন থেকে পুরানো সাজানো আছে
-        
-        // STEP 4: নতুন থেকে পুরানো তারিখে show করি
+        // Render displayList (already sorted newest to oldest)
         displayList.forEach(finSingleEntry => {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50";
-
+            tr.className = "hover:bg-gray-50 transition-colors";
+    
             const type = (finSingleEntry.type || '').toLowerCase();
             const amount = Number(finSingleEntry.amount) || 0;
-            
-            // এই transaction এর running balance Map থেকে নিই
             const runningOutstanding = runningBalances.get(finSingleEntry.id) || 0;
-
-            let typeBadge = `
+    
+            // Determine party name (client or vendor)
+            const partyName = finSingleEntry.user_name || 'N/A';
+            
+            // Style based on transaction type
+            let typeBadge = '';
+            if (type === 'debit') {
+                typeBadge = `
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        Credit
+                    </span>
+                `;
+            } else if (type === 'credit') {
+                typeBadge = `
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        Debit
+                    </span>
+                `;
+            } else {
+                typeBadge = `
                     <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
                         UNKNOWN
                     </span>
                 `;
-
-            if (type === 'debit') {
-                typeBadge = `
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                            CREDIT
-                        </span>
-                    `;
-            } else if (type === 'credit') {
-                typeBadge = `
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                            DEBIT
-                        </span>
-                    `;
             }
-
-            // Format running outstanding with color based on value
-            let outstandingClass = "text-gray-700";
-            if (runningOutstanding > 0) {
-                outstandingClass = "text-green-700 font-semibold";
-            } else if (runningOutstanding < 0) {
-                outstandingClass = "text-red-700 font-semibold";
-            }
-
+    
+            const purpose = finSingleEntry.purpose || 'No Data Found';
+            const workTitle = finSingleEntry.work_title || 'No Data Found';
+    
             tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${finSingleEntry.date || 'N/A'}
-                    </td>
-
-                    <td class="px-6 py-2 text-sm text-gray-700 max-w-xs break-words whitespace-normal">
-                        ${finSingleEntry.purpose || 'No Data Found'}
-                    </td>
-                    
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    ${finSingleEntry.work_title || 'No Data Found'}
-                    </td>
-
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    ${finSingleEntry.date || 'N/A'}
+                </td>
+                <td class="px-6 py-2 text-sm text-gray-700 max-w-xs break-words whitespace-normal">
+                    <div class="font-medium">${purpose}</div>
+                    <div class="text-xs text-gray-500 mt-1">${partyName}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    ${workTitle}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${typeBadge}
-                    </td>
-
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${type === 'debit' ? 'text-green-600' : 'text-red-600'}">
-                        ${amount.toFixed(2)}
-                    </td>
-
-                    <td class="px-6 py-4 whitespace-nowrap text-sm ${outstandingClass}">
-                        ${runningOutstanding.toFixed(2)}
-                    </td>
-                `;
-
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${type === 'debit' ? 'text-green-600' : 'text-red-600'}">
+                    ${amount.toFixed(2)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm ${runningOutstanding >= 0 ? 'text-green-700' : 'text-red-700'} font-semibold">
+                    ${runningOutstanding.toFixed(2)}
+                </td>
+            `;
+    
             finTableBody.appendChild(tr);
         });
-
-        // Update final outstanding in footer
-        finalOutstanding.textContent = finalBalance.toFixed(2);
-        
-        // Color code final outstanding
-        if (finalBalance > 0) {
-            finalOutstanding.className = "px-6 py-4 text-sm text-green-700 font-bold";
-        } else if (finalBalance < 0) {
-            finalOutstanding.className = "px-6 py-4 text-sm text-red-700 font-bold";
-        } else {
-            finalOutstanding.className = "px-6 py-4 text-sm text-yellow-700 font-bold";
+    
+        // Update final outstanding
+        if (finalOutstanding) {
+            finalOutstanding.textContent = finalBalance.toFixed(2);
+            finalOutstanding.className = finalBalance >= 0 
+                ? "px-6 py-4 text-sm text-green-700 font-bold" 
+                : "px-6 py-4 text-sm text-red-700 font-bold";
         }
     }
 
+    // Toggle Load More button visibility
     function toggleLoadMoreButton() {
-        // শুধুমাত্র ফিল্টার মোডে না থাকলে এবং আরো ডেটা থাকলে Load More বাটন দেখাবে
-        if (!isFiltering && (currentOffset + incrementAmount) < originalFinStmts.length) {
+        if (!loadMoreContainer || !loadMoreBtn) return;
+        
+        if (!isFiltering && originalFinStmts && (currentOffset + incrementAmount) < originalFinStmts.length) {
             loadMoreContainer.classList.remove('hidden');
         } else {
             loadMoreContainer.classList.add('hidden');
         }
     }
 
+    // Load more transactions
     function loadMoreTransactions() {
+        if (isFiltering || !loadMoreSpinner || !loadMoreBtn) return;
+        
         loadMoreSpinner.classList.remove('hidden');
         loadMoreBtn.disabled = true;
         
-        // নতুন ডেটা লোড করি (পুরানো ডেটার দিকে যাবো)
-        currentOffset += incrementAmount;
-        
-        // পরবর্তী ৫টি ট্রানজেকশন যোগ করি
-        const nextBatch = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-        displayedFinStmts = [...displayedFinStmts, ...nextBatch];
-        
-        // কিছুক্ষণ পরে UI আপডেট করি (লোডিং ইফেক্টের জন্য)
+        // Simulate loading delay for better UX
         setTimeout(() => {
+            currentOffset += incrementAmount;
+            const nextBatch = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
+            displayedFinStmts = [...displayedFinStmts, ...nextBatch];
+            
             renderFinTable(displayedFinStmts, originalFinStmts);
             updateSummary(originalFinStmts);
             toggleLoadMoreButton();
@@ -687,52 +762,58 @@
         }, 300);
     }
     
+    // Reset all filters
+    function resetFiltersAndSearch() {
+        if (searchInput) searchInput.value = '';
+        if (filterType) filterType.value = 'all';
+        currentOffset = 0;
+        isFiltering = false;
+        
+        // Trigger filter
+        filterTransactions();
+        
+        // Scroll to top of table
+        const container = document.querySelector('.table-container');
+        if (container) container.scrollTop = 0;
+    }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    // NEW Transactions Here
     function addTrnx() {
-        // alert('Add Trnx!')
         openTransactionModal();
     }
     
-    
     // Transaction Modal Functionality
     let currentTransactionType = 'receive';
+    const clientId = "<?php echo isset($clientId) ? $clientId : ''; ?>";
     
     function openTransactionModal(type = 'receive') {
         const modal = document.getElementById('transactionModal');
+        if (!modal) return;
+        
         currentTransactionType = type;
         
         // Set modal title and labels based on type
         updateTransactionUI(type);
         
-        const clientValue = `<?php echo $clientId ?> | ${clientName}`
-        console.log(clientValue)
-        
         // Show modal
         modal.classList.remove('hidden');
         setTimeout(() => modal.classList.add('show'), 10);
         
-        document.getElementById('clientName').innerHTML = clientName;
+        const clientNameSpan = document.getElementById('clientName');
+        if (clientNameSpan) clientNameSpan.innerHTML = clientName;
         
         // Set default date
-        document.getElementById('transactionDate').value = BD_TIME.getDate();
-        document.getElementById('transactionDate').max = BD_TIME.getDate();
+        const transactionDate = document.getElementById('transactionDate');
+        if (transactionDate && typeof BD_TIME !== 'undefined') {
+            transactionDate.value = BD_TIME.getDate();
+            transactionDate.max = BD_TIME.getDate();
+        }
     }
     
     function closeTransactionModal() {
         const modal = document.getElementById('transactionModal');
+        if (!modal) return;
+        
         modal.classList.remove('show');
         setTimeout(() => modal.classList.add('hidden'), 300);
         resetTransactionModal();
@@ -742,6 +823,8 @@
         const modalTitle = document.getElementById('modalTitle');
         const accountLabel = document.getElementById('accountLabel');
         const paymentType = document.getElementById('paymentType');
+        
+        if (!modalTitle || !accountLabel || !paymentType) return;
         
         if (type === 'receive') {
             modalTitle.innerHTML = `<i class="fas fa-plus-circle text-green-600 mr-2"></i>Receive Money for ${clientName}`;
@@ -761,29 +844,30 @@
     
     function resetTransactionModal() {
         const form = document.getElementById('transactionForm');
-        form.reset();
+        if (form) form.reset();
         
         // Reset date
-        document.getElementById('transactionDate').value = BD_TIME.getDate();
+        const transactionDate = document.getElementById('transactionDate');
+        if (transactionDate && typeof BD_TIME !== 'undefined') {
+            transactionDate.value = BD_TIME.getDate();
+        }
         
         // Reset warnings
-        document.getElementById('dateWarning').classList.add('hidden');
-        document.getElementById('openingDateInfo').classList.add('hidden');
+        const dateWarning = document.getElementById('dateWarning');
+        if (dateWarning) dateWarning.classList.add('hidden');
+        
+        const openingDateInfo = document.getElementById('openingDateInfo');
+        if (openingDateInfo) openingDateInfo.classList.add('hidden');
         
         // Reset payment method sections
-        document.getElementById('cheque-details-section').classList.add('hidden');
-        document.getElementById('bftn-details-section').classList.add('hidden');
+        const chequeSection = document.getElementById('cheque-details-section');
+        const bftnSection = document.getElementById('bftn-details-section');
+        
+        if (chequeSection) chequeSection.classList.add('hidden');
+        if (bftnSection) bftnSection.classList.add('hidden');
     }
     
-    // Add click handlers for transaction buttons
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add these buttons to your existing UI where needed
-        // Example: <button onclick="openTransactionModal('receive', {type:'client', id:'123', name:'John Doe'})">
-        
-        // Setup form submission
-        setupTransactionForm();
-    });
-    
+    // Setup transaction form
     function setupTransactionForm() {
         const API_RECEIVE = `${IP_PATH}/api/accounts/receive-transaction.php`;
         const API_PAYMENT = `${IP_PATH}/api/accounts/payment-transaction.php`;
@@ -793,6 +877,10 @@
         const transactionDate = document.getElementById('transactionDate');
         const transferMethod = document.getElementById('transfer_method');
         const saveBtn = document.getElementById('saveTransactionBtn');
+        const spinner = document.getElementById('spinner');
+        const saveButtonText = document.getElementById('saveButtonText');
+        
+        if (!accountInput || !transactionDate || !transferMethod || !saveBtn) return;
         
         let openingDate = null;
         
@@ -810,7 +898,8 @@
         async function fetchOpeningDate(accountId) {
             if (!accountId) {
                 openingDate = null;
-                document.getElementById('openingDateInfo').classList.add('hidden');
+                const info = document.getElementById('openingDateInfo');
+                if (info) info.classList.add('hidden');
                 return;
             }
             
@@ -828,9 +917,13 @@
                         day: 'numeric'
                     });
                     
-                    document.getElementById('openingDateText').innerHTML = 
-                        `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে entry করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।`;
-                    document.getElementById('openingDateInfo').classList.remove('hidden');
+                    const text = document.getElementById('openingDateText');
+                    const info = document.getElementById('openingDateInfo');
+                    
+                    if (text) {
+                        text.innerHTML = `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে entry করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।`;
+                    }
+                    if (info) info.classList.remove('hidden');
                     
                     // Allow dates before opening balance
                     transactionDate.removeAttribute('min');
@@ -876,12 +969,12 @@
             const chequeSection = document.getElementById('cheque-details-section');
             const bftnSection = document.getElementById('bftn-details-section');
             
-            chequeSection.classList.add('hidden');
-            bftnSection.classList.add('hidden');
+            if (chequeSection) chequeSection.classList.add('hidden');
+            if (bftnSection) bftnSection.classList.add('hidden');
             
-            if (method === 'cheque') {
+            if (method === 'cheque' && chequeSection) {
                 chequeSection.classList.remove('hidden');
-            } else if (method === 'bftn-eft') {
+            } else if (method === 'bftn-eft' && bftnSection) {
                 bftnSection.classList.remove('hidden');
             }
         }
@@ -892,8 +985,12 @@
         accountInput.addEventListener('change', function() {
             const account = extractIds(accountInput.value);
             if (account && account.sys_id) {
-                document.getElementById('accountId').value = account.sys_id;
-                document.getElementById('accountName').value = account.name;
+                const idField = document.getElementById('accountId');
+                const nameField = document.getElementById('accountName');
+                
+                if (idField) idField.value = account.sys_id;
+                if (nameField) nameField.value = account.name;
+                
                 fetchOpeningDate(account.sys_id);
             }
         });
@@ -901,30 +998,32 @@
         // Date validation
         transactionDate.addEventListener('change', function() {
             const warning = document.getElementById('dateWarning');
+            if (!warning) return;
+            
             const validation = validateTransactionDate(this.value);
             
             if (!validation.valid) {
                 warning.textContent = validation.message;
                 warning.classList.remove('hidden');
                 warning.classList.add('text-red-500');
-                saveBtn.disabled = true;
+                if (saveBtn) saveBtn.disabled = true;
             } else if (validation.warning) {
                 warning.textContent = validation.warning;
                 warning.classList.remove('hidden');
                 warning.classList.remove('text-red-500');
                 warning.classList.add('text-yellow-600');
-                saveBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
             } else {
                 warning.classList.add('hidden');
-                saveBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
             }
         });
         
         // Form validation
         function validateForm() {
             const account = extractIds(accountInput.value);
-            const amount = document.getElementById('balance').value;
-            const particular = document.getElementById('particular').value;
+            const amount = document.getElementById('balance')?.value;
+            const particular = document.getElementById('particular')?.value;
             
             if (!account || !account.sys_id) {
                 alert('Please select an account');
@@ -947,7 +1046,7 @@
                 return false;
             }
             
-            if (!particular.trim()) {
+            if (!particular || !particular.trim()) {
                 alert('Please enter particulars');
                 return false;
             }
@@ -975,33 +1074,31 @@
             const data = {
                 accountId: account?.sys_id,
                 accountName: account?.name,
-                clientId: `<?php echo $clientId; ?>`,
+                clientId: clientId,
                 clientName: clientName,
-                amount: document.getElementById('balance').value,
-                particular: document.getElementById('particular').value.trim(),
+                amount: document.getElementById('balance')?.value,
+                particular: document.getElementById('particular')?.value.trim(),
                 transactionDate: buildDateTime(transactionDate.value),
                 transferMethod: method,
                 isHistorical: dateValidation.isHistorical ? 1 : 0
             };
             
-            console.log(data);
-            
             // Add method-specific fields
             if (method === 'cheque') {
-                data.chequeNo = document.getElementById('cheque_no').value;
-                data.chequeDate = document.getElementById('cheque_date').value;
-                data.chequeAccountName = document.getElementById('cheque_account_name').value;
-                data.bankName = document.getElementById('bank_name').value;
+                data.chequeNo = document.getElementById('cheque_no')?.value;
+                data.chequeDate = document.getElementById('cheque_date')?.value;
+                data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
+                data.bankName = document.getElementById('bank_name')?.value;
             } else if (method === 'bftn-eft') {
-                data.bftnAccountName = document.getElementById('account_name').value;
-                data.eftBankName = document.getElementById('eft_bank_name').value;
-                data.bftnDate = document.getElementById('bftn_date').value;
+                data.bftnAccountName = document.getElementById('account_name')?.value;
+                data.eftBankName = document.getElementById('eft_bank_name')?.value;
+                data.bftnDate = document.getElementById('bftn_date')?.value;
             }
             
             // Disable button
-            saveBtn.disabled = true;
-            document.getElementById('spinner').classList.remove('hidden');
-            document.getElementById('saveButtonText').textContent = 'Processing...';
+            if (saveBtn) saveBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (saveButtonText) saveButtonText.textContent = 'Processing...';
             
             try {
                 const apiUrl = type === 'receive' ? API_RECEIVE : API_PAYMENT;
@@ -1023,7 +1120,7 @@
                     alert(message);
                     closeTransactionModal();
                     
-                    // Refresh the page or update UI as needed
+                    // Refresh the page
                     location.reload();
                 } else {
                     alert(result.error || result.message || 'Transaction failed.');
@@ -1032,42 +1129,52 @@
                 console.error('Transaction error:', error);
                 alert('Network error. Please check your connection.');
             } finally {
-                saveBtn.disabled = false;
-                document.getElementById('spinner').classList.add('hidden');
-                document.getElementById('saveButtonText').textContent = 'Save Transaction';
+                if (saveBtn) saveBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+                if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
             }
         });
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
-    // Event Listeners
-    searchInput.addEventListener('input', filterTransactions);
-    filterType.addEventListener('change', filterTransactions);
-    resetFilters.addEventListener('click', () => {
-        searchInput.value = '';
-        filterType.value = 'all';
-        currentOffset = 0; // রিসেট করলে আবার নতুন ডেটা থেকে শুরু হবে
-        isFiltering = false;
-        filterTransactions();
+    // Initialize everything when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load initial data
+        reloadFinancialTable();
+        
+        // Setup event listeners
+        if (searchInput) {
+            searchInput.addEventListener('input', filterTransactions);
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Escape') {
+                    resetFiltersAndSearch();
+                }
+            });
+        }
+        
+        if (filterType) {
+            filterType.addEventListener('change', filterTransactions);
+        }
+        
+        if (resetFilters) {
+            resetFilters.addEventListener('click', resetFiltersAndSearch);
+        }
+        
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', loadMoreTransactions);
+        }
+        
+        // Setup transaction form
+        setupTransactionForm();
+        
+        // Add keyboard shortcut for search (Ctrl+F)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'f') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        });
     });
-    loadMoreBtn.addEventListener('click', loadMoreTransactions);
-
-    // Initialize
-    reloadFinancialTable();
 </script>

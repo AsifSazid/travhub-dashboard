@@ -7,8 +7,8 @@ if (empty($ip_port)) {
 
 $vendorId = $_GET['vendor_id'];
 
-
 $getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$vendorId";
+$getVendor = $ip_port . "api/vendors/get-vendor.php?vid=$vendorId";
 
 ?>
 
@@ -81,6 +81,26 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$
 </head>
 
 <body class="bg-gray-50 font-sans">
+    <script>
+        const IP_PATH = `<?php echo $ip_port; ?>`;
+        const GET_VENDOR_INFO_API = "<?php echo $getVendor; ?>";
+
+        let vendorName = '';
+        
+        // ==================== FETCH VENDOR DATA ====================
+    
+        async function fetchVendorData() {
+            try {
+                const response = await fetch(GET_VENDOR_INFO_API);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                vendorName = data.vendor.name;
+            } catch (error) {
+                console.error('Error fetching vendor data:', error);
+            }
+        }
+        fetchVendorData();
+    </script>
     <!-- Top Navigation -->
     <?php include '../elements/header.php'; ?>
 
@@ -175,7 +195,7 @@ $getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
                                     <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions</h2>
-                                    <?php include('sv-accounting.php') ?> <!-- sc means show client -->
+                                    <?php include('sv-accounting.php') ?> <!-- sc means show vendor -->
                                 </div>
                             </div>
                         </div>
