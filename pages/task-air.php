@@ -277,69 +277,199 @@ function nested_val($array, $key, $default = "N/A") {
                 </tbody>
             </table>
         </div>
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
-        <div class="footer-section">
-            <div class="flex justify-between items-end bg-slate-50 p-5 rounded-sm border border-slate-100">
-                <div class="max-w-md">
-                    <p class="text-[9px] font-bold text-blue-600 uppercase tracking-widest mb-2">Important Instructions</p>
-                    <div class="space-y-0.5">
-                        
-                         <p class="text-[9px] text-slate-500 italic leading-tight">
-                            <span contenteditable="true"> <?php echo "GDS PNR: ";echo val('airline_details.galileo_pnr'); ?></span>
-                        </p>
-                        
-                        
-                        <?php foreach (($data['important_notes'] ?? []) as $note): ?>
-                        
-                        
-                        <p class="text-[9px] text-slate-500 italic leading-tight">
-                            <span contenteditable="true"><?php echo $note['message']; ?></span>
-                        </p>
-                        
-                        
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                
-                <div class="text-right min-w-[220px]">
-                    <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-1 gap-4">
-                        <span>Base Fare</span>
-                        <span>
-                            <span contenteditable="true"><?php echo number_format(val('fare_details.base_fare.amount', 0)); ?></span> 
-                            <?php echo val('fare_details.total_fare.currency', 'BDT'); ?>
-                        </span>
-                    </div>
-                    <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-2 gap-4">
-                        <span>Taxes & Fees</span>
-                        <span>
-                            <span contenteditable="true"><?php echo number_format(val('fare_details.taxes.amount', 0)); ?></span> 
-                            <?php echo val('fare_details.total_fare.currency', 'BDT'); ?>
-                        </span>
-                    </div>
-                    
-                    <div class="border-t border-slate-400 mb-2"></div>
+<div class="footer-section">
+    <div class="no-print px-1">
+        <label class="toggle-label">
+            <input type="checkbox" id="togglePricing" checked onchange="toggleFareSummary()" class="w-4 h-4">
+            SHOW PRICING SUMMARY
+        </label>
+    </div>
 
-                    <div class="flex justify-between items-baseline gap-4">
-                        <p class="text-lg font-black text-slate-900 uppercase tracking-tight">Total Paid</p>
-                        <p class="text-2xl font-black text-slate-900">
-                            <span contenteditable="true"><?php echo number_format(val('fare_details.total_fare.amount', 0)); ?></span> 
-                            <span class="text-lg"><?php echo val('fare_details.total_fare.currency', 'BDT'); ?></span>
-                        </p>
-                    </div>
-                </div>
-                </div>
-            <p class="text-center mt-6 text-[8px] text-slate-300 font-bold uppercase tracking-[0.4em]">
-                Electronically Generated • Powered by Travhub Global Limited
-            </p>
+    <div class="flex justify-between items-end bg-slate-50 p-5 rounded-sm border border-slate-100">
+        <div class="max-w-md">
+            <p class="text-[9px] font-bold text-blue-600 uppercase tracking-widest mb-2">Important Instructions</p>
+            <div class="space-y-0.5">
+                <p class="text-[9px] text-slate-500 italic leading-tight">
+                    <span contenteditable="true"> <?php echo "GDS PNR: "; echo val('airline_details.galileo_pnr'); ?></span>
+                </p>
+                <?php foreach (($data['important_notes'] ?? []) as $note): ?>
+                <p class="text-[9px] text-slate-500 italic leading-tight">
+                    <span contenteditable="true"><?php echo $note['message']; ?></span>
+                </p>
+                <?php endforeach; ?>
+            </div>
         </div>
+        
+        <div id="pricing-area" class="text-right min-w-[220px]">
+            <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-1 gap-4">
+                <span>Base Fare</span>
+                
+             <!--   <span>
+                    <span contenteditable="true"><?php //echo number_format(val('fare_details.base_fare.amount', 0)); ?></span> 
+                    <?php //echo val('fare_details.total_fare.currency', 'BDT'); ?>
+                </span> -->
+                
+                
+                <span>
+                    <span id="save-base-fare" contenteditable="true"><?php echo number_format(val('fare_details.base_fare.amount', 0)); ?></span> 
+                    <?php echo val('fare_details.total_fare.currency', 'BDT'); ?>
+                </span>
+                
+                
+                
+            </div>
+            <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-2 gap-4">
+                <span>Taxes & Fees</span>
+                
+                
+              <!--  <span>
+                    <span contenteditable="true"><?php // echo number_format(val('fare_details.taxes.amount', 0)); ?></span> 
+                    <?php // echo val('fare_details.total_fare.currency', 'BDT'); ?>
+                </span> -->
+                
+                <span>
+                    <span id="save-taxes" contenteditable="true"><?php echo number_format(val('fare_details.taxes.amount', 0)); ?></span> 
+                    <?php echo val('fare_details.total_fare.currency', 'BDT'); ?>
+                </span>
+                
+                
+            </div>
+            
+            <div class="border-t border-slate-400 mb-2"></div>
+
+            <div class="flex justify-between items-baseline gap-4">
+                <p class="text-lg font-black text-slate-900 uppercase tracking-tight">Total Paid</p>
+               <!-- <p class="text-2xl font-black text-slate-900">
+                    <span contenteditable="true"><?php //echo number_format(val('fare_details.total_fare.amount', 0)); ?></span> 
+                    <span class="text-lg"><?php //echo val('fare_details.total_fare.currency', 'BDT'); ?></span>
+                </p> -->
+                
+                
+                
+                <p class="text-2xl font-black text-slate-900">
+                    <span id="save-total-fare" contenteditable="true"><?php echo number_format(val('fare_details.total_fare.amount', 0)); ?></span> 
+                    <span class="text-lg"><?php echo val('fare_details.total_fare.currency', 'BDT'); ?></span>
+                </p>
+            </div>
+        </div>
+    </div>
+    <p class="text-center mt-6 text-[8px] text-slate-300 font-bold uppercase tracking-[0.4em]">
+        Electronically Generated • Powered by Travhub Global Limited
+    </p>
+</div>
+
+
+
+
+
+
+
+
+        
+        
+        
+        
+        
     </div>
 
     <div class="max-w-5xl mx-auto mt-6 flex justify-center gap-4 no-print pb-10">
-        <button onclick="window.print()" class="bg-blue-600 text-white px-10 py-3 rounded-full font-bold uppercase tracking-widest shadow-xl">Print Itinerary</button>
+     <!--   <button onclick="window.print()" class="bg-blue-600 text-white px-10 py-3 rounded-full font-bold uppercase tracking-widest shadow-xl">Print Itinerary</button> --> 
+     
+       <button onclick="saveAndPrint()" class="bg-blue-600 text-white px-10 py-3 rounded-full font-bold uppercase tracking-widest shadow-xl">
+    Print & Save Itinerary
+</button>
+       
+       
         <button onclick="location.reload()" class="bg-white text-slate-500 px-10 py-3 rounded-full font-bold border border-slate-200 uppercase tracking-widest">Reset</button>
     </div>
 
     <script>
+    
+    
+    
+    
+    
+    
+ async function saveAndPrint() {
+    // Helper to grab text and remove commas from numbers
+    const getNum = (id) => {
+        const val = document.getElementById(id).innerText.replace(/,/g, '');
+        return parseFloat(val) || 0;
+    };
+
+    const updatedData = {
+        booking_details: {
+            booking_reference_pnr: document.querySelector('.italic.uppercase span[contenteditable]').innerText.trim()
+        },
+        passengers: Array.from(document.querySelectorAll('tbody tr')).filter(tr => tr.querySelector('td:nth-child(2) span')).map(tr => ({
+            full_name: tr.querySelector('td:nth-child(2) span').innerText.trim(),
+            ticket_number: tr.querySelector('td:nth-child(3) span').innerText.trim(),
+            type: tr.querySelector('td:nth-child(4) span').innerText.trim()
+        })),
+        // ADDED FARE SAVING LOGIC HERE
+        fare_details: {
+            base_fare: { amount: getNum('save-base-fare') },
+            taxes: { amount: getNum('save-taxes') },
+            total_fare: { 
+                amount: getNum('save-total-fare'),
+                currency: "BDT" // Or scrape this from the UI if needed
+            }
+        }
+    };
+
+    try {
+        const response = await fetch('save_json.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        });
+
+        if (!response.ok) throw new Error('Failed to save');
+        console.log("Saved successfully");
+    } catch (error) {
+        alert("Error saving data to JSON: " + error.message);
+    }
+
+    window.print();
+}
+    
+    
+    
+    
+    
+    
+    
+    
+    function toggleFareSummary() {
+    const pricingArea = document.getElementById('pricing-area');
+    const isChecked = document.getElementById('togglePricing').checked;
+    
+    if (isChecked) {
+        pricingArea.style.display = 'block';
+    } else {
+        pricingArea.style.display = 'none';
+    }
+}
+    
+    
+    
+    
+    
+    
+    
         function calculateLayover(arrivalRow, departureRow) {
             try {
                 const arrivalDateStr = arrivalRow.querySelector('.arrival-cell .date-val').innerText;
