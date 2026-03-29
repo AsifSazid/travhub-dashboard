@@ -662,6 +662,22 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                 if (data.success && data.task) {
                     task = data.task;
+                    
+                    let raw = JSON.parse(task.air_ticket_info);
+                    let purposeData = JSON.parse(raw[0]);
+                    let purposes = purposeData.purpose;
+                    
+                    console.log(purposes);
+                    
+                    let container = document.getElementById("client_purpose");
+                    
+                    // Join korar somoy <br> er jaygay \n bebohar koro
+                    let text = purposes.map(p => {
+                        return `${p.route}\n${p.passengers.join(", ")}\n${p.travel_date}\n${p.others.join(", ")}`;
+                    }).join("\n\n");
+                    
+                    // Input field ba textarea hole .value use korte hoy, .innerHTML noy
+                    container.value = text;
 
                     // Update task info card
                     document.getElementById('taskIdDisplay').textContent = task.sys_id || 'N/A';

@@ -882,27 +882,27 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
 
         // Paste functionality
         const pasteArea = document.getElementById('pasteArea');
-
+        
         pasteArea.addEventListener('paste', (e) => {
             const items = e.clipboardData.items;
             let hasFiles = false;
-
+        
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (item.kind === 'file') {
                     hasFiles = true;
                     // Get the file from clipboard
                     const blob = item.getAsFile();
-
+        
                     // Convert to File object
                     const file = new File([blob], blob.name || `pasted_file_${Date.now()}`, {
                         type: blob.type,
                         lastModified: Date.now()
                     });
-
+        
                     // Add to droppedFiles array
                     const existingIndex = droppedFiles.findIndex(f => f.name === file.name && f.size === file.size);
-
+        
                     if (existingIndex === -1) {
                         droppedFiles.push(file);
                         addFileToList(file);
@@ -912,11 +912,13 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                     }
                 }
             }
-
-            // Prevent default behavior for files (to avoid text duplication)
+        
+            // Only prevent default if we actually handled files
+            // This allows text to be pasted normally when no files are present
             if (hasFiles) {
                 e.preventDefault();
             }
+            // If there are no files, let the default paste behavior happen for text
         });
 
 
