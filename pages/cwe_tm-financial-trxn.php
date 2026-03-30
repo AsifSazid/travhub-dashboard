@@ -244,7 +244,17 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     </label>
                                     <textarea type="text"
                                         id="client_purpose"
-                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="10"
+                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="6"
+                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fa-solid fa-highlighter mr-1"></i> Note
+                                    </label>
+                                    <textarea type="text"
+                                        id="client_note"
+                                        placeholder="e.g., Any types of Note that can help you future..." rows="2"
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
                                 </div>
 
@@ -351,7 +361,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     </label>
                                     <textarea type="text"
                                         id="vendor_purpose"
-                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee" rows="5"
+                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee" rows="6"
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"></textarea>
                                 </div>
 
@@ -419,6 +429,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                                     <tr>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client/Vendor</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
@@ -639,6 +650,8 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         let currentClientId = null;
         let clientName = null;
         let task = null;
+        let WORK_TITLE = '';
+        let TASK_TITLE = '';
 
         // DOM Elements
         const taskMetaSection = document.getElementById('taskMetaSection');
@@ -662,19 +675,31 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
 
                 if (data.success && data.task) {
                     task = data.task;
+                    const category = task.category;
                     
-                    let raw = JSON.parse(task.air_ticket_info);
-                    let purposeData = JSON.parse(raw[0]);
-                    let purposes = purposeData.purpose;
-                    
-                    console.log(purposes);
-                    
+                    WORK_TITLE = task.work_title;
+                    TASK_TITLE = task.title;
+                    let text = '';
+                    let raw = '';
                     let container = document.getElementById("client_purpose");
                     
-                    // Join korar somoy <br> er jaygay \n bebohar koro
-                    let text = purposes.map(p => {
-                        return `${p.route}\n${p.passengers.join(", ")}\n${p.travel_date}\n${p.others.join(", ")}`;
-                    }).join("\n\n");
+                    if(category == 1){
+                        raw = JSON.parse(task.air_ticket_info);
+                        let purposeData = JSON.parse(raw[0]);
+                        let purposes = purposeData.purpose;
+                        
+                        // Join korar somoy <br> er jaygay \n bebohar koro
+                        text = purposes.map(p => {
+                            return `${p.route}\n${p.passengers.join(", ")}\n${p.travel_date}\n${p.others.join(", ")}`;
+                        }).join("\n\n");
+                    }
+                    
+                    if(category == 2){
+                        raw = JSON.parse(task.hotel_info);
+                        let parseData = JSON.parse(raw[0]);
+
+                        text = `${parseData.hotel_name},\n${parseData.hotel_city}, ${parseData.hotel_country}\n${parseData.guest_names.join(" | ")}\nC/In: ${parseData.check_in_date} | C/Out: ${parseData.check_out_date} | ${parseData.no_of_nights} Nights\n${parseData.room_info} | ${parseData.meal_plan} | ${parseData.total_rooms} Room('s)`;
+                    }
                     
                     // Input field ba textarea hole .value use korte hoy, .innerHTML noy
                     container.value = text;
@@ -818,10 +843,13 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         
                         // Escape special characters
                         const cleanClientName = clientName.replace(/\s+/g, '');
-                        // const cleanWorkTitle  = WORK_TITLE.replace(/\s+/g, '_');
+                        const cleanWorkTitle  = WORK_TITLE.replace(/\s+/g, '_');
+                        // const cleanTaskTitle  = TASK_TITLE.replace(/\s+/g, '_');
+                        const cleanTaskTitle  = TASK_TITLE;
                         
+
                         const safeFilePath =
-                            `/travhub-admin/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}/tasks/${TASK_ID}/` +
+                            `/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}+${cleanWorkTitle}/tasks/${TASK_ID}+${cleanTaskTitle}/` +
                             file.replace(/'/g, "\\'").replace(/"/g, '\\"');
                             
                         return `
@@ -987,6 +1015,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     const purpose = document.getElementById('client_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('client_amount').value);
                     const date = document.getElementById('client_date').value;
+                    const ref = document.getElementById('client_note').value;
 
                     if (!currentClientId) {
                         showNotification('Client ID not found', 'error');
@@ -1005,7 +1034,8 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
-                        date: buildDateTime(date)
+                        date: buildDateTime(date),
+                        ref: ref
                     };
 
                     await saveTransaction(transactionData, 'Debit');
@@ -1097,6 +1127,7 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                     const purpose = document.getElementById('client_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('client_amount').value);
                     const date = document.getElementById('client_date').value;
+                    const ref = document.getElementById('client_note').value;
 
                     if (!currentClientId) {
                         showNotification('Client ID not found', 'error');
@@ -1115,7 +1146,8 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                         client_id: currentClientId,
                         work_id: workId,
                         task_id: taskId,
-                        date: buildDateTime(date)
+                        date: buildDateTime(date),
+                        ref: ref
                     };
 
                     await saveTransaction(transactionData, 'Credit');
@@ -1199,8 +1231,8 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
         }
 
         async function saveTransaction(data, type) {
+                // console.log(data);
             try {
-                console.log(type);
                 const response = await fetch(FINANCIAL_ENTRIES_STORE_API, {
                     method: 'POST',
                     headers: {
@@ -1284,7 +1316,10 @@ $getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
                             <div class="text-sm font-medium text-gray-900">${transaction.purpose || 'No Data'}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${transaction.user_name || 'Unknown'}</div>
+                            <div class="text-sm text-gray-900">${transaction.ref || 'Unknown'}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900"> ${transaction.user_name || 'N/A'}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">

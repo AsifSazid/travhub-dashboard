@@ -614,7 +614,8 @@
         
         config: {
             apiBaseUrl: `${API_FILE_EXPLORER}`,
-            baseStoragePath: `/${SERVER_NAME}/storage/clients/`,
+            baseStoragePath: `/storage/clients/`,
+            // baseStoragePath: `/${SERVER_NAME}/storage/clients/`,
             maxFileSizeForClipboard: 5 * 1024 * 1024 // 5MB limit
         },
         

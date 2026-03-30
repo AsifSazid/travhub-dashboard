@@ -17,7 +17,7 @@ ini_set('display_errors', 1);
 // $GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
 $GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt')); // Replace with your actual API key
 $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Replace with your actual API key
-$GEMINI_MODEL = "gemini-2.5-flash-lite";
+$GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 
 // ---------------- File Save ----------------
@@ -242,7 +242,7 @@ function processFilesWithGemini($files, $category)
 function getPromptForCategory($category)
 {
     if ($category == 1) { // Air Ticket
-        return "Extract all flight itinerary details from this PDF and return ONLY a JSON object.
+            return "Extract all flight itinerary details from this PDF and return ONLY a JSON object.
                 The PDF may contain single or multiple flights, round trips, multi-city journeys, or complex itineraries.
                 Ensure you capture ALL flight segments in chronological order.
                 
@@ -254,7 +254,7 @@ function getPromptForCategory($category)
                       \"route_type\": \"One-way/Return/Multi-city\",
                       \"passengers\": [],
                       \"travel_date\": \"Departure Date | Arrival Date\",
-                      \"others\": [galileo_pnr, airline_pnr, ticket_number]
+                      \"others\": []
                     }
                   ],
                 
@@ -375,118 +375,193 @@ function getPromptForCategory($category)
                   \"raw_extracted_text\": \"\"
                 }
                 
-                Important Instructions:
+                --- PNR IDENTIFICATION RULES ---
+                
+                There are TWO distinct types of reservation references in airline tickets:
+                
+                1. galileo_pnr (GDS PNR / Reservation Code / Booking Reference):
+                   - This is the reference code issued by the Global Distribution System (GDS) or travel agency system.
+                   - Common labels: \"RESERVATION CODE\", \"BOOKING REF\", \"PNR\", \"GDS PNR\", \"REC LOC\", \"REFERENCE\", \"BOOKING REFERENCE\"
+                   - Typically found near the travel agency information or at the top of the document.
+                
+                2. airline_pnr (Airline Booking Code / Airline Confirmation Code):
+                   - This is the reference code issued directly by the operating/marketing airline.
+                   - Common labels: \"AIRLINE RES CODE\", \"AIRLINE BOOKING CODE\", \"AIRLINE PNR\", \"CARRIER PNR\", \"CONFIRMATION CODE\", \"AIRLINE RESERVATION CODE\"
+                   - Typically found near the flight segment details.
+                
+                CRITICAL: Identify these codes based on their LABELS and CONTEXT. These are DIFFERENT codes. Do NOT swap them. If only one code exists, populate only that field and leave the other as null.
+                
+                --- IMPORTANT INSTRUCTIONS ---
                 
                 1. Extract ALL flight segments in correct chronological order
-                2. For multi-city trips (e.g., Dhaka→Singapore→Bali), include all segments
-                3. Capture transfer information between connecting flights
+                
+                2. For multi-city trips, include all segments sequentially
+                
+                3. Capture transfer information between connecting flights where applicable
+                
                 4. Include baggage allowance per passenger if specified
+                
                 5. Extract fare details if available
+                
                 6. Note any special conditions or restrictions
+                
                 7. Include passenger details with full names
-                8. Capture all booking references and PNRs
-                    E.g., galileo_pnr will be galileo pnr or reservation code and airline_pnr will be airline pnr or airline booking code or AIRLINE RES CODE
+                
+                8. For airport_code: If IATA code is not explicitly present, infer it from the airport name or city where possible. If inference is not possible, leave as null.
+                
+                9. For fare_rules: Analyze endorsement/restrictions text. Keywords like \"NON REF\", \"NONEND\", \"NON REFUNDABLE\" indicate refundable: false. Keywords like \"NON CHANGE\", \"NON ENDORSABLE\" indicate changeable: false.
+                
+                10. For passenger type: Default to \"Adult\" unless explicitly stated as \"Child\" or \"Infant\".
+                
+                11. For transfers: Create transfer objects only when there are connecting flights with stopovers. For direct flights, keep empty array.
                 
                 --- PURPOSE FIELD RULES ---
+                        
+                12. \"purpose\" must be a summarized version of the itinerary:
+
+                    - \"route\": Combine all flight segments in chronological order using hyphen (-) as separator.
+                        * One-way example: \"DAC-SIN\"
+                        * Return example: \"DAC-SIN-DAC\" (outbound AND inbound both included)
+                        * Multi-city example: \"DAC-SIN-DPS\"
+                        * For airport_code: If IATA 3-letter code (e.g., FCO, DAC) is explicitly present in the document, use that.
+                        * If IATA code is NOT present, use the full city name (e.g., ROME, DHAKA).
+                        * Do NOT use abbreviations like ROM unless it is the official IATA code.
+                        * Return trip example with IATA codes: \"FCO-DAC-FCO\"
+                        * Return trip example with city names: \"ROME-DHAKA-ROME\"
+                        * Do NOT use slash (/) as separator. Only hyphen (-).
+                    
+                    - \"route_type\": Automatically detect based on segments:
+                        * One-way: Different departure and arrival cities with no return to origin
+                        * Return: Returns to original departure city
+                        * Multi-city: Multiple segments but does not return to origin
+                    
+                    - \"passengers\": This MUST be an array of STRINGS, not objects.
+                        * Parse name from format like \"LAST/FIRST MIDDLE TITLE\" or \"LAST/FIRST TITLE\"
+                        * Example: \"RAHMAN/MD MAHFUZUR MR\" 
+                            - Last Name = everything before /
+                            - First Name = first part after / (excluding title)
+                            - Salutation = title at the end (MR, MRS, MS, etc.)
+                        * Format output as: \"Salutation FirstName LastName\"
+                        * Example output: \"Mr. MD MAHFUZUR RAHMAN\"
+                        * Remove any slashes (/) from final output
+                        * Convert salutation: MR → Mr., MRS → Mrs., MS → Ms., MISS → Miss, DR → Dr.
+                        * Extract from fields like \"PREPARED FOR\" or passenger name sections
+                    
+                    - \"travel_date\": First departure date | Final arrival date
+                        * Format: \"DD MMM | DD MMM\" (e.g., \"14 Apr | 30 Jun\")
+                        * Use full date format from document
+                    
+                    - \"others\": This MUST be an array of strings with items in this exact format and order:
+                        * First: \"GDS: {galileo_pnr}\" - from \"RESERVATION CODE\" or \"BOOKING REF\"
+                        * Second: \"Airline PNR: {airline_pnr}\" - from \"AIRLINE RES CODE\" or \"AIRLINE BOOKING CODE\"
+                        * Subsequent: \"Ticket: {ticket_number}\" for each ticket number found
+                        * If any item is missing, then show Not Found but preserve the order
+                        * Example: [\"GDS: UTGZNT\" | \"Airline PNR: EVUVQL\" | \"9975853248975, 9975853248975\"]
+
                 
-                9. \"purpose\" must be a summarized version of the itinerary:
-                   - \"route\": Combine all airport codes in order (e.g., DAC-KUL-DAC or DAC-SIN-DPS)
-                   - \"route_type\": Detect automatically (One-way / Return / Multi-city)
-                   - \"passengers\": List all passenger full names (Salutation then First Name after that last Name or full_name) Note: No / (e.g., Mr. Asif Mostofa Sazid (here, Asif Mostofa first name, and Sazid last name))
-                   - \"travel_date\": First departure date | Final arrival date
-                   - \"others\": Include galileo_pnr and airline booking PNR/Code or Airlines Res No and ALL ticket numbers
-                
-                10. If multiple separate bookings exist, create multiple objects inside \"purpose\" array
+                13. If multiple separate bookings exist, create multiple objects inside \"purpose\" array
                 
                 ---
                 
-                If any field is not found in the PDF, use empty string or null.";
+                If any field is not found in the PDF, use empty string for strings, 0 for numbers, [] for arrays, and null for objects where applicable.";
 
     } elseif ($category == 2) { // Hotel Booking
+                    //     \"purpose\": [
+                    //     {
+                    //       \"route\": \"\", 
+                    //       \"route_type\": \"One-way/Return/Multi-city\",
+                    //       \"passengers\": [],
+                    //       \"travel_date\": \"Departure Date | Arrival Date\",
+                    //       \"others\": []
+                    //     }
+                    // ],
         return "Extract all details from this hotel voucher PDF and return ONLY a JSON object. 
                If the PDF contains an image of the hotel or a logo, try to identify the hotel image URL if mentioned, 
                otherwise leave the 'hotel_image_url' empty.
                Use this exact schema:
-        {
-            \"hotel_name\": \"\",
-            \"hotel_address\": [
                 {
-                    \"address_line_1\": \"\",
-                    \"address_line_2\": \"\",
-                    \"address_city\": \"\",
-                    \"address_state\": \"\",
-                    \"address_zip_code\": \"\"
+                    \"hotel_name\": \"\",
+                    \"hotel_city\": \"\",
+                    \"hotel_country\": \"\",
+                    \"hotel_address\": [
+                        {
+                            \"address_line_1\": \"\",
+                            \"address_line_2\": \"\",
+                            \"address_city\": \"\",
+                            \"address_state\": \"\",
+                            \"address_zip_code\": \"\"
+                        }
+                    ]
+                    \"hotel_phone\": \"\",
+                    \"hotel_email\": \"\",
+                    \"hotel_room_no\": \"\",
+                    \"room_type\": \"\",
+                    \"total_rooms\": 1,
+                    \"guest_names\": [],
+                    \"sur_name\": \"\",
+                    \"given_name\": \"\",
+                    \"address\": {
+                        \"present_address\": [
+                            {
+                                \"address_line_1\": \"\",
+                                \"address_line_2\": \"\",
+                                \"address_city\": \"\",
+                                \"address_state\": \"\",
+                                \"address_zip_code\": \"\"
+                            }
+                        ],
+                        \"permanent_address\": [
+                            {
+                                \"address_line_1\": \"\",
+                                \"address_line_2\": \"\",
+                                \"address_city\": \"\",
+                                \"address_state\": \"\",
+                                \"address_zip_code\": \"\"
+                            }
+                        ]
+                    },
+                    \"check_in_date\": \"\",
+                    \"check_out_date\": \"\",
+                    \"no_of_nights\": \"\",
+                    \"occupancy\": \"\",
+                    \"room_info\": \"\",
+                    \"meal_plan\": \"\",
+                    \"guest_details\": \"\",
+                    \"no_of_pax\": [
+                        {
+                            \"type\": \"Adult\",
+                            \"count\": \"\"
+                        },
+                        {
+                            \"type\": \"Child\",
+                            \"count\": \"\"
+                        },
+                        {
+                            \"type\": \"Infant\",
+                            \"count\": \"\"
+                        }
+                    ],
+                    \"booking_date\": \"\",
+                    \"cancellation\": \"\",
+                    \"terms_n_conditions\": \"\",
+                    \"pcn\": \"\",
+                    \"hcn\": \"\"
+                    
+                    \"booking_id\": \"\",
+                    \"hotel_image_url\": \"\",
+                    \"cancellation_policy\": \"\",
+                    \"total_price\": \"\",
+                    \"currency\": \"\"
                 }
-            ]
-            \"hotel_phone\": \"\",
-            \"hotel_email\": \"\",
-            \"hotel_room_no\": \"\",
-            \"room_type\": \"\",
-            \"total_rooms\": 1,
-            \"guest_names\": [],
-            \"sur_name\": \"\",
-            \"given_name\": \"\",
-            \"address\": {
-                \"present_address\": [
-                    {
-                        \"address_line_1\": \"\",
-                        \"address_line_2\": \"\",
-                        \"address_city\": \"\",
-                        \"address_state\": \"\",
-                        \"address_zip_code\": \"\"
-                    }
-                ],
-                \"permanent_address\": [
-                    {
-                        \"address_line_1\": \"\",
-                        \"address_line_2\": \"\",
-                        \"address_city\": \"\",
-                        \"address_state\": \"\",
-                        \"address_zip_code\": \"\"
-                    }
-                ]
-            },
-            \"check_in_date\": \"\",
-            \"check_out_date\": \"\",
-            \"occupancy\": \"\",
-            \"room_info\": \"\",
-            \"meal_plan\": \"\",
-            \"guest_details\": \"\",
-            \"no_of_pax\": [
-                {
-                    \"type\": \"Adult\",
-                    \"count\": \"\"
-                },
-                {
-                    \"type\": \"Child\",
-                    \"count\": \"\"
-                },
-                {
-                    \"type\": \"Infant\",
-                    \"count\": \"\"
-                }
-            ],
-            \"booking_date\": \"\",
-            \"cancellation\": \"\",
-            \"terms_n_conditions\": \"\",
-            \"pcn\": \"\",
-            \"hcn\": \"\"
-            
-            \"booking_id\": \"\",
-            \"hotel_image_url\": \"\",
-            \"cancellation_policy\": \"\",
-            \"total_price\": \"\",
-            \"currency\": \"\"
-        }
-
-        Rules:
-        1. Return ONLY the JSON, no other text
-        2. If field is not found, leave empty string
-        3. For dates, use format: YYYY-MM-DD
-        4. Count should be numbers only
-        5. PCN = Portal Confirmation Number
-        6. HCN = Hotel Confirmation Number
-        7. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
+        
+                Rules:
+                1. Return ONLY the JSON, no other text
+                2. If field is not found, leave empty string
+                3. For dates, use format: YYYY-MM-DD
+                4. Count should be numbers only
+                5. PCN = Portal Confirmation Number
+                6. HCN = Hotel Confirmation Number
+                7. DON'T GIVE GUESS OR HALLUCINATE RESPONSE";
     }
 
     return "Extract all relevant information from this document and return as JSON.";
