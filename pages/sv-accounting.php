@@ -323,6 +323,24 @@
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"
                             id="particular" name="particular" placeholder="Enter transaction description"></textarea>
                     </div>
+                    
+                    <input type="hidden" id="clientPaymentType" name="clientPaymentType" value="Withdraw">
+                    <div id="clientSection" class="md:col-span-2 lg:col-span-3 text-left">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fa-solid fa-user"></i> Client
+                        </label>
+                        <?php include('form-selects/clients.php') ?>
+                    </div>
+                    
+                    <!-- Particular -->
+                    <div id="clientParticularSection" class="md:col-span-2 lg:col-span-3 text-left">
+                        <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-file-alt mr-1"></i> Particular for Client
+                        </label>
+                        <textarea
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"
+                            id="clientParticularInput" name="clientParticularInput" placeholder="Enter transaction description"></textarea>
+                    </div>
                 </div>
 
                 <!-- Form Actions -->
@@ -442,6 +460,8 @@
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     const loadMoreSpinner = document.getElementById('loadMoreSpinner');
     const finalOutstanding = document.getElementById('final-outstanding');
+    const clientSection = document.getElementById('clientSection');
+    const clientParticularSection = document.getElementById('clientParticularSection');
 
     function reloadFinancialTable() {
         // Show skeleton loaders while fetching
@@ -454,6 +474,7 @@
                     console.error('API returned unsuccessful:', data);
                     return;
                 }
+                
 
                 // API থেকে ডেটা নিই এবং নতুন থেকে পুরানো সাজাই (নতুন তারিখ আগে)
                 originalFinStmts = (data.finStmts || []).sort((a, b) => {
@@ -890,6 +911,9 @@
     }
     
     function toggleTransactionType(type) {
+        
+        console.log(type);
+        
         currentTransactionType = type;
         
         // Update UI based on transaction type
@@ -904,6 +928,8 @@
             if (type === 'payment') {
                 // Show payment section for payment transactions
                 paymentSection.classList.remove('hidden');
+                clientSection.classList.add('hidden');
+                clientParticularSection.classList.add('hidden');
                 
                 // Make account and payment method required for payment
                 if (accountInput) accountInput.setAttribute('required', 'required');
@@ -911,6 +937,8 @@
             } else {
                 // Hide payment section for receive transactions
                 paymentSection.classList.add('hidden');
+                clientSection.classList.remove('hidden');
+                clientParticularSection.classList.remove('hidden');
                 
                 // Remove required attribute for receive
                 if (accountInput) accountInput.removeAttribute('required');
@@ -966,6 +994,7 @@
     function setupTransactionForm() {
         const API_PURCHASE = `${IP_PATH}/api/vendors/ve-ac-purchase-store.php`;
         const API_PAYMENT = `${IP_PATH}/api/vendors/ve-ac-payment-store.php`;
+        const API_SALE = `${IP_PATH}/api/clients/cl-ac-sale-store.php`;
         const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
         
         const accountInput = document.getElementById('accountInput');
@@ -983,6 +1012,31 @@
         function extractIds(value) {
             if (!value) return null;
             const parts = value.split('|').map(v => v.trim());
+            return {
+                sys_id: parts[0] || null,
+                name: parts[1] || null,
+            };
+        }
+        
+        function secondExtractIds(value) {
+            if (!value || typeof value !== 'string') return null;
+            
+            // Split by pipe and trim
+            const parts = value.split('|').map(v => v.trim());
+            
+            // Ensure we have at least 2 parts (ID and Name)
+            if (parts.length < 2) {
+                // Try to extract ID from the beginning if format is different
+                const idMatch = value.match(/^(\d+)/);
+                if (idMatch) {
+                    return {
+                        sys_id: idMatch[1],
+                        name: value.substring(idMatch[1].length).trim()
+                    };
+                }
+                return null;
+            }
+            
             return {
                 sys_id: parts[0] || null,
                 name: parts[1] || null,
@@ -1170,84 +1224,125 @@
         }
         
         // Submit form
-        if (saveBtn) {
-            saveBtn.addEventListener('click', async function() {
-                if (!validateForm()) return;
+        saveBtn.addEventListener('click', async function() {
+            if (!validateForm()) return;
                 
-                const type = currentTransactionType;
-                const method = transferMethod?.value || 'cash';
-                const account = extractIds(accountInput?.value);
-                const dateValidation = validateTransactionDate(transactionDate?.value);
-                
-                // Prepare common data
-                const data = {
-                    vendorId: vendorId,
-                    vendorName: vendorName,
-                    amount: document.getElementById('balance')?.value,
-                    particular: document.getElementById('particular')?.value.trim(),
-                    transactionDate: buildDateTime(transactionDate?.value),
-                    isHistorical: dateValidation.isHistorical ? 1 : 0
-                };
-                
-                // Add account info only for payment transactions
-                if (type === 'payment') {
-                    data.accountId = account?.sys_id;
-                    data.accountName = account?.name;
-                    data.transferMethod = method;
+            const type = currentTransactionType;
+            const method = transferMethod?.value || 'cash';
+            const account = extractIds(accountInput?.value);
+            const dateValidation = validateTransactionDate(transactionDate?.value);
+            
+            // 1. Prepare Primary Data
+            const data = {
+                vendorId: vendorId,
+                vendorName: vendorName,
+                amount: document.getElementById('balance')?.value,
+                particular: document.getElementById('particular')?.value.trim(),
+                transactionDate: buildDateTime(transactionDate?.value),
+                isHistorical: dateValidation.isHistorical ? 1 : 0
+            };
+            
+            // Add account info only for payment transactions
+            if (type === 'payment') {
+                data.accountId = account?.sys_id;
+                data.accountName = account?.name;
+                data.transferMethod = method;
+            }
+            
+            // 2. Prepare Vendor Data (Declare outside so it's scoped for later)
+            let clientData = null;
+            if (type === 'receive') {
+                // const clientValue = document.getElementById('clientInput').value;
+                let clientInfo = null;
+                if(clientInput){
+                    clientInfo = secondExtractIds(clientInput?.value);
                 }
-                
-                // Add method-specific fields
-                if (method === 'cheque') {
-                    data.chequeNo = document.getElementById('cheque_no')?.value;
-                    data.chequeDate = document.getElementById('cheque_date')?.value;
-                    data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
-                    data.bankName = document.getElementById('bank_name')?.value;
-                } else if (method === 'bftn-eft') {
-                    data.bftnAccountName = document.getElementById('account_name')?.value;
-                    data.eftBankName = document.getElementById('eft_bank_name')?.value;
-                    data.bftnDate = document.getElementById('bftn_date')?.value;
+                if(clientInfo){
+                    clientData = {
+                        type: 'payment',
+                        clientId: clientInfo.sys_id,
+                        clientName: clientInfo.name,
+                        amount: document.getElementById('balance')?.value,
+                        particular: document.getElementById('clientParticularInput')?.value.trim(),
+                        transactionDate: buildDateTime(transactionDate?.value),
+                    };
                 }
+            }
+            
+            // Add method-specific fields
+            if (method === 'cheque') {
+                data.chequeNo = document.getElementById('cheque_no')?.value;
+                data.chequeDate = document.getElementById('cheque_date')?.value;
+                data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
+                data.bankName = document.getElementById('bank_name')?.value;
+            } else if (method === 'bftn-eft') {
+                data.bftnAccountName = document.getElementById('account_name')?.value;
+                data.eftBankName = document.getElementById('eft_bank_name')?.value;
+                data.bftnDate = document.getElementById('bftn_date')?.value;
+            }
+            
+            // UI Updates
+            saveBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (saveButtonText) saveButtonText.textContent = 'Processing...';
+            
+            try {
+                // First API Call
+                const apiUrl = type === 'receive' ? API_PURCHASE : API_PAYMENT;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
                 
-                // Disable button
-                if (saveBtn) saveBtn.disabled = true;
-                if (spinner) spinner.classList.remove('hidden');
-                if (saveButtonText) saveButtonText.textContent = 'Processing...';
+                const result = await response.json();
                 
-                try {
-                    const apiUrl = type === 'receive' ? API_PURCHASE : API_PAYMENT;
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
+                if (response.ok && result.success) {
+                    const messages = {
+                        receive: 'Service received successfully!',
+                        default: 'Payment completed successfully!',
+                        historical: 'Historic Data Stored Successfully'
+                    };
                     
-                    const result = await response.json();
+                    let message = result.is_historical 
+                        ? messages.historical 
+                        : messages[type] || messages.default;
                     
-                    if (response.ok && result.success) {
-                        let message = type === 'receive' ? 'Money received successfully!' : 'Payment completed successfully!';
+                    alert(message);
+                    
+                    // Second API Call (Only for payments)
+                    if (type === 'receive' && clientData) {
+                        const cResponse = await fetch(API_SALE, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(clientData)
+                        });
+                        const cResult = await cResponse.json();
                         
-                        if (result.is_historical) {
-                            message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে।';
+                        if (cResponse.ok && cResult.success) {
+                            alert('Client transaction completed!');
+                        } else {
+                            alert('Client saved, but Vendor failed: ' + (cResult.message || 'Unknown error'));
                         }
-                        
-                        alert(message);
-                        closeTransactionModal();
-                        
-                        // Refresh the page
-                        location.reload();
-                    } else {
-                        alert(result.error || result.message || 'Transaction failed.');
                     }
-                } catch (error) {
-                    console.error('Transaction error:', error);
-                    alert('Network error. Please check your connection.');
-                } finally {
-                    if (saveBtn) saveBtn.disabled = false;
-                    if (spinner) spinner.classList.add('hidden');
-                    if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+                    
+                    closeTransactionModal();
+                    
+                    // Refresh the page
+                    location.reload(); // Uncomment if needed
+                } else {
+                    alert(result.error || result.message || 'Transaction failed.');
                 }
-            });
-        }
+            } catch (error) {
+                console.error('Transaction error:', error);
+                alert('Network error. Please check your connection.');
+            } finally {
+                saveBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+                if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+            }
+            
+        });
     }
 
     // Initialize everything when DOM is loaded

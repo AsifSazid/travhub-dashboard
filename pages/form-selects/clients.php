@@ -28,7 +28,7 @@ fetch(GET_ALL_CLIENTS_API)
     .then(res => res.json())
     .then(data => {
         clientsData = Array.isArray(data.clients) ? data.clients : [];
-        console.log(clientsData);
+        // console.log(clientsData);
     })
     .catch(() => clientsData = []);
 

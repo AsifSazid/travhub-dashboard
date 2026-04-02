@@ -207,14 +207,14 @@
                     <div id="paymentSection" class="hidden w-full md:col-span-2 lg:col-span-3">
                         
                         <!-- Rules Notice -->
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
-                            <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>
-                            <ul class="list-disc list-inside ml-4 mt-1">
-                                <li>Backdated entries can be made up to a maximum of 10 days.</li>
-                                <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>
-                                <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>
-                            </ul>
-                        </div>
+                        <!--<div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">-->
+                        <!--    <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>-->
+                        <!--    <ul class="list-disc list-inside ml-4 mt-1">-->
+                        <!--        <li>Backdated entries can be made up to a maximum of 10 days.</li>-->
+                        <!--        <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>-->
+                        <!--        <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>-->
+                        <!--    </ul>-->
+                        <!--</div>-->
             
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
@@ -322,7 +322,27 @@
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"
                             id="particular" name="particular" placeholder="Enter transaction description"></textarea>
                     </div>
+                    
+                    <input type="hidden" id="vendorPaymentType" name="vendorPaymentType" value="Withdraw">
+                    <div id="vendorSection" class="hidden md:col-span-2 lg:col-span-3 text-left">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fa-solid fa-user"></i> Vendor
+                        </label>
+                        <?php include('form-selects/vendors.php') ?>
+                    </div>
+                    
+                    <!-- Particular -->
+                    <div id="vendorParticularSection" class="hidden md:col-span-2 lg:col-span-3 text-left">
+                        <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-file-alt mr-1"></i> Particular for Vendor
+                        </label>
+                        <textarea
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"
+                            id="vendorParticularInput" name="vendorParticularInput" placeholder="Enter transaction description"></textarea>
+                    </div>
+                
                 </div>
+                
 
                 <!-- Form Actions -->
                 <div class="flex justify-end space-x-3 pt-4 border-t">
@@ -342,6 +362,7 @@
                         <span id="saveButtonText">Save Transaction</span>
                     </button>
                 </div>
+            
             </form>
         </div>
     </div>
@@ -440,6 +461,8 @@
     const loadMoreContainer = document.getElementById('loadMoreContainer');
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     const loadMoreSpinner = document.getElementById('loadMoreSpinner');
+    const vendorSection = document.getElementById('vendorSection');
+    const vendorParticularSection = document.getElementById('vendorParticularSection');
 
     // Main function to load data
     function reloadFinancialTable() {
@@ -875,10 +898,14 @@
         if (paymentSection) {
             if (type === 'receive') {
                 paymentSection.classList.remove('hidden');
+                vendorSection.classList.add('hidden');
+                vendorParticularSection.classList.add('hidden');
                 if (accountInput) accountInput.setAttribute('required', 'required');
                 if (transferMethod) transferMethod.setAttribute('required', 'required');
             } else {
                 paymentSection.classList.add('hidden');
+                vendorSection.classList.remove('hidden');
+                vendorParticularSection.classList.remove('hidden');
                 if (accountInput) accountInput.removeAttribute('required');
                 if (transferMethod) transferMethod.removeAttribute('required');
             }
@@ -932,6 +959,7 @@
     function setupTransactionForm() {
         const API_RECEIVE = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
         const API_SALE = `${IP_PATH}/api/clients/cl-ac-sale-store.php`;
+        const API_PURCHASE = `${IP_PATH}/api/vendors/ve-ac-purchase-store.php`;
         const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
         
         const accountInput = document.getElementById('accountInput');
@@ -949,6 +977,31 @@
         function extractIds(value) {
             if (!value) return null;
             const parts = value.split('|').map(v => v.trim());
+            return {
+                sys_id: parts[0] || null,
+                name: parts[1] || null,
+            };
+        }
+        
+        function secondExtractIds(value) {
+            if (!value || typeof value !== 'string') return null;
+            
+            // Split by pipe and trim
+            const parts = value.split('|').map(v => v.trim());
+            
+            // Ensure we have at least 2 parts (ID and Name)
+            if (parts.length < 2) {
+                // Try to extract ID from the beginning if format is different
+                const idMatch = value.match(/^(\d+)/);
+                if (idMatch) {
+                    return {
+                        sys_id: idMatch[1],
+                        name: value.substring(idMatch[1].length).trim()
+                    };
+                }
+                return null;
+            }
+            
             return {
                 sys_id: parts[0] || null,
                 name: parts[1] || null,
@@ -1136,84 +1189,124 @@
         }
         
         // Submit form
-        if (saveBtn) {
-            saveBtn.addEventListener('click', async function() {
-                if (!validateForm()) return;
-                
-                const type = currentTransactionType;
-                const method = transferMethod?.value || 'cash';
-                const account = extractIds(accountInput?.value);
-                const dateValidation = validateTransactionDate(transactionDate?.value);
-                
-                // Prepare common data
-                const data = {
-                    clientId: clientId,
-                    clientName: clientName,
-                    amount: document.getElementById('balance')?.value,
-                    particular: document.getElementById('particular')?.value.trim(),
-                    transactionDate: buildDateTime(transactionDate?.value),
-                    isHistorical: dateValidation.isHistorical ? 1 : 0
-                };
-                
-                // Add account info only for Receive transactions
-                if (type === 'receive') {
-                    data.accountId = account?.sys_id;
-                    data.accountName = account?.name;
-                    data.transferMethod = method;
+        saveBtn.addEventListener('click', async function() {
+            if (!validateForm()) return;
+            
+            const type = currentTransactionType;
+            const method = transferMethod?.value || 'cash';
+            const account = extractIds(accountInput?.value);
+            const dateValidation = validateTransactionDate(transactionDate?.value);
+            
+            // 1. Prepare Primary Data
+            const data = {
+                clientId: clientId,
+                clientName: clientName,
+                amount: document.getElementById('balance')?.value,
+                particular: document.getElementById('particular')?.value.trim(),
+                transactionDate: buildDateTime(transactionDate?.value),
+                isHistorical: dateValidation.isHistorical ? 1 : 0
+            };
+            
+            if (type === 'receive') {
+                data.accountId = account?.sys_id;
+                data.accountName = account?.name;
+                data.transferMethod = method;
+            }
+        
+            // 2. Prepare Vendor Data (Declare outside so it's scoped for later)
+            let vendorData = null;
+            if (type === 'payment') {
+                // const vendorValue = document.getElementById('vendorInput').value;
+                let vendor = null;
+                if(vendorInput){
+                    vendorInfo = secondExtractIds(vendorInput?.value);
+                }    
+                if(vendorInfo){
+                    vendorData = {
+                        type: 'receive',
+                        vendorId: vendorInfo.sys_id,
+                        vendorName: vendorInfo.name,
+                        amount: document.getElementById('balance')?.value,
+                        particular: document.getElementById('vendorParticularInput')?.value.trim(),
+                        transactionDate: buildDateTime(transactionDate?.value),
+                    };
                 }
+            }
+            
+            // console.log(vendorData);
+            
+            // Add method-specific fields to 'data'
+            if (method === 'cheque') {
+                data.chequeNo = document.getElementById('cheque_no')?.value;
+                data.chequeDate = document.getElementById('cheque_date')?.value;
+                data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
+                data.bankName = document.getElementById('bank_name')?.value;
+            } else if (method === 'bftn-eft') {
+                data.bftnAccountName = document.getElementById('account_name')?.value;
+                data.eftBankName = document.getElementById('eft_bank_name')?.value;
+                data.bftnDate = document.getElementById('bftn_date')?.value;
+            }
+        
+            // UI Updates
+            saveBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (saveButtonText) saveButtonText.textContent = 'Processing...';
+            
+            try {
+                // First API Call
+                const apiUrl = type === 'receive' ? API_RECEIVE : API_SALE;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
                 
-                // Add method-specific fields
-                if (method === 'cheque') {
-                    data.chequeNo = document.getElementById('cheque_no')?.value;
-                    data.chequeDate = document.getElementById('cheque_date')?.value;
-                    data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
-                    data.bankName = document.getElementById('bank_name')?.value;
-                } else if (method === 'bftn-eft') {
-                    data.bftnAccountName = document.getElementById('account_name')?.value;
-                    data.eftBankName = document.getElementById('eft_bank_name')?.value;
-                    data.bftnDate = document.getElementById('bftn_date')?.value;
-                }
+                const result = await response.json();
                 
-                // Disable button
-                if (saveBtn) saveBtn.disabled = true;
-                if (spinner) spinner.classList.remove('hidden');
-                if (saveButtonText) saveButtonText.textContent = 'Processing...';
-                
-                try {
-                    const apiUrl = type === 'receive' ? API_RECEIVE : API_SALE;
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
+                if (response.ok && result.success) {
+
+                    const messages = {
+                        receive: 'Payment received successfully!',
+                        default: 'Service provided successfully!',
+                        historical: 'Historic Data Stored Successfully'
+                    };
                     
-                    const result = await response.json();
+                    let message = result.is_historical 
+                        ? messages.historical 
+                        : messages[type] || messages.default;
                     
-                    if (response.ok && result.success) {
-                        let message = type === 'receive' ? 'Money received successfully!' : 'Sale completed successfully!';
+                    alert(message);
+        
+                    // Second API Call (Only for payments)
+                    if (type === 'payment' && vendorData) {
+                        const vResponse = await fetch(API_PURCHASE, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(vendorData)
+                        });
+                        const vResult = await vResponse.json();
                         
-                        if (result.is_historical) {
-                            message = 'ঐতিহাসিক entry সংরক্ষিত হয়েছে।';
+                        if (vResponse.ok && vResult.success) {
+                            alert('Vendor transaction completed!');
+                        } else {
+                            alert('Client saved, but Vendor failed: ' + (vResult.message || 'Unknown error'));
                         }
-                        
-                        alert(message);
-                        closeTransactionModal();
-                        
-                        // Refresh the page
-                        location.reload();
-                    } else {
-                        alert(result.error || result.message || 'Transaction failed.');
                     }
-                } catch (error) {
-                    console.error('Transaction error:', error);
-                    alert('Network error. Please check your connection.');
-                } finally {
-                    if (saveBtn) saveBtn.disabled = false;
-                    if (spinner) spinner.classList.add('hidden');
-                    if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+        
+                    closeTransactionModal();
+                    location.reload(); // Uncomment if needed
+                } else {
+                    alert(result.error || result.message || 'Transaction failed.');
                 }
-            });
-        }
+            } catch (error) {
+                console.error('Transaction error:', error);
+                alert('Network error. Please check your connection.');
+            } finally {
+                saveBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+                if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
+            }
+        });
     }
 
     // Initialize everything when DOM is loaded

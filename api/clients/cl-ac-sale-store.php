@@ -39,6 +39,7 @@ $vendorName = $data['vendorName'] ?? null;
 $amount = $data['amount'] ?? 0;
 $particular = $data['particular'] ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
+$stmtSysId = $data['ref'] ?? '';
 
 /* ================= BASIC VALIDATION ================= */
 if (!is_numeric($amount) || $amount <= 0) {
@@ -105,12 +106,12 @@ try {
     $pdo->commit();
 
     // Fetch the inserted record for receipt
-    $itemData = [
-        'uuid' => $stmtUUIDs['uuid'],
-        'sys_id' => $stmtUUIDs['sys_id'],
-        'date' => $transactionDate,
-        'particular' => $particular,
-    ];
+    // $itemData = [
+    //     'uuid' => $stmtUUIDs['uuid'],
+    //     'sys_id' => $stmtUUIDs['sys_id'],
+    //     'date' => $transactionDate,
+    //     'particular' => $particular,
+    // ];
 
     http_response_code(200);
     echo json_encode([
@@ -119,9 +120,8 @@ try {
         'data' => [
             'bank_stmt_id' => $stmtSysId,
             'financial_entry_id' => $financialUUIDs['sys_id'],
-            'new_balance' => $newBalance
         ], 
-        'item' => $itemData
+        // 'item' => $itemData
     ]);
 
 } catch (Throwable $e) {
