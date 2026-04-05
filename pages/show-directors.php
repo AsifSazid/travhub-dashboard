@@ -267,16 +267,16 @@ $getDirectorApi = $ip_port . "api/directors/get-director.php?director_id=$direct
                         </div>
                         
                         <!-- Skills / Expertise Section -->
-                        <div class="info-card p-6">
-                            <h3 class="section-title">Skills & Expertise</h3>
-                            <div id="skillsContainer">
+                        <!--<div class="info-card p-6">-->
+                        <!--    <h3 class="section-title">Skills & Expertise</h3>-->
+                        <!--    <div id="skillsContainer">-->
                                 <!-- Skills will be dynamically added here -->
-                                <div class="text-center py-8 text-gray-500">
-                                    <i class="fas fa-code text-4xl mb-3 text-gray-300"></i>
-                                    <p>Skills information not available</p>
-                                </div>
-                            </div>
-                        </div>
+                        <!--        <div class="text-center py-8 text-gray-500">-->
+                        <!--            <i class="fas fa-code text-4xl mb-3 text-gray-300"></i>-->
+                        <!--            <p>Skills information not available</p>-->
+                        <!--        </div>-->
+                        <!--    </div>-->
+                        <!--</div>-->
                     </div>
                     
                     <!-- Right Column -->

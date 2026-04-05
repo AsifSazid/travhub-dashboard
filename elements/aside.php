@@ -178,6 +178,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-chess-knight mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Directors</span>
                     </a>
+                    <a href="directors-dashboard.php"
+                       class="flex items-center p-3 rounded-lg <?= $currentPage == 'index-directors.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>"
+                       target="_blank">
+                        <i class="fa-solid fa-chess-knight mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Directors Dashboard</span>
+                    </a>
                     <a href="index-investors.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'index-investors.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">

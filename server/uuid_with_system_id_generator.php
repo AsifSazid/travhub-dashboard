@@ -56,6 +56,14 @@ function generateUUID(PDO $pdo, string $tag): string
         // HRM
         'eps_structures'    => ['table' => 'eps_structures',    'column' => 'sys_id', 'short' => 'EP'],
         
+        
+        // Director
+        'directors'    => ['table' => 'directors',    'column' => 'sys_id', 'short' => 'DI'],
+        'director_balances'    => ['table' => 'director_balances',    'column' => 'sys_id', 'short' => 'DB'],
+        'director_transactions'    => ['table' => 'director_transactions',    'column' => 'sys_id', 'short' => 'DT'],
+        'director_devidends'    => ['table' => 'director_devidends',    'column' => 'sys_id', 'short' => 'DD'],
+        'director_devidend_details'    => ['table' => 'director_devidends',    'column' => 'sys_id', 'short' => 'DD'],
+        
 
     ];
 

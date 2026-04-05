@@ -1,6 +1,6 @@
 <?php
 require '../../server/db_connection.php';
-require '../../server/uuid_generator.php';
+require '../../server/uuid_with_system_id_generator.php';
 require '../../server/director_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
@@ -58,7 +58,7 @@ function handleFormDataRequest() {
     validateRequiredFields($directorData);
     
     // Use default user since no authentication needed
-    $createdBy = 'system_admin';
+    $createdBy = $_SESSION['user_name'] ?? 'system';
     $createdById = 0;
     
     // Generate meta data

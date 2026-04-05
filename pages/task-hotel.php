@@ -44,7 +44,7 @@ if ($http_code == 200 && !empty($response)) {
             // final format
             $data = (isset($raw_json[0])) ? $raw_json[0] : $raw_json;
             
-            var_dump($data);
+            // var_dump($data);
         }
     } else {
         die("Failed to decode API response. JSON error: " . json_last_error_msg());
