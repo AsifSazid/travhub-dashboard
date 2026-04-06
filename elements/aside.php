@@ -158,6 +158,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-hotel mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Hotel Info Extraction</span>
                     </a>
+                    <a href="file-compressor.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'file-compressor.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-hotel mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">File Compressor</span>
+                    </a>
                 </div>
             </div>
             

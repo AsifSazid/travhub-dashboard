@@ -803,7 +803,6 @@ async function renderRecentActivity() {
   try {
     // Fetch last transactions for the first few directors
     const topDirs = S.dirs.slice(0, 4);
-    console.log(topDirs)
     const txArrays = await Promise.all(topDirs.map(d => api(API.tx.get(d.sys_id)).catch(()=>[])));
     let all = [];
     txArrays.forEach((txs, i) => {
@@ -994,6 +993,8 @@ async function renderProfiles() {
     try {
         S.dirs = await api(API.directors.getAll);
         
+        // console.log(S.dirs)
+        
         const totalInv = S.dirs.reduce((a,d) => a + d.total_investment, 0);
         const totalOwn = S.dirs.reduce((a,d) => a + d.ownership_percent, 0);
         
@@ -1075,8 +1076,8 @@ async function openProfile(sys_id) {
 //  INVEST / WITHDRAW MODALS
 // ═══════════════════════════════════════════════════
 function openInvest(id) {
-  modalTarget = id;
   const d = S.dirs.find(d => d.id == id);
+  modalTarget = d.sys_id;
   document.getElementById('mi-name').textContent = d.name;
   document.getElementById('mi-cur').textContent  = fmt(d.total_investment);
   document.getElementById('mi-own').textContent  = pct(d.ownership_percent);
@@ -1088,7 +1089,7 @@ function openInvest(id) {
 }
 
 function prevInvest() {
-  const d   = S.dirs.find(d => d.id == modalTarget);
+  const d   = S.dirs.find(d => d.sys_id == modalTarget);
   const add = parseFloat(document.getElementById('mi-amt').value) || 0;
   const prev = document.getElementById('mi-prev');
   if (add > 0) {
@@ -1114,8 +1115,8 @@ async function confirmInvest() {
 }
 
 function openWithdraw(id) {
-  modalTarget = id;
   const d = S.dirs.find(d => d.id == id);
+  modalTarget = d.sys_id;
   document.getElementById('mw-name').textContent = d.name;
   document.getElementById('mw-cur').textContent  = fmt(d.total_investment);
   document.getElementById('mw-own').textContent  = pct(d.ownership_percent);
@@ -1128,7 +1129,7 @@ function openWithdraw(id) {
 }
 
 function prevWithdraw() {
-  const d   = S.dirs.find(d => d.id == modalTarget);
+  const d   = S.dirs.find(d => d.sys_id == modalTarget);
   const amt = parseFloat(document.getElementById('mw-amt').value) || 0;
   const prev = document.getElementById('mw-prev');
   const err  = document.getElementById('mw-err');
@@ -1145,7 +1146,8 @@ async function confirmWithdraw() {
   const amt  = parseFloat(document.getElementById('mw-amt').value) || 0;
   const note = document.getElementById('mw-note').value.trim() || 'Withdrawal';
   if (amt <= 0) { toast('Enter a valid amount', 'warn'); return; }
-  const d = S.dirs.find(d => d.id == modalTarget);
+  const d = S.dirs.find(d => d.sys_id == modalTarget);
+  console.log(d);
   if (amt > (d?.total_investment || 0)) { toast('Exceeds current investment', 'warn'); return; }
   try {
     const res = await api(API.tx.withdraw, 'POST', { director_id: modalTarget, amount: amt, note });
@@ -1289,6 +1291,7 @@ async function calcDiv() {
 
   try {
     const data = await api(API.div.calculate, 'POST', { total_profit: profit });
+    console.log(data);
     empty.style.display = 'none';
     badge.textContent = `Total: ${fmt(data.total_dividend)}`;
     tbody.innerHTML = data.breakdown.map(b => `
