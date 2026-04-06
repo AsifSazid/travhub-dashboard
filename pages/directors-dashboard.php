@@ -803,7 +803,8 @@ async function renderRecentActivity() {
   try {
     // Fetch last transactions for the first few directors
     const topDirs = S.dirs.slice(0, 4);
-    const txArrays = await Promise.all(topDirs.map(d => api(API.tx.get(d.id)).catch(()=>[])));
+    console.log(topDirs)
+    const txArrays = await Promise.all(topDirs.map(d => api(API.tx.get(d.sys_id)).catch(()=>[])));
     let all = [];
     txArrays.forEach((txs, i) => {
       txs.slice(0,3).forEach(tx => all.push({ ...tx, dir_name: topDirs[i].name }));
@@ -933,21 +934,22 @@ async function saveDir() {
       });
       toast(`${name} added!`, 'success');
     }
-    cancelEdit();
+    // cancelEdit();
     renderSettings();
     if (document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
   } catch(e) {
+      alert(e.message);
     toast(e.message, 'error');
   } finally {
     btn.disabled = false;
-    document.getElementById('save-lbl').textContent = id ? 'Save Changes' : 'Add Director';
-    btn.innerHTML = `<span id="save-lbl">${id ? 'Save Changes' : 'Add Director'}</span>`;
+    const btnText = id ? 'Save Changes' : 'Add Director';
+    btn.innerHTML = `<span id="save-lbl">${btnText}</span>`;
   }
 }
 
 function editDir(id) {
   const d = S.dirs.find(d => d.id == id);
-  if (!d) return;
+  if (!id) return;
   document.getElementById('edit-id').value     = d.id;
   document.getElementById('f-name').value      = d.name;
   document.getElementById('f-email').value     = d.email;
@@ -991,6 +993,7 @@ async function renderProfiles() {
     
     try {
         S.dirs = await api(API.directors.getAll);
+        
         const totalInv = S.dirs.reduce((a,d) => a + d.total_investment, 0);
         const totalOwn = S.dirs.reduce((a,d) => a + d.ownership_percent, 0);
         
@@ -1005,7 +1008,7 @@ async function renderProfiles() {
     
     grid.innerHTML = S.dirs.map((d,i) => `
       <div class="prof-card bg-white rounded-2xl border border-[#e8eaf0] shadow-sm p-5 cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5"
-           data-name="${d.name}" onclick="openProfile(${d.id})">
+           data-name="${d.name}" onclick="openProfile('${d.sys_id}')">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-11 h-11 rounded-[12px] flex items-center justify-center text-[18px] font-bold text-white flex-shrink-0" style="background:${avCol(i)}">${avLtr(d.name)}</div>
           <div class="flex-1 min-w-0">
@@ -1035,8 +1038,8 @@ async function renderProfiles() {
 }
 
 // ── Profile modal ─────────────────────────────────────────────────────────────
-async function openProfile(id) {
-  const d = S.dirs.find(d => d.id == id);
+async function openProfile(sys_id) {
+  const d = S.dirs.find(d => d.sys_id == sys_id);
   const i = S.dirs.indexOf(d);
   document.getElementById('pm-av').textContent   = avLtr(d.name);
   document.getElementById('pm-av').style.background = avCol(i);
@@ -1048,7 +1051,7 @@ async function openProfile(id) {
   openModal('m-profile');
 
   try {
-    const txs = await api(API.tx.get(id));
+    const txs = await api(API.tx.get(sys_id));
     if (!txs.length) {
       document.getElementById('pm-hist').innerHTML = '<div class="text-center py-6 text-navy/35 text-sm">No transactions yet.</div>';
       return;
