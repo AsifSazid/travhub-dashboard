@@ -635,6 +635,33 @@ $base_ip_path = trim($ip_port, "/");
   </div>
 </div>
 
+<!-- Dividend Details -->
+<div id="m-div-details" class="modal-bg" onclick="if(event.target===this)closeModal('m-div-details')">
+  <div class="modal-box">
+    <div class="modal-title">Dividend Breakdown</div>
+    <div id="mdd-meta" class="modal-sub"></div>
+    <div class="modal-info-box" style="padding:0; overflow:hidden;">
+      <table style="margin:0;">
+        <thead>
+          <tr>
+            <th class="th-left">Director</th>
+            <th class="th-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="mdd-tbody">
+          <tr><td colspan="2" class="td-center" style="padding:24px; color:var(--c-text-muted);">
+            <div class="section-loader"><div class="spin"></div></div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="mdd-total" class="dis-sum-row" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--c-border); border-bottom:none; padding-bottom:0; margin-bottom:0;"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button onclick="closeModal('m-div-details')" class="btn-outline btn-full">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ── -->
 <div id="notif">
   <span id="notif-icon"></span>
@@ -668,6 +695,7 @@ const API = {
     calculate: '../api/dividends/calculate.php',
     disburse:  '../api/dividends/disburse.php',
     history:   '../api/dividends/history.php',
+    details:  id => `../api/dividends/details.php?sys_id=${id}`,
   }
 };
 
@@ -1291,7 +1319,7 @@ async function calcDiv() {
 
   try {
     const data = await api(API.div.calculate, 'POST', { total_profit: profit });
-    console.log(data);
+    // console.log(data);
     empty.style.display = 'none';
     badge.textContent = `Total: ${fmt(data.total_dividend)}`;
     tbody.innerHTML = data.breakdown.map(b => `
@@ -1337,6 +1365,8 @@ async function loadDivHistory() {
       tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-navy/35 text-sm">No disbursements yet.</td></tr>';
       return;
     }
+    
+    console.log(history);
     tbody.innerHTML = history.map(h => `
       <tr>
         <td>${dateStr(h.created_at)}</td>
@@ -1344,11 +1374,62 @@ async function loadDivHistory() {
         <td class="right font-bold text-brand">${fmt(h.total_distributed)}</td>
         <td class="center">${h.director_count}</td>
         <td class="text-navy/55">${h.note || '—'}</td>
+        <td>
+          <button onclick="showDetails('${h.sys_id}')" 
+            class="text-xs text-blue-500 underline">
+            <i class="fa-regular fa-eye"></i>
+          </button>
+        </td>
       </tr>
     `).join('');
   } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-400">Failed to load history.</td></tr>'; }
 }
 
+async function showDetails(sys_id, meta = {}) {
+  document.getElementById('mdd-meta').textContent =
+    meta.date ? `Disbursement on ${meta.date}` : 'Loading details…';
+  document.getElementById('mdd-total').innerHTML = '';
+  document.getElementById('mdd-tbody').innerHTML = `
+    <tr><td colspan="2" class="td-center" style="padding:24px; color:var(--c-text-muted);">
+      <div class="section-loader"><div class="spin"></div></div>
+    </td></tr>`;
+
+  openModal('m-div-details');
+
+  try {
+    const data = await api(API.div.details(sys_id));
+
+    if (!data || !data.length) {
+      document.getElementById('mdd-tbody').innerHTML =
+        `<tr><td colspan="2" class="td-center" style="padding:24px; color:var(--c-text-muted); font-size:13px;">No records found.</td></tr>`;
+      return;
+    }
+
+    const total = data.reduce((s, d) => s + Number(d.amount), 0);
+    const AV_COLORS = ['#50BC81','#1A2039','#2d7dd2','#e63946','#f4a261','#8338ec'];
+
+    document.getElementById('mdd-tbody').innerHTML = data.map((d, i) => `
+      <tr>
+        <td>
+          <div class="dir-name-cell">
+            <div class="dir-av" style="background:${AV_COLORS[i % AV_COLORS.length]}">${d.director_name[0]}</div>
+            <span class="dir-name">${d.director_name}</span>
+          </div>
+        </td>
+        <td class="td-right" style="font-weight:700; color:var(--c-green);">${fmt(d.amount)}</td>
+      </tr>`).join('');
+
+    document.getElementById('mdd-total').innerHTML = `
+      <span class="dis-sum-label" style="font-weight:600; color:var(--c-navy);">Total Distributed</span>
+      <span style="font-weight:700; color:var(--c-green); font-size:15px;">${fmt(total)}</span>`;
+
+    if (meta.date) document.getElementById('mdd-meta').textContent = `Disbursement on ${meta.date}`;
+
+  } catch (e) {
+    document.getElementById('mdd-tbody').innerHTML =
+      `<tr><td colspan="2" class="td-center" style="padding:24px; color:var(--c-red); font-size:13px;">Failed to load details.</td></tr>`;
+  }
+}
 // ═══════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════

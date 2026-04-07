@@ -61,8 +61,8 @@ function generateUUID(PDO $pdo, string $tag): string
         'directors'    => ['table' => 'directors',    'column' => 'sys_id', 'short' => 'DI'],
         'director_balances'    => ['table' => 'director_balances',    'column' => 'sys_id', 'short' => 'DB'],
         'director_transactions'    => ['table' => 'director_transactions',    'column' => 'sys_id', 'short' => 'DT'],
-        'director_devidends'    => ['table' => 'director_devidends',    'column' => 'sys_id', 'short' => 'DD'],
-        'director_devidend_details'    => ['table' => 'director_devidends',    'column' => 'sys_id', 'short' => 'Dd'],
+        'director_dividends'    => ['table' => 'director_dividends',    'column' => 'sys_id', 'short' => 'DD'],
+        'director_dividend_details'    => ['table' => 'director_dividends',    'column' => 'sys_id', 'short' => 'Dd'],
         
 
     ];

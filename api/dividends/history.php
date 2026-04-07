@@ -1,29 +1,34 @@
 <?php
-// GET /api/devidends/history.php
+// GET /api/dividends/history.php
 
 require_once '../../server/db_connection.php';
 jsonHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') sendError('Method not allowed', 405);
 
-$devidends = $pdo->query("
-    SELECT d.id, d.uuid, d.total_profit, d.note, d.created_at,
-           COUNT(dd.id) AS director_count,
-           SUM(dd.amount) AS total_distributed
-    FROM director_devidends d
-    LEFT JOIN dividend_details dd ON dd.sys_id = d.id
+$dividends = $pdo->query("
+SELECT 
+    d.id, d.sys_id, d.uuid, d.total_profit, d.note, d.created_at,
+        COUNT(dd.id) AS director_count,
+        SUM(dd.amount) AS total_distributed
+    FROM director_dividends d
+    LEFT JOIN dividend_details dd 
+        ON dd.dividend_sys_id = d.sys_id
     GROUP BY d.id
     ORDER BY d.created_at DESC
     LIMIT 50
 ")->fetchAll();
 
-foreach ($devidends as &$div) {
+// var_dump($dividends);
+// die;
+
+foreach ($dividends as &$div) {
     $div['total_profit']      = (float)$div['total_profit'];
     $div['total_distributed'] = (float)($div['total_distributed'] ?? 0);
     $div['director_count']    = (int)$div['director_count'];
 }
 
-sendSuccess($devidends);
+sendSuccess($dividends);
 
 // Shared helper — success response
 function sendSuccess(mixed $data, int $code = 200): void {
