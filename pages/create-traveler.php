@@ -86,42 +86,6 @@ $storeTravelerApi = $ip_port . "api/traveler-profiles/store.php";
 
                     <!-- Traveler Form -->
                     <form id="travelerForm" class="space-y-6">
-                        <!-- Traveler Type -->
-                        <div>
-                            <label for="travelerType" class="block text-sm font-medium text-gray-700 mb-2">
-                                Traveler Type <span class="text-red-500">*</span>
-                            </label>
-                            <div class="flex space-x-4">
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="type" value="general" class="form-radio h-4 w-4 text-blue-600" checked>
-                                    <span class="ml-2 text-gray-700">General</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="type" value="individual" class="form-radio h-4 w-4 text-blue-600">
-                                    <span class="ml-2 text-gray-700">Individual</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="type" value="company" class="form-radio h-4 w-4 text-blue-600">
-                                    <span class="ml-2 text-gray-700">Company</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- <div>
-                            <label for="vendorType" class="block text-sm font-medium text-gray-700 mb-2">
-                                Vendor Type <span class="text-red-500">*</span>
-                            </label>
-                            <div id="vendorType" class="flex space-x-4">
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="is_vendor" value="1" class="form-radio h-4 w-4 text-blue-600">
-                                    <span class="ml-2 text-gray-700">Is Vendor</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="is_vendor" value="0" class="form-radio h-4 w-4 text-blue-600" checked>
-                                    <span class="ml-2 text-gray-700">Not a Vendor</span>
-                                </label>
-                            </div>
-                        </div> -->
 
                         <?php include('./form-elements/basic-form-for-ctv.php'); ?>
 
@@ -145,7 +109,7 @@ $storeTravelerApi = $ip_port . "api/traveler-profiles/store.php";
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
-        const API_URL_FOR_CLIENT_STORE = "<?php echo $storeTravelerApi; ?>";
+        const API_URL_FOR_TRAVELER_STORE = "<?php echo $storeTravelerApi; ?>";
 
         // Secondary Phone Management
         function addSecondaryPhone() {
@@ -284,7 +248,7 @@ $storeTravelerApi = $ip_port . "api/traveler-profiles/store.php";
 
             // Send to server
             try {
-                const response = await fetch(API_URL_FOR_CLIENT_STORE, {
+                const response = await fetch(API_URL_FOR_TRAVELER_STORE, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -112,7 +112,7 @@ include_once('./authenticate.php');
                             <i class="fas fa-folder mr-2"></i>
                             Details
                         </button>
-                        <button class="tab-button flex items-center active" data-tab="documents">
+                        <button class="tab-button flex items-center" data-tab="documents">
                             <i class="fas fa-folder mr-2"></i>
                             Documents
                         </button>

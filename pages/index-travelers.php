@@ -124,11 +124,11 @@ $storeAllTravelerApi = $ip_port . "api/traveler-profiles/all-travelers.php";
                 const primaryPhone = phoneObj.primary_no;
 
                 const emailObj = JSON.parse(traveler.email);
-                const primaryEmail = phoneObj.primary;
+                const primaryEmail = emailObj.primary;
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50";
-
+                
                 // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
                 tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>

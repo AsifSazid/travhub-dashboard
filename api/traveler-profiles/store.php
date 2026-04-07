@@ -45,48 +45,65 @@ try {
     $cleanFullName = preg_replace('/\s+/u', '', $data['full_name']);
     
     // Make folder name
-    $clientFolderName = $cleanSysId . '_' . $cleanFullName;
+    $travelerFolderName = $cleanSysId . '_' . $cleanFullName;
     
     $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
-    $server_client_path = makeDir('travelers', $clientFolderName);
-    $cloud_client_path = makeSMBDir("{$SERVER_CUS_PATH}_travelers", $clientFolderName);
+    $server_traveler_path = makeDir('travelers', $travelerFolderName);
+    $cloud_traveler_path = makeSMBDir("{$SERVER_CUS_PATH}_travelers", $travelerFolderName);
+    
+    
+    // server
+    makeDir("travelers/{$travelerFolderName}", 'all_documents');
+    makeDir("travelers/{$travelerFolderName}", 'nid');
+    makeDir("travelers/{$travelerFolderName}", 'office_documents');
+    makeDir("travelers/{$travelerFolderName}", 'others');
+    makeDir("travelers/{$travelerFolderName}", 'passports');
+    
+    //cloud server    
+    makeSMBDir($cloud_traveler_path, 'all_documents');
+    makeSMBDir($cloud_traveler_path, 'nid');
+    makeSMBDir($cloud_traveler_path, 'office_documents');
+    makeSMBDir($cloud_traveler_path, 'others');
+    makeSMBDir($cloud_traveler_path, 'passports');
     
     // Prepare SQL
     $stmt = $pdo->prepare("
         INSERT INTO travelers (
             uuid,
             sys_id, 
-            type, 
             name, 
             phone, 
             email, 
             address, 
             status, 
+            smb_path, 
+            server_path, 
             meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Execute
     $stmt->execute([
         $uuid['uuid'],
         $uuid['sys_id'],
-        $data['type'] ?? 'individual',
         $data['full_name'],
         json_encode($data['phone']),
         json_encode($data['email']),
         json_encode($data['address']),
         $data['status'] ?? 'active',
+        $cloud_traveler_path,
+        $server_traveler_path,
         $metaDataJson
     ]);
 
-    $clientId = $pdo->lastInsertId();
+    $travelerId = $pdo->lastInsertId();
 
     echo json_encode([
         'success' => true,
-        'message' => 'Client added successfully',
-        'client_id' => $clientId,
-        'client_uuid' => $uuid
+        'message' => 'Traveler added successfully',
+        'traveler_id' => $travelerId,
+        'traveler_uuid' => $uuid
     ]);
 } catch (Exception $e) {
     echo json_encode([

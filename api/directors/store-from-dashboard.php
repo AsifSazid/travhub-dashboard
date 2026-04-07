@@ -7,6 +7,7 @@ require '../../server/uuid_with_system_id_generator.php';
 require '../../server/director_id_generator.php';
 require '../../server/generate_meta_data.php';
 require_once '../../server/director-calculation.php';
+require '../../server/make-dir.php';
 jsonHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') sendError('Method not allowed', 405);
@@ -48,9 +49,19 @@ if ($chk->fetch()) sendError('Email already registered');
 $uuid = generateIDs('directors');
 $sys_id = generateDirectorId();
 
+// Create director folder
+$cleanSysId = preg_replace('/\s+/u', '', $sys_id);
+$cleanFullName = preg_replace('/\s+/u', '', $name);
+$directorFolderName = $cleanSysId . '_' . $cleanFullName;
+
+// Create directory structure
+$basePath = "../../uploads/directors/";
+$directorFolderPath = $basePath . $directorFolderName;
+
+makeDir('directors', $directorFolderName);
+
 // Build meta_data
 $meta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
-
 
 $phoneData = [
     'primary_no' => $phone
