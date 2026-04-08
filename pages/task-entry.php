@@ -122,6 +122,7 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                                                 <option value="3">Visa</option>
                                                 <option value="4">Activities</option>
                                                 <option value="5">Package</option>
+                                                <option value="6">Others</option>
                                             </select>
                                         </div>
 

@@ -5,7 +5,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeAllTravelerApi = $ip_port . "api/traveler-profiles/all-travelers.php";
+$storeAllTravelerApi = $ip_port . "api/travelers/all-travelers.php";
 ?>
 
 <!DOCTYPE html>

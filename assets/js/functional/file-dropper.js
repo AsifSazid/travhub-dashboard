@@ -475,3 +475,8 @@ pasteArea.addEventListener('paste', (e) => {
         e.preventDefault();
     }
 });
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    initDragDrop();
+});

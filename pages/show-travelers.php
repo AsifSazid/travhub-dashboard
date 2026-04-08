@@ -1,5 +1,12 @@
 <?php
 include_once('./authenticate.php');
+$ip_port = @file_get_contents('../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$travelerId = $_GET['traveler_id'];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
