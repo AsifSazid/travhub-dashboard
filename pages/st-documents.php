@@ -2,81 +2,87 @@
     $docStore = '../api/travelers/doc_store.php';
 ?>
 
-<div class="bg-white rounded-lg shadow p-4 flex flex-col text-left">
+<div class="bg-white rounded-lg shadow px-4 flex flex-col text-left">
+    
+    <button class="bg-green-500 text-white px-4 py-2 my-2 rounded hover:bg-green-600" onclick="showFileUploadModal()" title="File Upload"><i class="fas fa-upload mr-2"></i> Upload File/s</button>
 
-    <div class="grid grid-cols-3 gap-4">
-        <!-- Left -->
-        <div class="col-span-2">
-            <div class="mb-4">
-                <h3 class="text-xl font-semibold mb-2">Files Are Shown here-</h3>
-                <?php include('std-folders.php'); ?>
-            </div>
-        </div>
-
-
-        <!-- Right -->
-        <div class="col-span-1">
-            <form id="docsForm">
-                <div class="mb-4">
-                    <label class="block mb-2 text-sm font-medium text-gray-700">
-                        Select Document
-                    </label>
-
-                    <select
-                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
-                        <option value="" selected disabled>-- Select --</option>
-                        <option value="nid">NID</option>
-                        <option value="passports">Passports</option>
-                        <option value="office_docs">Office Documents</option>
-                        <option value="trade_license">Trade License</option>
-                        <option value="trade_license_translated">Trade License (Translated and Notarized)</option>
-                        <option value="company_letterhead">Company Letterhead</option>
-                        <option value="common">Just Common</option>
-                        <option value="moa">MOA</option>
-                        <option value="form_xii">Form XII</option>
-                        <option value="tin">TIN</option>
-                        <option value="tax_return">Tax Return</option>
-                        <option value="schedule_x">Schedule-X</option>
-                    </select>
-                </div>
-
-                <label class="block text-sm font-medium text-gray-700 my-2">Upload or Paste Your Documents</label>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div id="dragDropArea" class="rounded-lg border-2 border-dashed border-gray-300 p-6 mb-4 flex flex-col items-center justify-center hover:bg-gray-50">
-                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-                        <input type="file" id="fileInput" multiple class="hidden">
-                        <button
-                            type="button"
-                            onclick="document.getElementById('fileInput').click()"
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            <i class="fas fa-folder-open mr-1"></i> Browse Files
-                        </button>
-                    </div>
-
-                    <textarea id="pasteArea"
-                        placeholder="Paste content here"
-                        class="w-full h-36 p-2 border-2 border-dashed border-gray-300 rounded"></textarea>
-
-                    <div class="mt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="text-sm font-medium">Dropped or Pasted Files</h4>
-                            <span id="fileCount" class="text-xs bg-gray-200 px-2 py-1 rounded">0 files</span>
-                        </div>
-                    </div>
-                </div>
-                <div id="droppedFilesList" class="text-sm text-gray-500">
-                    No files added yet
-                </div>
-
-                <button type="submit" class="flex-1 px-4 py-2 mt-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-all duration-300 flex items-center justify-center">Submit</button>
-
-            </form>
-        </div>
+    <div class="mb-4">
+        <!--<h3 class="text-xl font-semibold mb-2">Files Are Shown here-</h3>-->
+        <?php include('std-folders.php'); ?>
     </div>
 
 </div>
 
+<!-- Upload Modal -->
+<div class="fixed inset-0 bg-white z-50 hidden flex flex-col" id="file-upload-modal">
+    
+    <div class="flex items-center justify-between p-4 border-b border-gray-200">
+        <h3 class="text-xl font-bold text-gray-800">File Upload</h3>
+        <button onclick="closeFileUploadModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <form id="docsForm" class="flex-1 overflow-y-auto p-6 md:p-10">
+        <div class="max-w-4xl mx-auto"> <div class="mb-6">
+                <label class="block mb-2 text-lg font-medium text-gray-700">
+                    Select Document
+                </label>
+                <select
+                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
+                    <option value="" selected disabled>-- Select --</option>
+                    <option value="nid">NID</option>
+                    <option value="passports">Passports</option>
+                    <option value="office_docs">Office Documents</option>
+                    <option value="trade_license">Trade License</option>
+                    <option value="trade_license_translated">Trade License (Translated and Notarized)</option>
+                    <option value="company_letterhead">Company Letterhead</option>
+                    <option value="common">Just Common</option>
+                    <option value="moa">MOA</option>
+                    <option value="form_xii">Form XII</option>
+                    <option value="tin">TIN</option>
+                    <option value="tax_return">Tax Return</option>
+                    <option value="schedule_x">Schedule-X</option>
+                </select>
+            </div>
+
+            <label class="block text-lg font-medium text-gray-700 my-4">Upload or Paste Your Documents</label>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="dragDropArea" class="rounded-xl border-2 border-dashed border-blue-300 p-10 flex flex-col items-center justify-center hover:bg-blue-50 transition-colors cursor-pointer">
+                    <i class="fas fa-cloud-upload-alt text-6xl text-blue-400 mb-4"></i>
+                    <p class="mb-4 text-gray-600">Drag and drop files here</p>
+                    <input type="file" id="fileInput" multiple class="hidden">
+                    <button
+                        type="button"
+                        onclick="document.getElementById('fileInput').click()"
+                        class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md">
+                        <i class="fas fa-folder-open mr-2"></i> Browse Files
+                    </button>
+                </div>
+
+                <textarea id="pasteArea"
+                    placeholder="Paste your content or text data here..."
+                    class="w-full h-64 md:h-full min-h-[250px] p-4 border-2 border-dashed border-gray-300 rounded-xl focus:border-blue-500 outline-none"></textarea>
+            </div>
+
+            <div class="mt-8 p-4 bg-gray-50 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-semibold text-gray-700">Dropped or Pasted Files</h4>
+                    <span id="fileCount" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">0 files</span>
+                </div>
+                <div id="droppedFilesList" class="text-gray-500 italic">
+                    No files added yet
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-4 mt-10 mb-10">
+                <button type="button" class="px-8 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-all" onclick="closeFileUploadModal()">Cancel</button>
+                <button type="submit" class="px-10 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg transition-all">Upload Everything</button>
+            </div>
+        </div>
+    </form>
+</div>
 
 <script>
     const API_URL_FOR_DOC_STORE = '<?php echo $docStore; ?>?traveler_id=<? echo $travelerId ?>';
@@ -84,6 +90,19 @@
     // File Management Variables
     let droppedFiles = [];
     let pastedItems = [];
+    
+    function showFileUploadModal() {
+        document.getElementById('file-upload-modal').classList.remove('hidden');
+    }
+    
+    // Modal Functions
+    function showFileUploadModal() {
+        document.getElementById('file-upload-modal').classList.remove('hidden');
+    }
+    
+    function closeFileUploadModal() {
+        document.getElementById('file-upload-modal').classList.add('hidden');
+    }
 
     // Initialize Drag & Drop
     function initDragDrop() {

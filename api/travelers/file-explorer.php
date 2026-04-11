@@ -4,13 +4,16 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
+require_once '../../server/make-smb-dir.php';
 require_once __DIR__ . '/../../server/db_connection.php';
+require_once '../../server/live_storage.php';
 
 class FileExplorerAPI
 {
     private PDO    $pdo;
     private string $travelerId;
     private string $basePath;
+    private string $baseSMBPath;
     private string $travelerFolder;
     private string $serverCusPath; // ✅ FIX: store as class property
 
@@ -54,8 +57,11 @@ class FileExplorerAPI
         $this->travelerFolder =
             preg_replace('/\s+/', '', $traveler['sys_id']) . '_' .
             preg_replace('/\s+/', '', $traveler['name']);
+            
+        $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
 
         $this->basePath = $root . '/' . $this->travelerFolder;
+        $this->baseSMBPath = $SERVER_CUS_PATH."_travelers/".$this->travelerFolder;
 
         if (!is_dir($this->basePath)) {
             mkdir($this->basePath, 0755, true);
@@ -297,7 +303,11 @@ class FileExplorerAPI
         }
 
         $dir = $this->safePath($path) . '/' . $name;
+        $dirForSMB = makeSMBDir($this->safeSMBPath($path), $name);
 
+        // var_dump($dirForSMB);
+        // die;
+        
         if (file_exists($dir)) {
             $this->sendError('Folder already exists', 409);
         }
@@ -305,37 +315,49 @@ class FileExplorerAPI
         if (!mkdir($dir, 0755, true)) {
             $this->sendError('Failed to create folder', 500);
         }
+        
+        
 
         $this->sendResponse(['success' => true, 'message' => 'Folder created successfully']);
     }
-
+    
     private function renameItem(array $data): void
     {
         $path    = $data['path'] ?? '';
         $oldName = $data['oldName'] ?? '';
         $newName = $this->sanitizeFilename($data['newName'] ?? '');
-
+    
         if (empty($oldName) || empty($newName)) {
             $this->sendError('Both old and new names are required', 400);
+            return;
         }
-
-        $baseDir = $this->safePath($path);
-        $oldPath = $baseDir . '/' . $oldName;
-        $newPath = $baseDir . '/' . $newName;
-
-        if (!file_exists($oldPath)) {
-            $this->sendError('Source not found', 404);
+    
+        $localBaseDir = $this->safePath($path);
+        $localOldPath = $localBaseDir . '/' . $oldName;
+        $localNewPath = $localBaseDir . '/' . $newName;
+    
+        if (!file_exists($localOldPath)) {
+            $this->sendError('Local source file not found', 404);
+            return;
         }
-
-        if (file_exists($newPath)) {
-            $this->sendError('Target already exists', 409);
+    
+        if (!rename($localOldPath, $localNewPath)) {
+            $this->sendError('Failed to rename on local server', 500);
+            return;
         }
-
-        if (!rename($oldPath, $newPath)) {
-            $this->sendError('Failed to rename', 500);
+    
+        $smbBaseDir = $this->safeSMBPath($path);
+        $smbOldPath = $smbBaseDir . '/' . $oldName;
+        $smbNewPath = $smbBaseDir . '/' . $newName;
+    
+        $omv = new OMV_SMB_Manager();
+        $smbResult = $omv->rename_item($smbOldPath, $smbNewPath);
+    
+        if ($smbResult === true) {
+            $this->sendResponse(['success' => true, 'message' => 'Renamed successfully on both servers']);
+        } else {
+            $this->sendError('Local renamed, but SMB failed: ' . $smbResult, 500);
         }
-
-        $this->sendResponse(['success' => true, 'message' => 'Item renamed successfully']);
     }
 
     private function moveItem(array $data): void
@@ -521,6 +543,25 @@ class FileExplorerAPI
         }
 
         $realBasePath = realpath($this->basePath);
+
+        if (stripos($realRequestedPath, $realBasePath) !== 0) {
+            $this->sendError('Access denied: Path traversal attempt', 403);
+        }
+
+        return $realRequestedPath;
+    }
+
+    private function safeSMBPath(string $relative): string
+    {
+        $relative        = trim($relative, '/\\');
+        $requestedPath   = $this->baseSMBPath . ($relative ? DIRECTORY_SEPARATOR . $relative : '');
+        $realRequestedPath = realpath($requestedPath);
+
+        if ($realRequestedPath === false) {
+            $realRequestedPath = $this->normalizePathManual($requestedPath);
+        }
+
+        $realBasePath = realpath($this->baseSMBPath);
 
         if (stripos($realRequestedPath, $realBasePath) !== 0) {
             $this->sendError('Access denied: Path traversal attempt', 403);
