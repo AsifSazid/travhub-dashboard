@@ -775,6 +775,79 @@
         justify-content: flex-end;
         margin-top: 10px;
     }
+    
+    /* Document Type Badge Styles */
+    .nid-badge {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 12px;
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 10;
+    }
+    
+    .passport-badge {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 12px;
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 10;
+    }
+    
+    .file-item.group {
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .file-item.group:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .data-entry-quick-btn {
+        position: absolute;
+        bottom: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+        color: white;
+        border-radius: 20px;
+        padding: 4px 10px;
+        font-size: 10px;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.2s;
+        cursor: pointer;
+        z-index: 20;
+        white-space: nowrap;
+    }
+    
+    .file-item.group:hover .data-entry-quick-btn {
+        opacity: 1;
+    }
+    
+    .data-entry-quick-btn:hover {
+        background: #059669;
+    }
+    
+    .pdf-badge {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background: #ef4444;
+        color: white;
+        font-size: 9px;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
 </style>
 
 <!-- Desktop with File Explorer -->
@@ -861,7 +934,7 @@
 
 <div id="toast" class="toast"></div>
 
-<div class="fixed bg-white border border-gray-300 rounded shadow-xl z-50 hidden" id="context-menu">
+<div id="context-menu" class="fixed bg-white border border-gray-300 rounded shadow-xl z-50 hidden">
     <div class="py-2 px-4 min-w-[180px]">
         <div class="context-menu-item" onclick="FileExplorer.contextOpen()">
             <i class="fas fa-folder-open w-5 mr-2 text-blue-500"></i> Open
@@ -888,7 +961,8 @@
         <div class="context-menu-item" onclick="FileExplorer.contextRename()">
             <i class="fas fa-pen w-5 mr-2 text-blue-500"></i> Rename
         </div>
-        <div class="context-menu-item" onclick="FileExplorer.contextDataEntry()">
+        <!-- Dynamic Data Entry Item -->
+        <div id="data-entry-menu-item" class="context-menu-item" onclick="FileExplorer.contextDataEntry()" style="display: none;">
             <i class="fas fa-database w-5 mr-2 text-green-500"></i> Data Entry
         </div>
         <div class="context-menu-item" onclick="FileExplorer.contextDelete()">
@@ -948,48 +1022,6 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="FileExplorer.closeClipboardModal()">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<!-- Data Entry Modal -->
-<div id="dataEntryModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-            <h3 class="text-lg font-semibold">Data Entry</h3>
-            <span class="close-btn" onclick="FileExplorer.closeDataEntryModal()">&times;</span>
-        </div>
-        <div id="dataEntryBody" class="modal-body">
-            <div class="data-entry-form">
-                <div class="data-entry-group">
-                    <label>File Name</label>
-                    <input type="text" id="data-entry-filename" readonly style="background: #f3f4f6;">
-                </div>
-                <div class="data-entry-group">
-                    <label>Title / Description</label>
-                    <textarea id="data-entry-description" placeholder="Enter description or notes about this file..."></textarea>
-                </div>
-                <div class="data-entry-group">
-                    <label>Category</label>
-                    <select id="data-entry-category">
-                        <option value="">Select Category</option>
-                        <option value="Document">Document</option>
-                        <option value="Image">Image</option>
-                        <option value="Video">Video</option>
-                        <option value="Audio">Audio</option>
-                        <option value="Archive">Archive</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="data-entry-group">
-                    <label>Tags (comma separated)</label>
-                    <input type="text" id="data-entry-tags" placeholder="e.g., important, report, 2024">
-                </div>
-                <div class="form-buttons">
-                    <button class="btn btn-secondary" onclick="FileExplorer.closeDataEntryModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="FileExplorer.saveDataEntry()">Save Data</button>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -1186,6 +1218,94 @@
             }
         },
         
+        // ========== DOCUMENT TYPE DETECTION METHODS ==========
+        
+        detectDocumentType(file) {
+            const fileName = file.name.toLowerCase();
+            const filePath = (file.path || '').toLowerCase();
+            const currentDir = this.state.currentPath.toLowerCase();
+            const fullPath = `${currentDir}/${file.name}`.toLowerCase();
+            
+            // Check for NID context (folder or filename)
+            if (fullPath.includes('/nid/') || 
+                fullPath.includes('/national_id/') ||
+                currentDir.includes('/nid') ||
+                filePath.includes('/nid') ||
+                fileName.includes('nid') ||
+                fileName.includes('national_id')) {
+                return 'nid';
+            }
+            
+            // Check for Passport context (folder or filename)
+            if (fullPath.includes('/passports/') ||
+                fullPath.includes('/ppt/') ||
+                currentDir.includes('/passports') ||
+                filePath.includes('/passports') ||
+                fileName.includes('passports') ||
+                fileName.includes('ppt')) {
+                return 'passport';
+            }
+            
+            // if (fullPath.includes('/passport/') ||
+            //     fullPath.includes('/passports/') ||
+            //     fullPath.includes('/ppt/') ||
+            //     currentDir.includes('/passport') ||
+            //     currentDir.includes('/passports') ||
+            //     filePath.includes('/passport') ||
+            //     filePath.includes('/passports') ||
+            //     fileName.includes('passport') ||
+            //     fileName.includes('passports') ||
+            //     fileName.includes('ppt')) {
+            //     return 'passport';
+            // }
+            
+            return 'none';
+        },
+        
+        shouldShowDataEntry(file) {
+            // Check if file type is supported (images OR PDF)
+            const supportedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf'];
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isSupported = supportedExts.includes(ext);
+            
+            if (!isSupported) return false;
+            
+            // Check if in NID or Passport context
+            const docType = this.detectDocumentType(file);
+            return (docType === 'nid' || docType === 'passport');
+        },
+        
+        getDataEntryUrl(file) {
+            const docType = this.detectDocumentType(file);
+            
+            // Get the relative path for the API
+            const relativePath = this.getRelativePathForApi(file);
+            
+            if (docType === 'nid') {
+                // Script is in pages folder
+                return `pages/nid-data-entry.php?path=${encodeURIComponent(relativePath)}`;
+            } else if (docType === 'passport') {
+                return `pages/passport-data-entry.php?path=${encodeURIComponent(relativePath)}`;
+            }
+            return null;
+        },
+        
+        getRelativePathForApi(file) {
+            // Construct the path that the data entry scripts expect
+            const baseStorage = `/storage/travelers/`;
+            const fullPath = this.getFullFilePath(file);
+            
+            // Remove base storage path to get relative path
+            let relativePath = fullPath.replace(baseStorage, '');
+            
+            // Ensure it starts with the correct format
+            if (!relativePath.startsWith('/')) {
+                relativePath = '/' + relativePath;
+            }
+            
+            return relativePath;
+        },
+        
         renderFiles(files) {
             this.state.currentFiles = files;
             const container = document.getElementById('files-container');
@@ -1221,14 +1341,33 @@
         
         createGridFileElement(file) {
             const div = document.createElement('div');
-            div.className = 'file-item cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors text-center';
+            div.className = 'file-item cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors text-center relative group';
             div.dataset.name = file.name;
             div.dataset.type = file.type;
             div.dataset.path = file.path;
             
             const icon = this.getFileIcon(file);
+            const docType = this.detectDocumentType(file);
+            const showDataEntry = this.shouldShowDataEntry(file);
+            
+            // Add document type badge
+            let badgeHtml = '';
+            if (showDataEntry) {
+                if (docType === 'nid') {
+                    badgeHtml = '<span class="nid-badge" title="NID Document">🪪 NID</span>';
+                } else if (docType === 'passport') {
+                    badgeHtml = '<span class="passport-badge" title="Passport Document">📘 Passport</span>';
+                }
+            }
+            
+            // Add PDF badge
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isPdf = ext === 'pdf';
+            const pdfBadge = isPdf ? '<span class="pdf-badge">PDF</span>' : '';
             
             div.innerHTML = `
+                ${badgeHtml}
+                ${pdfBadge}
                 <div class="flex justify-center mb-2">
                     <div class="text-4xl ${icon.color}">
                         <i class="${icon.class}"></i>
@@ -1239,6 +1378,20 @@
                 </div>
                 <div class="text-xs text-gray-500 mt-1 text-center">${file.size}</div>
             `;
+            
+            // Add quick action button for data entry
+            if (showDataEntry) {
+                const actionBtn = document.createElement('button');
+                actionBtn.className = 'data-entry-quick-btn';
+                actionBtn.innerHTML = docType === 'nid' ? '🪪 NID Data Entry' : '📘 Passport Data Entry';
+                actionBtn.title = `Open ${docType.toUpperCase()} Data Entry`;
+                actionBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const url = this.getDataEntryUrl(file);
+                    if (url) window.open(url, '_blank');
+                };
+                div.appendChild(actionBtn);
+            }
             
             div.addEventListener('click', (e) => this.handleFileClick(e, file, div));
             div.addEventListener('dblclick', () => this.handleFileDoubleClick(file));
@@ -1254,6 +1407,19 @@
                 const icon = this.getFileIcon(file);
                 const lastModified = file.lastModified || 'N/A';
                 const size = file.size || 'N/A';
+                const showDataEntry = this.shouldShowDataEntry(file);
+                const docType = this.detectDocumentType(file);
+                
+                let dataEntryBadge = '';
+                if (showDataEntry) {
+                    dataEntryBadge = `<span class="ml-2 px-2 py-0.5 text-xs rounded-full ${docType === 'nid' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
+                        ${docType === 'nid' ? '🪪 NID' : '📘 Passport'}
+                    </span>`;
+                }
+                
+                // Add PDF indicator
+                const ext = file.name.split('.').pop().toLowerCase();
+                const pdfIndicator = ext === 'pdf' ? '<span class="ml-1 text-xs text-red-500">📄</span>' : '';
                 
                 html += `
                     <div class="file-item cursor-pointer flex items-center p-3 hover:bg-gray-50 border-b border-gray-200 transition-colors" 
@@ -1261,8 +1427,10 @@
                         <div class="file-icon text-2xl ${icon.color} mr-4">
                             <i class="${icon.class}"></i>
                         </div>
-                        <div class="file-name flex-1">
+                        <div class="file-name flex-1 flex items-center">
                             ${this.escapeHtml(file.name)}
+                            ${pdfIndicator}
+                            ${dataEntryBadge}
                         </div>
                         <div class="file-size">
                             ${size}
@@ -1343,6 +1511,7 @@
             const fileExtension = file.type === 'folder' ? 'Folder' : file.name.split('.').pop().toUpperCase();
             const lastModified = file.lastModified || new Date().toLocaleString();
             const size = file.size || (file.type === 'folder' ? '—' : 'Unknown');
+            const docType = this.detectDocumentType(file);
             
             let previewHtml = '';
             
@@ -1380,8 +1549,21 @@
                 `;
             }
             
+            let docTypeInfo = '';
+            if (docType !== 'none') {
+                docTypeInfo = `
+                    <div class="property-item">
+                        <div class="property-label">Document Type</div>
+                        <div class="property-value">
+                            ${docType === 'nid' ? '🪪 National ID (NID)' : '📘 Passport'}
+                        </div>
+                    </div>
+                `;
+            }
+            
             panel.innerHTML = `
                 ${previewHtml}
+                ${docTypeInfo}
                 <div class="property-item">
                     <div class="property-label">Name</div>
                     <div class="property-value">${this.escapeHtml(file.name)}</div>
@@ -1419,6 +1601,23 @@
             this.handleFileClick(e, file, element);
             
             const menu = document.getElementById('context-menu');
+            const dataEntryMenuItem = document.getElementById('data-entry-menu-item');
+            
+            // Show/hide and customize Data Entry based on file type and location
+            if (this.shouldShowDataEntry(file)) {
+                const docType = this.detectDocumentType(file);
+                dataEntryMenuItem.style.display = 'flex';
+                const icon = dataEntryMenuItem.querySelector('i');
+                if (docType === 'nid') {
+                    icon.className = 'fas fa-id-card w-5 mr-2 text-green-500';
+                    dataEntryMenuItem.innerHTML = '<i class="fas fa-id-card w-5 mr-2 text-green-500"></i> NID Data Entry';
+                } else if (docType === 'passport') {
+                    icon.className = 'fas fa-passport w-5 mr-2 text-blue-500';
+                    dataEntryMenuItem.innerHTML = '<i class="fas fa-passport w-5 mr-2 text-blue-500"></i> Passport Data Entry';
+                }
+            } else {
+                dataEntryMenuItem.style.display = 'none';
+            }
             
             // Calculate position to prevent going off-screen
             let left = e.pageX;
@@ -1454,6 +1653,22 @@
         getFullFilePath(file) {
             const cleanPath = file.path.replace(/\\/g, '/');
             return `${this.config.baseStoragePath}${this.state.clientFolder ? this.state.clientFolder + '/' : ''}${this.state.travelerFolder}/${cleanPath}`;
+        },
+        
+        contextDataEntry() {
+            if (!this.state.contextItem) return;
+            
+            const url = this.getDataEntryUrl(this.state.contextItem);
+            if (url) {
+                // Open in new tab
+                window.open(url, '_blank');
+                const docType = this.detectDocumentType(this.state.contextItem);
+                this.showToast(`Opening ${docType.toUpperCase()} Data Entry...`, 'info');
+            } else {
+                this.showToast('Data entry not available for this file', 'error');
+            }
+            
+            this.hideContextMenu();
         },
         
         async contextCopyFileToClipboard() {
@@ -1756,6 +1971,26 @@
                 this.navigateToFolder(this.state.contextItem.name);
             } else {
                 window.open(this.getFullFilePath(this.state.contextItem), '_blank');
+            }
+            
+            this.hideContextMenu();
+        },
+        
+        contextEdit() {
+            if (!this.state.contextItem) return;
+            
+            if (this.state.contextItem.type === 'folder') {
+                this.showToast('Cannot edit a folder', 'error');
+                return;
+            }
+            
+            // For text files, you could implement inline editing
+            const ext = this.state.contextItem.name.split('.').pop().toLowerCase();
+            if (['txt', 'md', 'json', 'xml'].includes(ext)) {
+                // Open in edit mode - could implement a modal editor
+                this.showToast('Edit feature coming soon', 'info');
+            } else {
+                this.showToast('This file type cannot be edited directly', 'error');
             }
             
             this.hideContextMenu();
@@ -2192,60 +2427,6 @@
             }
         },
         
-        contextDataEntry() {
-            if (!this.state.contextItem) return;
-            
-            this.state.dataEntryItem = this.state.contextItem;
-            
-            // Fill the form with existing data if available (you can load from localStorage or backend)
-            document.getElementById('data-entry-filename').value = this.state.contextItem.name;
-            document.getElementById('data-entry-description').value = '';
-            document.getElementById('data-entry-category').value = '';
-            document.getElementById('data-entry-tags').value = '';
-            
-            // Try to load saved data
-            const savedData = localStorage.getItem(`file_data_${this.state.contextItem.path}_${this.state.contextItem.name}`);
-            if (savedData) {
-                try {
-                    const data = JSON.parse(savedData);
-                    document.getElementById('data-entry-description').value = data.description || '';
-                    document.getElementById('data-entry-category').value = data.category || '';
-                    document.getElementById('data-entry-tags').value = data.tags || '';
-                } catch(e) {}
-            }
-            
-            document.getElementById('dataEntryModal').style.display = 'flex';
-            this.hideContextMenu();
-        },
-        
-        saveDataEntry() {
-            if (!this.state.dataEntryItem) return;
-            
-            const description = document.getElementById('data-entry-description').value;
-            const category = document.getElementById('data-entry-category').value;
-            const tags = document.getElementById('data-entry-tags').value;
-            
-            const data = {
-                filename: this.state.dataEntryItem.name,
-                path: this.state.dataEntryItem.path,
-                description: description,
-                category: category,
-                tags: tags,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Save to localStorage (you can modify this to save to backend)
-            localStorage.setItem(`file_data_${this.state.dataEntryItem.path}_${this.state.dataEntryItem.name}`, JSON.stringify(data));
-            
-            this.showToast('Data saved successfully', 'success');
-            this.closeDataEntryModal();
-        },
-        
-        closeDataEntryModal() {
-            document.getElementById('dataEntryModal').style.display = 'none';
-            this.state.dataEntryItem = null;
-        },
-        
         async contextDelete() {
             if (!this.state.contextItem) {
                 this.showToast('No item selected', 'error');
@@ -2291,9 +2472,16 @@
             const modal = document.getElementById('propertyModal');
             const body = document.getElementById('modalBody');
             
+            const docType = this.detectDocumentType(this.state.contextItem);
+            let docTypeHtml = '';
+            if (docType !== 'none') {
+                docTypeHtml = `<div><strong class="text-gray-700">Document Type:</strong> ${docType === 'nid' ? '🪪 National ID (NID)' : '📘 Passport'}</div>`;
+            }
+            
             body.innerHTML = `
                 <div class="space-y-3">
                     <div><strong class="text-gray-700">Name:</strong> <span class="text-wrap">${this.escapeHtml(this.state.contextItem.name)}</span></div>
+                    ${docTypeHtml}
                     <div><strong class="text-gray-700">Type:</strong> ${this.state.contextItem.type}</div>
                     <div><strong class="text-gray-700">Size:</strong> ${this.state.contextItem.size || 'N/A'}</div>
                     <div><strong class="text-gray-700">Modified:</strong> ${this.state.contextItem.lastModified || 'N/A'}</div>
@@ -2475,7 +2663,6 @@
                     this.closeModal();
                     this.closeClipboardModal();
                     this.closeMoveModal();
-                    this.closeDataEntryModal();
                 }
                 
                 if (e.ctrlKey && e.key === 'c' && this.state.selectedItem) {
@@ -2510,7 +2697,7 @@
             });
             
             window.addEventListener('click', (event) => {
-                const modals = ['propertyModal', 'clipboardCopyModal', 'upload-modal', 'rename-modal', 'dataEntryModal'];
+                const modals = ['propertyModal', 'clipboardCopyModal', 'upload-modal', 'rename-modal'];
                 modals.forEach(modalId => {
                     const modal = document.getElementById(modalId);
                     if (modal && event.target === modal) {
@@ -2522,8 +2709,6 @@
                             this.closeUploadModal();
                         } else if (modalId === 'rename-modal') {
                             this.closeRenameModal();
-                        } else if (modalId === 'dataEntryModal') {
-                            this.closeDataEntryModal();
                         }
                     }
                 });
