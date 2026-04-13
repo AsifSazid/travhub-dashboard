@@ -506,73 +506,144 @@
         }
     }
     
+    // Add this HTML for conversion status display - put it near the upload button
+    // Add this div somewhere in your modal:
+    // <div id="conversionStatus" class="hidden mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"></div>
+    
+    // Replace the existing form submit handler with this:
     const form = document.getElementById('docsForm');
     form.addEventListener('submit', function(e) {
-        e.preventDefault(); // Prevent page reload
-
+        e.preventDefault();
+    
         // Create FormData
         const formData = new FormData();
-
         const pasteArea = document.getElementById('pasteArea').value;
-
         formData.append('pasted_text', pasteArea);
-
+    
         // Append files
         if (droppedFiles.length > 0) {
             droppedFiles.forEach(file => {
                 formData.append('files[]', file);
             });
         }
-
-        // Show loading state
+    
+        // Show loading state with detailed status
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing files (PDFs will be converted to images)...';
         submitBtn.disabled = true;
-
+        
+        // Show conversion status area
+        const statusDiv = document.getElementById('conversionStatus') || createStatusDiv();
+        statusDiv.innerHTML = '<div class="flex items-center"><i class="fas fa-sync-alt fa-spin mr-2"></i> Uploading and converting files...</div>';
+        statusDiv.classList.remove('hidden');
+    
         // Send to API
         fetch(API_URL_FOR_DOC_STORE, {
-                method: 'POST',
-                body: formData // FormData will automatically set Content-Type
-            })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return res.json();
-            })
-            .then(data => {
-                console.log('API Response:', data);
-
-                if (data.success) {
-                    alert('Docs saved successfully!');
-                    // Reset form
-                    form.reset();
-                    // Clear files
-                    droppedFiles = [];
-                    document.getElementById('droppedFilesList').innerHTML = `
-                        <div class="text-center text-gray-500 py-4 text-sm">
-                            <i class="fas fa-file mb-1"></i>
-                            <p>No files added yet</p>
-                        </div>
-                    `;
-                    updateFileCount();
-
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return res.json();
+        })
+        .then(data => {
+            console.log('API Response:', data);
+    
+            if (data.success) {
+                // Show conversion details if any PDFs were converted
+                if (data.conversions && data.conversions.length > 0) {
+                    let conversionHtml = '<div class="text-sm"><i class="fas fa-file-image text-green-600 mr-2"></i> <strong>PDF Conversions:</strong><ul class="mt-2 ml-6 list-disc">';
+                    data.conversions.forEach(conv => {
+                        conversionHtml += `<li>${conv.original_pdf} → ${conv.converted_to} (Page ${conv.page})</li>`;
+                    });
+                    conversionHtml += '</ul></div>';
+                    statusDiv.innerHTML = conversionHtml;
+                    statusDiv.className = 'mt-4 p-3 bg-green-50 border border-green-200 rounded-lg';
+                    
+                    // Auto hide after 5 seconds
+                    setTimeout(() => {
+                        statusDiv.classList.add('hidden');
+                    }, 5000);
                 } else {
-                    alert(data.message || 'Error:', 'Something went wrong'); 
+                    statusDiv.innerHTML = '<div class="text-sm"><i class="fas fa-check-circle text-green-600 mr-2"></i> ' + data.message + '</div>';
+                    statusDiv.className = 'mt-4 p-3 bg-green-50 border border-green-200 rounded-lg';
+                    setTimeout(() => {
+                        statusDiv.classList.add('hidden');
+                    }, 3000);
                 }
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                alert('Server or network error. Please try again.'+ err.message);
-               
-            })
-            .finally(() => {
-                // Reset button state
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            });
+                
+                // Show warnings if any
+                if (data.warnings && data.warnings.length > 0) {
+                    let warningHtml = '<div class="text-sm text-yellow-700"><i class="fas fa-exclamation-triangle mr-2"></i> <strong>Warnings:</strong><ul class="mt-2 ml-6 list-disc">';
+                    data.warnings.forEach(warning => {
+                        warningHtml += `<li>${warning}</li>`;
+                    });
+                    warningHtml += '</ul></div>';
+                    
+                    // Append warnings below success message
+                    const warningDiv = document.createElement('div');
+                    warningDiv.innerHTML = warningHtml;
+                    warningDiv.className = 'mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg';
+                    statusDiv.appendChild(warningDiv);
+                }
+                
+                alert('✅ ' + data.message);
+                
+                // Reset form
+                form.reset();
+                droppedFiles = [];
+                document.getElementById('droppedFilesList').innerHTML = `
+                    <div class="text-center text-gray-500 py-4 text-sm">
+                        <i class="fas fa-file mb-1"></i>
+                        <p>No files added yet</p>
+                    </div>
+                `;
+                updateFileCount();
+                document.getElementById('pasteArea').value = '';
+    
+            } else {
+                statusDiv.innerHTML = '<div class="text-sm text-red-600"><i class="fas fa-exclamation-circle mr-2"></i> ' + (data.message || 'Upload failed') + '</div>';
+                statusDiv.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded-lg';
+                alert('❌ Error: ' + (data.message || 'Something went wrong'));
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            statusDiv.innerHTML = '<div class="text-sm text-red-600"><i class="fas fa-exclamation-circle mr-2"></i> Server error: ' + err.message + '</div>';
+            statusDiv.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded-lg';
+            alert('Server or network error. Please try again.\n' + err.message);
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            // Hide status after 8 seconds if not already hidden
+            setTimeout(() => {
+                if (statusDiv && !statusDiv.classList.contains('hidden')) {
+                    statusDiv.classList.add('hidden');
+                }
+            }, 8000);
+        });
     });
+    
+    // Helper function to create status div if it doesn't exist
+    function createStatusDiv() {
+        let statusDiv = document.getElementById('conversionStatus');
+        if (!statusDiv) {
+            statusDiv = document.createElement('div');
+            statusDiv.id = 'conversionStatus';
+            statusDiv.className = 'hidden mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg';
+            // Insert it after the submit button or in a suitable place
+            const form = document.getElementById('docsForm');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.parentNode.insertBefore(statusDiv, submitBtn.nextSibling);
+        }
+        return statusDiv;
+    }
 
     // Download file
     function downloadFile(fileName) {

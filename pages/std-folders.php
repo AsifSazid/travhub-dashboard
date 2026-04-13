@@ -1984,16 +1984,49 @@
                 return;
             }
             
-            // For text files, you could implement inline editing
+            // Check if it's an image file
             const ext = this.state.contextItem.name.split('.').pop().toLowerCase();
-            if (['txt', 'md', 'json', 'xml'].includes(ext)) {
-                // Open in edit mode - could implement a modal editor
-                this.showToast('Edit feature coming soon', 'info');
-            } else {
-                this.showToast('This file type cannot be edited directly', 'error');
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
+            
+            if (imageExts.includes(ext)) {
+                // Get the SMB path for the image
+                const smbPath = this.getSmbPathForEditor(this.state.contextItem);
+                
+                // Open the image editor with the SMB path
+                const editorUrl = `img-editor.php?img=${encodeURIComponent(smbPath)}`;
+                window.open(editorUrl, '_blank');
+                
+                this.showToast('Opening image editor...', 'info');
+            } 
+            // For text files
+            else if (['txt', 'md', 'json', 'xml', 'csv'].includes(ext)) {
+                // You can implement text file editing here if needed
+                this.showToast('Text file editing coming soon', 'info');
+            } 
+            // For PDF and other unsupported files
+            else {
+                this.showToast('This file type cannot be edited', 'error');
             }
             
             this.hideContextMenu();
+        },
+        
+        // Add this helper method to get the correct SMB path format for the editor
+        getSmbPathForEditor(file) {
+            // The format expected by img-editor.php is: rnd_traveler/{travelerFolder}/{path}/{filename}
+            // Example: "rnd_traveler/niloy_5c0e526c/all_documents/photo.jpg"
+            
+            // Get the relative path from the file object
+            let relativePath = file.path || '';
+            
+            // Remove any leading/trailing slashes
+            relativePath = relativePath.replace(/^\/+|\/+$/g, '');
+            
+            // Construct the full SMB path
+            const smbPath = `rnd_traveler/${this.state.travelerFolder}/${relativePath}`;
+            
+            // Remove any double slashes that might have been created
+            return smbPath.replace(/\/+/g, '/');
         },
         
         async contextCut() {
@@ -2344,10 +2377,25 @@
                 this.showToast('No item selected', 'error');
                 return;
             }
-            
+        
             const itemName = this.state.contextItem.name;
-            const newName = prompt(`Enter new name for duplicate of "${itemName}":`, `${itemName} - Copy`);
             
+            // Extension alada korar logic
+            const lastDotIndex = itemName.lastIndexOf('.');
+            let defaultNewName;
+        
+            if (lastDotIndex !== -1 && lastDotIndex !== 0) {
+                // Jodi extension thake
+                const namePart = itemName.substring(0, lastDotIndex);
+                const extension = itemName.substring(lastDotIndex);
+                defaultNewName = `${namePart} - Copy${extension}`;
+            } else {
+                // Jodi extension na thake (folder ba no extension file)
+                defaultNewName = `${itemName} - Copy`;
+            }
+        
+            const newName = prompt(`Enter new name for duplicate of "${itemName}":`, defaultNewName);
+        
             if (!newName) return;
             
             try {

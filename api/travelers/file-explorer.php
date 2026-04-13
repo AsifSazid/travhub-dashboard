@@ -126,8 +126,17 @@ class FileExplorerAPI
         if ($action !== 'delete') {
             $this->sendError('Invalid action', 400);
         }
-
+        
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
+        
+        $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
+        $this->baseSMBPath = $SERVER_CUS_PATH."_travelers/".$this->travelerFolder;
+        
+        $fileName = $this->baseSMBPath.'/'.$data['path'].'/'.$data['name'];
+        
+        $omv = new OMV_SMB_Manager();
+        $smbResult = $omv->delete_file($fileName);
+
         $this->deleteItem($data);
     }
 
@@ -316,8 +325,6 @@ class FileExplorerAPI
             $this->sendError('Failed to create folder', 500);
         }
         
-        
-
         $this->sendResponse(['success' => true, 'message' => 'Folder created successfully']);
     }
     
@@ -366,32 +373,54 @@ class FileExplorerAPI
         $sourceName = $data['sourceName'] ?? '';
         $targetPath = $data['targetPath'] ?? '';
         $targetName = $this->sanitizeFilename($data['targetName'] ?? $sourceName);
-
+    
         if (empty($sourceName)) {
             $this->sendError('Source name is required', 400);
         }
-
+    
         $sourceFull = $this->safePath($sourcePath) . '/' . $sourceName;
         $targetFull = $this->safePath($targetPath) . '/' . $targetName;
-
+    
         if (!file_exists($sourceFull)) {
             $this->sendError('Source not found', 404);
         }
-
+    
         if (file_exists($targetFull)) {
             $this->sendError('Target already exists', 409);
         }
-
+    
         // Prevent moving a folder into itself
         if (is_dir($sourceFull) && strpos($targetFull . '/', $sourceFull . '/') === 0) {
             $this->sendError('Cannot move a folder into itself', 400);
         }
-
+    
+        // ✅ LOCAL MOVE
         if (!rename($sourceFull, $targetFull)) {
-            $this->sendError('Failed to move item', 500);
+            $this->sendError('Failed to move item on local server', 500);
         }
-
-        $this->sendResponse(['success' => true, 'message' => 'Item moved successfully']);
+    
+        // ✅ SMB MOVE
+        $smbSourcePath = $this->safeSMBPath($sourcePath) . '/' . $sourceName;
+        $smbTargetPath = $this->safeSMBPath($targetPath) . '/' . $targetName;
+        
+        $omv = new OMV_SMB_Manager();
+        
+        // চেক করুন এটি ফাইল না ফোল্ডার
+        $isDirectory = is_dir($sourceFull);
+        
+        if ($isDirectory) {
+            $smbResult = $omv->move_directory($smbSourcePath, $smbTargetPath);
+        } else {
+            $smbResult = $omv->move_item($smbSourcePath, $smbTargetPath);
+        }
+        
+        if ($smbResult !== true) {
+            // লোকাল মুভ রোলব্যাক করার চেষ্টা করুন
+            rename($targetFull, $sourceFull);
+            $this->sendError('Local moved but SMB failed: ' . $smbResult, 500);
+        }
+    
+        $this->sendResponse(['success' => true, 'message' => 'Item moved successfully on both servers']);
     }
 
     private function copyItem(array $data): void
@@ -400,27 +429,54 @@ class FileExplorerAPI
         $sourceName = $data['sourceName'] ?? '';
         $targetPath = $data['targetPath'] ?? '';
         $targetName = $this->sanitizeFilename($data['targetName'] ?? $sourceName);
-
+    
         $sourceFull = $this->safePath($sourcePath) . '/' . $sourceName;
         $targetFull = $this->safePath($targetPath) . '/' . $targetName;
-
+    
         if (!file_exists($sourceFull)) {
             $this->sendError('Source not found', 404);
         }
-
+    
         if (file_exists($targetFull)) {
             $this->sendError('Target already exists', 409);
         }
-
-        $success = is_dir($sourceFull)
-            ? $this->copyDirectory($sourceFull, $targetFull)
-            : copy($sourceFull, $targetFull);
-
-        if (!$success) {
-            $this->sendError('Failed to copy item', 500);
+    
+        $isDirectory = is_dir($sourceFull);
+        
+        // ✅ LOCAL COPY
+        if ($isDirectory) {
+            $success = $this->copyDirectory($sourceFull, $targetFull);
+        } else {
+            $success = copy($sourceFull, $targetFull);
         }
-
-        $this->sendResponse(['success' => true, 'message' => 'Item copied successfully']);
+    
+        if (!$success) {
+            $this->sendError('Failed to copy item on local server', 500);
+        }
+    
+        // ✅ SMB COPY
+        $smbSourcePath = $this->safeSMBPath($sourcePath) . '/' . $sourceName;
+        $smbTargetPath = $this->safeSMBPath($targetPath) . '/' . $targetName;
+        
+        $omv = new OMV_SMB_Manager();
+        
+        if ($isDirectory) {
+            $smbResult = $omv->copy_directory($smbSourcePath, $smbTargetPath);
+        } else {
+            $smbResult = $omv->copy_item($smbSourcePath, $smbTargetPath);
+        }
+        
+        if ($smbResult !== true) {
+            // লোকাল কপি রোলব্যাক
+            if ($isDirectory) {
+                $this->deleteDirectory($targetFull);
+            } else {
+                unlink($targetFull);
+            }
+            $this->sendError('Local copied but SMB failed: ' . $smbResult, 500);
+        }
+    
+        $this->sendResponse(['success' => true, 'message' => 'Item copied successfully on both servers']);
     }
 
     private function duplicateItem(array $data): void
@@ -428,67 +484,121 @@ class FileExplorerAPI
         $sourcePath = $data['sourcePath'] ?? '';
         $sourceName = $data['sourceName'] ?? '';
         $targetName = $this->sanitizeFilename($data['targetName'] ?? '');
-
+    
         $sourceFull = $this->safePath($sourcePath) . '/' . $sourceName;
-
+    
         if (!file_exists($sourceFull)) {
             $this->sendError('Source not found', 404);
         }
-
+    
         // Auto-generate duplicate name if not provided
         if (empty($targetName)) {
             $ext           = pathinfo($sourceName, PATHINFO_EXTENSION);
             $nameWithoutExt = pathinfo($sourceName, PATHINFO_FILENAME);
             $targetName    = $nameWithoutExt . ' - Copy' . ($ext ? '.' . $ext : '');
-
+    
             $counter = 1;
             while (file_exists($this->safePath($sourcePath) . '/' . $targetName)) {
                 $targetName = $nameWithoutExt . ' - Copy (' . $counter . ')' . ($ext ? '.' . $ext : '');
                 $counter++;
             }
         }
-
+    
         $targetFull = $this->safePath($sourcePath) . '/' . $targetName;
-
+    
         if (file_exists($targetFull)) {
             $this->sendError('Target already exists', 409);
         }
-
-        $success = is_dir($sourceFull)
-            ? $this->copyDirectory($sourceFull, $targetFull)
-            : copy($sourceFull, $targetFull);
-
-        if (!$success) {
-            $this->sendError('Failed to duplicate item', 500);
+    
+        // ✅ LOCAL DUPLICATE (কপি)
+        $isDirectory = is_dir($sourceFull);
+        
+        if ($isDirectory) {
+            $success = $this->copyDirectory($sourceFull, $targetFull);
+        } else {
+            $success = copy($sourceFull, $targetFull);
         }
-
-        $this->sendResponse(['success' => true, 'message' => 'Item duplicated successfully']);
+    
+        if (!$success) {
+            $this->sendError('Failed to duplicate item on local server', 500);
+        }
+    
+        // ✅ SMB DUPLICATE (কপি)
+        $smbSourcePath = $this->safeSMBPath($sourcePath) . '/' . $sourceName;
+        $smbTargetPath = $this->safeSMBPath($sourcePath) . '/' . $targetName;
+        
+        $omv = new OMV_SMB_Manager();
+        
+        if ($isDirectory) {
+            $smbResult = $omv->copy_directory($smbSourcePath, $smbTargetPath);
+        } else {
+            $smbResult = $omv->copy_item($smbSourcePath, $smbTargetPath);
+        }
+        
+        if ($smbResult !== true) {
+            // লোকাল কপি রোলব্যাক করার চেষ্টা করুন
+            if ($isDirectory) {
+                $this->deleteDirectory($targetFull);
+            } else {
+                unlink($targetFull);
+            }
+            $this->sendError('Local duplicated but SMB failed: ' . $smbResult, 500);
+        }
+    
+        $this->sendResponse(['success' => true, 'message' => 'Item duplicated successfully on both servers']);
     }
 
     private function deleteItem(array $data): void
     {
         $path = $data['path'] ?? '';
         $name = $data['name'] ?? '';
-
+    
         if (empty($name)) {
             $this->sendError('Name is required', 400);
         }
-
+    
         $target = $this->safePath($path) . '/' . $name;
-
+    
         if (!file_exists($target)) {
             $this->sendError('Item not found', 404);
         }
-
-        $success = is_dir($target) ? $this->deleteDirectory($target) : unlink($target);
-
-        if (!$success) {
-            $this->sendError('Failed to delete item', 500);
+    
+        $isDirectory = is_dir($target);
+        
+        // ✅ LOCAL DELETE
+        if ($isDirectory) {
+            $success = $this->deleteDirectory($target);
+        } else {
+            $success = unlink($target);
         }
-
-        $this->sendResponse(['success' => true, 'message' => 'Item deleted successfully']);
+    
+        if (!$success) {
+            $this->sendError('Failed to delete item on local server', 500);
+        }
+    
+        // ✅ SMB DELETE
+        $smbTargetPath = $this->safeSMBPath($path) . '/' . $name;
+        $omv = new OMV_SMB_Manager();
+        
+        if ($isDirectory) {
+            $smbResult = $omv->delete_directory($smbTargetPath);
+        } else {
+            $smbResult = $omv->delete_file($smbTargetPath);
+        }
+        
+        if ($smbResult !== true) {
+            // SMB ডিলিট ফেইল হলেও লোকাল ডিলিট হয়ে গেছে - এরর রিপোর্ট করুন
+            error_log("SMB delete failed for: " . $smbTargetPath . " - " . $smbResult);
+            $this->sendResponse([
+                'success' => true, 
+                'warning' => 'Local deleted but SMB deletion failed: ' . $smbResult,
+                'message' => 'Item deleted locally only'
+            ]);
+            return;
+        }
+    
+        $this->sendResponse(['success' => true, 'message' => 'Item deleted successfully from both servers']);
     }
-
     /* ================= HELPER FUNCTIONS ================= */
 
     private function copyDirectory(string $source, string $dest): bool
