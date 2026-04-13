@@ -191,5 +191,11 @@ if (!class_exists('OMV_SMB_Manager')) {
             
             return false;
         }
+        
+        public function get_file($remote_path, $local_path) {
+            $cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'get \"{$remote_path}\" \"{$local_path}\"' 2>&1";
+            exec($cmd, $output, $return_var);
+            return ($return_var === 0);
+        }
     }
 }

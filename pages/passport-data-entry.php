@@ -2,8 +2,9 @@
 
 session_start();
 
-require_once 'live_storage.php';
-require_once 'db.php';
+require_once '../server/live_storage.php';
+require_once '../server/db_connection.php';
+require_once '../server/live_storage.php';
 
 $filePath = $_GET['path'] ?? null;
 if (!$filePath) die("No file path provided.");
@@ -11,7 +12,8 @@ if (!$filePath) die("No file path provided.");
 $pathParts = explode('/', $filePath);
 $traveler_id = $pathParts[1] ?? 'unknown';
 
-$apiKey = 'AIzaSyAXoe0TCR5NmdqSFGj1Tr2ZVadRx6gDPbw';
+$GEMINI_API_KEY = trim(file_get_contents('../gemini-apikey.txt'));
+$apiKey = $GEMINI_API_KEY;
 $model = 'gemini-2.0-flash-lite';
 
 // --- HANDLE SAVE DATA ---

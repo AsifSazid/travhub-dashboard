@@ -1226,25 +1226,23 @@
             const currentDir = this.state.currentPath.toLowerCase();
             const fullPath = `${currentDir}/${file.name}`.toLowerCase();
             
-            // Check for NID context (folder or filename)
-            if (fullPath.includes('/nid/') || 
-                fullPath.includes('/national_id/') ||
-                currentDir.includes('/nid') ||
-                filePath.includes('/nid') ||
-                fileName.includes('nid') ||
-                fileName.includes('national_id')) {
+            // Passport detection - আপডেটেড ভার্সন
+            if (fullPath.includes('passport') ||           // ✅ এখন 'passports/222.png' detect করবে
+                filePath.includes('passport') ||           // ✅ 'passports/222.png' detect করবে  
+                currentDir.includes('passport') ||         // ✅ 'passports' detect করবে
+                fileName.includes('passport')) {           // ✅ ফাইলের নামেও চেক করবে
+                return 'passport';
+            }
+            
+            // NID detection
+            if (fullPath.includes('nid') || 
+                filePath.includes('nid') || 
+                currentDir.includes('nid') || 
+                fileName.includes('nid')) {
                 return 'nid';
             }
             
-            // Check for Passport context (folder or filename)
-            if (fullPath.includes('/passports/') ||
-                fullPath.includes('/ppt/') ||
-                currentDir.includes('/passports') ||
-                filePath.includes('/passports') ||
-                fileName.includes('passports') ||
-                fileName.includes('ppt')) {
-                return 'passport';
-            }
+            return 'none';
             
             // if (fullPath.includes('/passport/') ||
             //     fullPath.includes('/passports/') ||
@@ -1258,8 +1256,6 @@
             //     fileName.includes('ppt')) {
             //     return 'passport';
             // }
-            
-            return 'none';
         },
         
         shouldShowDataEntry(file) {
@@ -1283,9 +1279,9 @@
             
             if (docType === 'nid') {
                 // Script is in pages folder
-                return `pages/nid-data-entry.php?path=${encodeURIComponent(relativePath)}`;
+                return `./nid-data-entry.php?path=${encodeURIComponent(relativePath)}`;
             } else if (docType === 'passport') {
-                return `pages/passport-data-entry.php?path=${encodeURIComponent(relativePath)}`;
+                return `./passport-data-entry.php?path=${encodeURIComponent(relativePath)}`;
             }
             return null;
         },
