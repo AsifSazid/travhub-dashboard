@@ -24,8 +24,6 @@ foreach ($_POST as $key => $value) {
 }
 $logData .= "========================================\n\n";
 
-file_put_contents(__DIR__ . '/invoice_store_debug.log', $logData, FILE_APPEND);
-
 // Include required files
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
@@ -250,13 +248,6 @@ function processFormBankMfsData() {
 // Process POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Get raw POST data for debugging
-        $rawInput = file_get_contents('php://input');
-        file_put_contents(__DIR__ . '/invoice_store_debug.log', 
-            "[" . date('Y-m-d H:i:s') . "] RAW INPUT:\n$rawInput\n\n",
-            FILE_APPEND
-        );
-
         // Start transaction
         $pdo->beginTransaction();
 
@@ -322,13 +313,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // ==================== VENDOR PAYMENT METHODS ====================
         $vendor_payment_methods = processFormBankMfsData();
-        
-        // Debug log for bank/mfs data
-        file_put_contents(__DIR__ . '/invoice_store_debug.log', 
-            "[" . date('Y-m-d H:i:s') . "] PROCESSED BANK/MFS DATA:\n" . 
-            print_r($vendor_payment_methods, true) . "\n\n",
-            FILE_APPEND
-        );
 
         $vendor_payment_methods_json = json_encode($vendor_payment_methods, JSON_UNESCAPED_UNICODE);
 
@@ -419,19 +403,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Commit transaction
         $pdo->commit();
 
-        // Log success
-        file_put_contents(__DIR__ . '/invoice_store_debug.log', 
-            "[" . date('Y-m-d H:i:s') . "] INVOICE SAVED SUCCESSFULLY\n" .
-            "Invoice ID: $invoice_id\n" .
-            "Invoice No: $invoice_no\n" .
-            "Client: $client_name\n" .
-            "Total Amount: $total_amount\n" .
-            "Bank Count: " . count($vendor_payment_methods['banks']) . "\n" .
-            "MFS Count: " . count($vendor_payment_methods['mfs']) . "\n" .
-            "========================================\n\n",
-            FILE_APPEND
-        );
-
         // Return success response
         echo json_encode([
             'success' => true,
@@ -460,12 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        " in " . $e->getFile() . ":" . $e->getLine();
         
         error_log($errorMessage);
-        file_put_contents(__DIR__ . '/invoice_store_debug.log', 
-            "[" . date('Y-m-d H:i:s') . "] ERROR: $errorMessage\n" .
-            "Stack Trace:\n" . $e->getTraceAsString() . "\n" .
-            "========================================\n\n",
-            FILE_APPEND
-        );
+
 
         // Return error response
         http_response_code(500);

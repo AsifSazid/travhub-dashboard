@@ -5,13 +5,36 @@
             <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">Personal Information</h3>
 
             <div>
-                <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">
+                <label id="fullNameLabel" for="fullName" class="block text-sm font-medium text-gray-700 mb-1">
                     Name <span class="text-red-500">*</span>
                 </label>
                 <input type="text" id="fullName" name="full_name"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="John" required>
-                <p class="text-xs text-gray-500 mt-1">Full Name</p>
+                <p id="nameHint" class="text-xs text-gray-500 mt-1">Full Name</p>
+            </div>
+            
+            <div id="clientAsCompany" class="hidden space-y-4">
+                <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">Representative Information</h3>
+                <div>
+                    <label for="repName" class="block text-sm font-medium text-gray-700 mb-1">
+                        Representative Name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="repName" name="rep_name"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="John" required>
+                    <p class="text-xs text-gray-500 mt-1">Representative Full Name</p>
+                </div>
+                
+                <div>
+                    <label for="repPhone" class="block text-sm font-medium text-gray-700 mb-1">
+                        Representative Phone No <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="repPhone" name="rep_phone"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="John" required>
+                    <p class="text-xs text-gray-500 mt-1">Representative Phone No</p>
+                </div>
             </div>
 
             <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">Contact Information</h3>
@@ -48,7 +71,7 @@
             <!-- Primary Email -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Primary Email <span class="text-red-500">*</span>
+                    Primary Email
                 </label>
                 <div class="flex gap-2">
                     <input type="email" id="primaryEmail" name="primary_email"
@@ -73,6 +96,7 @@
                     Add Secondary Email
                 </button>
             </div>
+            
         </div>
 
         <!-- Column 3: Address Information -->

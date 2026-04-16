@@ -93,15 +93,15 @@ $storeClientApi = $ip_port . "api/clients/store.php";
                             </label>
                             <div class="flex space-x-4">
                                 <label class="inline-flex items-center">
-                                    <input type="radio" name="type" value="general" class="form-radio h-4 w-4 text-blue-600" checked>
+                                    <input type="radio" name="type" value="general" onchange="toggleRepresentativeSection()" class="form-radio h-4 w-4 text-blue-600" checked>
                                     <span class="ml-2 text-gray-700">General</span>
                                 </label>
                                 <label class="inline-flex items-center">
-                                    <input type="radio" name="type" value="individual" class="form-radio h-4 w-4 text-blue-600">
+                                    <input type="radio" name="type" value="individual" onchange="toggleRepresentativeSection()" class="form-radio h-4 w-4 text-blue-600">
                                     <span class="ml-2 text-gray-700">Individual</span>
                                 </label>
                                 <label class="inline-flex items-center">
-                                    <input type="radio" name="type" value="company" class="form-radio h-4 w-4 text-blue-600">
+                                    <input type="radio" name="type" value="company" onchange="toggleRepresentativeSection()" class="form-radio h-4 w-4 text-blue-600">
                                     <span class="ml-2 text-gray-700">Company</span>
                                 </label>
                             </div>
@@ -197,6 +197,30 @@ $storeClientApi = $ip_port . "api/clients/store.php";
             `;
             container.appendChild(div);
         }
+        
+        function toggleRepresentativeSection() {
+            const selectedType = document.querySelector('input[name="type"]:checked').value;
+            const representativeSection = document.getElementById('clientAsCompany');
+            const fullNameLabel = document.getElementById('fullNameLabel');
+            const nameHint = document.getElementById('nameHint');
+            const fullNameInput = document.getElementById('fullName');
+            
+            if (selectedType === 'company') {
+                // Show representative section
+                representativeSection.classList.remove('hidden');
+                // Change label and placeholder to Company Name
+                fullNameLabel.innerHTML = 'Company Name <span class="text-red-500">*</span>';
+                nameHint.textContent = 'Company Name';
+                fullNameInput.placeholder = 'Company name';
+            } else {
+                // Hide representative section
+                representativeSection.classList.add('hidden');
+                // Change label back to Name
+                fullNameLabel.innerHTML = 'Name <span class="text-red-500">*</span>';
+                nameHint.textContent = 'Full Name';
+                fullNameInput.placeholder = 'John';
+            }
+        }
 
         function removeSecondaryEmail(button) {
             button.closest('.secondary-email-input').remove();
@@ -212,9 +236,12 @@ $storeClientApi = $ip_port . "api/clients/store.php";
 
                 // Clear all secondary phone inputs
                 secondaryPhoneContainer.innerHTML = '';
-
                 // Clear all secondary email inputs
                 secondaryEmailContainer.innerHTML = '';
+                
+                // Reset to default state (General selected)
+                document.querySelector('input[name="type"][value="general"]').checked = true;
+                toggleRepresentativeSection();
 
                 showMessage('Form has been reset', 'success');
             }
@@ -236,6 +263,8 @@ $storeClientApi = $ip_port . "api/clients/store.php";
                 type: formData.get('type'),
                 full_name: formData.get('full_name'),
                 status: 'active',
+                rep_name: formData.get('rep_name'),
+                rep_phone: formData.get('rep_phone'),
                 created_by: 'current_user' // Replace with actual user from session
             };
 
@@ -336,6 +365,9 @@ $storeClientApi = $ip_port . "api/clients/store.php";
                 container.classList.add('hidden');
             }, 5000);
         }
+        
+        // Initialize on page load
+        toggleRepresentativeSection();
     </script>
 </body>
 

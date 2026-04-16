@@ -15,6 +15,9 @@ ini_set('display_errors', 1);
 // Get POST data
 $data = json_decode(file_get_contents('php://input'), true);
 
+var_dump($data);
+die;
+
 if (!$data) {
     echo json_encode(['success' => false, 'message' => 'No data received']);
     exit;
@@ -26,8 +29,8 @@ if (empty($data['full_name'])) {
     exit;
 }
 
-if (empty($data['phone']) || empty($data['email'])) {
-    echo json_encode(['success' => false, 'message' => 'At least one phone number and email is required']);
+if (empty($data['phone'])) {
+    echo json_encode(['success' => false, 'message' => 'At least one phone number is required']);
     exit;
 }
 
