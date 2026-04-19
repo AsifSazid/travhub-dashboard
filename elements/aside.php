@@ -199,6 +199,37 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </div>
             </div>
             
+            <!-- Packages Accordion -->
+            <div class="accordion-item mt-4" data-accordion="packages">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-suitcase-rolling mr-3"></i>
+                        <span class="font-medium sidebar-text transition-all duration-300">Packages</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 sidebar-text"></i>
+                </button>
+
+                <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <a href="create-packages.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'create-packages.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-circle-plus mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Create</span>
+                    </a>
+                    <a href="index-packages.php"
+                       class="flex items-center p-3 rounded-lg <?= $currentPage == 'index-packages.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-table-list mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Lists</span>
+                    </a>
+                    <a href="package-calculation.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'package-calculation.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-calculator mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Calculation</span>
+                    </a>
+                </div>
+            </div>
+            
             <li>
                 <a href="settings.php"
                     class="flex items-center p-3 rounded-lg 

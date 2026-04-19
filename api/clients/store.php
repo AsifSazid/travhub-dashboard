@@ -15,9 +15,6 @@ ini_set('display_errors', 1);
 // Get POST data
 $data = json_decode(file_get_contents('php://input'), true);
 
-var_dump($data);
-die;
-
 if (!$data) {
     echo json_encode(['success' => false, 'message' => 'No data received']);
     exit;
@@ -64,10 +61,12 @@ try {
             phone, 
             email, 
             address, 
+            rep_name,
+            rep_phone,
             status, 
             meta_data
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Execute
@@ -79,6 +78,8 @@ try {
         json_encode($data['phone']),
         json_encode($data['email']),
         json_encode($data['address']),
+        $data['rep_name'] ?? '',
+        $data['rep_phone'] ?? '',
         $data['status'] ?? 'active',
         $metaDataJson
     ]);

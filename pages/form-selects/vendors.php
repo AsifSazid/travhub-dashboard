@@ -1,17 +1,25 @@
 <?php
     $getAllVendorsApi = $ip_port . "api/vendors/all-vendors.php";
 ?>
-    <div id="vendorSearchContainer" class="relative w-full">
+<div class="grid grid-cols-5 gap-4">
+    <div id="vendorSearchContainer" class="relative w-full col-span-3">
         <div class="flex">
             <input
                 type="text"
                 id="vendorInput"
                 placeholder="Search for a vendor..."
-                class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-all duration-200"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 autocomplete="off">
         </div>
         <ul id="vendorDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto shadow-lg hidden z-50"></ul>
     </div>
+    
+    <div class="col-span-1">
+        <a href="./create-vendor.php">
+            <i class="fas fa-circle-plus mr-3"></i>
+        </a>
+    </div>
+</div>
     
     <script>
         const GET_ALL_VENDOR_API = "<?php echo $getAllVendorsApi; ?>";
