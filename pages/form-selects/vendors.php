@@ -1,7 +1,7 @@
 <?php
     $getAllVendorsApi = $ip_port . "api/vendors/all-vendors.php";
 ?>
-<div class="grid grid-cols-5 gap-4">
+<div class="grid grid-cols-4 gap-4 items-center">
     <div id="vendorSearchContainer" class="relative w-full col-span-3">
         <div class="flex">
             <input
@@ -14,10 +14,18 @@
         <ul id="vendorDropdown" class="absolute w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-auto shadow-lg hidden z-50"></ul>
     </div>
     
-    <div class="col-span-1">
-        <a href="./create-vendor.php">
-            <i class="fas fa-circle-plus mr-3"></i>
+    <div class="col-span-1 flex gap-2">
+        <a href="./create-vendor.php" 
+           target="_blank" 
+           title="Add New Vendor"
+           class="flex items-center justify-center w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors shadow-sm">
+            <i class="fas fa-plus"></i>
         </a>
+        <button type="button" onclick="loadVendors()" 
+                title="Refresh List"
+                class="flex items-center justify-center w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg border border-gray-300 transition-all active:scale-95 shadow-sm">
+            <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
     </div>
 </div>
     
