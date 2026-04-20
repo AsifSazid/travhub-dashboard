@@ -249,13 +249,16 @@ try {
         'client_title' => $client_info['title'] ?? '',
         'client_phone_no' => $clientPhone['primary_no'] ?? ($client_info['phone_no'] ?? ''),
         'client_address_line_1' => $clientAddress['address_line_1'] ?? '',
-        'client_address_line_2' =>
-            trim(
-                ($clientAddress['address_line_2'] ?? '') . ', ' .
-                ($clientAddress['city'] ?? '') . ', ' .
-                ($clientAddress['city'] ?? '') . '-' .
-                ($clientAddress['zip_code'] ?? '')
-            ),        
+        'client_address_line_2' => (function($addr) {
+            // 1. City ebong Zip ke agey hyphen diye join korchi (jodi thake)
+            $cityZipParts = array_filter([$addr['city'] ?? '', $addr['zip_code'] ?? '']);
+            $cityZip = implode('-', $cityZipParts);
+        
+            // 2. Line 2 ebong uporer City-Zip ke comma diye join korchi
+            $finalParts = array_filter([$addr['address_line_2'] ?? '', $cityZip]);
+            
+            return implode(', ', $finalParts);
+        })($clientAddress),      
         'client_cc' => $client_info['cc'] ?? '',
 
         // Work items from database
@@ -450,7 +453,7 @@ ob_start();
                                 <div class="text-bold"><?php echo htmlspecialchars($item['title'] ?? ''); ?></div>
                                 <?php if (!empty($item['particular'])): ?>
                                     <div style="font-size: 11px; margin-top: 3px;">
-                                        <?php echo nl2br(htmlspecialchars($item['particular'] ?? '')); ?>
+                                        <?php echo nl2br(htmlspecialchars($item['particular'] ?? '', ENT_QUOTES, 'UTF-8', false)); ?>
                                     </div>
                                 <?php endif; ?>
                             </td>

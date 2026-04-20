@@ -9,7 +9,7 @@ function makeDir($directory, $folderOrFileName)
     $fileCreation = $rootPath . "/{$SERVER_CUS_PATH}/storage/" . $directory . "/" . $folderOrFileName;
 
     if(!is_dir($fileCreation)){
-        mkdir($fileCreation, 0755, true);
+        mkdir($fileCreation, 0775, true);
     }
     
     return $fileCreation;

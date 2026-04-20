@@ -210,9 +210,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </button>
 
                 <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
-                    <a href="create-packages.php"
+                    <a href="create-package.php"
                         class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'create-packages.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'create-package.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-circle-plus mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Create</span>
                     </a>
