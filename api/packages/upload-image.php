@@ -38,7 +38,7 @@ try {
         exit; 
     }
 
-    $uploadDir = '../../uploads/packages/' . $row['sys_id'] . '/';
+    $uploadDir = '../../storage/packages/' . $row['sys_id'] . '/';
     
     // Create directory with proper permissions if it doesn't exist
     if (!is_dir($uploadDir)) {
@@ -76,7 +76,7 @@ try {
     // Set proper permissions on uploaded file
     chmod($destPath, 0644);
 
-    $relativePath = 'uploads/packages/' . $row['sys_id'] . '/' . $filename;
+    $relativePath = 'storage/packages/' . $row['sys_id'] . '/' . $filename;
     $pdo->prepare("UPDATE packages SET image=:image WHERE uuid=:uuid")->execute([':image'=>$relativePath, ':uuid'=>$uuid]);
 
     echo json_encode(['success'=>true,'image'=>$relativePath,'message'=>'Image uploaded']);

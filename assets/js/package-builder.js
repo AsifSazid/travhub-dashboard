@@ -33,6 +33,13 @@ const PackageBuilder = (() => {
         await loadCountries();
 
         const params = new URLSearchParams(window.location.search);
+        
+        // If returning from calculator, jump to step 5
+        const calcParam = params.get('calc');
+        if (calcParam === 'saved' && state.uuid) {
+            state.currentStep = 5;
+        }
+        
         const editUUID = params.get('uuid');
         if (editUUID) {
             await loadExistingPackage(editUUID);
@@ -787,12 +794,56 @@ const PackageBuilder = (() => {
                 </button>
             </div>
             <div id="priceOptionsList" class="space-y-3"></div>
+        </div>
+
+        <!-- Calculator Link -->
+        <div class="col-span-full mt-4">
+            <div id="calcStatusBanner" class="hidden bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3 mb-3">
+                <i class="fa-solid fa-circle-check text-green-500"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-green-700">Advanced calculation saved</p>
+                    <p id="calcGrandTotal" class="text-xs text-green-600 mt-0.5"></p>
+                </div>
+                <a id="editCalcLink" href="#"
+                   class="text-xs text-green-700 underline hover:text-green-900 font-medium">Edit Calculation</a>
+            </div>
+            <button id="openCalculatorBtn" type="button"
+                    class="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition">
+                <i class="fa-solid fa-calculator"></i> Open Advanced Calculator
+            </button>
         </div>`;
 
         renderPriceOptions();
         document.getElementById('addPriceOption').addEventListener('click', () => {
             state.steps[5].pack_price.push({ id: Date.now(), title:'', price:'', hotels:{} });
             renderPriceOptions();
+        });
+        
+        if (state.uuid) {
+            fetch(`../api/package-calculation/get.php?uuid=${state.uuid}`)
+                .then(r => r.json())
+                .then(json => {
+                    if (json.success && json.exists) {
+                        const banner    = document.getElementById('calcStatusBanner');
+                        const totalEl   = document.getElementById('calcGrandTotal');
+                        const editLink  = document.getElementById('editCalcLink');
+                        if (banner) {
+                            banner.classList.remove('hidden');
+                            totalEl.textContent = `Grand Total: ৳ ${Number(json.data.grand_total).toLocaleString()} BDT  ·  Mode: ${json.data.mode}`;
+                            editLink.href = `package-calculation.php?uuid=${state.uuid}`;
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+        
+        // Open Calculator button
+        document.getElementById('openCalculatorBtn')?.addEventListener('click', () => {
+            if (!state.uuid) {
+                toast('error', 'Save the package first (complete Step 1)');
+                return;
+            }
+            window.location.href = `package-calculation.php?uuid=${state.uuid}`;
         });
     }
 
@@ -1167,7 +1218,7 @@ const PackageBuilder = (() => {
         </div>`;
     }
     
-    console.log(API_COUNTRIES);
+    // console.log(API_COUNTRIES);
 
     // ─── Countries Load ──────────────────────────────────────────
     async function loadCountries() {

@@ -155,10 +155,10 @@ const PackagesList = (() => {
 
     function cardHTML(pkg) {
         const statusClasses = {
-            draft:     'bg-amber-50 text-amber-700 border-amber-200',
-            completed: 'bg-green-50 text-green-700 border-green-200',
-            published: 'bg-blue-50 text-blue-700 border-blue-200',
-            deleted:   'bg-red-50 text-red-700 border-red-200',
+            draft:     'bg-amber-50 text-amber-700 border-amber-200 uppercase',
+            completed: 'bg-green-50 text-green-700 border-green-200 uppercase',
+            published: 'bg-blue-50 text-blue-700 border-blue-200 uppercase',
+            deleted:   'bg-red-50 text-red-700 border-red-200 uppercase',
         };
         const completionLabel = pkg.status === 'deleted' ? 'Deleted' : pkg.completion_status;
         const statusClass = pkg.status === 'deleted' ? statusClasses.deleted : (statusClasses[pkg.completion_status] || statusClasses.draft);

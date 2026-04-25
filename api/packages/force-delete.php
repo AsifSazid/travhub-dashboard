@@ -9,7 +9,6 @@ $uuid = trim($input['uuid'] ?? '');
 if (empty($uuid)) { echo json_encode(['success'=>false,'message'=>'UUID required']); exit; }
 
 try {
-    $pdo  = getDBConnection();
     $stmt = $pdo->prepare("SELECT image, sys_id FROM packages WHERE uuid=:uuid LIMIT 1");
     $stmt->execute([':uuid'=>$uuid]);
     $row  = $stmt->fetch(PDO::FETCH_ASSOC);
