@@ -1,7 +1,9 @@
 <?php
+session_start();
 header('Content-Type: application/json');
-include_once('../../authenticate.php');
 require_once('../../server/db_connection.php');
+require_once('../../server/uuid_with_system_id_generator.php');
+require_once('../../server/generate_meta_data.php');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -11,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) $input = $_POST;
 
-$package_uuid      = trim($input['package_uuid'] ?? '');
+$package_sys_id    = trim($input['package_sys_id'] ?? '');
 $country_id        = intval($input['country_id'] ?? 0);
 $country_name      = trim($input['country_name'] ?? '');
 $exchange_rate     = floatval($input['exchange_rate'] ?? 1);
@@ -22,18 +24,27 @@ $total_subtotal    = floatval($input['total_subtotal'] ?? 0);
 $total_profit      = floatval($input['total_profit'] ?? 0);
 $grand_total       = floatval($input['grand_total'] ?? 0);
 
-if (empty($package_uuid)) {
-    echo json_encode(['success' => false, 'message' => 'Package UUID required']);
+if (empty($package_sys_id)) {
+    echo json_encode(['success' => false, 'message' => 'Package System ID required']);
     exit;
 }
 
 try {
-    $pdo = getDBConnection();
+    // $pdo = getDBConnection();
 
     // Check if record already exists for this package
-    $check = $pdo->prepare("SELECT id FROM package_calculations WHERE package_uuid = :uuid LIMIT 1");
-    $check->execute([':uuid' => $package_uuid]);
+    $check = $pdo->prepare("SELECT id FROM package_calculations WHERE package_sys_id = :package_sys_id LIMIT 1");
+    $check->execute([':package_sys_id' => $package_sys_id]);
     $existing = $check->fetch(PDO::FETCH_ASSOC);
+    
+    $ids = generateIDs('package-calculator');
+    $uuid  = $ids['uuid'];
+    $sys_id = $ids['sys_id'];
+
+    $metaData = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+
+    var_dump($ids, $metaData);
+    die;
 
     $calcJson = json_encode($calculation_data);
 
@@ -50,7 +61,7 @@ try {
                 total_profit      = :total_profit,
                 grand_total       = :grand_total,
                 status            = 'saved'
-            WHERE package_uuid = :uuid
+            WHERE package_sys_id = :uuid
         ");
         $stmt->execute([
             ':country_id'        => $country_id,
@@ -62,18 +73,19 @@ try {
             ':total_subtotal'    => $total_subtotal,
             ':total_profit'      => $total_profit,
             ':grand_total'       => $grand_total,
-            ':uuid'              => $package_uuid,
+            ':package_sys_id'    => $package_sys_id,
         ]);
         $calc_id = $existing['id'];
     } else {
         $stmt = $pdo->prepare("
             INSERT INTO package_calculations
-                (package_uuid, country_id, country_name, exchange_rate, profit_percentage, mode, calculation_data, total_subtotal, total_profit, grand_total, status)
+                (sys_id, package_sys_id, country_id, country_name, exchange_rate, profit_percentage, activity_profit_pct, hotel_profit_pct, mode, calculation_data, total_subtotal, total_profit, grand_total, status)
             VALUES
-                (:uuid, :country_id, :country_name, :exchange_rate, :profit_percentage, :mode, :calculation_data, :total_subtotal, :total_profit, :grand_total, 'saved')
+                (:sys_id, :package_sys_id, :country_id, :country_name, :exchange_rate, :profit_percentage, :activity_profit_pct, :hotel_profit_pct, :mode, :calculation_data, :total_subtotal, :total_profit, :grand_total, 'saved')
         ");
         $stmt->execute([
-            ':uuid'              => $package_uuid,
+            ':sys_id'            => $sys_id,
+            ':package_sys_id'    => $package_sys_id,
             ':country_id'        => $country_id,
             ':country_name'      => $country_name,
             ':exchange_rate'     => $exchange_rate,

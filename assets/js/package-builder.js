@@ -36,7 +36,7 @@ const PackageBuilder = (() => {
         
         // If returning from calculator, jump to step 5
         const calcParam = params.get('calc');
-        if (calcParam === 'saved' && state.uuid) {
+        if (calcParam === 'saved' && state.sys_id) {
             state.currentStep = 5;
         }
         
@@ -56,7 +56,7 @@ const PackageBuilder = (() => {
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
             const pkg = json.data;
-            state.uuid   = pkg.uuid;
+            state.sys_id   = pkg.uuid;
             state.sys_id = pkg.sys_id;
 
             // Populate state
@@ -155,7 +155,7 @@ const PackageBuilder = (() => {
         el.querySelectorAll('.step-jump').forEach(btn => {
             btn.addEventListener('click', () => {
                 const target = parseInt(btn.dataset.step);
-                if (target < state.currentStep && state.uuid) navigateToStep(target);
+                if (target < state.currentStep && state.sys_id) navigateToStep(target);
             });
         });
 
@@ -183,7 +183,7 @@ const PackageBuilder = (() => {
         if (!validateStep(state.currentStep)) return;
         collectStepData();
 
-        if (!state.uuid) {
+        if (!state.sys_id) {
             // First save - create package
             if (state.currentStep === 1) {
                 const ok = await createPackage();
@@ -203,7 +203,7 @@ const PackageBuilder = (() => {
     async function handlePrev() {
         if (state.currentStep > 1) {
             collectStepData();
-            if (state.uuid) await saveStep(state.currentStep);
+            if (state.sys_id) await saveStep(state.currentStep);
             navigateToStep(state.currentStep - 1);
         }
     }
@@ -232,12 +232,12 @@ const PackageBuilder = (() => {
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
-            state.uuid   = json.uuid;
+            state.sys_id   = json.uuid;
             state.sys_id = json.sys_id;
             document.getElementById('builderSysId').textContent = json.sys_id;
             document.getElementById('builderTitle').textContent = state.steps[1].title || 'New Package';
             // Update URL without reload
-            history.replaceState({}, '', `?uuid=${state.uuid}`);
+            history.replaceState({}, '', `?uuid=${state.sys_id}`);
             hideLoader();
             return true;
         } catch(e) { hideLoader(); toast('error', e.message); return false; }
@@ -245,13 +245,13 @@ const PackageBuilder = (() => {
 
     // ─── Save Step ───────────────────────────────────────────────
     async function saveStep(step, silent = false) {
-        if (!state.uuid) return;
+        if (!state.sys_id) return;
         if (!silent) showLoader('Saving…');
         try {
             const res  = await fetch(`${BASE_API}/step-save.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uuid: state.uuid, step_number: step, step_data: state.steps[step] })
+                body: JSON.stringify({ uuid: state.sys_id, step_number: step, step_data: state.steps[step] })
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
@@ -263,7 +263,7 @@ const PackageBuilder = (() => {
     // ─── Auto-save ───────────────────────────────────────────────
     function startAutoSave() {
         state.autoSaveTimer = setInterval(async () => {
-            if (state.uuid && state.currentStep > 0 && state.currentStep < 8) {
+            if (state.sys_id && state.currentStep > 0 && state.currentStep < 8) {
                 collectStepData();
                 await saveStep(state.currentStep, true);
                 updateAutoSaveStatus();
@@ -287,7 +287,7 @@ const PackageBuilder = (() => {
             const res  = await fetch(`${BASE_API}/step-save.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uuid: state.uuid, step_number: 8, step_data: {} })
+                body: JSON.stringify({ uuid: state.sys_id, step_number: 8, step_data: {} })
             });
             const json = await res.json();
             hideLoader();
@@ -425,12 +425,12 @@ const PackageBuilder = (() => {
 
     async function handleImageUpload(file) {
         if (!file) return;
-        if (!state.uuid) {
+        if (!state.sys_id) {
             toast('error', 'Save basic info first (click Next once)');
             return;
         }
         const formData = new FormData();
-        formData.append('uuid', state.uuid);
+        formData.append('uuid', state.sys_id);
         formData.append('image', file);
         showLoader('Uploading image…');
         try {
@@ -819,8 +819,8 @@ const PackageBuilder = (() => {
             renderPriceOptions();
         });
         
-        if (state.uuid) {
-            fetch(`../api/package-calculation/get.php?uuid=${state.uuid}`)
+        if (state.sys_id) {
+            fetch(`../api/package-calculation/get.php?packageId=${state.sys_id}`)
                 .then(r => r.json())
                 .then(json => {
                     if (json.success && json.exists) {
@@ -830,7 +830,7 @@ const PackageBuilder = (() => {
                         if (banner) {
                             banner.classList.remove('hidden');
                             totalEl.textContent = `Grand Total: ৳ ${Number(json.data.grand_total).toLocaleString()} BDT  ·  Mode: ${json.data.mode}`;
-                            editLink.href = `package-calculation.php?uuid=${state.uuid}`;
+                            editLink.href = `package-calculation.php?packageId=${state.sys_id}`;
                         }
                     }
                 })
@@ -839,11 +839,11 @@ const PackageBuilder = (() => {
         
         // Open Calculator button
         document.getElementById('openCalculatorBtn')?.addEventListener('click', () => {
-            if (!state.uuid) {
+            if (!state.sys_id) {
                 toast('error', 'Save the package first (complete Step 1)');
                 return;
             }
-            window.location.href = `package-calculation.php?uuid=${state.uuid}`;
+            window.location.href = `package-calculation.php?packageId=${state.sys_id}`;
         });
     }
 

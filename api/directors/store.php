@@ -1,4 +1,5 @@
 <?php
+session_start();
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/director_id_generator.php';
