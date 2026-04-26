@@ -3,15 +3,15 @@ header('Content-Type: application/json');
 // include_once('../../authenticate.php');
 require_once('../../server/db_connection.php');
 
-$uuid = trim($_GET['uuid'] ?? '');
+$uuid = trim($_GET['packageId'] ?? '');
 if (empty($uuid)) {
-    echo json_encode(['success' => false, 'message' => 'UUID required']);
+    echo json_encode(['success' => false, 'message' => 'Package ID required']);
     exit;
 }
 
 try {
     // $pdo = getDBConnection();
-    $stmt = $pdo->prepare("SELECT * FROM packages WHERE uuid = :uuid LIMIT 1");
+    $stmt = $pdo->prepare("SELECT * FROM packages WHERE sys_id = :uuid LIMIT 1");
     $stmt->execute([':uuid' => $uuid]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 

@@ -3,13 +3,15 @@
 header('Content-Type: application/json');
 // include_once('../authenticate.php');
 
-$jsonFile = './countries.json';
+$jsonFile = '../activities.json';
 if (!file_exists($jsonFile)) {
     echo json_encode(['success' => false, 'message' => 'countries.json not found']);
     exit;
 }
 
 $data = json_decode(file_get_contents($jsonFile), true);
+
+var_dump($data);
 
 // Return full country objects including currency and default_rate fields
 echo json_encode([

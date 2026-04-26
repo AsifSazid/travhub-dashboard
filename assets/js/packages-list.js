@@ -181,7 +181,7 @@ const PackagesList = (() => {
                <button data-action="force-delete" data-uuid="${pkg.uuid}" data-title="${escHtml(pkg.title)}"
                        class="flex-1 flex items-center justify-center gap-1 text-xs py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition font-medium">
                    <i class="fa-solid fa-trash-can"></i> Delete</button>`
-            : `<a href="create-package.php?uuid=${pkg.uuid}"
+            : `<a href="create-package.php?packageId=${pkg.sys_id}"
                   class="flex-1 flex items-center justify-center gap-1 text-xs py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition font-medium">
                   <i class="fa-solid fa-pen-to-square"></i> Edit</a>
                <button data-action="delete" data-uuid="${pkg.uuid}" data-title="${escHtml(pkg.title)}"

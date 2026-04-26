@@ -1,11 +1,13 @@
 /**
  * TravHub – Package Calculation Module
- * assets/js/package-calculation.js  v4
+ * assets/js/package-calculation.js  v5
  *
- * Pure Tailwind CSS classes — no inline styles.
- * Two-column fixed-height layout:
- *   Left  (w-3/5): Activity pane (top) + Hotel pane (bottom), each independently scrollable
- *   Right (w-2/5): Config + Summary + Actions, scrollable
+ * Key identifiers:
+ *   URL param      : ?packageId={packages.sys_id}
+ *   API field      : package_sys_id
+ *   state field    : state.packageSysId
+ *   DB columns     : package_calculations.package_sys_id
+ *                    packages.package_calculations_details
  */
 
 const PackageCalculation = (() => {
@@ -14,12 +16,13 @@ const PackageCalculation = (() => {
        STATE
     ────────────────────────────────────────────────────────── */
     const state = {
-        packageSysId      : null,
+        packageSysId     : null,   // packages.sys_id  (e.g. THR-PK-26-00K001)
         countries        : [],
         exchangeRate     : 1,
+        localCurrency    : '',     // e.g. "MYR", "THB"
         activityProfitPct: 15,
         hotelProfitPct   : 12,
-        savedCalcId      : null,
+        savedCalcSysId   : null,   // package_calculations.sys_id after first save
     };
 
     const PERSONS_PER_ROOM = { Single:1, Double:2, Twin:2, Triple:3, Suite:2 };
@@ -28,8 +31,8 @@ const PackageCalculation = (() => {
        INIT
     ────────────────────────────────────────────────────────── */
     async function init() {
-        const params      = new URLSearchParams(window.location.search);
-        state.packageSysId = params.get('packageId') || null;
+        const params         = new URLSearchParams(window.location.search);
+        state.packageSysId   = params.get('packageId') || null;
 
         setupMainLayout();
         renderShell();
@@ -46,14 +49,12 @@ const PackageCalculation = (() => {
     }
 
     /* ──────────────────────────────────────────────────────────
-       MAKE mainContent A FIXED-HEIGHT FLEX COLUMN
-       (it already has pt-16 pl-64 from PHP)
+       LAYOUT SETUP
     ────────────────────────────────────────────────────────── */
     function setupMainLayout() {
         const main = document.getElementById('mainContent');
-        // Keep existing classes, just add flex column + fixed height
         main.classList.add('flex', 'flex-col', 'overflow-hidden');
-        main.style.height = 'calc(100vh - 64px)'; // 64px = header height (pt-16)
+        main.style.height = 'calc(100vh - 64px)';
     }
 
     /* ──────────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ const PackageCalculation = (() => {
     function renderShell() {
         document.getElementById('mainContent').innerHTML = `
 
-        <!-- ── Top bar ──────────────────────────────────────── -->
+        <!-- ── Top bar ── -->
         <div class="flex items-center gap-3 px-5 py-3 bg-white border-b border-gray-200 flex-shrink-0 mx-4 mb-2">
             <button id="backBtn"
                     class="text-gray-400 hover:text-gray-700 transition w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
@@ -80,24 +81,20 @@ const PackageCalculation = (() => {
             </span>
         </div>
 
-        <!-- ── Two-column body ──────────────────────────────── -->
-        <div class="flex flex-1 min-h-0 overflow-hidden mx-4 mb-4">
+        <!-- ── Two-column body ── -->
+        <div class="flex flex-1 min-h-0 overflow-hidden mx-4 mb-2">
 
-            <!-- LEFT 3/5 ──────────────────────────────────── -->
-            <div class="flex flex-col border-r border-gray-200 overflow-hidden" style="width:70%">
+            <!-- LEFT 60% ── Activity + Hotel panes -->
+            <div class="flex flex-col border-r border-gray-200 overflow-hidden" style="width:60%">
 
-                <!-- ── ACTIVITY PANE (top half) ── -->
+                <!-- ACTIVITY PANE -->
                 <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
-
-                    <!-- Activity header -->
                     <div class="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-person-hiking text-blue-500 text-sm"></i>
                             <span class="text-sm font-semibold text-gray-700">Activity</span>
                             <span id="actRowBadge"
-                                  class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                                0 rows
-                            </span>
+                                  class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">0 rows</span>
                         </div>
                         <button id="addActivityRowBtn"
                                 class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-500 text-blue-600 hover:bg-blue-50 transition">
@@ -105,7 +102,6 @@ const PackageCalculation = (() => {
                         </button>
                     </div>
 
-                    <!-- Activity scrollable table -->
                     <div class="flex-1 overflow-auto min-h-0">
                         <table class="w-full text-xs border-collapse" style="min-width:800px">
                             <thead class="sticky top-0 z-10 bg-gray-50">
@@ -114,16 +110,18 @@ const PackageCalculation = (() => {
                                     <th class="${thCls()} w-12 text-center">Days</th>
                                     <th class="${thCls()} w-28">Date</th>
                                     <th class="${thCls()}">Particular</th>
-                                    <th class="${thCls()} w-24 text-right">Price (local)</th>
+                                    <th class="${thCls()} w-28 text-right">
+                                        Price
+                                        (<span id="actCurrencyLabel" class="text-blue-500 font-bold">local</span>)
+                                    </th>
                                     <th class="${thCls()} w-14 text-center">PAX</th>
                                     <th class="${thCls()} w-28 text-right">Per person (BDT)</th>
-                                    <th class="${thCls()} w-28 text-right">Sale price</th>
+                                    <th class="${thCls()} w-28 text-right">Sale price (BDT)</th>
                                     <th class="${thCls()} w-8"></th>
                                 </tr>
                             </thead>
-                            <tbody id="activityBody" class="divide-y divide-gray-100"></tbody>
+                            <tbody id="activityBody" class="divide-y divide-gray-100 bg-white"></tbody>
                         </table>
-                        <!-- Empty state -->
                         <div id="activityEmpty"
                              class="hidden flex flex-col items-center justify-center py-10 text-gray-300">
                             <i class="fa-solid fa-person-hiking text-4xl mb-2"></i>
@@ -144,21 +142,17 @@ const PackageCalculation = (() => {
                     </div>
                 </div>
 
-                <!-- ── divider ── -->
+                <!-- Divider -->
                 <div class="border-t-2 border-gray-300 flex-shrink-0"></div>
 
-                <!-- ── HOTEL PANE (bottom half) ── -->
+                <!-- HOTEL PANE -->
                 <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
-
-                    <!-- Hotel header -->
                     <div class="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-hotel text-violet-500 text-sm"></i>
                             <span class="text-sm font-semibold text-gray-700">Hotel</span>
                             <span id="hotelRowBadge"
-                                  class="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
-                                0 rows
-                            </span>
+                                  class="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">0 rows</span>
                         </div>
                         <button id="addHotelRowBtn"
                                 class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-violet-500 text-violet-600 hover:bg-violet-50 transition">
@@ -166,7 +160,6 @@ const PackageCalculation = (() => {
                         </button>
                     </div>
 
-                    <!-- Hotel scrollable table -->
                     <div class="flex-1 overflow-auto min-h-0">
                         <table class="w-full text-xs border-collapse" style="min-width:980px">
                             <thead class="sticky top-0 z-10 bg-gray-50">
@@ -178,15 +171,17 @@ const PackageCalculation = (() => {
                                     <th class="${thCls()} w-14 text-center">Rooms</th>
                                     <th class="${thCls()} w-14 text-center">Nights</th>
                                     <th class="${thCls()} w-20">Room type</th>
-                                    <th class="${thCls()} w-24 text-right">Price total</th>
+                                    <th class="${thCls()} w-28 text-right">
+                                        Price total
+                                        (<span id="hotelCurrencyLabel" class="text-violet-500 font-bold">local</span>)
+                                    </th>
                                     <th class="${thCls()} w-28 text-right">Per p/night (BDT)</th>
-                                    <th class="${thCls()} w-28 text-right">Sale/night</th>
+                                    <th class="${thCls()} w-28 text-right">Sale/night (BDT)</th>
                                     <th class="${thCls()} w-8"></th>
                                 </tr>
                             </thead>
-                            <tbody id="hotelBody" class="divide-y divide-gray-100"></tbody>
+                            <tbody id="hotelBody" class="divide-y divide-gray-100 bg-white"></tbody>
                         </table>
-                        <!-- Empty state -->
                         <div id="hotelEmpty"
                              class="hidden flex flex-col items-center justify-center py-10 text-gray-300">
                             <i class="fa-solid fa-hotel text-4xl mb-2"></i>
@@ -209,12 +204,14 @@ const PackageCalculation = (() => {
 
             </div><!-- end left -->
 
-            <!-- RIGHT 2/5 ─────────────────────────────────── -->
-            <div class="flex flex-col overflow-y-auto bg-gray-50" style="width:30%">
+            <!-- RIGHT 40% ── Config + Summary + Actions -->
+            <div class="flex flex-col overflow-y-auto bg-gray-50" style="width:40%">
 
                 <!-- Global config -->
                 <div class="p-5 border-b border-gray-200 bg-white">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Global Configuration</p>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+                        Global Configuration
+                    </p>
 
                     <div class="mb-4">
                         <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -224,7 +221,7 @@ const PackageCalculation = (() => {
                                 class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
                             <option value="">-- Select country --</option>
                         </select>
-                        <p id="currencyHint" class="hidden text-xs text-gray-400 mt-1">
+                        <p id="currencyHint" class="hidden text-xs text-gray-400 mt-1.5">
                             <i class="fa-solid fa-coins text-amber-400 mr-1"></i>
                             <span id="currencyHintText"></span>
                         </p>
@@ -238,7 +235,7 @@ const PackageCalculation = (() => {
                         </label>
                         <div class="relative">
                             <input id="exchangeRate" type="number" min="0" step="0.0001" value="1"
-                                   class="w-full text-sm px-3 py-2 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                   class="w-full text-sm px-3 py-2 pr-14 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">BDT</span>
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Auto-filled from country. Edit to override.</p>
@@ -270,39 +267,35 @@ const PackageCalculation = (() => {
 
                 <!-- Combined summary -->
                 <div class="p-5 border-b border-gray-200 bg-white mt-2">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Combined Summary</p>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+                        Combined Summary
+                    </p>
                     <div class="grid grid-cols-2 gap-3">
-
                         <div class="bg-blue-50 rounded-xl p-3 text-center">
                             <p class="text-xs text-blue-500 font-medium mb-1">Activity total</p>
                             <p id="sumActivityTotal" class="text-xl font-bold text-blue-700">0.00</p>
                             <p class="text-xs text-blue-400 mt-0.5">BDT</p>
                         </div>
-
                         <div class="bg-violet-50 rounded-xl p-3 text-center">
                             <p class="text-xs text-violet-500 font-medium mb-1">Hotel total</p>
                             <p id="sumHotelTotal" class="text-xl font-bold text-violet-700">0.00</p>
                             <p class="text-xs text-violet-400 mt-0.5">BDT</p>
                         </div>
-
                         <div class="bg-gray-100 rounded-xl p-3 text-center">
                             <p class="text-xs text-gray-500 font-medium mb-1">Total rows</p>
                             <p id="sumItems" class="text-xl font-bold text-gray-700">0</p>
-                            <p class="text-xs text-gray-400 mt-0.5">ACT + HOTEL</p>
+                            <p class="text-xs text-gray-400 mt-0.5">act + hotel</p>
                         </div>
-
                         <div class="bg-amber-50 rounded-xl p-3 text-center">
                             <p class="text-xs text-amber-500 font-medium mb-1">Total profit</p>
                             <p id="sumProfit" class="text-xl font-bold text-amber-700">0.00</p>
                             <p class="text-xs text-amber-400 mt-0.5">BDT</p>
                         </div>
-
                         <div class="col-span-2 bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center">
                             <p class="text-xs text-green-600 font-semibold mb-1">Grand Total</p>
                             <p id="sumGrandTotal" class="text-3xl font-bold text-green-700">0.00</p>
                             <p class="text-xs text-green-500 mt-1">BDT combined</p>
                         </div>
-
                     </div>
                 </div>
 
@@ -341,7 +334,7 @@ const PackageCalculation = (() => {
              class="hidden fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white max-w-xs">
         </div>
 
-        <!-- Loader overlay -->
+        <!-- Loader -->
         <div id="calcLoader"
              class="hidden fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm flex-col gap-3">
             <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i>
@@ -350,7 +343,7 @@ const PackageCalculation = (() => {
         `;
     }
 
-    /* ── Tailwind class helpers ─────────────────────────────── */
+    /* ── Tailwind class helpers ── */
     function thCls() {
         return 'px-3 py-2 text-left text-xs font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap bg-gray-50 ';
     }
@@ -365,7 +358,7 @@ const PackageCalculation = (() => {
     }
 
     /* ──────────────────────────────────────────────────────────
-       COUNTRIES  (uses API_COUNTRIES from PHP global)
+       COUNTRIES  — uses API_COUNTRIES global from PHP
     ────────────────────────────────────────────────────────── */
     async function loadCountries() {
         try {
@@ -394,16 +387,22 @@ const PackageCalculation = (() => {
         const opt  = sel.options[sel.selectedIndex];
         const hint = document.getElementById('currencyHint');
         if (!opt?.value) { hint.classList.add('hidden'); return; }
+        const code = opt.dataset.code || opt.dataset.currency || '';
+        state.localCurrency = code;
         document.getElementById('currencyHintText').textContent =
-            `${opt.dataset.currency} (${opt.dataset.code}) · default rate: ${opt.dataset.rate} BDT`;
+            `${opt.dataset.currency} (${code}) · default rate: ${opt.dataset.rate} BDT`;
         hint.classList.remove('hidden');
+        // Update column headers to show currency code
+        const actLabel   = document.getElementById('actCurrencyLabel');
+        const hotelLabel = document.getElementById('hotelCurrencyLabel');
+        if (actLabel)   actLabel.textContent   = code;
+        if (hotelLabel) hotelLabel.textContent = code;
     }
 
     /* ──────────────────────────────────────────────────────────
        GLOBAL EVENTS
     ────────────────────────────────────────────────────────── */
     function bindGlobalEvents() {
-        // Country
         document.getElementById('countrySelect').addEventListener('change', e => {
             const opt  = e.target.options[e.target.selectedIndex];
             const rate = parseFloat(opt.dataset.rate) || 1;
@@ -413,13 +412,11 @@ const PackageCalculation = (() => {
             recalculateAll();
         });
 
-        // Exchange rate
         document.getElementById('exchangeRate').addEventListener('input', e => {
             state.exchangeRate = parseFloat(e.target.value) || 1;
             recalculateAll();
         });
 
-        // Activity profit %
         document.getElementById('activityProfitPct').addEventListener('input', e => {
             state.activityProfitPct = parseFloat(e.target.value) || 0;
             document.getElementById('actPctLabel').textContent = state.activityProfitPct;
@@ -427,7 +424,6 @@ const PackageCalculation = (() => {
             updateAllSummaries();
         });
 
-        // Hotel profit %
         document.getElementById('hotelProfitPct').addEventListener('input', e => {
             state.hotelProfitPct = parseFloat(e.target.value) || 0;
             document.getElementById('hotelPctLabel').textContent = state.hotelProfitPct;
@@ -435,11 +431,9 @@ const PackageCalculation = (() => {
             updateAllSummaries();
         });
 
-        // Add row buttons
         document.getElementById('addActivityRowBtn').addEventListener('click', () => addActivityRow());
         document.getElementById('addHotelRowBtn').addEventListener('click',   () => addHotelRow());
 
-        // Actions
         document.getElementById('saveBtn').addEventListener('click',   saveCalculation);
         document.getElementById('resetBtn').addEventListener('click',  resetAll);
         document.getElementById('exportBtn').addEventListener('click', exportCSV);
@@ -450,11 +444,12 @@ const PackageCalculation = (() => {
 
     /* ──────────────────────────────────────────────────────────
        LOAD EXISTING
+       Reads from packages.package_calculations_details via get.php
     ────────────────────────────────────────────────────────── */
-    async function loadExistingData(uuid) {
+    async function loadExistingData(packageSysId) {
         showLoader('Loading saved calculation…');
         try {
-            const res  = await fetch(`../api/package-calculation/get.php?packageId=${encodeURIComponent(uuid)}`);
+            const res  = await fetch(`../api/package-calculation/get.php?packageId=${encodeURIComponent(packageSysId)}`);
             const json = await res.json();
             hideLoader();
             if (!json.success || !json.exists) {
@@ -472,6 +467,7 @@ const PackageCalculation = (() => {
     }
 
     function populateCalculationData(data) {
+        // Country selector
         const sel = document.getElementById('countrySelect');
         if (data.country_id) {
             sel.value = data.country_id;
@@ -485,14 +481,17 @@ const PackageCalculation = (() => {
         document.getElementById('exchangeRate').value      = rate;
         document.getElementById('activityProfitPct').value = actPct;
         document.getElementById('hotelProfitPct').value    = htlPct;
-        state.exchangeRate      = rate;
-        state.activityProfitPct = actPct;
-        state.hotelProfitPct    = htlPct;
-        state.savedCalcId       = data.id || null;
+        state.exchangeRate       = rate;
+        state.activityProfitPct  = actPct;
+        state.hotelProfitPct     = htlPct;
+        state.savedCalcSysId     = data.sys_id || null;
+        state.localCurrency      = data.local_currency || '';
 
         document.getElementById('actPctLabel').textContent   = actPct;
         document.getElementById('hotelPctLabel').textContent = htlPct;
 
+        // calculation_data is { activity:[], hotel:[] }
+        // Also supports legacy flat array (old single-mode records)
         const cd   = data.calculation_data || {};
         const acts = Array.isArray(cd) ? cd : (cd.activity || []);
         const htls = Array.isArray(cd) ? [] : (cd.hotel    || []);
@@ -517,7 +516,7 @@ const PackageCalculation = (() => {
         tr.dataset.sl = sl;
 
         tr.innerHTML = `
-        <td class="${tdCls('text-center text-xs text-gray-400 sl-cell')}">${sl}</td>
+        <td class="${tdCls('text-center text-xs text-gray-400 font-medium sl-cell')}">${sl}</td>
         <td class="${tdCls()}">
             <input type="number" min="1" value="${saved?.days_count ?? sl}"
                    class="${cellInputCls('w-12 text-center')}">
@@ -539,10 +538,10 @@ const PackageCalculation = (() => {
                    class="${cellInputCls('w-14 text-center')}">
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="per-person-bdt text-xs text-gray-500">${fmt(saved?.per_person_bdt || 0)}</span>
+            <span class="per-person-bdt text-xs text-gray-500 tabular-nums">${fmt(saved?.per_person_bdt || 0)}</span>
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="sale-price text-xs font-semibold text-blue-600">${fmt(saved?.sale_price_per_person || 0)}</span>
+            <span class="sale-price text-xs font-semibold text-blue-600 tabular-nums">${fmt(saved?.sale_price_per_person || 0)}</span>
         </td>
         <td class="${tdCls('text-center')}">
             <button class="del-act ${delBtnCls()}">
@@ -568,8 +567,8 @@ const PackageCalculation = (() => {
 
     function calcActivityRow(tr) {
         const inputs = tr.querySelectorAll('input');
-        const price  = parseFloat(inputs[3].value) || 0;
-        const pax    = parseFloat(inputs[4].value) || 1;
+        const price  = parseFloat(inputs[3].value) || 0;   // price_local
+        const pax    = parseFloat(inputs[4].value) || 1;   // total_pax
         const ppBdt  = pax > 0 ? (price * state.exchangeRate) / pax : 0;
         const sale   = ppBdt + (ppBdt * state.activityProfitPct / 100);
         tr.querySelector('.per-person-bdt').textContent = fmt(ppBdt);
@@ -600,7 +599,7 @@ const PackageCalculation = (() => {
         const roomTypes = ['Single','Double','Twin','Triple','Suite'];
 
         tr.innerHTML = `
-        <td class="${tdCls('text-center text-xs text-gray-400 sl-cell')}">${sl}</td>
+        <td class="${tdCls('text-center text-xs text-gray-400 font-medium sl-cell')}">${sl}</td>
         <td class="${tdCls()}">
             <input type="text" value="${escHtml(saved?.hotel_name || '')}" placeholder="Hotel name"
                    class="${cellInputCls('min-w-[120px]')}">
@@ -618,7 +617,7 @@ const PackageCalculation = (() => {
                    class="${cellInputCls('w-14 text-center')} rooms">
         </td>
         <td class="${tdCls('text-center')}">
-            <span class="nights text-xs text-gray-500 font-medium">${saved?.no_of_nights || 0}</span>
+            <span class="nights text-xs text-gray-600 font-semibold tabular-nums">${saved?.no_of_nights || 0}</span>
         </td>
         <td class="${tdCls()}">
             <select class="${cellInputCls()} room-type">
@@ -630,10 +629,10 @@ const PackageCalculation = (() => {
                    class="${cellInputCls('text-right')} price-total">
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="ppn text-xs text-gray-500">${fmt(saved?.price_per_person_per_night_bdt || 0)}</span>
+            <span class="ppn text-xs text-gray-500 tabular-nums">${fmt(saved?.price_per_person_per_night_bdt || 0)}</span>
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="sale-night text-xs font-semibold text-violet-600">${fmt(saved?.sale_price_per_night_bdt || 0)}</span>
+            <span class="sale-night text-xs font-semibold text-violet-600 tabular-nums">${fmt(saved?.sale_price_per_night_bdt || 0)}</span>
         </td>
         <td class="${tdCls('text-center')}">
             <button class="del-hotel ${delBtnCls()}">
@@ -661,7 +660,7 @@ const PackageCalculation = (() => {
     function calcHotelRow(tr) {
         const checkIn    = tr.querySelector('.check-in').value;
         const checkOut   = tr.querySelector('.check-out').value;
-        const rooms      = parseInt(tr.querySelector('.rooms').value)       || 1;
+        const rooms      = parseInt(tr.querySelector('.rooms').value)        || 1;
         const roomType   = tr.querySelector('.room-type').value;
         const priceTotal = parseFloat(tr.querySelector('.price-total').value) || 0;
         const nights     = nightsBetween(checkIn, checkOut);
@@ -728,7 +727,7 @@ const PackageCalculation = (() => {
         document.getElementById('hotelProfitAmt').textContent = fmt(htlTotal - htlSub);
         document.getElementById('hotelTotalAmt').textContent  = fmt(htlTotal) + ' BDT';
 
-        // Right panel summary cards
+        // Summary cards
         const grandTotal  = actTotal + htlTotal;
         const totalProfit = (actTotal - actSub) + (htlTotal - htlSub);
         const actRows     = document.getElementById('activityBody').querySelectorAll('tr').length;
@@ -753,7 +752,7 @@ const PackageCalculation = (() => {
     }
 
     /* ──────────────────────────────────────────────────────────
-       GET TABLE DATA
+       GET TABLE DATA  →  { activity:[], hotel:[] }
     ────────────────────────────────────────────────────────── */
     function getCurrentTableData() {
         const activity = Array.from(document.getElementById('activityBody').querySelectorAll('tr')).map((tr, i) => {
@@ -787,13 +786,26 @@ const PackageCalculation = (() => {
     }
 
     /* ──────────────────────────────────────────────────────────
-       SAVE
+       SAVE  →  POST to api/package-calculation/save.php
+       Matches the actual save.php field names exactly:
+         package_sys_id, country_id, country_name, local_currency,
+         exchange_rate, activity_profit_pct, hotel_profit_pct,
+         profit_percentage, mode, calculation_data,
+         total_subtotal, total_profit, grand_total
     ────────────────────────────────────────────────────────── */
     async function saveCalculation() {
-        if (!state.packageSysId) { toast('error', 'No package UUID — open from a package'); return; }
+        if (!state.packageSysId) {
+            toast('error', 'No package ID — open this page from a package');
+            return;
+        }
 
-        const sel       = document.getElementById('countrySelect');
-        const tableData = getCurrentTableData();
+        const sel          = document.getElementById('countrySelect');
+        const selectedOpt  = sel.options[sel.selectedIndex];
+        const countryId    = parseInt(sel.value) || 0;
+        const countryName  = selectedOpt?.text?.split(' (')[0] || '';
+        const localCurrency = state.localCurrency || selectedOpt?.dataset?.code || '';
+        const tableData    = getCurrentTableData();
+
         let actSub=0, actTotal=0, htlSub=0, htlTotal=0;
         document.getElementById('activityBody').querySelectorAll('tr').forEach(tr => {
             actSub   += parseFloat(tr.dataset.subtotal  || 0);
@@ -804,19 +816,21 @@ const PackageCalculation = (() => {
             htlTotal += parseFloat(tr.dataset.saleTotal || 0);
         });
 
+        // Payload matches save.php parameter names exactly
         const payload = {
-            package_sys_id:      state.packageSysId,
-            country_id:          parseInt(sel.value) || 0,
-            country_name:        sel.options[sel.selectedIndex]?.text?.split(' (')[0] || '',
-            exchange_rate:       state.exchangeRate,
-            activity_profit_pct: state.activityProfitPct,
-            hotel_profit_pct:    state.hotelProfitPct,
-            profit_percentage:   state.activityProfitPct,
-            mode:                'both',
-            calculation_data:    tableData,
-            total_subtotal:      actSub + htlSub,
-            total_profit:        (actTotal - actSub) + (htlTotal - htlSub),
-            grand_total:         actTotal + htlTotal,
+            package_sys_id      : state.packageSysId,
+            country_id          : countryId,
+            country_name        : countryName,
+            local_currency      : localCurrency,
+            exchange_rate       : state.exchangeRate,
+            activity_profit_pct : state.activityProfitPct,
+            hotel_profit_pct    : state.hotelProfitPct,
+            profit_percentage   : state.activityProfitPct,   // backward-compat column
+            mode                : 'both',
+            calculation_data    : tableData,                  // { activity:[], hotel:[] }
+            total_subtotal      : actSub + htlSub,
+            total_profit        : (actTotal - actSub) + (htlTotal - htlSub),
+            grand_total         : actTotal + htlTotal,
         };
 
         showLoader('Saving…');
@@ -829,8 +843,8 @@ const PackageCalculation = (() => {
             const json = await res.json();
             hideLoader();
             if (!json.success) throw new Error(json.message);
-            state.savedCalcId = json.calculation_id;
-            toast('success', `Saved! (ID: ${json.calculation_id})`);
+            state.savedCalcSysId = json.calculation_id;  // package_calculations.sys_id
+            toast('success', `Saved! (${json.calculation_id})`);
             document.getElementById('savedBadge').classList.remove('hidden');
         } catch(e) {
             hideLoader();
@@ -863,16 +877,16 @@ const PackageCalculation = (() => {
             activity.forEach(r => {
                 csv += `${r.sl},${r.days_count},${r.date},"${r.particular}",${r.price_local},${r.total_pax},${r.per_person_bdt},${r.sale_price_per_person}\n`;
             });
-            csv += `Activity total,${document.getElementById('actTotalAmt').textContent}\n\n`;
+            csv += `Activity total BDT,${document.getElementById('actTotalAmt').textContent}\n\n`;
         }
 
         if (hotel.length) {
             csv += `=== HOTEL (Profit: ${state.hotelProfitPct}%) ===\n`;
-            csv += 'Sl,Hotel name,Check-in,Check-out,Rooms,Nights,Room type,Price total,Per p/night (BDT),Sale/night\n';
+            csv += 'Sl,Hotel name,Check-in,Check-out,Rooms,Nights,Room type,Price total (local),Per p/night (BDT),Sale/night\n';
             hotel.forEach(r => {
                 csv += `${r.sl},"${r.hotel_name}",${r.check_in},${r.check_out},${r.no_of_rooms},${r.no_of_nights},${r.room_type},${r.price_total},${r.price_per_person_per_night_bdt},${r.sale_price_per_night_bdt}\n`;
             });
-            csv += `Hotel total,${document.getElementById('hotelTotalAmt').textContent}\n\n`;
+            csv += `Hotel total BDT,${document.getElementById('hotelTotalAmt').textContent}\n\n`;
         }
 
         csv += `=== COMBINED ===\nGrand total BDT,${document.getElementById('sumGrandTotal').textContent}\n`;
@@ -889,11 +903,11 @@ const PackageCalculation = (() => {
     }
 
     /* ──────────────────────────────────────────────────────────
-       NAVIGATION
+       NAVIGATION  →  back to create-package.php?uuid={sys_id}&calc=saved
     ────────────────────────────────────────────────────────── */
     function goBackToPackage() {
         window.location.href = state.packageSysId
-            ? `create-package.php?uuid=${state.packageSysId}&calc=saved`
+            ? `create-package.php?packageId=${state.packageSysId}&calc=saved`
             : 'index-packages.php';
     }
 
@@ -903,24 +917,18 @@ const PackageCalculation = (() => {
     function fmt(n, d = 2) {
         return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
     }
-
     function escHtml(s) {
         return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-
     function showLoader(msg = 'Loading…') {
         document.getElementById('calcLoaderMsg').textContent = msg;
         const el = document.getElementById('calcLoader');
-        el.classList.remove('hidden');
-        el.classList.add('flex');
+        el.classList.remove('hidden'); el.classList.add('flex');
     }
-
     function hideLoader() {
         const el = document.getElementById('calcLoader');
-        el.classList.add('hidden');
-        el.classList.remove('flex');
+        el.classList.add('hidden'); el.classList.remove('flex');
     }
-
     function toast(type, msg) {
         const el = document.getElementById('calcToast');
         if (!el) return;
