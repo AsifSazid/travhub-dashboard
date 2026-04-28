@@ -455,6 +455,21 @@
     { "id": 453, "city_id": 224, "name": "Hoan Kiem Lake", "type": "tourism", "price_range": "free", "duration_hours": 1, "popularity": 5 },
     { "id": 454, "city_id": 224, "name": "Halong Bay Cruise", "type": "adventure", "price_range": "high", "duration_hours": 8, "popularity": 5 },
     { "id": 455, "city_id": 225, "name": "Marble Mountains", "type": "religious", "price_range": "low", "duration_hours": 2, "popularity": 4 },
-    { "id": 456, "city_id": 225, "name": "My Son Sanctuary", "type": "cultural", "price_range": "medium", "duration_hours": 4, "popularity": 4 }
+    { "id": 456, "city_id": 225, "name": "My Son Sanctuary", "type": "cultural", "price_range": "medium", "duration_hours": 4, "popularity": 4 },
+    { "id": 457, "city_id": 205, "name": "Grand Palace and Wat Phra Kaew Guided Tour", "type": "cultural/sightseeing", "price_range": "medium", "duration_hours": 3, "popularity": 5 },
+    { "id": 458, "city_id": 205, "name": "Bangkok Midnight Food Tour by Tuk Tuk", "type": "gastronomy", "price_range": "high", "duration_hours": 4, "popularity": 5 },
+    { "id": 459, "city_id": 205, "name": "Chao Phraya River Dinner Cruise", "type": "leisure", "price_range": "high", "duration_hours": 2.5, "popularity": 4 },
+    { "id": 460, "city_id": 205, "name": "Wat Pho and Wat Arun Temple Hopping", "type": "cultural", "price_range": "low", "duration_hours": 4, "popularity": 4 },
+    { "id": 461, "city_id": 205, "name": "Ayutthaya Ancient City Day Trip", "type": "cultural/sightseeing", "price_range": "medium", "duration_hours": 9, "popularity": 5 },
+    { "id": 462, "city_id": 206, "name": "James Bond Island Day Trip by Boat", "type": "sightseeing/nature", "price_range": "high", "duration_hours": 8, "popularity": 5 },
+    { "id": 463, "city_id": 206, "name": "Phuket Old Town Cultural Walking Tour", "type": "cultural", "price_range": "low", "duration_hours": 3, "popularity": 3 },
+    { "id": 464, "city_id": 206, "name": "Big Buddha and Chalong Temple Sightseeing", "type": "cultural", "price_range": "medium", "duration_hours": 4, "popularity": 4 },
+    { "id": 465, "city_id": 206, "name": "Similan Islands Snorkeling Excursion", "type": "adventure/water", "price_range": "high", "duration_hours": 9, "popularity": 5 },
+    { "id": 466, "city_id": 206, "name": "Tiger Kingdom Phuket Interaction", "type": "animal", "price_range": "medium", "duration_hours": 2, "popularity": 4 },
+    { "id": 467, "city_id": 207, "name": "Doi Suthep Temple Sunset Tour", "type": "cultural/sightseeing", "price_range": "low", "duration_hours": 3, "popularity": 5 },
+    { "id": 468, "city_id": 207, "name": "Thai Cooking Class in Chiang Mai", "type": "gastronomy", "price_range": "medium", "duration_hours": 5, "popularity": 5 },
+    { "id": 469, "city_id": 207, "name": "Doi Inthanon National Park Hiking", "type": "nature/adventure", "price_range": "medium", "duration_hours": 8, "popularity": 5 },
+    { "id": 470, "city_id": 207, "name": "Chiang Mai Night Bazaar Food Tour", "type": "gastronomy/leisure", "price_range": "low", "duration_hours": 3, "popularity": 4 },
+    { "id": 471, "city_id": 207, "name": "Karen Long Neck Village Cultural Visit", "type": "cultural", "price_range": "medium", "duration_hours": 4, "popularity": 3 }
   ]
 }

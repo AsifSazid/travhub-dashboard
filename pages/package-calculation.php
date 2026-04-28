@@ -6,7 +6,8 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$package_uuid = trim($_GET['uuid'] ?? '');
+// $package_uuid = trim($_GET['packageId'] ?? '');
+$package_sys_id = trim($_GET['packageId'] ?? '');
 
 $countriesApi = $ip_port."api/utilities/countries.php";
 

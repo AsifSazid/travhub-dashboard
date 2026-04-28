@@ -20,7 +20,7 @@ try {
         exit;
     }
 
-    $jsonFields = ['countries','cities','activities','no_of_pax','hotels','pack_price','pack_itenaries','pack_inclusions','pack_exclusions','meta_data'];
+    $jsonFields = ['countries','cities','activities','no_of_pax','hotels','pack_price','pack_itenaries','pack_inclusions','pack_exclusions','meta_data', 'package_calculations_details'];
     foreach ($jsonFields as $field) {
         $row[$field] = json_decode($row[$field] ?? 'null', true);
     }

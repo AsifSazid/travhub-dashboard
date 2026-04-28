@@ -1,5 +1,3 @@
-<!--* api/package-calculation/save.php-->
-
 <?php
 session_start();
 header('Content-Type: application/json');
@@ -23,7 +21,10 @@ $exchange_rate       = floatval($input['exchange_rate'] ?? 1);
 $activity_profit_pct = floatval($input['activity_profit_pct'] ?? $input['profit_percentage'] ?? 15);
 $hotel_profit_pct    = floatval($input['hotel_profit_pct'] ?? 12);
 $profit_percentage   = floatval($input['profit_percentage'] ?? 15);
-$mode                = in_array($input['mode'] ?? '', ['activity', 'hotel']) ? $input['mode'] : 'activity';
+
+// FIX 4: Added 'both' to the allowed array
+$mode                = in_array($input['mode'] ?? '', ['activity', 'hotel', 'both']) ? $input['mode'] : 'activity';
+
 $calculation_data    = $input['calculation_data'] ?? [];
 $total_subtotal      = floatval($input['total_subtotal'] ?? 0);
 $total_profit        = floatval($input['total_profit'] ?? 0);
@@ -35,10 +36,8 @@ if (empty($package_sys_id)) {
 }
 
 try {
-    // Transaction shuru korchi
     $pdo->beginTransaction();
 
-    // Check if record already exists
     $check = $pdo->prepare("SELECT id, sys_id, meta_data FROM package_calculations WHERE package_sys_id = :package_sys_id LIMIT 1");
     $check->execute([':package_sys_id' => $package_sys_id]);
     $existing = $check->fetch(PDO::FETCH_ASSOC);
@@ -48,33 +47,38 @@ try {
     if ($existing) {
         $metaData = buildMetaData($existing['meta_data'], $_SESSION['user_name'] ?? 'system');
         
+        // FIX 5: Added activity_profit_pct and hotel_profit_pct to UPDATE statement
         $stmt = $pdo->prepare("
             UPDATE package_calculations SET 
-                country_id        = :country_id,
-                country_name      = :country_name,
-                exchange_rate     = :exchange_rate,
-                profit_percentage = :profit_percentage,
-                mode              = :mode,
-                calculation_data  = :calculation_data,
-                total_subtotal    = :total_subtotal,
-                total_profit      = :total_profit,
-                grand_total       = :grand_total,
-                meta_data         = :meta_data,
-                status            = 'saved'
+                country_id         = :country_id,
+                country_name       = :country_name,
+                exchange_rate      = :exchange_rate,
+                profit_percentage  = :profit_percentage,
+                activity_profit_pct = :activity_profit_pct,
+                hotel_profit_pct    = :hotel_profit_pct,
+                mode               = :mode,
+                calculation_data   = :calculation_data,
+                total_subtotal     = :total_subtotal,
+                total_profit       = :total_profit,
+                grand_total        = :grand_total,
+                meta_data          = :meta_data,
+                status             = 'saved'
             WHERE package_sys_id = :package_sys_id
         ");
         $stmt->execute([
-            ':country_id'        => $country_id,
-            ':country_name'      => $country_name,
-            ':exchange_rate'     => $exchange_rate,
-            ':profit_percentage' => $profit_percentage,
-            ':mode'              => $mode,
-            ':calculation_data'  => $calcJson,
-            ':total_subtotal'    => $total_subtotal,
-            ':total_profit'      => $total_profit,
-            ':grand_total'       => $grand_total,
-            ':meta_data'         => $metaData,
-            ':package_sys_id'    => $package_sys_id
+            ':country_id'          => $country_id,
+            ':country_name'        => $country_name,
+            ':exchange_rate'       => $exchange_rate,
+            ':profit_percentage'   => $profit_percentage,
+            ':activity_profit_pct' => $activity_profit_pct,
+            ':hotel_profit_pct'    => $hotel_profit_pct,
+            ':mode'                => $mode,
+            ':calculation_data'    => $calcJson,
+            ':total_subtotal'      => $total_subtotal,
+            ':total_profit'        => $total_profit,
+            ':grand_total'         => $grand_total,
+            ':meta_data'           => $metaData,
+            ':package_sys_id'      => $package_sys_id
         ]);
         $calc_id = $existing['sys_id'];
     } else {
@@ -107,7 +111,6 @@ try {
         $calc_id = $sys_id;
     }
 
-    // Update the packages table
     $packPriceRef = json_encode([
         'has_calculation'  => true,
         'calculation_id'   => $calc_id,
@@ -123,7 +126,6 @@ try {
         ':package_sys_id'     => $package_sys_id
     ]);
 
-    // Sob thik thak thakle commit korbo
     $pdo->commit();
 
     echo json_encode([
@@ -133,7 +135,6 @@ try {
     ]);
 
 } catch (Exception $e) {
-    // Error hole rollback korbe
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }

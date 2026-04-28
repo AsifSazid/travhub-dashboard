@@ -28,8 +28,9 @@ const PackageBuilder = (() => {
             7: { pack_inclusions:[], pack_exclusions:[] },
             8: {}
         },
-        allCountries: [],
-        allCities   : [],
+        allCountries   : [],
+        allCities      : [],
+        allActivities  : {},   // city_sys_id → [activity objects] from DB
     };
 
     // ─── Init ───────────────────────────────────────────────────
@@ -69,6 +70,11 @@ const PackageBuilder = (() => {
 
             state.steps[1] = { title: pkg.title||'', description: pkg.description||'', rating: pkg.rating||0, image: pkg.image||'' };
             state.steps[2] = { countries: pkg.countries||[], cities: pkg.cities||[], activities: pkg.activities||[] };
+            // Pre-fetch DB activity suggestions for already-selected cities
+            for (const city of (pkg.cities || [])) {
+                const sysId = String(city.sys_id || city.id || '');
+                if (sysId) fetchCityActivities(sysId);  // fire-and-forget, cached on return
+            }
             state.steps[3] = { duration: pkg.duration||'', start_date: pkg.start_date||'', end_date: pkg.end_date||'', no_of_pax: pkg.no_of_pax||{adult:0,child:0,infant:0} };
             state.steps[4] = { hotels: pkg.hotels||[] };
             state.steps[5] = { currency_title: pkg.currency_title||'', currency_code: pkg.currency_code||'', currency_symbol: pkg.currency_symbol||'', overall_price: pkg.overall_price||'', air_ticket_details: pkg.air_ticket_details||'', pack_price: pkg.pack_price||[] };
@@ -531,7 +537,10 @@ const PackageBuilder = (() => {
         const idx = state.steps[2].countries.findIndex(c => c.id === cid);
         if (idx >= 0) {
             state.steps[2].countries.splice(idx, 1);
-            state.steps[2].cities = state.steps[2].cities.filter(city => city.country_id !== cid);
+            // Remove cities belonging to this country — match by DB id or sys_id
+            state.steps[2].cities = state.steps[2].cities.filter(city =>
+                city.country_id !== cid && city.country_sys_id !== country.sys_id
+            );
         } else {
             state.steps[2].countries.push(country);
         }
@@ -541,13 +550,19 @@ const PackageBuilder = (() => {
     }
 
     function renderCityGrid() {
-        const selectedIds    = state.steps[2].countries.map(c => c.id);
-        const availableCities = state.allCities.filter(c => selectedIds.includes(c.country_id));
+        // Match by DB integer id OR by country sys_id string (handles both DB and JSON fallback)
+        const selectedCountries  = state.steps[2].countries;
+        const selectedIds        = selectedCountries.map(c => c.id);
+        const selectedSysIds     = selectedCountries.map(c => c.sys_id).filter(Boolean);
+        const availableCities    = state.allCities.filter(c =>
+            selectedIds.includes(c.country_id) || selectedSysIds.includes(c.country_sys_id)
+        );
+        console.log(selectedCountries, selectedIds, selectedSysIds, availableCities);
         const listEl = document.getElementById('cityList');
         const selEl  = document.getElementById('selectedCities');
         if (!listEl) return;
         listEl.innerHTML = availableCities.map(c => {
-            const selected = state.steps[2].cities.find(x => x.id === c.id);
+            const selected = state.steps[2].cities.find(x => String(x.id) === String(c.id));
             const country  = state.allCountries.find(x => x.id === c.country_id);
             return `<button type="button" data-cityid="${c.id}"
                             class="city-btn text-xs px-3 py-2 rounded-xl border font-medium transition
@@ -555,7 +570,7 @@ const PackageBuilder = (() => {
                         ${c.name}<span class="opacity-60 ml-1">(${country?.code||''})</span></button>`;
         }).join('');
         listEl.querySelectorAll('.city-btn').forEach(btn =>
-            btn.addEventListener('click', () => toggleCity(parseInt(btn.dataset.cityid)))
+            btn.addEventListener('click', () => toggleCity(btn.dataset.cityid))
         );
         if (selEl) {
             selEl.innerHTML = state.steps[2].cities.map(c =>
@@ -564,30 +579,85 @@ const PackageBuilder = (() => {
                     <button data-cityid="${c.id}" class="remove-city ml-1 text-emerald-600 hover:text-emerald-900">×</button>
                  </span>`).join('');
             selEl.querySelectorAll('.remove-city').forEach(b =>
-                b.addEventListener('click', () => toggleCity(parseInt(b.dataset.cityid)))
+                b.addEventListener('click', () => toggleCity(b.dataset.cityid))
             );
         }
     }
 
-    function toggleCity(cityId) {
-        const city = state.allCities.find(c => c.id === cityId);
+    async function toggleCity(cityId) {
+        // cityId is a string sys_id e.g. "THR-26-CNT-01-CTS-01"
+        const city = state.allCities.find(c => String(c.id) === String(cityId));
         if (!city) return;
-        const idx = state.steps[2].cities.findIndex(c => c.id === cityId);
-        if (idx >= 0) state.steps[2].cities.splice(idx, 1);
-        else state.steps[2].cities.push(city);
+        const idx = state.steps[2].cities.findIndex(c => String(c.id) === String(cityId));
+        if (idx >= 0) {
+            state.steps[2].cities.splice(idx, 1);
+        } else {
+            state.steps[2].cities.push(city);
+            // Fetch DB activity suggestions for this city (cached after first fetch)
+            const sysId = city.sys_id || city.id;
+            await fetchCityActivities(String(sysId));
+        }
         renderCityGrid();
+        renderActivities();  // refresh suggestions panel
     }
 
     function renderActivities() {
         const el = document.getElementById('activityList');
         if (!el) return;
-        el.innerHTML = state.steps[2].activities.map((a, i) =>
+
+        // ── Selected activities (manually added or picked from suggestions) ──
+        const selectedHTML = state.steps[2].activities.map((a, i) =>
             `<span class="inline-flex items-center gap-1 bg-violet-100 text-violet-800 text-xs px-3 py-1.5 rounded-full font-medium">
                 <i class="fa-solid fa-person-hiking text-xs"></i> ${escHtml(a.title)}
                 <button data-idx="${i}" class="remove-act ml-1 text-violet-600 hover:text-violet-900">×</button>
-             </span>`).join('');
+             </span>`
+        ).join('');
+
+        // ── DB suggestions for selected cities (not yet added) ──
+        const suggestions  = getAllDbSuggestions();
+        const addedTitles  = new Set(state.steps[2].activities.map(a => a.title.toLowerCase()));
+        const pending      = suggestions.filter(s => !addedTitles.has(s.title.toLowerCase()));
+
+        const TYPE_COLORS = {
+            adventure:'bg-orange-50 text-orange-700', cultural:'bg-violet-50 text-violet-700',
+            tourism:'bg-blue-50 text-blue-700', shopping:'bg-pink-50 text-pink-700',
+            religious:'bg-amber-50 text-amber-700', sports:'bg-green-50 text-green-700',
+            nightlife:'bg-indigo-50 text-indigo-700', education:'bg-teal-50 text-teal-700',
+        };
+
+        const suggestHTML = pending.length
+            ? `<div class="mt-3 pt-3 border-t border-gray-100">
+                <p class="text-xs font-semibold text-gray-400 mb-2">
+                    <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>
+                    Suggestions from selected cities
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                    ${pending.map(a => {
+                        const typeCls = TYPE_COLORS[a.type] || 'bg-gray-100 text-gray-600';
+                        return `<button type="button" data-title="${escHtml(a.title)}"
+                                        class="suggest-btn inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-dashed border-gray-300 text-gray-600 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 transition font-medium">
+                                    <i class="fa-solid fa-plus text-xs"></i> ${escHtml(a.title)}
+                                    <span class="text-xs px-1.5 py-0.5 rounded-md ml-1 ${typeCls}">${a.type}</span>
+                                </button>`;
+                    }).join('')}
+                </div>
+               </div>`
+            : '';
+
+        el.innerHTML = (selectedHTML || '<p class="text-xs text-gray-400 italic">No activities added yet</p>') + suggestHTML;
+
+        // Bind remove buttons
         el.querySelectorAll('.remove-act').forEach(b => b.addEventListener('click', () => {
             state.steps[2].activities.splice(parseInt(b.dataset.idx), 1);
+            renderActivities();
+        }));
+
+        // Bind suggestion pick buttons
+        el.querySelectorAll('.suggest-btn').forEach(b => b.addEventListener('click', () => {
+            const title = b.dataset.title;
+            if (!state.steps[2].activities.find(a => a.title.toLowerCase() === title.toLowerCase())) {
+                state.steps[2].activities.push({ id: Date.now(), title });
+            }
             renderActivities();
         }));
     }
@@ -941,6 +1011,24 @@ const PackageBuilder = (() => {
         });
     }
 
+
+    function bindActToggle(btn, days) {
+        btn.addEventListener('click', () => {
+            const d   = days[parseInt(btn.dataset.idx)];
+            if (!d.activities) d.activities = [];
+            const act = btn.dataset.act;
+            const has = d.activities.includes(act);
+            if (has) d.activities = d.activities.filter(a => a !== act);
+            else d.activities.push(act);
+            // Rebuild the entire picker for this day to reflect changes
+            const pickerEl = document.getElementById(`dayActPicker_${btn.dataset.idx}`);
+            if (pickerEl) {
+                pickerEl.innerHTML = buildDayActivityPicker(d, parseInt(btn.dataset.idx));
+                pickerEl.querySelectorAll('.act-toggle').forEach(b => bindActToggle(b, days));
+            }
+        });
+    }
+
     function renderItineraryDays() {
         const el          = document.getElementById('itineraryDays');
         if (!el) return;
@@ -984,12 +1072,8 @@ const PackageBuilder = (() => {
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-xs font-semibold text-gray-500 mb-1">Activities</label>
-                    <div class="flex flex-wrap gap-1.5 mb-2">
-                        ${state.steps[2].activities.map(a=>`
-                        <button type="button" data-act="${escHtml(a.title)}" data-idx="${i}"
-                                class="act-toggle text-xs px-2.5 py-1 rounded-full border font-medium transition
-                                       ${(day.activities||[]).includes(a.title)?'bg-violet-600 text-white border-violet-600':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
-                            ${escHtml(a.title)}</button>`).join('')}
+                    <div class="flex flex-wrap gap-1.5 mb-2" id="dayActPicker_${i}">
+                        ${buildDayActivityPicker(day, i)}
                     </div>
                 </div>
             </div>
@@ -1002,7 +1086,22 @@ const PackageBuilder = (() => {
             inp.addEventListener('input', e => { days[parseInt(e.target.dataset.idx)].date = e.target.value; })
         );
         el.querySelectorAll('.day-overnight').forEach(sel =>
-            sel.addEventListener('change', e => { days[parseInt(e.target.dataset.idx)].overnight_stay = e.target.value; })
+            sel.addEventListener('change', async e => {
+                const idx = parseInt(e.target.dataset.idx);
+                days[idx].overnight_stay = e.target.value;
+                // Fetch DB activities for the newly selected city and rebuild picker
+                const city = state.steps[2].cities.find(c => c.name === e.target.value);
+                if (city) {
+                    const sysId = city.sys_id || city.id;
+                    await fetchCityActivities(sysId);
+                }
+                const pickerEl = document.getElementById(`dayActPicker_${idx}`);
+                if (pickerEl) {
+                    pickerEl.innerHTML = buildDayActivityPicker(days[idx], idx);
+                    // Re-bind act-toggle buttons for this day
+                    pickerEl.querySelectorAll('.act-toggle').forEach(btn => bindActToggle(btn, days));
+                }
+            })
         );
         el.querySelectorAll('.day-meal').forEach(cb => {
             cb.addEventListener('change', e => {
@@ -1012,22 +1111,7 @@ const PackageBuilder = (() => {
                 else d.meals = d.meals.filter(m => m !== cb.value);
             });
         });
-        el.querySelectorAll('.act-toggle').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const d   = days[parseInt(btn.dataset.idx)];
-                if (!d.activities) d.activities = [];
-                const act = btn.dataset.act;
-                const has = d.activities.includes(act);
-                if (has) d.activities = d.activities.filter(a => a !== act);
-                else d.activities.push(act);
-                btn.classList.toggle('bg-violet-600', !has);
-                btn.classList.toggle('text-white',     !has);
-                btn.classList.toggle('border-violet-600', !has);
-                btn.classList.toggle('bg-white',      has);
-                btn.classList.toggle('text-gray-600', has);
-                btn.classList.toggle('border-gray-200', has);
-            });
-        });
+        el.querySelectorAll('.act-toggle').forEach(btn => bindActToggle(btn, days));
         el.querySelectorAll('.remove-day').forEach(btn => {
             btn.addEventListener('click', () => {
                 days.splice(parseInt(btn.dataset.idx), 1);
@@ -1216,22 +1300,110 @@ const PackageBuilder = (() => {
         </div>`;
     }
 
+
+
+    // ─── Build activity picker chips for one itinerary day ───────────
+    // Shows: (a) manually added activities + (b) DB suggestions for the day's city
+    function buildDayActivityPicker(day, dayIdx) {
+        const selectedActs = day.activities || [];
+
+        // Manually added activities from Step 2
+        const manualActs = state.steps[2].activities.map(a => a.title);
+
+        // DB suggestions for overnight stay city
+        let dbSuggestions = [];
+        if (day.overnight_stay) {
+            const overnightCity = state.steps[2].cities.find(c => c.name === day.overnight_stay);
+            if (overnightCity) {
+                const sysId = overnightCity.sys_id || overnightCity.id;
+                dbSuggestions = (state.allActivities[sysId] || []).map(a => a.title);
+            }
+        }
+
+        // Merge: manual first, then DB suggestions not already in manual
+        const manualSet = new Set(manualActs.map(t => t.toLowerCase()));
+        const merged = [
+            ...manualActs,
+            ...dbSuggestions.filter(t => !manualSet.has(t.toLowerCase()))
+        ];
+
+        if (!merged.length) {
+            return `<p class="text-xs text-gray-400 italic">Select cities in Step 2 to see activity suggestions</p>`;
+        }
+
+        return merged.map(title => {
+            const isSelected = selectedActs.includes(title);
+            const isDb       = !manualSet.has(title.toLowerCase());
+            return `<button type="button" data-act="${escHtml(title)}" data-idx="${dayIdx}"
+                            class="act-toggle text-xs px-2.5 py-1 rounded-full border font-medium transition
+                                   ${isSelected
+                                       ? 'bg-violet-600 text-white border-violet-600'
+                                       : isDb
+                                           ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
+                        ${isDb && !isSelected ? '<i class="fa-solid fa-database text-xs mr-1 opacity-60"></i>' : ''}
+                        ${escHtml(title)}
+                    </button>`;
+        }).join('');
+    }
+
+    // ─── Fetch DB activities for a city ──────────────────────────────
+    async function fetchCityActivities(citySysId) {
+        if (!citySysId) return [];
+        // Return cached if already fetched
+        if (state.allActivities[citySysId]) return state.allActivities[citySysId];
+        try {
+            const url  = (typeof API_ACTIVITIES !== 'undefined') ? API_ACTIVITIES : '../api/utilities/activities.php';
+            const res  = await fetch(`${url}?city_sys_id=${encodeURIComponent(citySysId)}`);
+            const json = await res.json();
+            const acts = (json.data || []).map(a => ({ id: a.sys_id, title: a.name, type: a.type, price_range: a.price_range, from_db: true }));
+            state.allActivities[citySysId] = acts;
+            return acts;
+        } catch(e) {
+            console.warn('Failed to fetch activities for', citySysId, e);
+            return [];
+        }
+    }
+
+    // ─── Get all DB suggestions for currently selected cities ────────
+    function getAllDbSuggestions() {
+        const suggestions = [];
+        const seen = new Set();
+        state.steps[2].cities.forEach(city => {
+            const sysId = city.sys_id || city.id;
+            const acts  = state.allActivities[sysId] || [];
+            acts.forEach(a => {
+                if (!seen.has(a.title)) {
+                    seen.add(a.title);
+                    suggestions.push(a);
+                }
+            });
+        });
+        return suggestions;
+    }
+
     // ─── Countries Load ──────────────────────────────────────────
     async function loadCountries() {
         try {
-            const url = (typeof API_COUNTRIES !== 'undefined') ? API_COUNTRIES : '../api/countries.php';
+            const url  = (typeof API_COUNTRIES !== 'undefined') ? API_COUNTRIES : '../api/countries.php';
             const res  = await fetch(url);
             const json = await res.json();
             state.allCountries = json.data || json.countries || [];
 
-            // Cities — try API_CITIES global, fall back to countries.json cities
-            if (typeof API_CITIES !== 'undefined') {
-                const citiesRes  = await fetch(API_CITIES);
-                const citiesJson = await citiesRes.json();
-                state.allCities  = citiesJson.data || [];
-            } else {
-                // Inline cities from same countries endpoint if available
-                state.allCities = json.cities || [];
+            // Extract cities from each country's embedded cities array (DB source)
+            // city.id = sys_id string e.g. "THR-26-CNT-01-CTS-01"
+            // city.country_id = DB integer matching country.id
+            state.allCities = [];
+            state.allCountries.forEach(country => {
+                if (Array.isArray(country.cities)) {
+                    country.cities.forEach(city => state.allCities.push(city));
+                }
+            });
+
+            // Fallback: if countries API didn't return cities embedded,
+            // try the old flat cities array from JSON
+            if (state.allCities.length === 0 && json.cities) {
+                state.allCities = json.cities;
             }
         } catch(e) {
             console.error('Failed to load countries/cities:', e);
