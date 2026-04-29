@@ -199,6 +199,37 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </div>
             </div>
             
+            <!-- Masterdata Accordion -->
+            <div class="accordion-item mt-4" data-accordion="masterdata">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fas fa-database mr-3"></i>
+                        <span class="font-medium sidebar-text transition-all duration-300">Master Data</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 sidebar-text"></i>
+                </button>
+                <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <a href="index-countries.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'index-countries.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-globe mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Countries</span>
+                    </a>
+                    <a href="index-activities.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'index-activities.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-person-hiking mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Activities</span>
+                    </a>
+                    <a href="index-cars.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'index-cars.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-car mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Cars</span>
+                    </a>
+                </div>
+            </div>
+
             <!-- Packages Accordion -->
             <div class="accordion-item mt-4" data-accordion="packages">
                 <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">

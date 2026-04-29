@@ -69,13 +69,28 @@ function generateHierarchyIDs(PDO $pdo, string $tag, ?string $parentId = null): 
             break;
 
         case 'activities':
-            // parentId is the City sys_id (e.g., THR-26-CNT-01-CTS-01)
-            if (!$parentId) throw new Exception("City sys_id is required to generate an Activity ID.");
+            // parentId is now the Country sys_id (e.g., THR-26-CNT-01)
+            // Format: THR-26-CNT-01-ACT-01
+            if (!$parentId) throw new Exception("Country sys_id is required to generate an Activity ID.");
 
-            // Format: THR-26-CNT-01-CTS-01-ACT-01
             $prefix = "{$parentId}-ACT";
-            
+
             $stmt = $pdo->prepare("SELECT sys_id FROM activities WHERE sys_id LIKE :pattern ORDER BY id DESC LIMIT 1");
+            $stmt->execute([':pattern' => "{$prefix}-%"]);
+            $lastId = $stmt->fetchColumn();
+
+            $nextVal = $lastId ? fromBase36(substr($lastId, -2)) + 1 : 1;
+            $newSysId = $prefix . "-" . toBase36($nextVal);
+            break;
+
+        case 'cars':
+            // parentId is the Country sys_id (e.g., THR-26-CNT-01)
+            // Format: THR-26-CNT-01-CAR-01
+            if (!$parentId) throw new Exception("Country sys_id is required to generate a Car ID.");
+
+            $prefix = "{$parentId}-CAR";
+
+            $stmt = $pdo->prepare("SELECT sys_id FROM cars WHERE sys_id LIKE :pattern ORDER BY id DESC LIMIT 1");
             $stmt->execute([':pattern' => "{$prefix}-%"]);
             $lastId = $stmt->fetchColumn();
 
@@ -103,6 +118,10 @@ function generateHierarchyIDs(PDO $pdo, string $tag, ?string $parentId = null): 
 // $cityData = generateHierarchyIDs($pdo, 'cities', 'THR-26-CNT-01');
 // Result: ['uuid' => '...', 'sys_id' => 'THR-26-CNT-01-CTS-01']
 
-// 3. For a new Activity inside City 'THR-26-CNT-01-CTS-01'
-// $activityData = generateHierarchyIDs($pdo, 'activities', 'THR-26-CNT-01-CTS-01');
-// Result: ['uuid' => '...', 'sys_id' => 'THR-26-CNT-01-CTS-01-ACT-01']
+// 3. For a new Activity inside Country 'THR-26-CNT-01'
+// $activityData = generateHierarchyIDs($pdo, 'activities', 'THR-26-CNT-01');
+// Result: ['uuid' => '...', 'sys_id' => 'THR-26-CNT-01-ACT-01']
+
+// 4. For a new Car inside Country 'THR-26-CNT-01'
+// $carData = generateHierarchyIDs($pdo, 'cars', 'THR-26-CNT-01');
+// Result: ['uuid' => '...', 'sys_id' => 'THR-26-CNT-01-CAR-01']

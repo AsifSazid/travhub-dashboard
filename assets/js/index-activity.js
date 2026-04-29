@@ -1,780 +1,661 @@
 /**
- * TravHub — Activity Manager
+ * TravHub — Activity Master Data Manager  (v2)
  * assets/js/index-activity.js
  *
- * Follows the exact same pattern as index-country.js:
- *   loadActivities() → inserts rows → renderPagination()
- * No loadFlat / loadGrouped split — that was the bug source.
+ * Modal tabs:
+ *   1. Basic      — name, type, country, location, times, duration, popularity
+ *   2. Cities     — pickup_from_city + dropoff_city
+ *   3. Itinerary  — itineraries array
+ *   4. Inc / Exc  — inclusions + exclusions
+ *   5. Transfers  — transfers array with per-transfer pricing tiers
  */
 
 const ActivityManager = (() => {
 
-    /* ── State ────────────────────────────────────────────────── */
-    const state = {
-        page        : 1,
-        limit       : 50,
-        search      : '',
-        type        : '',
-        priceRange  : '',
-        status      : 'active',
-        searchTimer : null,
-        allCountries: [],
-        cityNameMap : {},   // city_sys_id    → city name
-        ctryNameMap : {},   // country_sys_id → country name
-    };
+    let countries     = [];
+    let carsCache     = {};
+    let currentPage   = 1;
+    let filterCountry = '';
+    let filterType    = '';
+    let filterStatus  = 'active';
+    let searchQuery   = '';
+    let searchTimer   = null;
+    let activeTab     = 'basic';
+    let editingSysId  = null;
+    let formState     = newFormState();
 
-    const ACTIVITY_TYPES = ['adventure','business','conference','cultural',
-                            'education','nightlife','religious','shopping','sports','tourism'];
-    const PRICE_RANGES   = ['free','low','medium','high'];
+    function newFormState() {
+        return {
+            sys_id: null, country_sys_id: '',
+            name: '', type: 'tour', location: '',
+            start_time: '', end_time: '',
+            duration_hours: 0, popularity: 3,
+            pickup_from_city: [], dropoff_city: [],
+            itineraries: [], inclusions: [], exclusions: [], transfers: [],
+        };
+    }
 
-    const TYPE_COLORS = {
-        adventure  : 'bg-orange-50 text-orange-700',
-        cultural   : 'bg-violet-50 text-violet-700',
-        tourism    : 'bg-blue-50 text-blue-700',
-        shopping   : 'bg-pink-50 text-pink-700',
-        religious  : 'bg-amber-50 text-amber-700',
-        sports     : 'bg-green-50 text-green-700',
-        nightlife  : 'bg-indigo-50 text-indigo-700',
-        education  : 'bg-teal-50 text-teal-700',
-        business   : 'bg-gray-100 text-gray-700',
-        conference : 'bg-slate-100 text-slate-700',
-    };
-    const PRICE_COLORS = {
-        free  : 'bg-green-50 text-green-700',
-        low   : 'bg-blue-50 text-blue-700',
-        medium: 'bg-amber-50 text-amber-700',
-        high  : 'bg-red-50 text-red-700',
-    };
+    const ACTIVITY_TYPES = ['tour','transfer','both'];
 
-    /* ── Init ─────────────────────────────────────────────────── */
+    // ── Init ────────────────────────────────────────────────────
     async function init() {
         renderShell();
-        bindGlobalEvents();
-        await loadCountriesForModal();
+        await loadCountries();
+        bindEvents();
         loadActivities();
     }
 
-    /* ── Shell ────────────────────────────────────────────────── */
+    // ── Shell ───────────────────────────────────────────────────
     function renderShell() {
         document.getElementById('mainContent').innerHTML = `
+        <style>
+          .lbl{display:block;font-size:.7rem;font-weight:600;color:#4b5563;margin-bottom:.25rem}
+          .finput{width:100%;font-size:.8rem;border:1px solid #e5e7eb;border-radius:.75rem;padding:.5rem .75rem;outline:none}
+          .finput:focus{ring:2px;ring-color:#60a5fa}
+        </style>
         <div class="px-6 py-6 max-w-screen-xl mx-auto">
-
-            <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Activities</h1>
-                    <p class="text-sm text-gray-400 mt-0.5">Manage activities by country and city</p>
+                    <p class="text-sm text-gray-500 mt-0.5">Masterdata — tours, transfers and combined experiences</p>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <button id="btnSyncImport"
-                            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 transition">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> Sync from JSON
+                <div class="flex gap-2">
+                    <button id="btnSync" class="inline-flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium px-4 py-2.5 rounded-xl transition text-sm">
+                        <i class="fa-solid fa-arrows-rotate"></i> Sync JSON
                     </button>
-                    <button id="btnSyncExport"
-                            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> Export to JSON
-                    </button>
-                    <button id="btnAddActivity"
-                            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm">
+                    <button id="btnAddActivity" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition">
                         <i class="fa-solid fa-plus"></i> Add Activity
                     </button>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-5 flex flex-col sm:flex-row gap-3 flex-wrap">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-5 flex flex-col sm:flex-row gap-3">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input id="actSearch" type="text" placeholder="Search activities, cities, countries…"
-                           class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <input id="actSearch" type="text" placeholder="Search name or location…"
+                        class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
                 </div>
-                <select id="actTypeFilter"
-                        class="text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700">
+                <select id="filterCountry" class="text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="">All Countries</option>
+                </select>
+                <select id="filterType" class="text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400">
                     <option value="">All Types</option>
-                    ${ACTIVITY_TYPES.map(t => `<option value="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+                    <option value="tour">Tour</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="both">Both</option>
                 </select>
-                <select id="actPriceFilter"
-                        class="text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700">
-                    <option value="">All Prices</option>
-                    ${PRICE_RANGES.map(p => `<option value="${p}">${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
+                <select id="filterStatus" class="text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="active">Active</option>
+                    <option value="all">All</option>
+                    <option value="trash">Trash</option>
                 </select>
-                <div class="flex gap-2">
-                    ${['active','trash'].map(t => `
-                    <button data-status="${t}"
-                            class="status-tab px-4 py-2 text-sm font-medium rounded-xl border transition
-                                   ${t === 'active' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
-                        ${t === 'active' ? 'Active' : '<i class="fa-solid fa-trash mr-1"></i>Trash'}
-                    </button>`).join('')}
-                </div>
             </div>
 
-            <!-- Table -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
                 <table class="w-full text-sm">
-                    <thead>
-                        <tr class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">
-                            <th class="px-4 py-3 text-left">Activity</th>
-                            <th class="px-4 py-3 text-left w-24">Type</th>
-                            <th class="px-4 py-3 text-left w-20">Price</th>
-                            <th class="px-4 py-3 text-center w-20">Duration</th>
-                            <th class="px-4 py-3 text-center w-24">Popularity</th>
-                            <th class="px-4 py-3 text-left w-40">City</th>
-                            <th class="px-4 py-3 text-left w-32">Country</th>
-                            <th class="px-4 py-3 text-center w-28">Actions</th>
+                    <thead class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Name</th>
+                            <th class="px-4 py-3 text-left">Country</th>
+                            <th class="px-4 py-3 text-left">Type</th>
+                            <th class="px-4 py-3 text-left">Location</th>
+                            <th class="px-4 py-3 text-center">Dur.</th>
+                            <th class="px-4 py-3 text-center">Transfers</th>
+                            <th class="px-4 py-3 text-center">Pop.</th>
+                            <th class="px-4 py-3 text-center">Status</th>
+                            <th class="px-4 py-3 text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="activityTableBody" class="divide-y divide-gray-50"></tbody>
+                    <tbody id="actTableBody" class="divide-y divide-gray-50">
+                        <tr><td colspan="9" class="text-center py-12 text-gray-400">
+                            <i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i>Loading…</td></tr>
+                    </tbody>
                 </table>
-                <div id="activityEmpty" class="hidden text-center py-16 text-gray-300">
-                    <i class="fa-solid fa-person-hiking text-5xl mb-3 block opacity-30"></i>
-                    <p class="text-sm font-medium">No activities found</p>
-                    <p class="text-xs mt-1">Try syncing from JSON or adjusting filters</p>
-                </div>
-                <div id="activityLoading" class="text-center py-16 text-gray-300">
-                    <i class="fa-solid fa-spinner fa-spin text-3xl"></i>
-                </div>
             </div>
-
-            <!-- Pagination -->
-            <div id="activityPagination" class="flex items-center justify-between"></div>
-
+            <div id="actPagination" class="flex items-center justify-between mt-5"></div>
         </div>
 
-        <!-- ── Activity Modal ──────────────────────────────────── -->
-        <div id="actModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <!-- Activity Modal -->
+        <div id="actModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
                     <h2 id="actModalTitle" class="text-lg font-bold text-gray-800">Add Activity</h2>
-                    <button id="actModalClose"
-                            class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition">
-                        <i class="fa-solid fa-times"></i>
+                    <button id="actModalClose" class="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
-                <div class="px-6 py-5 space-y-4">
-                    <input type="hidden" id="actModalSysId">
-
-                    <!-- Location selectors (new only) -->
-                    <div id="actLocationFields">
-                        <div class="mb-3">
-                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Country <span class="text-red-500">*</span></label>
-                            <select id="fActCountry"
-                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                <option value="">-- Select country --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">City <span class="text-red-500">*</span></label>
-                            <select id="fActCity"
-                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                <option value="">-- Select country first --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Location read-only (edit only) -->
-                    <div id="actLocationReadOnly" class="hidden">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Location</label>
-                        <div id="actLocationDisplay"
-                             class="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-xl border border-gray-200"></div>
-                    </div>
-
-                    <!-- Name -->
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Activity Name <span class="text-red-500">*</span></label>
-                        <input id="fActName" type="text" placeholder="e.g. Boat Safari"
-                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    </div>
-
-                    <!-- Type + Price -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Type</label>
-                            <select id="fActType"
-                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                ${ACTIVITY_TYPES.map(t => `<option value="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Price Range</label>
-                            <select id="fActPrice"
-                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                ${PRICE_RANGES.map(p => `<option value="${p}">${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
-                            </select>
+                <div class="flex border-b border-gray-100 px-6 flex-shrink-0 overflow-x-auto gap-1">
+                    <button data-tab="basic"     class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600 flex-shrink-0 transition">Basic Info</button>
+                    <button data-tab="cities"    class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex-shrink-0 transition">Cities</button>
+                    <button data-tab="itinerary" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex-shrink-0 transition">Itinerary</button>
+                    <button data-tab="inc-exc"   class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex-shrink-0 transition">Inc / Exc</button>
+                    <button data-tab="transfers" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex-shrink-0 transition">Transfers</button>
+                </div>
+                <div class="flex-1 overflow-y-auto px-6 py-5">
+                    <div id="tab-basic">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2"><label class="lbl">Activity Name <span class="text-red-500">*</span></label>
+                                <input id="fName" type="text" placeholder="e.g. Bangkok City Tour" class="finput"></div>
+                            <div><label class="lbl">Country <span class="text-red-500">*</span></label>
+                                <select id="fCountry" class="finput"></select></div>
+                            <div><label class="lbl">Type</label>
+                                <select id="fType" class="finput">
+                                    <option value="tour">Tour</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="both">Both</option>
+                                </select></div>
+                            <div class="col-span-2"><label class="lbl">Location / Venue</label>
+                                <input id="fLocation" type="text" placeholder="e.g. Suvarnabhumi Airport" class="finput"></div>
+                            <div><label class="lbl">Start Time</label>
+                                <input id="fStartTime" type="time" class="finput"></div>
+                            <div><label class="lbl">End Time</label>
+                                <input id="fEndTime" type="time" class="finput"></div>
+                            <div><label class="lbl">Duration (hours)</label>
+                                <input id="fDuration" type="number" min="0" step="0.5" value="0" class="finput"></div>
+                            <div><label class="lbl">Popularity (1–5)</label>
+                                <input id="fPopularity" type="number" min="1" max="5" value="3" class="finput"></div>
                         </div>
                     </div>
-
-                    <!-- Duration + Popularity -->
-                    <div class="grid grid-cols-2 gap-4">
+                    <div id="tab-cities" class="hidden space-y-6">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Duration (hours)</label>
-                            <input id="fActDuration" type="number" min="0.5" step="0.5" value="2"
-                                   class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popularity (1–5)</label>
-                            <div class="flex items-center gap-1 mt-1">
-                                ${[1,2,3,4,5].map(n => `
-                                <button type="button" data-pop="${n}"
-                                        class="pop-star text-xl transition ${n <= 3 ? 'text-amber-400' : 'text-gray-300'}">
-                                    <i class="fa-${n <= 3 ? 'solid' : 'regular'} fa-star"></i>
-                                </button>`).join('')}
-                                <input type="hidden" id="fActPopularity" value="3">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-gray-700">Pickup From Cities</h3>
+                                <button id="btnAddPickup" class="text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add City</button>
                             </div>
+                            <div id="pickupList" class="space-y-2"></div>
+                        </div>
+                        <hr class="border-gray-100">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-gray-700">Dropoff Cities</h3>
+                                <button id="btnAddDropoff" class="text-xs px-3 py-1.5 rounded-lg border border-violet-400 text-violet-600 hover:bg-violet-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add City</button>
+                            </div>
+                            <div id="dropoffList" class="space-y-2"></div>
                         </div>
                     </div>
+                    <div id="tab-itinerary" class="hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <div><h3 class="text-sm font-semibold text-gray-700">Itinerary</h3><p class="text-xs text-gray-400">Day-by-day plan</p></div>
+                            <button onclick="ActivityManager._addListItem('itineraries')" class="text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                        </div>
+                        <div id="itinerariesList" class="space-y-2"></div>
+                    </div>
+                    <div id="tab-inc-exc" class="hidden grid grid-cols-2 gap-6">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-green-700">Inclusions</h3>
+                                <button onclick="ActivityManager._addListItem('inclusions')" class="text-xs px-3 py-1.5 rounded-lg border border-green-400 text-green-600 hover:bg-green-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                            </div>
+                            <div id="inclusionsList" class="space-y-2"></div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-red-600">Exclusions</h3>
+                                <button onclick="ActivityManager._addListItem('exclusions')" class="text-xs px-3 py-1.5 rounded-lg border border-red-400 text-red-500 hover:bg-red-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                            </div>
+                            <div id="exclusionsList" class="space-y-2"></div>
+                        </div>
+                    </div>
+                    <div id="tab-transfers" class="hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <div><h3 class="text-sm font-semibold text-gray-700">Transfers</h3><p class="text-xs text-gray-400">Optional — leave empty if no transfer</p></div>
+                            <button id="btnAddTransfer" class="text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add Transfer</button>
+                        </div>
+                        <div id="transfersList" class="space-y-3"></div>
+                    </div>
                 </div>
-                <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-                    <button id="actModalCancel"
-                            class="px-5 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition">
-                        Cancel
-                    </button>
-                    <button id="actModalSave"
-                            class="flex items-center gap-2 px-6 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition shadow-sm">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Activity
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Confirm Modal ──────────────────────────────────── -->
-        <div id="actConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-                <div id="actConfirmIcon" class="text-center text-4xl mb-3"></div>
-                <h3 id="actConfirmTitle" class="text-base font-bold text-gray-800 text-center mb-1"></h3>
-                <p id="actConfirmMsg" class="text-sm text-gray-500 text-center mb-5"></p>
-                <div class="flex gap-3">
-                    <button id="actConfirmCancel"
-                            class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium transition text-sm">
-                        Cancel
-                    </button>
-                    <button id="actConfirmOk" class="flex-1 py-2.5 rounded-xl font-semibold text-white transition text-sm"></button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Sync Modal ─────────────────────────────────────── -->
-        <div id="actSyncModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
-                <h3 id="actSyncTitle" class="text-base font-bold text-gray-800 mb-4"></h3>
-                <div id="actSyncBody" class="text-sm text-gray-600 space-y-1 max-h-64 overflow-y-auto"></div>
-                <div class="mt-5 text-right">
-                    <button id="actSyncClose"
-                            class="px-5 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition">
-                        Done
+                <div id="actError" class="hidden mx-6 mb-2 text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 flex-shrink-0"></div>
+                <div class="flex gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+                    <button id="actModalCancel" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium transition">Cancel</button>
+                    <button id="actModalSave" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> Save Activity
                     </button>
                 </div>
             </div>
         </div>
-
-        <!-- Toast -->
-        <div id="actToast"
-             class="hidden fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white max-w-xs">
-        </div>
-
-        <!-- Loader -->
-        <div id="actLoader"
-             class="hidden fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm flex-col gap-3">
-            <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i>
-            <p id="actLoaderMsg" class="text-sm text-gray-500">Loading…</p>
-        </div>
+        <div id="actToast" class="fixed bottom-6 right-6 z-50 hidden items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white max-w-xs"></div>
         `;
     }
 
-    /* ── Global Events ────────────────────────────────────────── */
-    function bindGlobalEvents() {
-        document.getElementById('actSearch').addEventListener('input', e => {
-            clearTimeout(state.searchTimer);
-            state.searchTimer = setTimeout(() => {
-                state.search = e.target.value.trim();
-                state.page   = 1;
-                loadActivities();
-            }, 380);
-        });
-
-        document.getElementById('actTypeFilter').addEventListener('change', e => {
-            state.type = e.target.value;
-            state.page = 1;
-            loadActivities();
-        });
-
-        document.getElementById('actPriceFilter').addEventListener('change', e => {
-            state.priceRange = e.target.value;
-            state.page = 1;
-            loadActivities();
-        });
-
-        document.querySelectorAll('.status-tab').forEach(btn => {
-            btn.addEventListener('click', () => {
-                state.status = btn.dataset.status;
-                state.page   = 1;
-                document.querySelectorAll('.status-tab').forEach(b => {
-                    b.classList.remove('bg-blue-600','text-white','border-blue-600');
-                    b.classList.add('bg-white','text-gray-600','border-gray-200');
-                });
-                btn.classList.add('bg-blue-600','text-white','border-blue-600');
-                btn.classList.remove('bg-white','text-gray-600','border-gray-200');
-                loadActivities();
-            });
-        });
-
-        document.getElementById('btnAddActivity').addEventListener('click', () => openActivityModal());
-
-        document.getElementById('actModalClose').addEventListener('click',  closeActivityModal);
-        document.getElementById('actModalCancel').addEventListener('click', closeActivityModal);
-        document.getElementById('actModal').addEventListener('click', e => {
-            if (e.target === e.currentTarget) closeActivityModal();
-        });
-        document.getElementById('actModalSave').addEventListener('click', saveActivity);
-
-        document.getElementById('fActCountry').addEventListener('change', e => {
-            populateCityDropdown(e.target.value);
-        });
-
-        document.querySelectorAll('.pop-star').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const v = parseInt(btn.dataset.pop);
-                document.getElementById('fActPopularity').value = v;
-                document.querySelectorAll('.pop-star').forEach(b => {
-                    const n = parseInt(b.dataset.pop);
-                    b.querySelector('i').className = `fa-${n <= v ? 'solid' : 'regular'} fa-star`;
-                    b.classList.toggle('text-amber-400', n <= v);
-                    b.classList.toggle('text-gray-300',  n > v);
-                });
-            });
-        });
-
-        document.getElementById('btnSyncImport').addEventListener('click', () => runSync('import'));
-        document.getElementById('btnSyncExport').addEventListener('click', () => runSync('export'));
-        document.getElementById('actSyncClose').addEventListener('click', () => {
-            document.getElementById('actSyncModal').classList.add('hidden');
-            loadActivities();
-        });
-        document.getElementById('actConfirmCancel').addEventListener('click', () =>
-            document.getElementById('actConfirmModal').classList.add('hidden')
-        );
+    // ── Load Countries ───────────────────────────────────────────
+    async function loadCountries() {
+        try {
+            const res  = await fetch(`${API_COUNTRIES_BASE}list.php?limit=200&status=active`);
+            const json = await res.json();
+            if (json.success) {
+                countries = json.data || [];
+                const opts = countries.map(c => `<option value="${c.sys_id}">${esc(c.name)}</option>`).join('');
+                document.getElementById('filterCountry').innerHTML = '<option value="">All Countries</option>' + opts;
+            }
+        } catch(e) {}
     }
 
-    /* ── Load Activities — one function, same as loadCountries() ─ */
-    async function loadActivities() {
-        const body    = document.getElementById('activityTableBody');
-        const empty   = document.getElementById('activityEmpty');
-        const loading = document.getElementById('activityLoading');
-
-        body.innerHTML = '';
-        empty.classList.add('hidden');
-        loading.classList.remove('hidden');
-
-        const params = new URLSearchParams({
-            search     : state.search,
-            type       : state.type,
-            price_range: state.priceRange,
-            status     : state.status,
-            page       : state.page,
-            limit      : state.limit,
-        });
-
+    async function loadCarsForCountry(country_sys_id) {
+        if (!country_sys_id) return [];
+        if (carsCache[country_sys_id]) return carsCache[country_sys_id];
         try {
-            const res  = await fetch(API_ACTIVITIES_BASE + 'list.php?' + params);
+            const res  = await fetch(`${API_CARS_BASE}list.php?country_sys_id=${country_sys_id}&status=active&limit=100`);
             const json = await res.json();
-            loading.classList.add('hidden');
+            carsCache[country_sys_id] = json.success ? (json.data || []) : [];
+        } catch(e) { carsCache[country_sys_id] = []; }
+        return carsCache[country_sys_id];
+    }
 
+    // ── Events ───────────────────────────────────────────────────
+    function bindEvents() {
+        document.getElementById('btnAddActivity').addEventListener('click', () => openModal());
+        document.getElementById('actSearch').addEventListener('input', e => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => { searchQuery = e.target.value.trim(); currentPage = 1; loadActivities(); }, 400);
+        });
+        ['filterCountry','filterType','filterStatus'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', () => {
+                filterCountry = document.getElementById('filterCountry').value;
+                filterType    = document.getElementById('filterType').value;
+                filterStatus  = document.getElementById('filterStatus').value;
+                currentPage = 1; loadActivities();
+            });
+        });
+        document.getElementById('btnSync').addEventListener('click', async () => {
+            const action = prompt('Enter "export" (DB→JSON) or "import" (JSON→DB):');
+            if (!action) return;
+            try {
+                const res  = await fetch(`${API_ACTIVITIES_SYNC}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action}) });
+                const json = await res.json();
+                alert(json.message || JSON.stringify(json));
+                if (json.success) loadActivities();
+            } catch(e) { alert('Error: '+e.message); }
+        });
+    }
+
+    // ── Load List ────────────────────────────────────────────────
+    async function loadActivities() {
+        const tbody = document.getElementById('actTableBody');
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i>Loading…</td></tr>`;
+        const params = new URLSearchParams({ page:currentPage, limit:20, search:searchQuery, country_sys_id:filterCountry, type:filterType, status:filterStatus });
+        try {
+            const res  = await fetch(`${API_ACTIVITIES_BASE}list.php?${params}`);
+            const json = await res.json();
             if (!json.success) throw new Error(json.message);
-
-            if (!json.data.length) {
-                empty.classList.remove('hidden');
-                document.getElementById('activityPagination').innerHTML = '';
-                return;
-            }
-
-            json.data.forEach(act => body.insertAdjacentHTML('beforeend', activityRow(act)));
-            bindRowEvents();
+            renderTable(json.data);
             renderPagination(json.pagination);
-
-        } catch(e) {
-            loading.classList.add('hidden');
-            body.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-red-400 text-sm">${e.message}</td></tr>`;
+        } catch(err) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-red-400">${err.message}</td></tr>`;
         }
     }
 
-    /* ── Row HTML ─────────────────────────────────────────────── */
-    function activityRow(a) {
-        const isDeleted = a.status === 'deleted';
-        const typeCls   = TYPE_COLORS[a.type]        || 'bg-gray-100 text-gray-600';
-        const priceCls  = PRICE_COLORS[a.price_range] || 'bg-gray-100 text-gray-600';
-        const stars     = Array.from({length:5}, (_, i) =>
-            `<i class="fa-${i < a.popularity ? 'solid' : 'regular'} fa-star text-amber-400" style="font-size:10px"></i>`
-        ).join('');
-
-        const cityName    = state.cityNameMap[a.city_sys_id]    || '';
-        const countryName = state.ctryNameMap[a.country_sys_id] || '';
-
-        const actions = isDeleted
-            ? `<button data-action="restore" data-sys="${a.sys_id}" data-name="${esc(a.name)}"
-                       class="text-xs text-green-600 hover:text-green-800 font-medium transition">
-                   <i class="fa-solid fa-rotate-left mr-1"></i>Restore
-               </button>`
-            : `<button data-action="edit-act" data-sys="${a.sys_id}"
-                       class="text-xs text-blue-600 hover:text-blue-800 font-medium transition mr-3">
-                   <i class="fa-solid fa-pen mr-1"></i>Edit
-               </button>
-               <button data-action="delete-act" data-sys="${a.sys_id}" data-name="${esc(a.name)}"
-                       class="text-xs text-red-500 hover:text-red-700 font-medium transition">
-                   <i class="fa-solid fa-trash mr-1"></i>Delete
-               </button>`;
-
-        return `
-        <tr class="hover:bg-gray-50/60 transition ${isDeleted ? 'opacity-60' : ''}">
-            <td class="px-4 py-3">
-                <p class="font-semibold text-gray-800 text-sm">${esc(a.name)}</p>
-                <p class="text-xs text-gray-400 font-mono mt-0.5">${a.sys_id}</p>
-            </td>
-            <td class="px-4 py-3">
-                <span class="text-xs font-medium px-2 py-1 rounded-lg ${typeCls}">${a.type}</span>
-            </td>
-            <td class="px-4 py-3">
-                <span class="text-xs font-medium px-2 py-1 rounded-lg ${priceCls}">${a.price_range}</span>
-            </td>
-            <td class="px-4 py-3 text-center text-sm text-gray-600">${a.duration_hours}h</td>
-            <td class="px-4 py-3 text-center">${stars}</td>
-            <td class="px-4 py-3">
-                <p class="text-sm text-gray-700">${esc(cityName)}</p>
-                <p class="text-xs text-gray-400 font-mono">${a.city_sys_id}</p>
-            </td>
-            <td class="px-4 py-3">
-                <p class="text-sm text-gray-700">${esc(countryName)}</p>
-                <p class="text-xs text-gray-400 font-mono">${a.country_sys_id}</p>
-            </td>
-            <td class="px-4 py-3 text-center">${actions}</td>
-        </tr>`;
+    function renderTable(acts) {
+        const tbody = document.getElementById('actTableBody');
+        if (!acts.length) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-gray-400"><i class="fa-solid fa-person-hiking text-3xl mb-2 block opacity-30"></i>No activities found</td></tr>`;
+            return;
+        }
+        const typeColors = { tour:'bg-blue-50 text-blue-700', transfer:'bg-violet-50 text-violet-700', both:'bg-teal-50 text-teal-700' };
+        tbody.innerHTML = acts.map(act => {
+            const country = countries.find(c => c.sys_id === act.country_sys_id);
+            const statusPill = act.status === 'active'
+                ? '<span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Active</span>'
+                : '<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">Deleted</span>';
+            const stars = Array.from({length:5},(_,i)=>`<i class="fa-${i<act.popularity?'solid':'regular'} fa-star text-amber-400" style="font-size:10px"></i>`).join('');
+            const isDeleted = act.status === 'deleted';
+            const tc = typeColors[act.type] || 'bg-gray-100 text-gray-600';
+            return `<tr class="hover:bg-gray-50 transition">
+                <td class="px-4 py-3 font-medium text-gray-800 max-w-[160px] truncate">${esc(act.name)}</td>
+                <td class="px-4 py-3 text-xs text-gray-500">${esc(country?.name||act.country_sys_id)}</td>
+                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs ${tc}">${cap(act.type)}</span></td>
+                <td class="px-4 py-3 text-xs text-gray-500 max-w-[120px] truncate">${esc(act.location||'—')}</td>
+                <td class="px-4 py-3 text-center text-xs text-gray-500">${act.duration_hours?act.duration_hours+'h':'—'}</td>
+                <td class="px-4 py-3 text-center">${act.transfer_count>0?`<span class="px-2 py-0.5 rounded-full text-xs bg-orange-50 text-orange-600">${act.transfer_count}</span>`:'<span class="text-gray-300 text-xs">—</span>'}</td>
+                <td class="px-4 py-3 text-center">${stars}</td>
+                <td class="px-4 py-3 text-center">${statusPill}</td>
+                <td class="px-4 py-3 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                    ${isDeleted
+                        ?`<button onclick="ActivityManager.restoreActivity('${act.sys_id}','${esc(act.name)}')" class="p-1.5 rounded-lg text-green-600 hover:bg-green-50 text-xs" title="Restore"><i class="fa-solid fa-rotate-left"></i></button>`
+                        :`<button onclick="ActivityManager.editActivity('${act.sys_id}')" class="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 text-xs" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                          <button onclick="ActivityManager.deleteActivity('${act.sys_id}','${esc(act.name)}')" class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 text-xs" title="Delete"><i class="fa-solid fa-trash"></i></button>`}
+                    </div>
+                </td></tr>`;
+        }).join('');
     }
 
-    /* ── Row Events ───────────────────────────────────────────── */
-    function bindRowEvents() {
-        document.querySelectorAll('[data-action="edit-act"]').forEach(btn => {
-            btn.addEventListener('click', () => openActivityModal(btn.dataset.sys));
-        });
-        document.querySelectorAll('[data-action="delete-act"]').forEach(btn => {
-            btn.addEventListener('click', () => confirmActAction({
-                icon : '🗑️', title: 'Move to Trash',
-                msg  : `Delete <b>${btn.dataset.name}</b>?`,
-                color: 'bg-red-500', label: 'Delete',
-                onOk : () => doActDelete(btn.dataset.sys, false),
-            }));
-        });
-        document.querySelectorAll('[data-action="restore"]').forEach(btn => {
-            btn.addEventListener('click', () => confirmActAction({
-                icon : '♻️', title: 'Restore Activity',
-                msg  : `Restore <b>${btn.dataset.name}</b>?`,
-                color: 'bg-green-500', label: 'Restore',
-                onOk : () => doActDelete(btn.dataset.sys, true),
-            }));
-        });
-    }
-
-    /* ── Pagination — identical to index-country.js ───────────── */
     function renderPagination(p) {
-        const el = document.getElementById('activityPagination');
+        const el = document.getElementById('actPagination');
         if (!p || p.total_pages <= 1) { el.innerHTML = ''; return; }
-
         let btns = '';
         for (let i = 1; i <= p.total_pages; i++) {
-            btns += `<button data-pg="${i}"
-                             class="pg-btn w-9 h-9 rounded-xl text-sm font-medium border transition
-                                    ${i === p.page ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
-                         ${i}
-                     </button>`;
+            btns += `<button data-pg="${i}" class="pg-btn w-9 h-9 rounded-xl text-sm font-medium border transition ${i===p.page?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">${i}</button>`;
         }
-
-        el.innerHTML = `
-            <p class="text-sm text-gray-500">
-                Showing ${((p.page - 1) * p.limit) + 1}–${Math.min(p.page * p.limit, p.total)} of ${p.total}
-            </p>
-            <div class="flex gap-1.5">${btns}</div>`;
-
-        el.querySelectorAll('.pg-btn').forEach(b =>
-            b.addEventListener('click', () => {
-                state.page = parseInt(b.dataset.pg);
-                loadActivities();
-            })
-        );
+        el.innerHTML = `<p class="text-sm text-gray-500">Showing ${((p.page-1)*p.limit)+1}–${Math.min(p.page*p.limit,p.total)} of ${p.total}</p><div class="flex gap-1.5">${btns}</div>`;
+        el.querySelectorAll('.pg-btn').forEach(b => b.addEventListener('click', () => { currentPage=parseInt(b.dataset.pg); loadActivities(); }));
     }
 
-    /* ── Countries for modal ──────────────────────────────────── */
-    async function loadCountriesForModal() {
-        try {
-            const res  = await fetch(API_COUNTRIES_BASE + 'list.php?limit=200&status=active');
-            const json = await res.json();
-            if (!json.success) return;
+    // ── Modal ────────────────────────────────────────────────────
+    async function openModal(activity = null) {
+        editingSysId = activity?.sys_id || null;
+        formState    = newFormState();
+        if (activity) Object.assign(formState, activity);
 
-            state.allCountries = json.data || [];
+        document.getElementById('actModalTitle').textContent = activity ? 'Edit Activity' : 'Add Activity';
 
-            // Build name lookup maps — used in activityRow()
-            state.cityNameMap = {};
-            state.ctryNameMap = {};
-            state.allCountries.forEach(c => {
-                state.ctryNameMap[c.sys_id] = c.name;
-                (c.cities || []).forEach(city => {
-                    state.cityNameMap[city.id] = city.name;
-                });
-            });
+        const opts = countries.map(c=>`<option value="${c.sys_id}">${esc(c.name)}</option>`).join('');
+        document.getElementById('fCountry').innerHTML = '<option value="">— Select Country —</option>'+opts;
 
-            // Populate country dropdown
-            const sel = document.getElementById('fActCountry');
-            state.allCountries.forEach(c => {
-                const opt          = document.createElement('option');
-                opt.value          = c.sys_id;
-                opt.textContent    = `${c.name} (${c.code})`;
-                opt.dataset.cities = JSON.stringify(c.cities || []);
-                sel.appendChild(opt);
-            });
+        populateBasicTab();
+        if (formState.country_sys_id) await loadCarsForCountry(formState.country_sys_id);
+        populateCitiesTab();
+        populateListTab('itineraries','itinerariesList');
+        populateListTab('inclusions','inclusionsList');
+        populateListTab('exclusions','exclusionsList');
+        populateTransfersTab();
 
-        } catch(e) {
-            console.warn('Failed to load countries for modal:', e);
-        }
+        document.getElementById('fCountry').addEventListener('change', async function() {
+            formState.country_sys_id = this.value;
+            await loadCarsForCountry(this.value);
+            updateCarSelects();
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+        document.getElementById('actModalClose').addEventListener('click', closeModal);
+        document.getElementById('actModalCancel').addEventListener('click', closeModal);
+        document.getElementById('actModalSave').addEventListener('click', saveActivity);
+        document.getElementById('actModal').addEventListener('click', e => { if(e.target===document.getElementById('actModal'))closeModal(); });
+        document.getElementById('btnAddPickup').addEventListener('click', ()=>addCityRow('pickup'));
+        document.getElementById('btnAddDropoff').addEventListener('click', ()=>addCityRow('dropoff'));
+        document.getElementById('btnAddTransfer').addEventListener('click', ()=>addTransferRow());
+
+        switchTab('basic');
+        hideError();
+        const modal = document.getElementById('actModal');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
     }
 
-    function populateCityDropdown(countrySysId) {
-        const sel = document.getElementById('fActCity');
-        sel.innerHTML = '<option value="">-- Select city --</option>';
-        if (!countrySysId) return;
-        const opt    = document.querySelector(`#fActCountry option[value="${countrySysId}"]`);
-        if (!opt) return;
-        const cities = JSON.parse(opt.dataset.cities || '[]');
-        cities.forEach(city => {
-            const o       = document.createElement('option');
-            o.value       = city.id;
-            o.textContent = city.name;
-            sel.appendChild(o);
+    function closeModal() {
+        const modal = document.getElementById('actModal');
+        modal.classList.add('hidden'); modal.classList.remove('flex');
+        editingSysId = null;
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            const on = b.dataset.tab === tab;
+            b.classList.toggle('border-blue-600', on); b.classList.toggle('text-blue-600', on);
+            b.classList.toggle('border-transparent', !on); b.classList.toggle('text-gray-500', !on);
+        });
+        ['basic','cities','itinerary','inc-exc','transfers'].forEach(t => {
+            document.getElementById(`tab-${t}`)?.classList.toggle('hidden', t !== tab);
         });
     }
 
-    /* ── Activity Modal ───────────────────────────────────────── */
-    async function openActivityModal(sysId = null) {
-        resetActivityModal();
-        document.getElementById('actModalTitle').textContent = sysId ? 'Edit Activity' : 'Add Activity';
-        document.getElementById('actModalSysId').value       = sysId || '';
+    // ── Tab populators ───────────────────────────────────────────
+    function populateBasicTab() {
+        document.getElementById('fName').value       = formState.name;
+        document.getElementById('fCountry').value    = formState.country_sys_id;
+        document.getElementById('fType').value       = formState.type;
+        document.getElementById('fLocation').value   = formState.location;
+        document.getElementById('fStartTime').value  = formState.start_time || '';
+        document.getElementById('fEndTime').value    = formState.end_time   || '';
+        document.getElementById('fDuration').value   = formState.duration_hours;
+        document.getElementById('fPopularity').value = formState.popularity;
+        if (editingSysId) document.getElementById('fCountry').disabled = true;
+    }
 
-        if (sysId) {
-            document.getElementById('actLocationFields').classList.add('hidden');
-            document.getElementById('actLocationReadOnly').classList.remove('hidden');
+    function populateCitiesTab() {
+        document.getElementById('pickupList').innerHTML  = '';
+        document.getElementById('dropoffList').innerHTML = '';
+        (formState.pickup_from_city || []).forEach(item => addCityRow('pickup', item));
+        (formState.dropoff_city     || []).forEach(item => addCityRow('dropoff', item));
+    }
 
-            showLoader('Loading…');
-            try {
-                const res  = await fetch(API_ACTIVITIES_BASE + 'get.php?sys_id=' + encodeURIComponent(sysId));
-                const json = await res.json();
-                hideLoader();
-                if (!json.success) throw new Error(json.message);
-
-                const a = json.data;
-                document.getElementById('fActName').value     = a.name;
-                document.getElementById('fActType').value     = a.type;
-                document.getElementById('fActPrice').value    = a.price_range;
-                document.getElementById('fActDuration').value = a.duration_hours;
-
-                const cityName    = state.cityNameMap[a.city_sys_id]    || a.city_sys_id;
-                const countryName = state.ctryNameMap[a.country_sys_id] || a.country_sys_id;
-                document.getElementById('actLocationDisplay').textContent =
-                    `${countryName} → ${cityName}`;
-
-                const pop = a.popularity || 3;
-                document.getElementById('fActPopularity').value = pop;
-                document.querySelectorAll('.pop-star').forEach(b => {
-                    const n = parseInt(b.dataset.pop);
-                    b.querySelector('i').className = `fa-${n <= pop ? 'solid' : 'regular'} fa-star`;
-                    b.classList.toggle('text-amber-400', n <= pop);
-                    b.classList.toggle('text-gray-300',  n > pop);
-                });
-
-            } catch(e) {
-                hideLoader();
-                toast('error', e.message);
-                return;
-            }
-        } else {
-            document.getElementById('actLocationFields').classList.remove('hidden');
-            document.getElementById('actLocationReadOnly').classList.add('hidden');
+    function addCityRow(listKey, item = null) {
+        const listId = listKey === 'pickup' ? 'pickupList' : 'dropoffList';
+        const list   = document.getElementById(listId);
+        const row    = document.createElement('div');
+        row.className = 'flex items-center gap-2 bg-gray-50 rounded-xl p-3';
+        const countryOpts = '<option value="">Country</option>' + countries.map(c=>`<option value="${c.sys_id}">${esc(c.name)}</option>`).join('');
+        row.innerHTML = `
+            <select class="city-country flex-1 text-xs border border-gray-200 rounded-lg px-2 py-2 focus:outline-none">${countryOpts}</select>
+            <select class="city-city flex-1 text-xs border border-gray-200 rounded-lg px-2 py-2 focus:outline-none"><option value="">— City —</option></select>
+            <button class="text-red-400 hover:text-red-600 px-1"><i class="fa-solid fa-xmark"></i></button>`;
+        const cntSel  = row.querySelector('.city-country');
+        const citySel = row.querySelector('.city-city');
+        cntSel.addEventListener('change', () => fillCities(cntSel, citySel, ''));
+        row.querySelector('button').addEventListener('click', () => row.remove());
+        if (item) {
+            cntSel.value = item.country_sys_id;
+            fillCities(cntSel, citySel, item.city_sys_id);
         }
-
-        document.getElementById('actModal').classList.remove('hidden');
+        list.appendChild(row);
     }
 
-    function closeActivityModal() {
-        document.getElementById('actModal').classList.add('hidden');
-        resetActivityModal();
+    function fillCities(cntSel, citySel, selectedId) {
+        const country = countries.find(c => c.sys_id === cntSel.value);
+        const cities  = country?.cities || [];
+        citySel.innerHTML = '<option value="">— City —</option>' +
+            cities.map(c=>`<option value="${c.id}" data-name="${esc(c.name)}" ${c.id===selectedId?'selected':''}>${esc(c.name)}</option>`).join('');
     }
 
-    function resetActivityModal() {
-        document.getElementById('actModalSysId').value  = '';
-        document.getElementById('fActName').value       = '';
-        document.getElementById('fActType').value       = 'tourism';
-        document.getElementById('fActPrice').value      = 'medium';
-        document.getElementById('fActDuration').value   = '2';
-        document.getElementById('fActPopularity').value = '3';
-        document.getElementById('fActCountry').value    = '';
-        document.getElementById('fActCity').innerHTML   = '<option value="">-- Select country first --</option>';
+    function populateListTab(key, listId) {
+        const list = document.getElementById(listId);
+        if (!list) return;
+        list.innerHTML = '';
+        (formState[key] || []).forEach(item => addListItemRow(listId, item));
     }
 
-    /* ── Save Activity ────────────────────────────────────────── */
-    async function saveActivity() {
-        const sysId    = document.getElementById('actModalSysId').value;
-        const name     = document.getElementById('fActName').value.trim();
-        const type     = document.getElementById('fActType').value;
-        const price    = document.getElementById('fActPrice').value;
-        const duration = parseFloat(document.getElementById('fActDuration').value) || 1;
-        const pop      = parseInt(document.getElementById('fActPopularity').value) || 3;
+    function _addListItem(key) {
+        const listId = key==='itineraries'?'itinerariesList':key+'List';
+        addListItemRow(listId, {title:'',description:'',icon:''});
+    }
 
-        if (!name) { toast('error', 'Activity name is required'); return; }
+    function addListItemRow(listId, item={}) {
+        const list = document.getElementById(listId);
+        if (!list) return;
+        const row  = document.createElement('div');
+        row.className = 'bg-gray-50 rounded-xl p-3 space-y-2';
+        row.innerHTML = `
+            <div class="flex items-center gap-2">
+                <input type="text" placeholder="Title" value="${esc(item.title||'')}" class="item-title flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <input type="text" placeholder="Icon (FA, optional)" value="${esc(item.icon||'')}" class="item-icon w-36 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <button class="text-red-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <textarea placeholder="Description…" rows="2" class="item-desc w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">${esc(item.description||'')}</textarea>`;
+        row.querySelector('button').addEventListener('click', () => row.remove());
+        list.appendChild(row);
+    }
 
-        const payload = { name, type, price_range: price, duration_hours: duration, popularity: pop };
+    function populateTransfersTab() {
+        const list = document.getElementById('transfersList');
+        if (!list) return;
+        list.innerHTML = '';
+        (formState.transfers || []).forEach(t => addTransferRow(t));
+    }
 
-        if (sysId) {
-            payload.sys_id = sysId;
-        } else {
-            const citySysId    = document.getElementById('fActCity').value;
-            const countrySysId = document.getElementById('fActCountry').value;
-            if (!citySysId || !countrySysId) {
-                toast('error', 'Please select a country and city');
-                return;
-            }
-            payload.city_sys_id    = citySysId;
-            payload.country_sys_id = countrySysId;
-        }
+    function addTransferRow(t = null) {
+        const list = document.getElementById('transfersList');
+        if (!list) return;
+        const transfer = t || {title:'',type:'sic',notes:'',pricing:[]};
+        const row = document.createElement('div');
+        row.className = 'border border-gray-200 rounded-xl overflow-hidden';
+        row.innerHTML = `
+            <div class="bg-gray-50 px-4 py-3 flex items-center gap-3">
+                <input type="text" placeholder="e.g. Airport → Hotel" value="${esc(transfer.title)}" class="tr-title flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <select class="tr-type text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <option value="sic"     ${transfer.type==='sic'    ?'selected':''}>SIC</option>
+                    <option value="private" ${transfer.type==='private'?'selected':''}>Private</option>
+                </select>
+                <button class="btn-remove-tr text-red-400 hover:text-red-600 px-1"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+            <div class="px-4 py-3 space-y-2">
+                <input type="text" placeholder="Notes (optional)" value="${esc(transfer.notes||'')}" class="tr-notes w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <div class="tr-pricing-labels grid grid-cols-5 gap-2 text-xs text-gray-400 font-medium px-1 mt-1">
+                    <span class="col-span-2">Car</span><span>Adult</span><span>Child</span><span>Full</span>
+                </div>
+                <div class="tr-pricing space-y-2"></div>
+                <button class="btn-add-pricing text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition mt-1">
+                    <i class="fa-solid fa-plus mr-1"></i> Add Car / Pricing
+                </button>
+            </div>`;
+        row.querySelector('.btn-remove-tr').addEventListener('click', () => row.remove());
+        row.querySelector('.btn-add-pricing').addEventListener('click', () => addPricingRow(row));
+        (transfer.pricing || []).forEach(p => addPricingRow(row, p));
+        list.appendChild(row);
+    }
 
-        showLoader('Saving…');
-        try {
-            const res  = await fetch(API_ACTIVITIES_BASE + 'save.php', {
-                method : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body   : JSON.stringify(payload),
+    function addPricingRow(tRow, p = null) {
+        const pr      = p || {car_sys_id:'',car_name:'',price_adult:null,price_child:null,price_full:null};
+        const country = formState.country_sys_id || document.getElementById('fCountry')?.value || '';
+        const cars    = carsCache[country] || [];
+        const typeVal = tRow.querySelector('.tr-type')?.value || 'sic';
+        const isSIC   = typeVal === 'sic';
+        const pRow    = document.createElement('div');
+        pRow.className = 'grid grid-cols-5 gap-2 items-center bg-blue-50 rounded-lg p-2';
+        pRow.innerHTML = `
+            <div class="col-span-2">
+                <select class="car-select w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none">
+                    <option value="">— Car —</option>
+                    ${cars.map(c=>`<option value="${c.sys_id}" data-name="${esc(c.name)}" ${c.sys_id===pr.car_sys_id?'selected':''}>${esc(c.name)} (${c.seats})</option>`).join('')}
+                </select>
+            </div>
+            <input type="number" placeholder="Adult" value="${pr.price_adult??''}" min="0" step="0.01" class="pr-adult text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none ${!isSIC?'opacity-40 pointer-events-none':''}">
+            <input type="number" placeholder="Child" value="${pr.price_child??''}" min="0" step="0.01" class="pr-child text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none ${!isSIC?'opacity-40 pointer-events-none':''}">
+            <input type="number" placeholder="Full"  value="${pr.price_full??''}"  min="0" step="0.01" class="pr-full  text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none ${isSIC?'opacity-40 pointer-events-none':''}">`;
+        tRow.querySelector('.tr-type').addEventListener('change', function() {
+            const sic = this.value==='sic';
+            ['pr-adult','pr-child'].forEach(c => { pRow.querySelector('.'+c).classList.toggle('opacity-40',!sic); pRow.querySelector('.'+c).classList.toggle('pointer-events-none',!sic); });
+            pRow.querySelector('.pr-full').classList.toggle('opacity-40',sic); pRow.querySelector('.pr-full').classList.toggle('pointer-events-none',sic);
+        });
+        tRow.querySelector('.tr-pricing').appendChild(pRow);
+    }
+
+    function updateCarSelects() {
+        const country = formState.country_sys_id;
+        const cars    = carsCache[country] || [];
+        const opts    = '<option value="">— Car —</option>' + cars.map(c=>`<option value="${c.sys_id}" data-name="${esc(c.name)}">${esc(c.name)} (${c.seats})</option>`).join('');
+        document.querySelectorAll('.car-select').forEach(sel => sel.innerHTML = opts);
+    }
+
+    // ── Collect + Save ───────────────────────────────────────────
+    function collectFormState() {
+        formState.country_sys_id = document.getElementById('fCountry').value;
+        formState.name           = document.getElementById('fName').value.trim();
+        formState.type           = document.getElementById('fType').value;
+        formState.location       = document.getElementById('fLocation').value.trim();
+        formState.start_time     = document.getElementById('fStartTime').value;
+        formState.end_time       = document.getElementById('fEndTime').value;
+        formState.duration_hours = parseFloat(document.getElementById('fDuration').value)||0;
+        formState.popularity     = parseInt(document.getElementById('fPopularity').value)||3;
+
+        // Cities
+        const collectCities = listId => {
+            const result = [];
+            document.getElementById(listId)?.querySelectorAll('.city-country')?.forEach(cntSel => {
+                const row     = cntSel.closest('.flex');
+                const citySel = row?.querySelector('.city-city');
+                if (!cntSel.value || !citySel?.value) return;
+                const country = countries.find(c => c.sys_id === cntSel.value);
+                const cityOpt = citySel.options[citySel.selectedIndex];
+                result.push({ country_sys_id: cntSel.value, country_name: country?.name||'', city_sys_id: citySel.value, city_name: cityOpt?.dataset?.name || cityOpt?.text || '' });
             });
-            const json = await res.json();
-            hideLoader();
-            if (!json.success) throw new Error(json.message);
-            toast('success', json.message);
-            closeActivityModal();
-            await autoExportJSON();
-            loadActivities();
-        } catch(e) {
-            hideLoader();
-            toast('error', e.message);
-        }
-    }
-
-    /* ── Delete / Restore ─────────────────────────────────────── */
-    async function doActDelete(sysId, restore) {
-        showLoader(restore ? 'Restoring…' : 'Deleting…');
-        try {
-            const res  = await fetch(API_ACTIVITIES_BASE + 'delete.php', {
-                method : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body   : JSON.stringify({ sys_id: sysId, restore }),
-            });
-            const json = await res.json();
-            hideLoader();
-            if (!json.success) throw new Error(json.message);
-            toast('success', json.message);
-            await autoExportJSON();
-            loadActivities();
-        } catch(e) {
-            hideLoader();
-            toast('error', e.message);
-        }
-    }
-
-    /* ── Sync ─────────────────────────────────────────────────── */
-    async function runSync(action) {
-        showLoader(action === 'import' ? 'Syncing JSON → DB…' : 'Exporting DB → JSON…');
-        try {
-            const res  = await fetch(API_ACTIVITIES_SYNC, {
-                method : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body   : JSON.stringify({ action }),
-            });
-            const json = await res.json();
-            hideLoader();
-            if (!json.success) throw new Error(json.message);
-
-            document.getElementById('actSyncTitle').textContent =
-                action === 'import' ? '✅ Import Complete' : '✅ Export Complete';
-
-            const body = document.getElementById('actSyncBody');
-            if (action === 'import') {
-                body.innerHTML = `
-                    <p class="font-semibold text-green-700">${json.message}</p>
-                    <p class="text-gray-500 mt-1">
-                        Inserted: <b>${json.inserted}</b> &nbsp;|&nbsp;
-                        Updated: <b>${json.updated}</b> &nbsp;|&nbsp;
-                        Skipped: <b>${json.skipped}</b>
-                    </p>
-                    ${json.log?.length
-                        ? `<div class="mt-3 space-y-0.5 text-xs text-gray-400 font-mono max-h-40 overflow-y-auto">
-                               ${json.log.slice(0,50).map(l => `<p>${esc(l)}</p>`).join('')}
-                               ${json.log.length > 50 ? `<p>…and ${json.log.length - 50} more</p>` : ''}
-                           </div>`
-                        : ''}`;
-            } else {
-                body.innerHTML = `
-                    <p class="font-semibold text-green-700">${json.message}</p>
-                    <p class="text-gray-500 mt-1">Activities exported: <b>${json.activities}</b></p>`;
-            }
-            document.getElementById('actSyncModal').classList.remove('hidden');
-
-        } catch(e) {
-            hideLoader();
-            toast('error', e.message);
-        }
-    }
-
-    /* ── Auto-export JSON after DB change ─────────────────────── */
-    async function autoExportJSON() {
-        try {
-            await fetch(API_ACTIVITIES_SYNC, {
-                method : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body   : JSON.stringify({ action: 'export' }),
-            });
-        } catch(e) {
-            console.warn('Auto JSON export failed:', e.message);
-        }
-    }
-
-    /* ── Confirm Dialog ───────────────────────────────────────── */
-    function confirmActAction({ icon, title, msg, color, label, onOk }) {
-        document.getElementById('actConfirmIcon').textContent  = icon;
-        document.getElementById('actConfirmTitle').textContent = title;
-        document.getElementById('actConfirmMsg').innerHTML     = msg;
-        const okBtn       = document.getElementById('actConfirmOk');
-        okBtn.textContent = label;
-        okBtn.className   = `flex-1 py-2.5 rounded-xl font-semibold text-white transition text-sm ${color}`;
-        document.getElementById('actConfirmModal').classList.remove('hidden');
-        okBtn.onclick = () => {
-            document.getElementById('actConfirmModal').classList.add('hidden');
-            onOk();
+            return result;
         };
+        formState.pickup_from_city = collectCities('pickupList');
+        formState.dropoff_city     = collectCities('dropoffList');
+
+        // List items
+        const collectItems = listId => {
+            const result = [];
+            document.getElementById(listId)?.children && Array.from(document.getElementById(listId).children).forEach(row => {
+                const title = row.querySelector('.item-title')?.value.trim();
+                if (!title) return;
+                result.push({ title, description: row.querySelector('.item-desc')?.value.trim()||'', icon: row.querySelector('.item-icon')?.value.trim()||'' });
+            });
+            return result;
+        };
+        formState.itineraries = collectItems('itinerariesList');
+        formState.inclusions  = collectItems('inclusionsList');
+        formState.exclusions  = collectItems('exclusionsList');
+
+        // Transfers
+        const transfers = [];
+        document.getElementById('transfersList')?.children && Array.from(document.getElementById('transfersList').children).forEach(tRow => {
+            const title = tRow.querySelector('.tr-title')?.value.trim();
+            if (!title) return;
+            const type  = tRow.querySelector('.tr-type')?.value || 'sic';
+            const notes = tRow.querySelector('.tr-notes')?.value.trim()||'';
+            const pricing = [];
+            tRow.querySelectorAll('.tr-pricing > div').forEach(pRow => {
+                const carSel = pRow.querySelector('.car-select');
+                if (!carSel?.value) return;
+                const carOpt = carSel.options[carSel.selectedIndex];
+                const pa = pRow.querySelector('.pr-adult')?.value;
+                const pc = pRow.querySelector('.pr-child')?.value;
+                const pf = pRow.querySelector('.pr-full')?.value;
+                pricing.push({ car_sys_id: carSel.value, car_name: carOpt?.dataset?.name||'', price_adult: type==='sic'&&pa!==''?parseFloat(pa):null, price_child: type==='sic'&&pc!==''?parseFloat(pc):null, price_full: type==='private'&&pf!==''?parseFloat(pf):null });
+            });
+            transfers.push({title, type, notes, pricing});
+        });
+        formState.transfers = transfers;
     }
 
-    /* ── Utilities ────────────────────────────────────────────── */
-    function esc(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    async function saveActivity() {
+        collectFormState();
+        if (!formState.country_sys_id && !editingSysId) return showError('Please select a country.');
+        if (!formState.name) return showError('Activity name is required.');
+        const btn = document.getElementById('actModalSave');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Saving…';
+        const body = {...formState};
+        if (editingSysId) body.sys_id = editingSysId;
+        try {
+            const res  = await fetch(`${API_ACTIVITIES_BASE}save.php`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const json = await res.json();
+            if (!json.success) { showError(json.message); return; }
+            closeModal(); toast('success', json.message); loadActivities();
+        } catch(e) { showError('Network error.'); }
+        finally { btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-1"></i> Save Activity'; }
     }
-    function showLoader(msg = 'Loading…') {
-        document.getElementById('actLoaderMsg').textContent = msg;
-        const el = document.getElementById('actLoader');
-        el.classList.remove('hidden');
-        el.classList.add('flex');
+
+    // ── Public actions ───────────────────────────────────────────
+    async function editActivity(sys_id) {
+        try {
+            const res  = await fetch(`${API_ACTIVITIES_BASE}get.php?sys_id=${sys_id}`);
+            const json = await res.json();
+            if (json.success) openModal(json.data); else toast('error', json.message);
+        } catch(e) { toast('error','Could not load activity.'); }
     }
-    function hideLoader() {
-        const el = document.getElementById('actLoader');
-        el.classList.add('hidden');
-        el.classList.remove('flex');
+
+    async function deleteActivity(sys_id, name) {
+        if (!confirm(`Delete "${name}"?`)) return;
+        try {
+            const res  = await fetch(`${API_ACTIVITIES_BASE}delete.php`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sys_id}) });
+            const json = await res.json();
+            toast(json.success?'success':'error', json.message);
+            if (json.success) loadActivities();
+        } catch(e) { toast('error','Network error.'); }
     }
+
+    async function restoreActivity(sys_id, name) {
+        if (!confirm(`Restore "${name}"?`)) return;
+        try {
+            const res  = await fetch(`${API_ACTIVITIES_BASE}delete.php`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sys_id, restore:true}) });
+            const json = await res.json();
+            toast(json.success?'success':'error', json.message);
+            if (json.success) loadActivities();
+        } catch(e) { toast('error','Network error.'); }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function showError(msg) { const el=document.getElementById('actError'); el.textContent=msg; el.classList.remove('hidden'); }
+    function hideError()    { document.getElementById('actError')?.classList.add('hidden'); }
     function toast(type, msg) {
         const el = document.getElementById('actToast');
-        el.className = `fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white max-w-xs ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
-        el.innerHTML = `<i class="fa-solid fa-${type === 'success' ? 'circle-check' : 'circle-exclamation'}"></i> ${msg}`;
-        el.classList.remove('hidden');
-        setTimeout(() => el.classList.add('hidden'), 4000);
+        el.className=`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white max-w-xs ${type==='success'?'bg-green-600':'bg-red-600'}`;
+        el.innerHTML=`<i class="fa-solid fa-${type==='success'?'circle-check':'circle-exclamation'}"></i>${msg}`;
+        el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'),3500);
     }
+    function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function cap(str) { return str?str.charAt(0).toUpperCase()+str.slice(1):''; }
 
-    return { init };
+    return { init, editActivity, deleteActivity, restoreActivity, _addListItem };
 })();
