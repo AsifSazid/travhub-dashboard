@@ -117,15 +117,15 @@ const CountryManager = (() => {
         </div>
 
         <!-- ── Country Modal ──────────────────────────────────────── -->
-        <div id="countryModal" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm pt-10 pb-6 px-4 overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div id="countryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
+            <div class="w-full max-w-[900px] h-[680px] max-h-[calc(100vh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
                     <h2 id="modalTitle" class="text-lg font-bold text-gray-800">Add Country</h2>
                     <button id="modalClose" class="text-gray-400 hover:text-gray-600 transition w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
-                <div class="px-6 py-5 space-y-5">
+                <div class="px-6 py-5 space-y-5 flex-1 overflow-y-auto overflow-x-hidden">
                     <input type="hidden" id="modalSysId">
 
                     <!-- Row 1: Name + Code -->
@@ -187,7 +187,7 @@ const CountryManager = (() => {
                 </div>
 
                 <!-- Modal Footer -->
-                <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100 flex-shrink-0">
                     <button id="modalCancel" class="px-5 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition">
                         Cancel
                     </button>

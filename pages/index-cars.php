@@ -35,6 +35,7 @@ $apiCountriesBase = $ip_port . "api/masterdata/countries/";
         const time = Date.now();
         const API_CARS_BASE      = "<?php echo $apiBase; ?>";
         const API_COUNTRIES_BASE = "<?php echo $apiCountriesBase; ?>";
+        const API_CARS_SYNC      = "<?php echo $apiBase; ?>sync.php";
     </script>
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script src="../assets/js/index-cars.js?time=<?php echo time(); ?>"></script>

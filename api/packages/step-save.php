@@ -102,6 +102,15 @@ try {
             break;
 
         case 5:
+            // Step 5 = Itinerary
+            if (isset($step_data['pack_itenaries'])) {
+                $updateFields[] = 'pack_itenaries = :pack_itenaries';
+                $params[':pack_itenaries'] = json_encode($step_data['pack_itenaries']);
+            }
+            break;
+
+        case 6:
+            // Step 6 = Pricing
             if (isset($step_data['currency_title'])) {
                 $updateFields[] = 'currency_title = :currency_title';
                 $params[':currency_title'] = $step_data['currency_title'];
@@ -128,13 +137,6 @@ try {
             }
             break;
 
-        case 6:
-            if (isset($step_data['pack_itenaries'])) {
-                $updateFields[] = 'pack_itenaries = :pack_itenaries';
-                $params[':pack_itenaries'] = json_encode($step_data['pack_itenaries']);
-            }
-            break;
-
         case 7:
             if (isset($step_data['pack_inclusions'])) {
                 $updateFields[] = 'pack_inclusions = :pack_inclusions';
@@ -147,7 +149,8 @@ try {
             break;
 
         case 8:
-            $updateFields[] = "completion_status = 'completed'";
+            // Step 8 = Review — just mark as saved
+            $updateFields[] = "completion_status = 'saved'";
             break;
     }
 

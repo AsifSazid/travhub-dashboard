@@ -11,8 +11,6 @@ require_once('../../../server/generate_meta_data.php');
 $input  = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = trim($input['action'] ?? 'import');
 
-var_dump(__DIR__. '/../../countries.json');
-
 $jsonPath = __DIR__ . '/../../countries.json';
 
 try {
@@ -168,7 +166,7 @@ try {
                 $log[] = "INSERTED: {$country['name']} ({$code}) → {$countrySysId}";
             }
         }
-
+        
         echo json_encode([
             'success'  => true,
             'action'   => 'import',

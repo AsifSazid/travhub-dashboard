@@ -6,9 +6,10 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898/";
 }
 
-$countriesApi  = $ip_port."api/utilities/countries.php";
-$citiesApi     = $ip_port."api/utilities/cities.php";
-$activitiesApi = $ip_port."api/utilities/activities.php";
+$countriesApi       = $ip_port."api/utilities/countries.php";
+$citiesApi          = $ip_port."api/utilities/cities.php";
+$activitiesApi      = $ip_port."api/utilities/activities.php";
+$activitiesBaseApi  = $ip_port."api/masterdata/activities/";
 
 ?>
 
@@ -46,7 +47,8 @@ $activitiesApi = $ip_port."api/utilities/activities.php";
     <!-- Custom JavaScript Library -->
     <script>
         const time = Date.now();
-        const API_COUNTRIES  = "<?php echo $countriesApi; ?>";
+        const API_COUNTRIES       = "<?php echo $countriesApi; ?>";
+        const API_ACTIVITIES_BASE = "<?php echo $activitiesBaseApi; ?>";
         const API_CITIES     = "<?php echo $citiesApi; ?>";
         const API_ACTIVITIES = "<?php echo $activitiesApi; ?>";
     </script>

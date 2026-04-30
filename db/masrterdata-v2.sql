@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS `activities` (
     `transfers`        JSON               NULL,
     -- ─────────────────────────────────────────────────────────────
 
+    -- ── Package override columns ─────────────────────────────────────
+    `package_sys_id`       VARCHAR(60)    NULL,      -- set when is_package_override = 1
+    `is_package_override`  TINYINT(1)  NOT NULL DEFAULT 0,  -- 1 = copy tied to a package
+
     `status`           ENUM('active','inactive','deleted') NOT NULL DEFAULT 'active',
     `meta_data`        JSON               NULL,
     `created_at`       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -111,7 +115,8 @@ CREATE TABLE IF NOT EXISTS `activities` (
     UNIQUE KEY `uq_activities_sys_id` (`sys_id`),
     INDEX `idx_act_country_sys_id`    (`country_sys_id`),
     INDEX `idx_act_type`              (`type`),
-    INDEX `idx_act_status`            (`status`)
+    INDEX `idx_act_status`            (`status`),
+    INDEX `idx_act_package_sys_id`     (`package_sys_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

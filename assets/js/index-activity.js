@@ -48,11 +48,6 @@ const ActivityManager = (() => {
     // ── Shell ───────────────────────────────────────────────────
     function renderShell() {
         document.getElementById('mainContent').innerHTML = `
-        <style>
-          .lbl{display:block;font-size:.7rem;font-weight:600;color:#4b5563;margin-bottom:.25rem}
-          .finput{width:100%;font-size:.8rem;border:1px solid #e5e7eb;border-radius:.75rem;padding:.5rem .75rem;outline:none}
-          .finput:focus{ring:2px;ring-color:#60a5fa}
-        </style>
         <div class="px-6 py-6 max-w-screen-xl mx-auto">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
@@ -116,8 +111,8 @@ const ActivityManager = (() => {
         </div>
 
         <!-- Activity Modal -->
-        <div id="actModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+        <div id="actModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm p-6">
+            <div class="w-full max-w-[900px] h-[680px] max-h-[calc(100vh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
                     <h2 id="actModalTitle" class="text-lg font-bold text-gray-800">Add Activity</h2>
                     <button id="actModalClose" class="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
@@ -131,29 +126,29 @@ const ActivityManager = (() => {
                     <button data-tab="inc-exc"   class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex-shrink-0 transition">Inc / Exc</button>
                     <button data-tab="transfers" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex-shrink-0 transition">Transfers</button>
                 </div>
-                <div class="flex-1 overflow-y-auto px-6 py-5">
+                <div class="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5">
                     <div id="tab-basic">
                         <div class="grid grid-cols-2 gap-4">
-                            <div class="col-span-2"><label class="lbl">Activity Name <span class="text-red-500">*</span></label>
-                                <input id="fName" type="text" placeholder="e.g. Bangkok City Tour" class="finput"></div>
-                            <div><label class="lbl">Country <span class="text-red-500">*</span></label>
-                                <select id="fCountry" class="finput"></select></div>
-                            <div><label class="lbl">Type</label>
-                                <select id="fType" class="finput">
+                            <div class="col-span-2"><label class="block text-xs font-semibold text-gray-600 mb-1">Activity Name <span class="text-red-500">*</span></label>
+                                <input id="fName" type="text" placeholder="e.g. Bangkok City Tour" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Country <span class="text-red-500">*</span></label>
+                                <select id="fCountry" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></select></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Type</label>
+                                <select id="fType" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
                                     <option value="tour">Tour</option>
                                     <option value="transfer">Transfer</option>
                                     <option value="both">Both</option>
                                 </select></div>
-                            <div class="col-span-2"><label class="lbl">Location / Venue</label>
-                                <input id="fLocation" type="text" placeholder="e.g. Suvarnabhumi Airport" class="finput"></div>
-                            <div><label class="lbl">Start Time</label>
-                                <input id="fStartTime" type="time" class="finput"></div>
-                            <div><label class="lbl">End Time</label>
-                                <input id="fEndTime" type="time" class="finput"></div>
-                            <div><label class="lbl">Duration (hours)</label>
-                                <input id="fDuration" type="number" min="0" step="0.5" value="0" class="finput"></div>
-                            <div><label class="lbl">Popularity (1–5)</label>
-                                <input id="fPopularity" type="number" min="1" max="5" value="3" class="finput"></div>
+                            <div class="col-span-2"><label class="block text-xs font-semibold text-gray-600 mb-1">Location / Venue</label>
+                                <input id="fLocation" type="text" placeholder="e.g. Suvarnabhumi Airport" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Start Time</label>
+                                <input id="fStartTime" type="time" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">End Time</label>
+                                <input id="fEndTime" type="time" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Duration (hours)</label>
+                                <input id="fDuration" type="number" min="0" step="0.5" value="0" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Popularity (1–5)</label>
+                                <input id="fPopularity" type="number" min="1" max="5" value="3" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"></div>
                         </div>
                     </div>
                     <div id="tab-cities" class="hidden space-y-6">
@@ -180,7 +175,8 @@ const ActivityManager = (() => {
                         </div>
                         <div id="itinerariesList" class="space-y-2"></div>
                     </div>
-                    <div id="tab-inc-exc" class="hidden grid grid-cols-2 gap-6">
+                    <div id="tab-inc-exc" class="hidden">
+                    <div class="grid grid-cols-2 gap-6">
                         <div>
                             <div class="flex items-center justify-between mb-3">
                                 <h3 class="text-sm font-semibold text-green-700">Inclusions</h3>
@@ -195,6 +191,7 @@ const ActivityManager = (() => {
                             </div>
                             <div id="exclusionsList" class="space-y-2"></div>
                         </div>
+                    </div>
                     </div>
                     <div id="tab-transfers" class="hidden">
                         <div class="flex items-center justify-between mb-3">
@@ -353,6 +350,17 @@ const ActivityManager = (() => {
             formState.country_sys_id = this.value;
             await loadCarsForCountry(this.value);
             updateCarSelects();
+            // Auto-update any existing empty city rows to the newly selected country
+            ['pickupList','dropoffList'].forEach(listId => {
+                document.getElementById(listId)?.querySelectorAll('.city-country').forEach(cntSel => {
+                    // Only update rows that haven't had a country manually chosen yet
+                    if (!cntSel.value) {
+                        cntSel.value = this.value;
+                        const citySel = cntSel.closest('div')?.querySelector('.city-city');
+                        if (citySel) fillCities(cntSel, citySel, '');
+                    }
+                });
+            });
         });
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -424,8 +432,16 @@ const ActivityManager = (() => {
         cntSel.addEventListener('change', () => fillCities(cntSel, citySel, ''));
         row.querySelector('button').addEventListener('click', () => row.remove());
         if (item) {
+            // Editing existing — restore saved country + city
             cntSel.value = item.country_sys_id;
             fillCities(cntSel, citySel, item.city_sys_id);
+        } else {
+            // New row — auto-select the country chosen in Basic Info tab
+            const basicCountry = document.getElementById('fCountry')?.value || '';
+            if (basicCountry) {
+                cntSel.value = basicCountry;
+                fillCities(cntSel, citySel, '');
+            }
         }
         list.appendChild(row);
     }

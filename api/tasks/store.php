@@ -17,7 +17,8 @@ ini_set('display_errors', 1);
 // $GEMINI_API_KEY = "AIzaSyDtXWhpsUeWD6fLT8MeikxvgiPkynh2V0o"; // Replace with your actual API key
 $GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt')); // Replace with your actual API key
 $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Replace with your actual API key
-$GEMINI_MODEL = "gemini-2.0-flash-lite";
+$GEMINI_MODEL = "gemini-2.5-flash";
+// $GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 
 // ---------------- File Save ----------------

@@ -23,8 +23,8 @@ const PackageBuilder = (() => {
             2: { countries:[], cities:[], activities:[] },
             3: { duration:'', start_date:'', end_date:'', no_of_pax:{adult:0,child:0,infant:0} },
             4: { hotels:[] },
-            5: { currency_title:'', currency_code:'', currency_symbol:'', overall_price:'', air_ticket_details:'', pack_price:[] },
-            6: { pack_itenaries:[] },
+            5: { pack_itenaries:[] },
+            6: { currency_title:'', currency_code:'', currency_symbol:'', overall_price:'', air_ticket_details:'', pack_price:[] },
             7: { pack_inclusions:[], pack_exclusions:[] },
             8: {}
         },
@@ -47,8 +47,8 @@ const PackageBuilder = (() => {
             await loadExistingPackage(editSysId);
             // If returning from calculator, jump to Step 5 to show the banner
             if (calcParam === 'saved') {
-                state.currentStep = 5;
-                showStep(5);
+                state.currentStep = 6;
+                showStep(6);
             }
         } else {
             showStep(1);
@@ -71,14 +71,19 @@ const PackageBuilder = (() => {
             state.steps[1] = { title: pkg.title||'', description: pkg.description||'', rating: pkg.rating||0, image: pkg.image||'' };
             state.steps[2] = { countries: pkg.countries||[], cities: pkg.cities||[], activities: pkg.activities||[] };
             // Pre-fetch DB activity suggestions for already-selected cities
+            // Pre-cache activities for each country in the package
+            const cachedCountries = new Set();
             for (const city of (pkg.cities || [])) {
-                const sysId = String(city.sys_id || city.id || '');
-                if (sysId) fetchCityActivities(sysId);  // fire-and-forget, cached on return
+                const countrySysId = city.country_sys_id || '';
+                if (countrySysId && !cachedCountries.has(countrySysId)) {
+                    cachedCountries.add(countrySysId);
+                    fetchActivitiesByCountry(countrySysId);  // fire-and-forget
+                }
             }
             state.steps[3] = { duration: pkg.duration||'', start_date: pkg.start_date||'', end_date: pkg.end_date||'', no_of_pax: pkg.no_of_pax||{adult:0,child:0,infant:0} };
             state.steps[4] = { hotels: pkg.hotels||[] };
-            state.steps[5] = { currency_title: pkg.currency_title||'', currency_code: pkg.currency_code||'', currency_symbol: pkg.currency_symbol||'', overall_price: pkg.overall_price||'', air_ticket_details: pkg.air_ticket_details||'', pack_price: pkg.pack_price||[] };
-            state.steps[6] = { pack_itenaries: pkg.pack_itenaries||[] };
+            state.steps[5] = { pack_itenaries: pkg.pack_itenaries||[] };
+            state.steps[6] = { currency_title: pkg.currency_title||'', currency_code: pkg.currency_code||'', currency_symbol: pkg.currency_symbol||'', overall_price: pkg.overall_price||'', air_ticket_details: pkg.air_ticket_details||'', pack_price: pkg.pack_price||[] };
             state.steps[7] = { pack_inclusions: pkg.pack_inclusions||[], pack_exclusions: pkg.pack_exclusions||[] };
             state.calcDetails = pkg.package_calculations_details || null;
             state.currentStep = pkg.progress_step || 1;
@@ -108,17 +113,17 @@ const PackageBuilder = (() => {
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-                <div class="flex items-center justify-between gap-1 overflow-x-auto" id="stepIndicator"></div>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6 overflow-hidden">
+                <div class="flex items-center gap-1" id="stepIndicator"></div>
             </div>
 
-            <div id="stepContent" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 min-h-[400px]">
+            <div id="stepContent" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 min-h-[400px] max-h-[70vh] overflow-y-auto overflow-x-hidden">
                 <div class="flex items-center justify-center py-20 text-gray-300">
                     <i class="fa-solid fa-spinner fa-spin text-3xl"></i>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center justify-between">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-3">
                 <button id="btnPrev" class="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">
                     <i class="fa-solid fa-chevron-left text-xs"></i> Previous
                 </button>
@@ -139,7 +144,7 @@ const PackageBuilder = (() => {
     }
 
     // ─── Step Indicator ──────────────────────────────────────────
-    const STEP_LABELS = ['Basic Info','Destination','Quotation','Accommodation','Pricing','Itinerary','Inc/Exc','Review'];
+    const STEP_LABELS = ['Basic Info','Destination','Quotation','Accommodation','Itinerary','Pricing','Inc/Exc','Review'];
 
     function renderStepIndicator() {
         const el = document.getElementById('stepIndicator');
@@ -148,17 +153,17 @@ const PackageBuilder = (() => {
             const done   = n < state.currentStep;
             const active = n === state.currentStep;
             return `
-            <div class="flex items-center flex-1 min-w-0" style="min-width:0">
-                <div class="flex flex-col items-center flex-1 cursor-pointer step-jump" data-step="${n}" title="${label}">
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition
+            <div class="flex items-center flex-1" style="min-width:0">
+                <div class="flex flex-col items-center flex-1 cursor-pointer step-jump gap-1" data-step="${n}" title="${label}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition flex-shrink-0
                         ${done   ? 'bg-green-500 text-white' : ''}
                         ${active ? 'bg-blue-600 text-white ring-4 ring-blue-100' : ''}
                         ${!done && !active ? 'bg-gray-100 text-gray-400' : ''}">
-                        ${done ? '<i class="fa-solid fa-check text-xs"></i>' : n}
+                        ${done ? '<i class="fa-solid fa-check" style="font-size:10px"></i>' : n}
                     </div>
-                    <span class="text-xs mt-1 whitespace-nowrap hidden sm:block ${active ? 'text-blue-600 font-semibold' : 'text-gray-400'}">${label}</span>
+                    <span class="text-xs leading-tight text-center hidden sm:block max-w-[64px] ${active ? 'text-blue-600 font-semibold' : 'text-gray-400'}">${label}</span>
                 </div>
-                ${n < TOTAL_STEPS ? `<div class="h-0.5 flex-1 mx-1 ${done ? 'bg-green-400' : 'bg-gray-200'} transition hidden sm:block"></div>` : ''}
+                ${n < TOTAL_STEPS ? `<div class="h-0.5 flex-1 mx-0.5 mt-[-12px] ${done ? 'bg-green-400' : 'bg-gray-200'} transition hidden sm:block flex-shrink-0" style="min-width:8px"></div>` : ''}
             </div>`;
         }).join('');
 
@@ -173,9 +178,10 @@ const PackageBuilder = (() => {
         document.getElementById('btnPrev').disabled = state.currentStep === 1;
         const btnNext = document.getElementById('btnNext');
         if (state.currentStep === TOTAL_STEPS) {
-            btnNext.innerHTML = '<i class="fa-solid fa-flag-checkered mr-1"></i> Finalize';
-            btnNext.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold transition';
+            // Step 8: hide Next — actions are Save/Finalize buttons inside the step
+            btnNext.classList.add('hidden');
         } else {
+            btnNext.classList.remove('hidden');
             btnNext.innerHTML = 'Next <i class="fa-solid fa-chevron-right text-xs"></i>';
             btnNext.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition';
         }
@@ -204,9 +210,8 @@ const PackageBuilder = (() => {
 
         if (state.currentStep < TOTAL_STEPS) {
             navigateToStep(state.currentStep + 1);
-        } else {
-            await finalizePackage();
         }
+        // Step 8 actions (Save / Finalize) are handled by buttons inside renderStep8
     }
 
     async function handlePrev() {
@@ -225,7 +230,7 @@ const PackageBuilder = (() => {
     function showStep(n) {
         state.currentStep = n;
         renderStepIndicator();
-        const fn = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7, renderStep8][n];
+        const fn = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5_itinerary, renderStep6_pricing, renderStep7, renderStep8][n];
         if (fn) fn();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -280,7 +285,7 @@ const PackageBuilder = (() => {
     // ─── Auto-save ───────────────────────────────────────────────
     function startAutoSave() {
         state.autoSaveTimer = setInterval(async () => {
-            if (state.uuid && state.currentStep > 0 && state.currentStep < 8) {
+            if (state.uuid && state.currentStep > 0 && state.currentStep < 8) {  // skip review step
                 collectStepData();
                 await saveStep(state.currentStep, true);
                 updateAutoSaveStatus();
@@ -340,12 +345,12 @@ const PackageBuilder = (() => {
                 infant: parseInt(get('s3_infant') || 0),
             };
         }
-        if (s === 5) {
-            state.steps[5].currency_title     = get('s5_currency_title');
-            state.steps[5].currency_code      = get('s5_currency_code');
-            state.steps[5].currency_symbol    = get('s5_currency_symbol');
-            state.steps[5].overall_price      = parseFloat(get('s5_overall_price') || 0);
-            state.steps[5].air_ticket_details = get('s5_air_ticket');
+        if (s === 6) {
+            state.steps[6].currency_title     = get('s6_currency_title');
+            state.steps[6].currency_code      = get('s6_currency_code');
+            state.steps[6].currency_symbol    = get('s6_currency_symbol');
+            state.steps[6].overall_price      = parseFloat(get('s6_overall_price') || 0);
+            state.steps[6].air_ticket_details = get('s6_air_ticket');
         }
     }
 
@@ -475,36 +480,13 @@ const PackageBuilder = (() => {
                 <div id="cityList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1"></div>
                 <div id="selectedCities" class="flex flex-wrap gap-2 mt-2"></div>
             </div>
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Activities</label>
-                <div class="flex gap-2 mb-2">
-                    <input id="activityInput" type="text" placeholder="e.g. City Tour, Safari…"
-                           class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <button id="addActivityBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition flex items-center gap-1">
-                        <i class="fa-solid fa-plus text-xs"></i> Add
-                    </button>
-                </div>
-                <div id="activityList" class="flex flex-wrap gap-2"></div>
-            </div>
         </div>`;
+        // Activities are now managed in Step 5 (Itinerary) — removed from Step 2
 
         renderCountryGrid();
         renderCityGrid();
-        renderActivities();
         document.getElementById('countrySearch').addEventListener('input', e => renderCountryGrid(e.target.value));
-        const addBtn   = document.getElementById('addActivityBtn');
-        const actInput = document.getElementById('activityInput');
-        const doAdd    = () => {
-            const val = actInput.value.trim();
-            if (!val) return;
-            if (!state.steps[2].activities.find(a => a.title.toLowerCase() === val.toLowerCase())) {
-                state.steps[2].activities.push({ id: Date.now(), title: val });
-                renderActivities();
-            }
-            actInput.value = '';
-        };
-        addBtn.addEventListener('click', doAdd);
-        actInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+        // Activities managed in Step 5 (Itinerary)
     }
 
     function renderCountryGrid(search = '') {
@@ -542,7 +524,8 @@ const PackageBuilder = (() => {
                 city.country_id !== cid && city.country_sys_id !== country.sys_id
             );
         } else {
-            state.steps[2].countries.push(country);
+            // Always store the full country object including sys_id
+            state.steps[2].countries.push({ ...country });
         }
         renderCountryGrid(document.getElementById('countrySearch')?.value || '');
         renderCityGrid();
@@ -595,71 +578,9 @@ const PackageBuilder = (() => {
             state.steps[2].cities.push(city);
             // Fetch DB activity suggestions for this city (cached after first fetch)
             const sysId = city.sys_id || city.id;
-            await fetchCityActivities(String(sysId));
+            // activities fetched on-demand in Step 5 picker
         }
         renderCityGrid();
-        renderActivities();  // refresh suggestions panel
-    }
-
-    function renderActivities() {
-        const el = document.getElementById('activityList');
-        if (!el) return;
-
-        // ── Selected activities (manually added or picked from suggestions) ──
-        const selectedHTML = state.steps[2].activities.map((a, i) =>
-            `<span class="inline-flex items-center gap-1 bg-violet-100 text-violet-800 text-xs px-3 py-1.5 rounded-full font-medium">
-                <i class="fa-solid fa-person-hiking text-xs"></i> ${escHtml(a.title)}
-                <button data-idx="${i}" class="remove-act ml-1 text-violet-600 hover:text-violet-900">×</button>
-             </span>`
-        ).join('');
-
-        // ── DB suggestions for selected cities (not yet added) ──
-        const suggestions  = getAllDbSuggestions();
-        const addedTitles  = new Set(state.steps[2].activities.map(a => a.title.toLowerCase()));
-        const pending      = suggestions.filter(s => !addedTitles.has(s.title.toLowerCase()));
-
-        const TYPE_COLORS = {
-            adventure:'bg-orange-50 text-orange-700', cultural:'bg-violet-50 text-violet-700',
-            tourism:'bg-blue-50 text-blue-700', shopping:'bg-pink-50 text-pink-700',
-            religious:'bg-amber-50 text-amber-700', sports:'bg-green-50 text-green-700',
-            nightlife:'bg-indigo-50 text-indigo-700', education:'bg-teal-50 text-teal-700',
-        };
-
-        const suggestHTML = pending.length
-            ? `<div class="mt-3 pt-3 border-t border-gray-100">
-                <p class="text-xs font-semibold text-gray-400 mb-2">
-                    <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>
-                    Suggestions from selected cities
-                </p>
-                <div class="flex flex-wrap gap-1.5">
-                    ${pending.map(a => {
-                        const typeCls = TYPE_COLORS[a.type] || 'bg-gray-100 text-gray-600';
-                        return `<button type="button" data-title="${escHtml(a.title)}"
-                                        class="suggest-btn inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-dashed border-gray-300 text-gray-600 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 transition font-medium">
-                                    <i class="fa-solid fa-plus text-xs"></i> ${escHtml(a.title)}
-                                    <span class="text-xs px-1.5 py-0.5 rounded-md ml-1 ${typeCls}">${a.type}</span>
-                                </button>`;
-                    }).join('')}
-                </div>
-               </div>`
-            : '';
-
-        el.innerHTML = (selectedHTML || '<p class="text-xs text-gray-400 italic">No activities added yet</p>') + suggestHTML;
-
-        // Bind remove buttons
-        el.querySelectorAll('.remove-act').forEach(b => b.addEventListener('click', () => {
-            state.steps[2].activities.splice(parseInt(b.dataset.idx), 1);
-            renderActivities();
-        }));
-
-        // Bind suggestion pick buttons
-        el.querySelectorAll('.suggest-btn').forEach(b => b.addEventListener('click', () => {
-            const title = b.dataset.title;
-            if (!state.steps[2].activities.find(a => a.title.toLowerCase() === title.toLowerCase())) {
-                state.steps[2].activities.push({ id: Date.now(), title });
-            }
-            renderActivities();
-        }));
     }
 
     function renderStep3() {
@@ -854,8 +775,8 @@ const PackageBuilder = (() => {
         banner.classList.remove('hidden');
     }
 
-    function renderStep5() {
-        const d = state.steps[5];
+    function renderStep6_pricing() {
+        const d = state.steps[6];
         document.getElementById('stepContent').innerHTML = `
         <h2 class="text-lg font-bold text-gray-800 mb-1">Pricing</h2>
         <p class="text-sm text-gray-400 mb-6">Set currency, price, and pricing options</p>
@@ -864,30 +785,30 @@ const PackageBuilder = (() => {
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Currency Name</label>
-                    <input id="s5_currency_title" type="text" value="${escHtml(d.currency_title)}" placeholder="e.g. US Dollar"
+                    <input id="s6_currency_title" type="text" value="${escHtml(d.currency_title)}" placeholder="e.g. US Dollar"
                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">Currency Code</label>
-                        <input id="s5_currency_code" type="text" value="${escHtml(d.currency_code)}" placeholder="USD"
+                        <input id="s6_currency_code" type="text" value="${escHtml(d.currency_code)}" placeholder="USD"
                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">Symbol</label>
-                        <input id="s5_currency_symbol" type="text" value="${escHtml(d.currency_symbol)}" placeholder="$"
+                        <input id="s6_currency_symbol" type="text" value="${escHtml(d.currency_symbol)}" placeholder="$"
                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Overall Price</label>
-                    <input id="s5_overall_price" type="number" min="0" value="${d.overall_price||''}" placeholder="0.00"
+                    <input id="s6_overall_price" type="number" min="0" value="${d.overall_price||''}" placeholder="0.00"
                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">Air Ticket Details</label>
-                <textarea id="s5_air_ticket" rows="6" placeholder="Flight details, airline, class…"
+                <textarea id="s6_air_ticket" rows="6" placeholder="Flight details, airline, class…"
                           class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none">${escHtml(d.air_ticket_details)}</textarea>
             </div>
         </div>
@@ -935,7 +856,7 @@ const PackageBuilder = (() => {
      
         // Event listeners
         document.getElementById('addPriceOption').addEventListener('click', () => {
-            state.steps[5].pack_price.push({ id: Date.now(), title:'', price:'', hotels:{} });
+            state.steps[6].pack_price.push({ id: Date.now(), title:'', price:'', hotels:{} });
             renderPriceOptions();
         });
      
@@ -951,7 +872,7 @@ const PackageBuilder = (() => {
     function renderPriceOptions() {
         const el = document.getElementById('priceOptionsList');
         if (!el) return;
-        el.innerHTML = state.steps[5].pack_price.map((opt, i) => `
+        el.innerHTML = state.steps[6].pack_price.map((opt, i) => `
         <div class="border border-gray-200 rounded-xl p-4 price-opt" data-idx="${i}">
             <div class="flex items-center gap-3 mb-3">
                 <input type="text" placeholder="Option title (e.g. Standard)" value="${escHtml(opt.title)}"
@@ -979,144 +900,776 @@ const PackageBuilder = (() => {
         </div>`).join('');
 
         el.querySelectorAll('.price-opt').forEach((row, i) => {
-            row.querySelector('.opt-title').addEventListener('input', e => { state.steps[5].pack_price[i].title = e.target.value; });
-            row.querySelector('.opt-price').addEventListener('input', e => { state.steps[5].pack_price[i].price = e.target.value; });
+            row.querySelector('.opt-title').addEventListener('input', e => { state.steps[6].pack_price[i].title = e.target.value; });
+            row.querySelector('.opt-price').addEventListener('input', e => { state.steps[6].pack_price[i].price = e.target.value; });
             row.querySelectorAll('.opt-hotel').forEach(sel => {
                 sel.addEventListener('change', e => {
-                    state.steps[5].pack_price[i].hotels[parseInt(sel.dataset.city)] = e.target.value;
+                    state.steps[6].pack_price[i].hotels[parseInt(sel.dataset.city)] = e.target.value;
                 });
             });
         });
         el.querySelectorAll('.remove-opt').forEach(btn => {
             btn.addEventListener('click', () => {
-                state.steps[5].pack_price.splice(parseInt(btn.dataset.idx), 1);
+                state.steps[6].pack_price.splice(parseInt(btn.dataset.idx), 1);
                 renderPriceOptions();
             });
         });
     }
 
-    function renderStep6() {
+    function renderStep5_itinerary() {
+        const days = state.steps[5].pack_itenaries;
         document.getElementById('stepContent').innerHTML = `
-        <h2 class="text-lg font-bold text-gray-800 mb-1">Itinerary</h2>
-        <p class="text-sm text-gray-400 mb-4">Build your day-by-day travel plan</p>
-        <button id="addDayBtn" class="mb-4 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition flex items-center gap-1">
-            <i class="fa-solid fa-plus text-xs"></i> Add Day
-        </button>
-        <div id="itineraryDays" class="space-y-4"></div>`;
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-gray-800">Itinerary</h2>
+                <p class="text-sm text-gray-400">Build your day-by-day travel plan with activities</p>
+            </div>
+            <button id="addDayBtn" class="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition">
+                <i class="fa-solid fa-plus text-xs"></i> Add Day
+            </button>
+        </div>
+        <div id="itineraryDays" class="space-y-5"></div>`;
+
         renderItineraryDays();
+
         document.getElementById('addDayBtn').addEventListener('click', () => {
-            const days = state.steps[6].pack_itenaries;
-            days.push({ day_number: days.length + 1, title:'', date:'', overnight_stay:'', meals:[], activities:[] });
+            const d = state.steps[5].pack_itenaries;
+            d.push({
+                day_number    : d.length + 1,
+                title         : '',
+                date          : '',
+                day_start_time: '08:00',
+                day_hours     : 16,
+                overnight_stay: '',
+                meals         : [],
+                activities    : [],   // array of activity objects (not strings)
+            });
             renderItineraryDays();
         });
     }
 
-
-    function bindActToggle(btn, days) {
-        btn.addEventListener('click', () => {
-            const d   = days[parseInt(btn.dataset.idx)];
-            if (!d.activities) d.activities = [];
-            const act = btn.dataset.act;
-            const has = d.activities.includes(act);
-            if (has) d.activities = d.activities.filter(a => a !== act);
-            else d.activities.push(act);
-            // Rebuild the entire picker for this day to reflect changes
-            const pickerEl = document.getElementById(`dayActPicker_${btn.dataset.idx}`);
-            if (pickerEl) {
-                pickerEl.innerHTML = buildDayActivityPicker(d, parseInt(btn.dataset.idx));
-                pickerEl.querySelectorAll('.act-toggle').forEach(b => bindActToggle(b, days));
-            }
-        });
-    }
-
+    // ── Itinerary day renderer ────────────────────────────────────────
     function renderItineraryDays() {
-        const el          = document.getElementById('itineraryDays');
+        const el   = document.getElementById('itineraryDays');
         if (!el) return;
-        const days        = state.steps[6].pack_itenaries;
+        const days = state.steps[5].pack_itenaries;
         const mealOptions = ['Breakfast','Lunch','Dinner','Snacks'];
-        el.innerHTML = days.map((day, i) => `
-        <div class="border border-gray-200 rounded-2xl overflow-hidden">
-            <div class="bg-gray-50 px-4 py-3 flex items-center justify-between">
-                <span class="font-bold text-gray-700 text-sm">Day ${day.day_number}</span>
-                <button type="button" data-idx="${i}" class="remove-day text-red-400 hover:text-red-600 text-xs transition">
-                    <i class="fa-solid fa-trash"></i> Remove
-                </button>
-            </div>
-            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Day Title</label>
-                    <input type="text" placeholder="e.g. Arrival & City Tour" value="${escHtml(day.title)}"
-                           class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-title" data-idx="${i}">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Date</label>
-                    <input type="date" value="${day.date||''}"
-                           class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-date" data-idx="${i}">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Overnight Stay</label>
-                    <select class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-overnight" data-idx="${i}">
-                        <option value="">-- Select city --</option>
-                        ${state.steps[2].cities.map(c=>`<option value="${escHtml(c.name)}" ${day.overnight_stay===c.name?'selected':''}>${escHtml(c.name)}</option>`).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-2">Meals</label>
-                    <div class="flex flex-wrap gap-2">
-                        ${mealOptions.map(m=>`
-                        <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" value="${m}" class="day-meal rounded" data-idx="${i}" ${(day.meals||[]).includes(m)?'checked':''}>
-                            <span class="text-xs text-gray-600">${m}</span>
-                        </label>`).join('')}
-                    </div>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Activities</label>
-                    <div class="flex flex-wrap gap-1.5 mb-2" id="dayActPicker_${i}">
-                        ${buildDayActivityPicker(day, i)}
-                    </div>
-                </div>
-            </div>
-        </div>`).join('');
 
+        el.innerHTML = days.map((day, i) => {
+            const usedHours  = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+            const limitHours = parseFloat(day.day_hours||16);
+            const pct        = Math.min(100, Math.round((usedHours/limitHours)*100));
+            const barColor   = pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-400' : 'bg-green-500';
+
+            return `
+            <div class="border border-gray-200 rounded-2xl overflow-hidden" data-day-idx="${i}">
+                <!-- Day header -->
+                <div class="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-gray-700 text-sm">Day ${day.day_number}</span>
+                        <div class="flex items-center gap-1.5">
+                            <div class="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full ${barColor} rounded-full transition-all" style="width:${pct}%"></div>
+                            </div>
+                            <span class="text-xs ${pct>=100?'text-red-500 font-semibold':'text-gray-400'}">${usedHours}h / ${limitHours}h</span>
+                        </div>
+                    </div>
+                    <button type="button" data-idx="${i}" class="remove-day text-red-400 hover:text-red-600 text-xs transition">
+                        <i class="fa-solid fa-trash"></i> Remove
+                    </button>
+                </div>
+
+                <!-- Day config -->
+                <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 border-b border-gray-100">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Day Title</label>
+                        <input type="text" placeholder="e.g. Arrival & City Tour" value="${escHtml(day.title)}"
+                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-title" data-idx="${i}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Date</label>
+                        <input type="date" value="${day.date||''}"
+                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-date" data-idx="${i}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Overnight Stay</label>
+                        <select class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-overnight" data-idx="${i}">
+                            <option value="">-- Select city --</option>
+                            ${state.steps[2].cities.map(c=>`<option value="${escHtml(c.name)}" ${day.overnight_stay===c.name?'selected':''}>${escHtml(c.name)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Day Start Time</label>
+                        <input type="time" value="${day.day_start_time||'08:00'}"
+                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-start-time" data-idx="${i}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Day Length (hours)</label>
+                        <input type="number" min="1" max="24" step="0.5" value="${day.day_hours||16}"
+                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-hours" data-idx="${i}">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Meals</label>
+                        <div class="flex flex-wrap gap-3 pt-1">
+                            ${mealOptions.map(m=>`
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" value="${m}" class="day-meal rounded" data-idx="${i}" ${(day.meals||[]).includes(m)?'checked':''}>
+                                <span class="text-xs text-gray-600">${m}</span>
+                            </label>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity list for this day -->
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities</h4>
+                        <button type="button" data-idx="${i}"
+                                class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i> Add Activity
+                        </button>
+                    </div>
+                    <div class="day-activity-list space-y-2" data-day-idx="${i}" id="dayActList_${i}">
+                        ${buildDayActivityList(day, i)}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // ── Bind all events ──────────────────────────────────────────
         el.querySelectorAll('.day-title').forEach(inp =>
-            inp.addEventListener('input', e => { days[parseInt(e.target.dataset.idx)].title = e.target.value; })
+            inp.addEventListener('input', e => { days[+e.target.dataset.idx].title = e.target.value; })
         );
         el.querySelectorAll('.day-date').forEach(inp =>
-            inp.addEventListener('input', e => { days[parseInt(e.target.dataset.idx)].date = e.target.value; })
+            inp.addEventListener('input', e => { days[+e.target.dataset.idx].date = e.target.value; })
+        );
+        el.querySelectorAll('.day-start-time').forEach(inp =>
+            inp.addEventListener('input', e => { days[+e.target.dataset.idx].day_start_time = e.target.value; })
+        );
+        el.querySelectorAll('.day-hours').forEach(inp =>
+            inp.addEventListener('input', e => { days[+e.target.dataset.idx].day_hours = parseFloat(e.target.value)||16; renderItineraryDays(); })
         );
         el.querySelectorAll('.day-overnight').forEach(sel =>
-            sel.addEventListener('change', async e => {
-                const idx = parseInt(e.target.dataset.idx);
-                days[idx].overnight_stay = e.target.value;
-                // Fetch DB activities for the newly selected city and rebuild picker
-                const city = state.steps[2].cities.find(c => c.name === e.target.value);
-                if (city) {
-                    const sysId = city.sys_id || city.id;
-                    await fetchCityActivities(sysId);
-                }
-                const pickerEl = document.getElementById(`dayActPicker_${idx}`);
-                if (pickerEl) {
-                    pickerEl.innerHTML = buildDayActivityPicker(days[idx], idx);
-                    // Re-bind act-toggle buttons for this day
-                    pickerEl.querySelectorAll('.act-toggle').forEach(btn => bindActToggle(btn, days));
-                }
-            })
+            sel.addEventListener('change', e => { days[+e.target.dataset.idx].overnight_stay = e.target.value; })
         );
-        el.querySelectorAll('.day-meal').forEach(cb => {
+        el.querySelectorAll('.day-meal').forEach(cb =>
             cb.addEventListener('change', e => {
-                const d = days[parseInt(cb.dataset.idx)];
+                const d = days[+cb.dataset.idx];
                 if (!d.meals) d.meals = [];
                 if (cb.checked && !d.meals.includes(cb.value)) d.meals.push(cb.value);
                 else d.meals = d.meals.filter(m => m !== cb.value);
+            })
+        );
+        el.querySelectorAll('.remove-day').forEach(btn =>
+            btn.addEventListener('click', () => {
+                days.splice(+btn.dataset.idx, 1);
+                days.forEach((d,i) => d.day_number = i+1);
+                renderItineraryDays();
+            })
+        );
+
+        // Activity picker open
+        el.querySelectorAll('.btn-open-activity-picker').forEach(btn =>
+            btn.addEventListener('click', () => openActivityPicker(+btn.dataset.idx))
+        );
+
+        // Activity card events (edit fields + remove + drag)
+        bindActivityCardEvents(days);
+    }
+
+    // ── Build activity cards for a day ──────────────────────────────
+    const CAR_TYPES_LIST = ['sedan','van','suv','minibus','microbus','coaster','bus','other'];
+
+    function buildTransferRows(act, dayIdx, ai) {
+        const transfers = act.transfers || [];
+        return transfers.map((tr, ti) => {
+            const isSIC = (tr.type || 'sic') === 'sic';
+            return `
+            <div class="transfer-row border border-gray-100 rounded-xl overflow-hidden mb-2" data-tr-idx="${ti}">
+                <!-- Transfer header -->
+                <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                    <i class="fa-solid fa-van-shuttle text-gray-400 text-xs"></i>
+                    <input type="text" value="${escHtml(tr.title||'')}" placeholder="Transfer title (e.g. Airport → Hotel)"
+                           class="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 tr-title"
+                           data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr-idx="${ti}">
+                    <select class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none tr-type"
+                            data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr-idx="${ti}">
+                        <option value="sic"     ${isSIC    ?'selected':''}>SIC</option>
+                        <option value="private" ${!isSIC   ?'selected':''}>Private</option>
+                    </select>
+                    <button type="button" class="btn-remove-transfer text-red-400 hover:text-red-600 text-xs px-1"
+                            data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr-idx="${ti}" title="Remove transfer">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+                <!-- Pricing rows -->
+                <div class="px-3 py-2 space-y-1.5 transfer-pricing-list">
+                    <div class="grid grid-cols-6 gap-1 text-xs text-gray-400 font-medium px-1">
+                        <span class="col-span-2">Car Name</span><span>Type</span><span>Adult</span><span>Child</span><span>Full</span>
+                    </div>
+                    ${(tr.pricing||[]).map((p, pi) => buildPricingRow(p, dayIdx, ai, ti, pi, isSIC)).join('')}
+                </div>
+                <!-- Add car row -->
+                <div class="px-3 pb-2">
+                    <button type="button" class="btn-add-car-row text-xs px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition"
+                            data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr-idx="${ti}">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Car
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function buildPricingRow(p, dayIdx, ai, ti, pi, isSIC) {
+        return `
+        <div class="pricing-row grid grid-cols-6 gap-1 items-center bg-blue-50 rounded-lg px-1 py-1.5"
+             data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr-idx="${ti}" data-pr-idx="${pi}">
+            <input type="text" value="${escHtml(p.car_name||'')}" placeholder="Car name"
+                   class="col-span-2 px-1.5 py-1 text-xs border border-gray-200 rounded bg-white focus:outline-none pr-car-name"
+                   data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr="${ti}" data-pr="${pi}">
+            <select class="px-1 py-1 text-xs border border-gray-200 rounded bg-white focus:outline-none pr-car-type"
+                    data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr="${ti}" data-pr="${pi}">
+                ${CAR_TYPES_LIST.map(t=>`<option value="${t}" ${(p.car_type||'sedan')===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+            <input type="number" min="0" step="0.01" value="${p.price_adult??''}" placeholder="0"
+                   class="px-1.5 py-1 text-xs border border-gray-200 rounded bg-white focus:outline-none pr-adult ${!isSIC?'opacity-30 pointer-events-none':''}"
+                   data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr="${ti}" data-pr="${pi}">
+            <input type="number" min="0" step="0.01" value="${p.price_child??''}" placeholder="0"
+                   class="px-1.5 py-1 text-xs border border-gray-200 rounded bg-white focus:outline-none pr-child ${!isSIC?'opacity-30 pointer-events-none':''}"
+                   data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr="${ti}" data-pr="${pi}">
+            <input type="number" min="0" step="0.01" value="${p.price_full??''}" placeholder="0"
+                   class="px-1.5 py-1 text-xs border border-gray-200 rounded bg-white focus:outline-none pr-full ${isSIC?'opacity-30 pointer-events-none':''}"
+                   data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr="${ti}" data-pr="${pi}">
+        </div>`;
+    }
+
+    function buildDayActivityList(day, dayIdx) {
+        const acts = day.activities || [];
+        if (!acts.length) return `<p class="text-xs text-gray-400 italic py-2">No activities added yet. Click "Add Activity" to search.</p>`;
+
+        return acts.map((act, ai) => {
+            const typeColors = { tour:'bg-blue-50 text-blue-700', transfer:'bg-violet-50 text-violet-700', both:'bg-teal-50 text-teal-700' };
+            const tc = typeColors[act.type] || 'bg-gray-100 text-gray-600';
+
+            return `
+            <div class="activity-card border border-gray-200 rounded-xl bg-white overflow-hidden"
+                 draggable="true" data-day-idx="${dayIdx}" data-act-idx="${ai}">
+
+                <!-- Card header: drag + name + type badge + duration + remove -->
+                <div class="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border-b border-gray-100">
+                    <i class="fa-solid fa-grip-lines text-gray-300 cursor-grab active:cursor-grabbing" style="font-size:12px"></i>
+                    <span class="flex-1 text-sm font-semibold text-gray-700">${escHtml(act.name)}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${tc}">${act.type||'tour'}</span>
+                    <span class="text-xs font-mono text-gray-400 act-dur-display">${act.duration_hours||0}h</span>
+                    <button type="button" data-day-idx="${dayIdx}" data-act-idx="${ai}"
+                            class="btn-remove-act text-red-400 hover:text-red-600 ml-1" title="Remove activity">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Editable fields: time, duration, location, note -->
+                <div class="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 border-b border-gray-50">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">Start Time</label>
+                        <input type="time" value="${act.start_time||''}"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-start-time"
+                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">End Time</label>
+                        <input type="time" value="${act.end_time||''}"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-end-time"
+                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">Duration (hrs)</label>
+                        <input type="number" min="0" step="0.5" value="${act.duration_hours||0}"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-duration bg-gray-50"
+                               data-day-idx="${dayIdx}" data-act-idx="${ai}" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">Location</label>
+                        <input type="text" value="${escHtml(act.location||'')}" placeholder="Venue"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-location"
+                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                    </div>
+                    <div class="col-span-2 md:col-span-4">
+                        <label class="block text-xs text-gray-400 mb-0.5">Note</label>
+                        <input type="text" value="${escHtml(act.note||'')}" placeholder="Optional note"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-note"
+                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                    </div>
+                </div>
+
+                <!-- Transfers section -->
+                <div class="p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transfers</span>
+                        <button type="button" class="btn-add-transfer text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-600 hover:bg-orange-50 transition"
+                                data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                            <i class="fa-solid fa-plus mr-1"></i> Add Transfer
+                        </button>
+                    </div>
+                    <div class="transfer-list" id="transferList_${dayIdx}_${ai}">
+                        ${buildTransferRows(act, dayIdx, ai)}
+                        ${!(act.transfers||[]).length ? '<p class="text-xs text-gray-400 italic">No transfers. Click Add Transfer to add one.</p>' : ''}
+                    </div>
+                </div>
+
+            </div>`;
+        }).join('');
+    }
+
+    // ── Bind activity card field events ─────────────────────────────
+    function bindActivityCardEvents(days) {
+        const el = document.getElementById('itineraryDays');
+        if (!el) return;
+
+        // Time change → recalculate duration
+        el.querySelectorAll('.act-start-time, .act-end-time').forEach(inp => {
+            inp.addEventListener('change', e => {
+                const di  = +e.target.dataset.dayIdx;
+                const ai  = +e.target.dataset.actIdx;
+                const act = days[di].activities[ai];
+                if (e.target.classList.contains('act-start-time')) act.start_time = e.target.value;
+                else act.end_time = e.target.value;
+                if (act.start_time && act.end_time) {
+                    const [sh,sm] = act.start_time.split(':').map(Number);
+                    const [eh,em] = act.end_time.split(':').map(Number);
+                    const diff = ((eh*60+em) - (sh*60+sm)) / 60;
+                    act.duration_hours = Math.max(0, Math.round(diff * 10) / 10);
+                }
+                const durInput = el.querySelector(`.act-duration[data-day-idx="${di}"][data-act-idx="${ai}"]`);
+                if (durInput) durInput.value = act.duration_hours;
+                const durDisp = el.querySelector(`[data-day-idx="${di}"][data-act-idx="${ai}"] .act-dur-display`);
+                if (durDisp) durDisp.textContent = act.duration_hours + 'h';
+                updateDayProgress(di, days[di]);
             });
         });
-        el.querySelectorAll('.act-toggle').forEach(btn => bindActToggle(btn, days));
-        el.querySelectorAll('.remove-day').forEach(btn => {
+
+        el.querySelectorAll('.act-location').forEach(inp =>
+            inp.addEventListener('input', e => { days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx].location = e.target.value; })
+        );
+        el.querySelectorAll('.act-note').forEach(inp =>
+            inp.addEventListener('input', e => { days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx].note = e.target.value; })
+        );
+
+        // ── Transfer title + type ────────────────────────────────────
+        el.querySelectorAll('.tr-title').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const act = days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx];
+                act.transfers[+e.target.dataset.trIdx].title = e.target.value;
+            })
+        );
+        el.querySelectorAll('.tr-type').forEach(sel =>
+            sel.addEventListener('change', e => {
+                const di = +e.target.dataset.dayIdx, ai = +e.target.dataset.actIdx, ti = +e.target.dataset.trIdx;
+                const tr = days[di].activities[ai].transfers[ti];
+                tr.type = e.target.value;
+                // Re-render just this transfer's pricing rows to toggle adult/child vs full opacity
+                const listEl = document.getElementById(`transferList_${di}_${ai}`);
+                if (listEl) {
+                    const tRow = listEl.querySelector(`[data-tr-idx="${ti}"] .transfer-pricing-list`);
+                    if (tRow) {
+                        const isSIC = tr.type === 'sic';
+                        tRow.querySelectorAll('.pr-adult,.pr-child').forEach(i => {
+                            i.classList.toggle('opacity-30', !isSIC);
+                            i.classList.toggle('pointer-events-none', !isSIC);
+                        });
+                        tRow.querySelectorAll('.pr-full').forEach(i => {
+                            i.classList.toggle('opacity-30', isSIC);
+                            i.classList.toggle('pointer-events-none', isSIC);
+                        });
+                    }
+                }
+            })
+        );
+
+        // ── Remove transfer ─────────────────────────────────────────
+        el.querySelectorAll('.btn-remove-transfer').forEach(btn =>
             btn.addEventListener('click', () => {
-                days.splice(parseInt(btn.dataset.idx), 1);
-                days.forEach((d, i) => d.day_number = i + 1);
+                const di = +btn.dataset.dayIdx, ai = +btn.dataset.actIdx, ti = +btn.dataset.trIdx;
+                days[di].activities[ai].transfers.splice(ti, 1);
+                // Re-render just the transfer list for this activity card
+                const listEl = document.getElementById(`transferList_${di}_${ai}`);
+                if (listEl) {
+                    const act = days[di].activities[ai];
+                    listEl.innerHTML = buildTransferRows(act, di, ai) ||
+                        '<p class="text-xs text-gray-400 italic">No transfers.</p>';
+                    bindActivityCardEvents(days);  // rebind after re-render
+                }
+            })
+        );
+
+        // ── Add transfer ────────────────────────────────────────────
+        el.querySelectorAll('.btn-add-transfer').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.dayIdx, ai = +btn.dataset.actIdx;
+                const act = days[di].activities[ai];
+                if (!act.transfers) act.transfers = [];
+                act.transfers.push({ title:'', type:'sic', notes:'', pricing:[] });
+                const listEl = document.getElementById(`transferList_${di}_${ai}`);
+                if (listEl) {
+                    listEl.innerHTML = buildTransferRows(act, di, ai);
+                    bindActivityCardEvents(days);
+                }
+            })
+        );
+
+        // ── Add car row inside a transfer ───────────────────────────
+        el.querySelectorAll('.btn-add-car-row').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.dayIdx, ai = +btn.dataset.actIdx, ti = +btn.dataset.trIdx;
+                const tr = days[di].activities[ai].transfers[ti];
+                if (!tr.pricing) tr.pricing = [];
+                tr.pricing.push({ car_name:'', car_type:'sedan', price_adult:null, price_child:null, price_full:null });
+                const listEl = document.getElementById(`transferList_${di}_${ai}`);
+                if (listEl) {
+                    listEl.innerHTML = buildTransferRows(days[di].activities[ai], di, ai);
+                    bindActivityCardEvents(days);
+                }
+            })
+        );
+
+        // ── Pricing inputs ──────────────────────────────────────────
+        el.querySelectorAll('.pr-car-name').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const act = days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx];
+                act.transfers[+e.target.dataset.tr].pricing[+e.target.dataset.pr].car_name = e.target.value;
+            })
+        );
+        el.querySelectorAll('.pr-car-type').forEach(sel =>
+            sel.addEventListener('change', e => {
+                const act = days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx];
+                act.transfers[+e.target.dataset.tr].pricing[+e.target.dataset.pr].car_type = e.target.value;
+            })
+        );
+        el.querySelectorAll('.pr-adult').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const act = days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx];
+                act.transfers[+e.target.dataset.tr].pricing[+e.target.dataset.pr].price_adult = parseFloat(e.target.value)||null;
+            })
+        );
+        el.querySelectorAll('.pr-child').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const act = days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx];
+                act.transfers[+e.target.dataset.tr].pricing[+e.target.dataset.pr].price_child = parseFloat(e.target.value)||null;
+            })
+        );
+        el.querySelectorAll('.pr-full').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const act = days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx];
+                act.transfers[+e.target.dataset.tr].pricing[+e.target.dataset.pr].price_full = parseFloat(e.target.value)||null;
+            })
+        );
+
+        // ── Remove activity ─────────────────────────────────────────
+        el.querySelectorAll('.btn-remove-act').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.dayIdx, ai = +btn.dataset.actIdx;
+                days[di].activities.splice(ai, 1);
                 renderItineraryDays();
+            })
+        );
+
+        // Drag & drop reorder
+        el.querySelectorAll('.activity-card').forEach(card => {
+            card.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({
+                    di: +card.dataset.dayIdx, ai: +card.dataset.actIdx
+                }));
+                card.classList.add('opacity-50');
+            });
+            card.addEventListener('dragend', () => card.classList.remove('opacity-50'));
+            card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('ring-2','ring-blue-400'); });
+            card.addEventListener('dragleave', () => card.classList.remove('ring-2','ring-blue-400'));
+            card.addEventListener('drop', e => {
+                e.preventDefault();
+                card.classList.remove('ring-2','ring-blue-400');
+                const from = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const toDi = +card.dataset.dayIdx, toAi = +card.dataset.actIdx;
+                if (from.di !== toDi || from.ai === toAi) return;
+                const acts = days[from.di].activities;
+                const [moved] = acts.splice(from.ai, 1);
+                acts.splice(toAi, 0, moved);
+                renderItineraryDays();  // re-render immediately on drop
+            });
+        });
+    }
+
+    // ── Update day progress bar without full re-render ───────────────
+    function updateDayProgress(dayIdx, day) {
+        const usedHours  = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+        const limitHours = parseFloat(day.day_hours||16);
+        const pct        = Math.min(100, Math.round((usedHours/limitHours)*100));
+        const barColor   = pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-400' : 'bg-green-500';
+        const container  = document.querySelector(`[data-day-idx="${dayIdx}"]`);
+        if (!container) return;
+        const bar   = container.querySelector('.h-1\\.5.w-24 > div');
+        const label = container.querySelector('.h-1\\.5.w-24 + span');
+        if (bar)   { bar.style.width = pct+'%'; bar.className = `h-full ${barColor} rounded-full transition-all`; }
+        if (label) { label.textContent = `${usedHours}h / ${limitHours}h`; label.className = `text-xs ${pct>=100?'text-red-500 font-semibold':'text-gray-400'}`; }
+    }
+
+    // ── Activity Picker (search modal per day) ───────────────────────
+    async function openActivityPicker(dayIdx) {
+        // Remove existing picker if open
+        document.getElementById('actPickerModal')?.remove();
+
+        const day       = state.steps[5].pack_itenaries[dayIdx];
+        const limitHrs  = parseFloat(day.day_hours||16);
+        const usedHrs   = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+        const remaining = Math.max(0, limitHrs - usedHrs);
+
+        // Get country sys_ids from Step 2 selected countries
+        // Resolve country_sys_id — country objects in step 2 may only have integer id
+        // Map through allCountries to get the proper sys_id string
+        const countrySysIds = state.steps[2].countries.map(c => {
+            if (c.sys_id && c.sys_id.includes('-')) return c.sys_id;  // already a sys_id string
+            // Look up by integer id in allCountries
+            const full = state.allCountries.find(x => x.id === c.id || x.id === parseInt(c.id));
+            return full?.sys_id || null;
+        }).filter(Boolean);
+
+        // Create picker modal
+        const modal = document.createElement('div');
+        modal.id = 'actPickerModal';
+        modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-6';
+        modal.innerHTML = `
+        <div class="w-full max-w-[900px] h-[680px] max-h-[calc(100vh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+                <div>
+                    <h3 class="text-base font-bold text-gray-800">Add Activity — Day ${day.day_number}</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        ${remaining > 0
+                            ? `${usedHrs}h used · <span class="text-green-600 font-medium">${remaining}h remaining</span>`
+                            : `<span class="text-red-500 font-medium">Day is full (${limitHrs}h)</span>`}
+                    </p>
+                </div>
+                <button id="closeActPicker" class="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 py-3 border-b border-gray-100 flex-shrink-0 flex gap-2">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input id="actPickerSearch" type="text" placeholder="Search activities…"
+                           class="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <select id="actPickerType" class="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="">All Types</option>
+                    <option value="tour">Tour</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="both">Both</option>
+                </select>
+            </div>
+            <div id="actPickerList" class="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+                <div class="text-center py-8 text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading activities…</div>
+            </div>
+        </div>`;
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('#closeActPicker').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+        // Load activities from all selected countries
+        let allActivities = [];
+        for (const cSysId of countrySysIds) {
+            if (!state.allActivities[cSysId]) {
+                await fetchActivitiesByCountry(cSysId);
+            }
+            allActivities = allActivities.concat(state.allActivities[cSysId] || []);
+        }
+
+        // Render picker list
+        function renderPickerList() {
+            const search  = document.getElementById('actPickerSearch')?.value.toLowerCase() || '';
+            const typeF   = document.getElementById('actPickerType')?.value || '';
+            const listEl  = document.getElementById('actPickerList');
+            if (!listEl) return;
+
+            let filtered = allActivities;
+            if (search)  filtered = filtered.filter(a => a.name.toLowerCase().includes(search) || (a.location||'').toLowerCase().includes(search));
+            if (typeF)   filtered = filtered.filter(a => a.type === typeF);
+
+            const addedIds = new Set((day.activities||[]).map(a => a.sys_id));
+
+            if (!filtered.length) {
+                listEl.innerHTML = `<div class="text-center py-8 text-gray-400">No activities found</div>`;
+                return;
+            }
+
+            const typeColors = { tour:'bg-blue-50 text-blue-700', transfer:'bg-violet-50 text-violet-700', both:'bg-teal-50 text-teal-700' };
+
+            listEl.innerHTML = filtered.map(a => {
+                const isAdded    = addedIds.has(a.sys_id);
+                const wouldExceed = !isAdded && remaining < (parseFloat(a.duration_hours)||0) && remaining > 0;
+                const tc = typeColors[a.type] || 'bg-gray-100 text-gray-600';
+                return `
+                <div class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition mb-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-sm font-semibold text-gray-800 truncate">${escHtml(a.name)}</span>
+                            <span class="text-xs px-1.5 py-0.5 rounded-full ${tc} flex-shrink-0">${a.type}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs text-gray-400">
+                            ${a.location ? `<span><i class="fa-solid fa-location-dot mr-1"></i>${escHtml(a.location)}</span>` : ''}
+                            ${a.start_time ? `<span><i class="fa-regular fa-clock mr-1"></i>${a.start_time}–${a.end_time||'?'}</span>` : ''}
+                            ${a.duration_hours ? `<span><i class="fa-solid fa-hourglass-half mr-1"></i>${a.duration_hours}h</span>` : ''}
+                        </div>
+                    </div>
+                    ${wouldExceed
+                        ? `<span class="text-xs text-amber-600 flex-shrink-0"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Exceeds limit</span>`
+                        : ''}
+                    <button type="button" data-sys-id="${escHtml(a.sys_id)}"
+                            class="btn-pick-act flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold transition
+                                   ${isAdded
+                                       ? 'bg-green-100 text-green-700 cursor-default'
+                                       : remaining > 0 && wouldExceed
+                                           ? 'bg-amber-50 text-amber-600 border border-amber-300 hover:bg-amber-100'
+                                           : 'bg-blue-600 hover:bg-blue-700 text-white'}"
+                            ${isAdded ? 'disabled' : ''}>
+                        ${isAdded ? '<i class="fa-solid fa-check mr-1"></i>Added' : '<i class="fa-solid fa-plus mr-1"></i>Add'}
+                    </button>
+                </div>`;
+            }).join('');
+
+            // Bind pick buttons
+            listEl.querySelectorAll('.btn-pick-act').forEach(btn => {
+                if (btn.disabled) return;
+                btn.addEventListener('click', async () => {
+                    const act = allActivities.find(a => a.sys_id === btn.dataset.sysId);
+                    if (!act) return;
+
+                    const curUsed  = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+                    const actDur   = parseFloat(act.duration_hours)||0;
+                    const dayLimit = parseFloat(day.day_hours||16);
+
+                    if (curUsed + actDur > dayLimit) {
+                        if (!confirm(`Adding "${act.name}" (${actDur}h) will exceed this day's ${dayLimit}h limit. Add anyway?`)) return;
+                    }
+
+                    // Fetch full activity data (list.php only returns summary — get.php has transfers etc.)
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Adding…';
+                    let fullAct = act;
+                    try {
+                        const url = (typeof API_ACTIVITIES_BASE !== 'undefined')
+                            ? `${API_ACTIVITIES_BASE}get.php?sys_id=${encodeURIComponent(act.sys_id)}`
+                            : `../api/masterdata/activities/get.php?sys_id=${encodeURIComponent(act.sys_id)}`;
+                        const res  = await fetch(url);
+                        const json = await res.json();
+                        if (json.success && json.data) fullAct = json.data;
+                    } catch(e) { /* use summary data if fetch fails */ }
+
+                    if (!day.activities) day.activities = [];
+                    day.activities.push({
+                        sys_id          : fullAct.sys_id,
+                        original_sys_id : fullAct.sys_id,
+                        country_sys_id  : fullAct.country_sys_id,
+                        name            : fullAct.name,
+                        type            : fullAct.type,
+                        location        : fullAct.location        || '',
+                        start_time      : fullAct.start_time      || '',
+                        end_time        : fullAct.end_time        || '',
+                        duration_hours  : fullAct.duration_hours  || 0,
+                        popularity      : fullAct.popularity      || 3,
+                        note            : '',
+                        itineraries     : fullAct.itineraries     || [],
+                        inclusions      : fullAct.inclusions      || [],
+                        exclusions      : fullAct.exclusions      || [],
+                        transfers       : fullAct.transfers       || [],
+                        pickup_from_city: fullAct.pickup_from_city || [],
+                        dropoff_city    : fullAct.dropoff_city    || [],
+                    });
+
+                    modal.remove();
+                    renderItineraryDays();
+                });
+            });
+        }
+
+        renderPickerList();
+        document.getElementById('actPickerSearch')?.addEventListener('input', renderPickerList);
+        document.getElementById('actPickerType')?.addEventListener('change', renderPickerList);
+    }
+
+    // ── Fetch activities by country from masterdata API ──────────────
+    async function fetchActivitiesByCountry(countrySysId) {
+        if (!countrySysId || state.allActivities[countrySysId]) return;
+        try {
+            const url  = (typeof API_ACTIVITIES_BASE !== 'undefined')
+                ? `${API_ACTIVITIES_BASE}list.php?country_sys_id=${encodeURIComponent(countrySysId)}&status=active&limit=100`
+                : `../api/masterdata/activities/list.php?country_sys_id=${encodeURIComponent(countrySysId)}&status=active&limit=100`;
+            const res  = await fetch(url);
+            const json = await res.json();
+            state.allActivities[countrySysId] = (json.data || []).map(a => ({
+                sys_id         : a.sys_id,
+                country_sys_id : a.country_sys_id,
+                name           : a.name,
+                type           : a.type,
+                location       : a.location,
+                start_time     : a.start_time,
+                end_time       : a.end_time,
+                duration_hours : a.duration_hours,
+                popularity     : a.popularity,
+                itineraries    : a.itineraries    || [],
+                inclusions     : a.inclusions     || [],
+                exclusions     : a.exclusions     || [],
+                transfers      : a.transfers      || [],
+                pickup_from_city: a.pickup_from_city || [],
+                dropoff_city   : a.dropoff_city   || [],
+            }));
+        } catch(e) {
+            console.warn('Failed to fetch activities for country', countrySysId, e);
+            state.allActivities[countrySysId] = [];
+        }
+    }
+
+    function renderPriceOptions() {
+        const el = document.getElementById('priceOptionsList');
+        if (!el) return;
+        el.innerHTML = state.steps[6].pack_price.map((opt, i) => `
+        <div class="border border-gray-200 rounded-xl p-4 price-opt" data-idx="${i}">
+            <div class="flex items-center gap-3 mb-3">
+                <input type="text" placeholder="Option title (e.g. Standard)" value="${escHtml(opt.title)}"
+                       class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 opt-title">
+                <input type="number" placeholder="Price" value="${opt.price||''}"
+                       class="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 opt-price">
+                <button type="button" data-idx="${i}"
+                        class="remove-opt w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition text-xs">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            ${state.steps[2].cities.length ? `
+            <div class="text-xs font-medium text-gray-500 mb-2">Hotel per city:</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                ${state.steps[2].cities.map(city => `
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500 w-24 truncate">${escHtml(city.name)}</span>
+                    <select class="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none opt-hotel" data-city="${city.id}">
+                        <option value="">-- Select hotel --</option>
+                        ${state.steps[4].hotels.filter(h=>h.city_id===city.id).map(h=>
+                            `<option value="${escHtml(h.hotel_title)}" ${(opt.hotels[city.id]===h.hotel_title)?'selected':''}>${escHtml(h.hotel_title)}</option>`).join('')}
+                    </select>
+                </div>`).join('')}
+            </div>` : ''}
+        </div>`).join('');
+
+        el.querySelectorAll('.price-opt').forEach((row, i) => {
+            row.querySelector('.opt-title').addEventListener('input', e => { state.steps[6].pack_price[i].title = e.target.value; });
+            row.querySelector('.opt-price').addEventListener('input', e => { state.steps[6].pack_price[i].price = e.target.value; });
+            row.querySelectorAll('.opt-hotel').forEach(sel => {
+                sel.addEventListener('change', e => {
+                    state.steps[6].pack_price[i].hotels[parseInt(sel.dataset.city)] = e.target.value;
+                });
+            });
+        });
+        el.querySelectorAll('.remove-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.steps[6].pack_price.splice(parseInt(btn.dataset.idx), 1);
+                renderPriceOptions();
             });
         });
     }
@@ -1244,10 +1797,10 @@ const PackageBuilder = (() => {
 
     function renderStep8() {
         const s   = state.steps;
-        const sym = s[5].currency_symbol || '';
+        const sym = s[6].currency_symbol || '';
         document.getElementById('stepContent').innerHTML = `
         <h2 class="text-lg font-bold text-gray-800 mb-1">Final Review</h2>
-        <p class="text-sm text-gray-400 mb-6">Review all details before finalizing</p>
+        <p class="text-sm text-gray-400 mb-6">Review all details before saving or finalizing</p>
         <div class="space-y-5">
             ${reviewSection('Basic Info', `
                 <div class="grid grid-cols-2 gap-2 text-sm">
@@ -1257,37 +1810,218 @@ const PackageBuilder = (() => {
                 </div>`, '1')}
             ${reviewSection('Destination', `
                 <p class="text-sm text-gray-500">Countries: ${(s[2].countries||[]).map(c=>c.name).join(', ')||'None'}</p>
-                <p class="text-sm text-gray-500">Cities: ${(s[2].cities||[]).map(c=>c.name).join(', ')||'None'}</p>
-                <p class="text-sm text-gray-500">Activities: ${(s[2].activities||[]).map(a=>a.title).join(', ')||'None'}</p>`, '2')}
+                <p class="text-sm text-gray-500">Cities: ${(s[2].cities||[]).map(c=>c.name).join(', ')||'None'}</p>`, '2')}
             ${reviewSection('Quotation', `
                 <div class="grid grid-cols-2 gap-2 text-sm">
                     <div><span class="text-gray-400">Duration:</span> ${escHtml(s[3].duration)||'—'}</div>
                     <div><span class="text-gray-400">Dates:</span> ${s[3].start_date||'—'} → ${s[3].end_date||'—'}</div>
                     <div><span class="text-gray-400">Pax:</span> ${s[3].no_of_pax?.adult||0}A / ${s[3].no_of_pax?.child||0}C / ${s[3].no_of_pax?.infant||0}I</div>
                 </div>`, '3')}
+            ${reviewSection('Itinerary', `
+                <p class="text-sm text-gray-500">${s[5].pack_itenaries?.length||0} day(s) planned</p>
+                ${(s[5].pack_itenaries||[]).map(d=>`
+                    <p class="text-xs text-gray-400 mt-1">
+                        Day ${d.day_number}: ${escHtml(d.title)||'—'}
+                        ${d.overnight_stay?'· '+d.overnight_stay:''}
+                        · ${(d.activities||[]).length} activit${(d.activities||[]).length===1?'y':'ies'}
+                    </p>`).join('')}`, '5')}
             ${reviewSection('Pricing', `
                 <div class="text-sm">
-                    <div><span class="text-gray-400">Currency:</span> ${escHtml(s[5].currency_title)} (${escHtml(s[5].currency_code)}) ${escHtml(s[5].currency_symbol)}</div>
-                    <div class="mt-1"><span class="text-gray-400">Overall Price:</span> <strong class="text-blue-600">${sym}${Number(s[5].overall_price||0).toLocaleString()}</strong></div>
-                    <div class="mt-1 text-gray-400">${s[5].pack_price?.length||0} pricing option(s)</div>
-                </div>`, '5')}
-            ${reviewSection('Itinerary', `
-                <p class="text-sm text-gray-500">${s[6].pack_itenaries?.length||0} day(s) planned</p>
-                ${(s[6].pack_itenaries||[]).map(d=>`<p class="text-xs text-gray-400 mt-1">Day ${d.day_number}: ${escHtml(d.title)||'—'} ${d.overnight_stay?'('+d.overnight_stay+')':''}</p>`).join('')}`, '6')}
+                    <div><span class="text-gray-400">Currency:</span> ${escHtml(s[6].currency_title)} (${escHtml(s[6].currency_code)}) ${escHtml(s[6].currency_symbol)}</div>
+                    <div class="mt-1"><span class="text-gray-400">Overall Price:</span> <strong class="text-blue-600">${sym}${Number(s[6].overall_price||0).toLocaleString()}</strong></div>
+                    <div class="mt-1 text-gray-400">${s[6].pack_price?.length||0} pricing option(s)</div>
+                </div>`, '6')}
             ${reviewSection('Inclusions & Exclusions', `
                 <p class="text-sm text-gray-500">${s[7].pack_inclusions?.length||0} inclusion(s) · ${s[7].pack_exclusions?.length||0} exclusion(s)</p>`, '7')}
         </div>
-        <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-2xl text-center">
-            <i class="fa-solid fa-circle-check text-green-500 text-2xl mb-2 block"></i>
-            <p class="text-sm font-semibold text-green-700">Ready to finalize</p>
-            <p class="text-xs text-green-600 mt-0.5">Click "Finalize" to mark this package as completed.</p>
+
+        <!-- Action buttons -->
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button id="btnSaveOnly"
+                    class="flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition">
+                <i class="fa-solid fa-floppy-disk"></i> Save & Go to List
+            </button>
+            <button id="btnSaveFinalize"
+                    class="flex items-center justify-center gap-2 py-3 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition shadow">
+                <i class="fa-solid fa-flag-checkered"></i> Save & Finalize
+            </button>
         </div>`;
+
         document.querySelectorAll('.review-edit').forEach(btn =>
             btn.addEventListener('click', () => navigateToStep(parseInt(btn.dataset.step)))
         );
+
+        // Save only → mark as saved, go to list
+        document.getElementById('btnSaveOnly').addEventListener('click', async () => {
+            if (!state.uuid) return;
+            showLoader('Saving…');
+            try {
+                await fetch(`${BASE_API}/step-save.php`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ uuid: state.uuid, step_number: 8, step_data: {} })
+                });
+                hideLoader();
+                toast('success', 'Package saved!');
+                setTimeout(() => window.location.href = 'index-packages.php', 1200);
+            } catch(e) { hideLoader(); toast('error', e.message); }
+        });
+
+        // Save & Finalize → show confirmation modal
+        document.getElementById('btnSaveFinalize').addEventListener('click', () => showFinalizeModal());
     }
 
-    function reviewSection(title, content, step) {
+    function showFinalizeModal() {
+        document.getElementById('finalizeModal')?.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'finalizeModal';
+        modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-6';
+        modal.innerHTML = `
+        <div class="w-full max-w-[900px] h-[680px] max-h-[calc(100vh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-flag-checkered text-green-600"></i> Finalize Package
+                </h3>
+                <button id="closeFinalizeModal" class="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5 space-y-5">
+                <!-- Warning -->
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-amber-800 mb-1">This action cannot be undone</p>
+                        <ul class="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                            <li>Once finalized, this package will be <strong>locked</strong> and cannot be edited.</li>
+                            <li>All activity modifications will be saved as permanent records.</li>
+                            <li>The package status will change to <strong>Completed</strong>.</li>
+                            <li>A PDF will be generated based on the selected template.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Package summary -->
+                <div class="bg-gray-50 rounded-2xl px-5 py-4">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Package Summary</p>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div><span class="text-gray-400">Package:</span> <strong>${escHtml(state.steps[1].title)}</strong></div>
+                        <div><span class="text-gray-400">ID:</span> <code class="text-xs bg-white px-2 py-0.5 rounded border border-gray-200">${state.sys_id||'—'}</code></div>
+                        <div><span class="text-gray-400">Days:</span> ${state.steps[5].pack_itenaries?.length||0}</div>
+                        <div><span class="text-gray-400">Activities:</span> ${(state.steps[5].pack_itenaries||[]).reduce((s,d)=>s+(d.activities||[]).length,0)}</div>
+                    </div>
+                </div>
+
+                <!-- PDF template -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fa-solid fa-file-pdf text-red-500 mr-1"></i> PDF Template
+                    </label>
+                    <p class="text-xs text-gray-400 mb-3">Choose the format for the client-facing PDF document.</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="pdf-template-option cursor-pointer">
+                            <input type="radio" name="pdf_template" value="detailed" class="sr-only" checked>
+                            <div class="border-2 border-blue-500 bg-blue-50 rounded-xl p-4 text-center transition">
+                                <i class="fa-solid fa-file-lines text-2xl text-blue-600 mb-2 block"></i>
+                                <p class="text-sm font-semibold text-blue-700">Detailed</p>
+                                <p class="text-xs text-blue-500 mt-1">Full descriptions, itinerary, pricing breakdown</p>
+                            </div>
+                        </label>
+                        <label class="pdf-template-option cursor-pointer">
+                            <input type="radio" name="pdf_template" value="bullet" class="sr-only">
+                            <div class="border-2 border-gray-200 bg-white rounded-xl p-4 text-center hover:border-gray-400 transition">
+                                <i class="fa-solid fa-list text-2xl text-gray-500 mb-2 block"></i>
+                                <p class="text-sm font-semibold text-gray-700">Bullet Points</p>
+                                <p class="text-xs text-gray-400 mt-1">Concise summary, key points only</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Confirmation checkbox -->
+                <div class="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                    <input type="checkbox" id="finalizeConfirmCheck" class="mt-0.5 w-4 h-4 rounded text-red-600 cursor-pointer">
+                    <label for="finalizeConfirmCheck" class="text-sm text-red-700 cursor-pointer">
+                        I understand that finalizing this package is <strong>permanent</strong> and cannot be reversed.
+                    </label>
+                </div>
+
+                <div id="finalizeError" class="hidden text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3"></div>
+            </div>
+            <div class="flex gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+                <button id="cancelFinalizeBtn" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium transition">Cancel</button>
+                <button id="confirmFinalizeBtn" class="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold transition opacity-50 cursor-not-allowed" disabled>
+                    <i class="fa-solid fa-flag-checkered mr-1"></i> Confirm & Finalize
+                </button>
+            </div>
+        </div>`;
+
+        document.body.appendChild(modal);
+
+        // Template selection styling
+        modal.querySelectorAll('.pdf-template-option input').forEach(radio => {
+            radio.addEventListener('change', () => {
+                modal.querySelectorAll('.pdf-template-option > div').forEach(d => {
+                    d.classList.remove('border-blue-500','bg-blue-50');
+                    d.classList.add('border-gray-200','bg-white');
+                });
+                if (radio.checked) {
+                    radio.closest('.pdf-template-option').querySelector('div').classList.remove('border-gray-200','bg-white');
+                    radio.closest('.pdf-template-option').querySelector('div').classList.add('border-blue-500','bg-blue-50');
+                }
+            });
+        });
+
+        // Checkbox enables confirm button
+        modal.querySelector('#finalizeConfirmCheck').addEventListener('change', function() {
+            const btn = modal.querySelector('#confirmFinalizeBtn');
+            btn.disabled = !this.checked;
+            btn.classList.toggle('opacity-50', !this.checked);
+            btn.classList.toggle('cursor-not-allowed', !this.checked);
+        });
+
+        modal.querySelector('#closeFinalizeModal').addEventListener('click', () => modal.remove());
+        modal.querySelector('#cancelFinalizeBtn').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+        // Confirm finalize
+        modal.querySelector('#confirmFinalizeBtn').addEventListener('click', async () => {
+            if (!state.uuid) return;
+
+            const pdfTemplate = modal.querySelector('input[name="pdf_template"]:checked')?.value || 'detailed';
+
+            const btn = modal.querySelector('#confirmFinalizeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Finalizing…';
+
+            try {
+                const res  = await fetch(`${BASE_API}/finalize.php`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ uuid: state.uuid, pdf_template: pdfTemplate })
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    const errEl = modal.querySelector('#finalizeError');
+                    errEl.textContent = json.message;
+                    errEl.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-flag-checkered mr-1"></i> Confirm & Finalize';
+                    return;
+                }
+                modal.remove();
+                toast('success', 'Package finalized successfully!');
+                setTimeout(() => window.location.href = 'index-packages.php', 1500);
+            } catch(e) {
+                const errEl = modal.querySelector('#finalizeError');
+                errEl.textContent = 'Network error: ' + e.message;
+                errEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-flag-checkered mr-1"></i> Confirm & Finalize';
+            }
+        });
+    }
+
+        function reviewSection(title, content, step) {
         return `
         <div class="border border-gray-200 rounded-2xl p-4">
             <div class="flex items-center justify-between mb-3">
@@ -1302,85 +2036,6 @@ const PackageBuilder = (() => {
 
 
 
-    // ─── Build activity picker chips for one itinerary day ───────────
-    // Shows: (a) manually added activities + (b) DB suggestions for the day's city
-    function buildDayActivityPicker(day, dayIdx) {
-        const selectedActs = day.activities || [];
-
-        // Manually added activities from Step 2
-        const manualActs = state.steps[2].activities.map(a => a.title);
-
-        // DB suggestions for overnight stay city
-        let dbSuggestions = [];
-        if (day.overnight_stay) {
-            const overnightCity = state.steps[2].cities.find(c => c.name === day.overnight_stay);
-            if (overnightCity) {
-                const sysId = overnightCity.sys_id || overnightCity.id;
-                dbSuggestions = (state.allActivities[sysId] || []).map(a => a.title);
-            }
-        }
-
-        // Merge: manual first, then DB suggestions not already in manual
-        const manualSet = new Set(manualActs.map(t => t.toLowerCase()));
-        const merged = [
-            ...manualActs,
-            ...dbSuggestions.filter(t => !manualSet.has(t.toLowerCase()))
-        ];
-
-        if (!merged.length) {
-            return `<p class="text-xs text-gray-400 italic">Select cities in Step 2 to see activity suggestions</p>`;
-        }
-
-        return merged.map(title => {
-            const isSelected = selectedActs.includes(title);
-            const isDb       = !manualSet.has(title.toLowerCase());
-            return `<button type="button" data-act="${escHtml(title)}" data-idx="${dayIdx}"
-                            class="act-toggle text-xs px-2.5 py-1 rounded-full border font-medium transition
-                                   ${isSelected
-                                       ? 'bg-violet-600 text-white border-violet-600'
-                                       : isDb
-                                           ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
-                        ${isDb && !isSelected ? '<i class="fa-solid fa-database text-xs mr-1 opacity-60"></i>' : ''}
-                        ${escHtml(title)}
-                    </button>`;
-        }).join('');
-    }
-
-    // ─── Fetch DB activities for a city ──────────────────────────────
-    async function fetchCityActivities(citySysId) {
-        if (!citySysId) return [];
-        // Return cached if already fetched
-        if (state.allActivities[citySysId]) return state.allActivities[citySysId];
-        try {
-            const url  = (typeof API_ACTIVITIES !== 'undefined') ? API_ACTIVITIES : '../api/utilities/activities.php';
-            const res  = await fetch(`${url}?city_sys_id=${encodeURIComponent(citySysId)}`);
-            const json = await res.json();
-            const acts = (json.data || []).map(a => ({ id: a.sys_id, title: a.name, type: a.type, price_range: a.price_range, from_db: true }));
-            state.allActivities[citySysId] = acts;
-            return acts;
-        } catch(e) {
-            console.warn('Failed to fetch activities for', citySysId, e);
-            return [];
-        }
-    }
-
-    // ─── Get all DB suggestions for currently selected cities ────────
-    function getAllDbSuggestions() {
-        const suggestions = [];
-        const seen = new Set();
-        state.steps[2].cities.forEach(city => {
-            const sysId = city.sys_id || city.id;
-            const acts  = state.allActivities[sysId] || [];
-            acts.forEach(a => {
-                if (!seen.has(a.title)) {
-                    seen.add(a.title);
-                    suggestions.push(a);
-                }
-            });
-        });
-        return suggestions;
-    }
 
     // ─── Countries Load ──────────────────────────────────────────
     async function loadCountries() {
