@@ -149,7 +149,7 @@ const PackagesList = (() => {
 
         // Bind card actions
         grid.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.dataset.uuid, btn.dataset.title));
+            btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.dataset.uuid, btn.dataset.title, btn.dataset.sysid));
         });
     }
 
@@ -184,6 +184,11 @@ const PackagesList = (() => {
             : `<a href="create-package.php?packageId=${pkg.sys_id}"
                   class="flex-1 flex items-center justify-center gap-1 text-xs py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition font-medium">
                   <i class="fa-solid fa-pen-to-square"></i> Edit</a>
+               ${(pkg.progress_step || 0) >= 7
+                   ? `<button data-action="pdf" data-sysid="${pkg.sys_id}" data-title="${escHtml(pkg.title)}"
+                              class="flex-1 flex items-center justify-center gap-1 text-xs py-2 rounded-lg bg-[#1A2039] text-white hover:bg-[#2d3a55] transition font-medium">
+                          <i class="fa-solid fa-file-pdf"></i> PDF</button>`
+                   : ''}
                <button data-action="delete" data-uuid="${pkg.uuid}" data-title="${escHtml(pkg.title)}"
                        class="flex-1 flex items-center justify-center gap-1 text-xs py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition font-medium">
                    <i class="fa-solid fa-trash"></i> Delete</button>`;
@@ -236,7 +241,12 @@ const PackagesList = (() => {
     }
 
     // ─── Actions ────────────────────────────────────────────────
-    function handleAction(action, uuid, title) {
+    function handleAction(action, uuid, title, sysid) {
+        if (action === 'pdf') {
+            if (typeof PdfGenerator !== 'undefined') PdfGenerator.open(sysid || uuid);
+            else alert('PDF generator not loaded');
+            return;
+        }
         const cfg = {
             delete:       { icon:'🗑️', color:'bg-red-500', label:'Move to Trash',  msg:`Move "<b>${title}</b>" to trash?` },
             restore:      { icon:'♻️', color:'bg-green-500',label:'Restore',        msg:`Restore "<b>${title}</b>"?` },

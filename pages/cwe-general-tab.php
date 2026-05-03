@@ -39,7 +39,7 @@
 
     <div class="col-span-6 bg-white rounded-lg shadow p-4 flex flex-col">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-            <h2 class="text-2xl font-semibold text-gray-800">Work Lists</h2>
+            <h2 class="text-2xl font-semibold text-gray-800">Completed Work Lists</h2>
 
             <!-- Search Area -->
             <div id="work-search" class="w-full md:w-auto">

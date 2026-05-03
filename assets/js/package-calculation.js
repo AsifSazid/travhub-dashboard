@@ -175,7 +175,7 @@ const PackageCalculation = (() => {
                                         Price total
                                         (<span id="hotelCurrencyLabel" class="text-violet-500 font-bold">local</span>)
                                     </th>
-                                    <th class="${thCls()} w-28 text-right">Per p/night (BDT)</th>
+                                    <th class="${thCls()} w-28 text-right">Per room/night (BDT)</th>
                                     <th class="${thCls()} w-28 text-right">Sale/night (BDT)</th>
                                     <th class="${thCls()} w-8"></th>
                                 </tr>
@@ -490,9 +490,12 @@ const PackageCalculation = (() => {
         document.getElementById('actPctLabel').textContent   = actPct;
         document.getElementById('hotelPctLabel').textContent = htlPct;
 
-        // calculation_data is { activity:[], hotel:[] }
+        // calculation_data may arrive as a JSON string or already-parsed object
+        let cd = data.calculation_data || {};
+        if (typeof cd === 'string') {
+            try { cd = JSON.parse(cd); } catch(e) { cd = {}; }
+        }
         // Also supports legacy flat array (old single-mode records)
-        const cd   = data.calculation_data || {};
         const acts = Array.isArray(cd) ? cd : (cd.activity || []);
         const htls = Array.isArray(cd) ? [] : (cd.hotel    || []);
 
@@ -538,10 +541,12 @@ const PackageCalculation = (() => {
                    class="${cellInputCls('w-14 text-center')}">
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="per-person-bdt text-xs text-gray-500 tabular-nums">${fmt(saved?.per_person_bdt || 0)}</span>
+            <input type="number" min="0" step="0.01" value="${saved?.per_person_bdt ? parseFloat(saved.per_person_bdt).toFixed(2) : ''}" placeholder="0.00"
+                   class="${cellInputCls('text-right')} per-person-bdt" title="Edit to back-calculate total price (local)">
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="sale-price text-xs font-semibold text-blue-600 tabular-nums">${fmt(saved?.sale_price_per_person || 0)}</span>
+            <input type="number" min="0" step="0.01" value="${saved?.sale_price_per_person ? parseFloat(saved.sale_price_per_person).toFixed(2) : ''}" placeholder="0.00"
+                   class="${cellInputCls('text-right')} sale-price" title="Edit to back-calculate per person BDT">
         </td>
         <td class="${tdCls('text-center')}">
             <button class="del-act ${delBtnCls()}">
@@ -550,9 +555,15 @@ const PackageCalculation = (() => {
         </td>`;
 
         tbody.appendChild(tr);
-        tr.querySelectorAll('input').forEach(i =>
-            i.addEventListener('input', () => { calcActivityRow(tr); updateAllSummaries(); })
-        );
+        tr.querySelectorAll('input').forEach(i => {
+            i.addEventListener('input', () => {
+                let dir = 'local';
+                if (i.classList.contains('per-person-bdt')) dir = 'perPerson';
+                else if (i.classList.contains('sale-price'))    dir = 'sale';
+                calcActivityRow(tr, dir);
+                updateAllSummaries();
+            });
+        });
         tr.querySelector('.del-act').addEventListener('click', () => {
             tr.remove();
             renumber('activityBody');
@@ -565,20 +576,47 @@ const PackageCalculation = (() => {
         updateAllSummaries();
     }
 
-    function calcActivityRow(tr) {
-        const inputs = tr.querySelectorAll('input');
-        const price  = parseFloat(inputs[3].value) || 0;   // price_local
-        const pax    = parseFloat(inputs[4].value) || 1;   // total_pax
-        const ppBdt  = pax > 0 ? (price * state.exchangeRate) / pax : 0;
-        const sale   = ppBdt + (ppBdt * state.activityProfitPct / 100);
-        tr.querySelector('.per-person-bdt').textContent = fmt(ppBdt);
-        tr.querySelector('.sale-price').textContent     = fmt(sale);
-        tr.dataset.subtotal  = ppBdt;
-        tr.dataset.saleTotal = sale;
+    // direction: 'local' (price_local edited), 'perPerson' (per_person_bdt edited), 'sale' (sale_price edited)
+    function calcActivityRow(tr, direction = 'local') {
+        const inputs     = tr.querySelectorAll('input');
+        const pax        = parseFloat(inputs[4].value) || 1;
+        const rate       = state.exchangeRate || 1;
+        const profitPct  = state.activityProfitPct || 0;
+        const ppEl       = tr.querySelector('.per-person-bdt');
+        const saleEl     = tr.querySelector('.sale-price');
+        const localEl    = inputs[3];
+
+        let priceLocal, ppBdt, sale;
+
+        if (direction === 'perPerson') {
+            // per_person_bdt edited → back-calc price_local, forward-calc sale
+            ppBdt      = parseFloat(ppEl.value) || 0;
+            priceLocal = rate > 0 ? (ppBdt * pax) / rate : 0;
+            sale       = ppBdt + (ppBdt * profitPct / 100);
+            localEl.value    = priceLocal > 0 ? priceLocal.toFixed(2) : '';
+            saleEl.value     = sale > 0 ? sale.toFixed(2) : '';
+        } else if (direction === 'sale') {
+            // sale_price edited → back-calc per_person_bdt and price_local
+            sale       = parseFloat(saleEl.value) || 0;
+            ppBdt      = profitPct < 100 ? sale / (1 + profitPct / 100) : sale;
+            priceLocal = rate > 0 ? (ppBdt * pax) / rate : 0;
+            ppEl.value       = ppBdt > 0 ? ppBdt.toFixed(2) : '';
+            localEl.value    = priceLocal > 0 ? priceLocal.toFixed(2) : '';
+        } else {
+            // price_local edited (default) → forward-calc per_person_bdt and sale
+            priceLocal = parseFloat(localEl.value) || 0;
+            ppBdt      = pax > 0 ? (priceLocal * rate) / pax : 0;
+            sale       = ppBdt + (ppBdt * profitPct / 100);
+            ppEl.value       = ppBdt > 0 ? ppBdt.toFixed(2) : '';
+            saleEl.value     = sale > 0 ? sale.toFixed(2) : '';
+        }
+
+        tr.dataset.subtotal  = ppBdt  || 0;
+        tr.dataset.saleTotal = sale   || 0;
     }
 
     function recalculateActivity() {
-        document.getElementById('activityBody').querySelectorAll('tr').forEach(tr => calcActivityRow(tr));
+        document.getElementById('activityBody').querySelectorAll('tr').forEach(tr => calcActivityRow(tr, 'local'));
     }
 
     function refreshActivityState() {
@@ -629,10 +667,12 @@ const PackageCalculation = (() => {
                    class="${cellInputCls('text-right')} price-total">
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="ppn text-xs text-gray-500 tabular-nums">${fmt(saved?.price_per_person_per_night_bdt || 0)}</span>
+            <input type="number" min="0" step="0.01" value="${saved?.price_per_person_per_night_bdt ? parseFloat(saved.price_per_person_per_night_bdt).toFixed(2) : ''}" placeholder="0.00"
+                   class="${cellInputCls('text-right')} ppn" title="Edit to back-calculate total price (local)">
         </td>
         <td class="${tdCls('text-right')}">
-            <span class="sale-night text-xs font-semibold text-violet-600 tabular-nums">${fmt(saved?.sale_price_per_night_bdt || 0)}</span>
+            <input type="number" min="0" step="0.01" value="${saved?.sale_price_per_night_bdt ? parseFloat(saved.sale_price_per_night_bdt).toFixed(2) : ''}" placeholder="0.00"
+                   class="${cellInputCls('text-right')} sale-night" title="Edit to back-calculate per room/night">
         </td>
         <td class="${tdCls('text-center')}">
             <button class="del-hotel ${delBtnCls()}">
@@ -642,8 +682,15 @@ const PackageCalculation = (() => {
 
         tbody.appendChild(tr);
         tr.querySelectorAll('input, select').forEach(i => {
-            i.addEventListener('input',  () => { calcHotelRow(tr); updateAllSummaries(); });
-            i.addEventListener('change', () => { calcHotelRow(tr); updateAllSummaries(); });
+            const handler = () => {
+                let dir = 'total';
+                if (i.classList.contains('ppn'))        dir = 'ppn';
+                else if (i.classList.contains('sale-night')) dir = 'sale';
+                calcHotelRow(tr, dir);
+                updateAllSummaries();
+            };
+            i.addEventListener('input',  handler);
+            i.addEventListener('change', handler);
         });
         tr.querySelector('.del-hotel').addEventListener('click', () => {
             tr.remove();
@@ -657,23 +704,51 @@ const PackageCalculation = (() => {
         updateAllSummaries();
     }
 
-    function calcHotelRow(tr) {
+    function calcHotelRow(tr, direction = 'total') {
         const checkIn    = tr.querySelector('.check-in').value;
         const checkOut   = tr.querySelector('.check-out').value;
-        const rooms      = parseInt(tr.querySelector('.rooms').value)        || 1;
+        const rooms      = parseInt(tr.querySelector('.rooms').value) || 1;
         const roomType   = tr.querySelector('.room-type').value;
-        const priceTotal = parseFloat(tr.querySelector('.price-total').value) || 0;
         const nights     = nightsBetween(checkIn, checkOut);
         const persons    = rooms * (PERSONS_PER_ROOM[roomType] || 2);
-        const ppn        = persons > 0 && nights > 0
-            ? (priceTotal * state.exchangeRate) / persons / nights : 0;
-        const saleNight  = ppn + (ppn * state.hotelProfitPct / 100);
+        const rate       = state.exchangeRate || 1;
+        const profitPct  = state.hotelProfitPct || 0;
+        const totalEl    = tr.querySelector('.price-total');
+        const ppnEl      = tr.querySelector('.ppn');
+        const saleEl     = tr.querySelector('.sale-night');
 
-        tr.querySelector('.nights').textContent    = nights;
-        tr.querySelector('.ppn').textContent       = fmt(ppn);
-        tr.querySelector('.sale-night').textContent = fmt(saleNight);
-        tr.dataset.subtotal  = ppn;
-        tr.dataset.saleTotal = saleNight;
+        tr.querySelector('.nights').textContent = nights;
+
+        let priceTotal, ppn, saleNight;
+
+        if (direction === 'ppn') {
+            // per room/night BDT edited → back-calc price_total (local), forward-calc sale_night
+            ppn        = parseFloat(ppnEl.value) || 0;
+            priceTotal = (rate > 0 && nights > 0 && persons > 0)
+                ? (ppn * persons * nights) / rate : 0;
+            saleNight  = ppn + (ppn * profitPct / 100);
+            totalEl.value  = priceTotal > 0 ? priceTotal.toFixed(2) : '';
+            saleEl.value   = saleNight  > 0 ? saleNight.toFixed(2)  : '';
+        } else if (direction === 'sale') {
+            // sale_night edited → back-calc ppn and price_total
+            saleNight  = parseFloat(saleEl.value) || 0;
+            ppn        = profitPct < 100 ? saleNight / (1 + profitPct / 100) : saleNight;
+            priceTotal = (rate > 0 && nights > 0 && persons > 0)
+                ? (ppn * persons * nights) / rate : 0;
+            ppnEl.value    = ppn        > 0 ? ppn.toFixed(2)        : '';
+            totalEl.value  = priceTotal > 0 ? priceTotal.toFixed(2) : '';
+        } else {
+            // price_total (local) edited (default) → forward-calc ppn and sale_night
+            priceTotal = parseFloat(totalEl.value) || 0;
+            ppn        = (persons > 0 && nights > 0)
+                ? (priceTotal * rate) / persons / nights : 0;
+            saleNight  = ppn + (ppn * profitPct / 100);
+            ppnEl.value    = ppn       > 0 ? ppn.toFixed(2)       : '';
+            saleEl.value   = saleNight > 0 ? saleNight.toFixed(2) : '';
+        }
+
+        tr.dataset.subtotal  = ppn       || 0;
+        tr.dataset.saleTotal = saleNight || 0;
         tr.dataset.nights    = nights;
     }
 
@@ -764,8 +839,8 @@ const PackageCalculation = (() => {
                 particular:            ins[2].value,
                 price_local:           parseFloat(ins[3].value) || 0,
                 total_pax:             parseInt(ins[4].value)   || 1,
-                per_person_bdt:        parseFloat(tr.querySelector('.per-person-bdt').textContent.replace(/,/g,'')) || 0,
-                sale_price_per_person: parseFloat(tr.querySelector('.sale-price').textContent.replace(/,/g,''))     || 0,
+                per_person_bdt:        parseFloat(tr.querySelector('.per-person-bdt').value) || 0,
+                sale_price_per_person: parseFloat(tr.querySelector('.sale-price').value)        || 0,
             };
         });
 
@@ -778,8 +853,8 @@ const PackageCalculation = (() => {
             no_of_nights:                   parseInt(tr.querySelector('.nights').textContent)   || 0,
             room_type:                      tr.querySelector('.room-type').value,
             price_total:                    parseFloat(tr.querySelector('.price-total').value)  || 0,
-            price_per_person_per_night_bdt: parseFloat(tr.querySelector('.ppn').textContent.replace(/,/g,''))        || 0,
-            sale_price_per_night_bdt:       parseFloat(tr.querySelector('.sale-night').textContent.replace(/,/g,''))  || 0,
+            price_per_person_per_night_bdt: parseFloat(tr.querySelector('.ppn').value)        || 0,
+            sale_price_per_night_bdt:       parseFloat(tr.querySelector('.sale-night').value)  || 0,
         }));
 
         return { activity, hotel };

@@ -942,7 +942,8 @@ const PackageBuilder = (() => {
                 day_hours     : 16,
                 overnight_stay: '',
                 meals         : [],
-                activities    : [],   // array of activity objects (not strings)
+                activities    : [],   // activity objects from masterdata
+                transfers     : [],   // standalone transfer objects (parent-level)
             });
             renderItineraryDays();
         });
@@ -1023,14 +1024,24 @@ const PackageBuilder = (() => {
                 <!-- Activity list for this day -->
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities</h4>
-                        <button type="button" data-idx="${i}"
-                                class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
-                            <i class="fa-solid fa-plus text-xs"></i> Add Activity
-                        </button>
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities & Transfers</h4>
+                        <div class="flex gap-2">
+                            <button type="button" data-idx="${i}"
+                                    class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-person-hiking text-xs"></i> Add Activity
+                            </button>
+                            <button type="button" data-idx="${i}"
+                                    class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-van-shuttle text-xs"></i> Add Transfer
+                            </button>
+                        </div>
                     </div>
                     <div class="day-activity-list space-y-2" data-day-idx="${i}" id="dayActList_${i}">
                         ${buildDayActivityList(day, i)}
+                    </div>
+                    <!-- Standalone transfers -->
+                    <div class="day-transfer-list mt-2 space-y-2" id="dayTransList_${i}">
+                        ${buildStandaloneTransferList(day, i)}
                     </div>
                 </div>
             </div>`;
@@ -1073,8 +1084,24 @@ const PackageBuilder = (() => {
             btn.addEventListener('click', () => openActivityPicker(+btn.dataset.idx))
         );
 
+        // Standalone transfer add
+        el.querySelectorAll('.btn-add-standalone-transfer').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.idx;
+                if (!days[di].transfers) days[di].transfers = [];
+                days[di].transfers.push({ title:'', type:'sic', notes:'', start_time:'', end_time:'', pricing:[] });
+                const listEl = document.getElementById(`dayTransList_${di}`);
+                if (listEl) {
+                    listEl.innerHTML = buildStandaloneTransferList(days[di], di);
+                    bindStandaloneTransferEvents(days);
+                }
+            })
+        );
+
         // Activity card events (edit fields + remove + drag)
         bindActivityCardEvents(days);
+        // Standalone transfer events
+        bindStandaloneTransferEvents(days);
     }
 
     // ── Build activity cards for a day ──────────────────────────────
@@ -1120,7 +1147,7 @@ const PackageBuilder = (() => {
         }).join('');
     }
 
-    function buildPricingRow(p, dayIdx, ai, ti, pi, isSIC) {
+    function buildPricingRow(p, dayIdx, ai, ti, pi, isSIC, standalone = false) {
         return `
         <div class="pricing-row grid grid-cols-6 gap-1 items-center bg-blue-50 rounded-lg px-1 py-1.5"
              data-day-idx="${dayIdx}" data-act-idx="${ai}" data-tr-idx="${ti}" data-pr-idx="${pi}">
@@ -1220,7 +1247,173 @@ const PackageBuilder = (() => {
         }).join('');
     }
 
-    // ── Bind activity card field events ─────────────────────────────
+    // ── Standalone Transfer list (parent-level, not child of activity) ──
+    function buildStandaloneTransferList(day, dayIdx) {
+        const transfers = day.transfers || [];
+        if (!transfers.length) return '';
+        return transfers.map((tr, ti) => {
+            const isSIC = (tr.type || 'sic') === 'sic';
+            return `
+            <div class="standalone-transfer-card border border-orange-200 rounded-xl bg-orange-50/30 overflow-hidden"
+                 data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                <!-- Header -->
+                <div class="flex items-center gap-2 px-3 py-2.5 bg-orange-50 border-b border-orange-100">
+                    <i class="fa-solid fa-van-shuttle text-orange-400 text-xs"></i>
+                    <input type="text" value="${escHtml(tr.title||'')}" placeholder="Transfer title (e.g. Airport → Hotel)"
+                           class="flex-1 text-sm font-semibold bg-transparent border-none outline-none text-orange-800 placeholder:text-orange-300 st-title"
+                           data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                    <select class="text-xs border border-orange-200 rounded-lg px-2 py-1 bg-white focus:outline-none st-type"
+                            data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                        <option value="sic"     ${isSIC    ?'selected':''}>SIC</option>
+                        <option value="private" ${!isSIC   ?'selected':''}>Private</option>
+                    </select>
+                    <button type="button" class="btn-remove-st text-red-400 hover:text-red-600 ml-1"
+                            data-day-idx="${dayIdx}" data-tr-idx="${ti}" title="Remove transfer">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+                <!-- Time + note -->
+                <div class="px-3 py-2 grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">Start Time</label>
+                        <input type="time" value="${tr.start_time||''}"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 st-start-time"
+                               data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">End Time</label>
+                        <input type="time" value="${tr.end_time||''}"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 st-end-time"
+                               data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-0.5">Note</label>
+                        <input type="text" value="${escHtml(tr.notes||'')}" placeholder="Optional note"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 st-notes"
+                               data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                    </div>
+                </div>
+                <!-- Car pricing rows -->
+                <div class="px-3 pb-2">
+                    <div class="grid grid-cols-6 gap-1 text-xs text-gray-400 font-medium px-1 mb-1">
+                        <span class="col-span-2">Car Name</span><span>Type</span><span>Adult</span><span>Child</span><span>Full</span>
+                    </div>
+                    <div class="st-pricing-list space-y-1.5" id="stPricingList_${dayIdx}_${ti}">
+                        ${(tr.pricing||[]).map((p, pi) => buildPricingRow(p, dayIdx, -1, ti, pi, isSIC, true)).join('')}
+                    </div>
+                    <button type="button" class="btn-add-st-car mt-1.5 text-xs px-2 py-1 rounded-lg border border-dashed border-orange-300 text-orange-500 hover:border-orange-500 hover:text-orange-700 transition"
+                            data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Car
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // Bind inputs on a single pricing row (avoids full re-render)
+    function bindPricingRowInputs(row, days, di, ai, ti, pi, standalone = false) {
+        const getAct  = () => standalone ? days[di].transfers[ti] : days[di].activities[ai].transfers[ti];
+        row.querySelector('.pr-car-name')?.addEventListener('input', e => {
+            const p = getAct().pricing[pi]; if (p) p.car_name = e.target.value;
+        });
+        row.querySelector('.pr-car-type')?.addEventListener('change', e => {
+            const p = getAct().pricing[pi]; if (p) p.car_type = e.target.value;
+        });
+        row.querySelector('.pr-adult')?.addEventListener('input', e => {
+            const p = getAct().pricing[pi]; if (p) p.price_adult = parseFloat(e.target.value)||null;
+        });
+        row.querySelector('.pr-child')?.addEventListener('input', e => {
+            const p = getAct().pricing[pi]; if (p) p.price_child = parseFloat(e.target.value)||null;
+        });
+        row.querySelector('.pr-full')?.addEventListener('input', e => {
+            const p = getAct().pricing[pi]; if (p) p.price_full = parseFloat(e.target.value)||null;
+        });
+    }
+
+        function bindStandaloneTransferEvents(days) {
+        const el = document.getElementById('itineraryDays');
+        if (!el) return;
+
+        el.querySelectorAll('.st-title').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const di = +e.target.dataset.dayIdx, ti = +e.target.dataset.trIdx;
+                if (!days[di].transfers) return;
+                days[di].transfers[ti].title = e.target.value;
+            })
+        );
+        el.querySelectorAll('.st-type').forEach(sel =>
+            sel.addEventListener('change', e => {
+                const di = +e.target.dataset.dayIdx, ti = +e.target.dataset.trIdx;
+                if (!days[di].transfers) return;
+                days[di].transfers[ti].type = e.target.value;
+                const isSIC = e.target.value === 'sic';
+                const listEl = document.getElementById(`stPricingList_${di}_${ti}`);
+                if (listEl) {
+                    listEl.querySelectorAll('.pr-adult,.pr-child').forEach(i => {
+                        i.classList.toggle('opacity-30', !isSIC);
+                        i.classList.toggle('pointer-events-none', !isSIC);
+                    });
+                    listEl.querySelectorAll('.pr-full').forEach(i => {
+                        i.classList.toggle('opacity-30', isSIC);
+                        i.classList.toggle('pointer-events-none', isSIC);
+                    });
+                }
+            })
+        );
+        el.querySelectorAll('.st-start-time').forEach(inp =>
+            inp.addEventListener('change', e => {
+                const di = +e.target.dataset.dayIdx, ti = +e.target.dataset.trIdx;
+                if (days[di].transfers) days[di].transfers[ti].start_time = e.target.value;
+            })
+        );
+        el.querySelectorAll('.st-end-time').forEach(inp =>
+            inp.addEventListener('change', e => {
+                const di = +e.target.dataset.dayIdx, ti = +e.target.dataset.trIdx;
+                if (days[di].transfers) days[di].transfers[ti].end_time = e.target.value;
+            })
+        );
+        el.querySelectorAll('.st-notes').forEach(inp =>
+            inp.addEventListener('input', e => {
+                const di = +e.target.dataset.dayIdx, ti = +e.target.dataset.trIdx;
+                if (days[di].transfers) days[di].transfers[ti].notes = e.target.value;
+            })
+        );
+        el.querySelectorAll('.btn-remove-st').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.dayIdx, ti = +btn.dataset.trIdx;
+                if (days[di].transfers) days[di].transfers.splice(ti, 1);
+                const listEl = document.getElementById(`dayTransList_${di}`);
+                if (listEl) {
+                    listEl.innerHTML = buildStandaloneTransferList(days[di], di);
+                    bindStandaloneTransferEvents(days);
+                }
+            })
+        );
+        el.querySelectorAll('.btn-add-st-car').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.dayIdx, ti = +btn.dataset.trIdx;
+                if (!days[di].transfers) return;
+                const tr = days[di].transfers[ti];
+                if (!tr.pricing) tr.pricing = [];
+                const pi     = tr.pricing.length;
+                const isSIC  = (tr.type || 'sic') === 'sic';
+                const newPricing = { car_name:'', car_type:'sedan', price_adult:null, price_child:null, price_full:null };
+                tr.pricing.push(newPricing);
+                // Only append the new row — do NOT re-render the whole list
+                const listEl = document.getElementById(`stPricingList_${di}_${ti}`);
+                if (listEl) {
+                    const div = document.createElement('div');
+                    div.innerHTML = buildPricingRow(newPricing, di, -1, ti, pi, isSIC, true);
+                    const row = div.firstElementChild;
+                    listEl.appendChild(row);
+                    // Bind inputs on just the new row
+                    bindPricingRowInputs(row, days, di, -1, ti, pi, true);
+                }
+            })
+        );
+    }
+
+        // ── Bind activity card field events ─────────────────────────────
     function bindActivityCardEvents(days) {
         const el = document.getElementById('itineraryDays');
         if (!el) return;
@@ -1307,11 +1500,44 @@ const PackageBuilder = (() => {
                 const di = +btn.dataset.dayIdx, ai = +btn.dataset.actIdx;
                 const act = days[di].activities[ai];
                 if (!act.transfers) act.transfers = [];
-                act.transfers.push({ title:'', type:'sic', notes:'', pricing:[] });
+                const ti  = act.transfers.length;
+                const newTr = { title:'', type:'sic', notes:'', pricing:[] };
+                act.transfers.push(newTr);
+                // Append just the new transfer row
                 const listEl = document.getElementById(`transferList_${di}_${ai}`);
                 if (listEl) {
-                    listEl.innerHTML = buildTransferRows(act, di, ai);
-                    bindActivityCardEvents(days);
+                    const noMsg = listEl.querySelector('p');
+                    if (noMsg) noMsg.remove();
+                    const div = document.createElement('div');
+                    div.innerHTML = buildTransferRows({ transfers:[newTr] }, di, ai).replace(
+                        /data-tr-idx="0"/g, `data-tr-idx="${ti}"`
+                    );
+                    const row = div.firstElementChild;
+                    listEl.appendChild(row);
+                    // Bind just this new transfer row
+                    row.querySelector('.tr-title')?.addEventListener('input', e => { act.transfers[ti].title = e.target.value; });
+                    row.querySelector('.tr-type')?.addEventListener('change', e => { act.transfers[ti].type = e.target.value; });
+                    row.querySelector('.btn-remove-transfer')?.addEventListener('click', () => {
+                        act.transfers.splice(ti, 1);
+                        renderItineraryDays();
+                    });
+                    row.querySelector('.btn-add-car-row')?.setAttribute('data-tr-idx', ti);
+                    // re-bind add-car for this row
+                    row.querySelector('.btn-add-car-row')?.addEventListener('click', () => {
+                        if (!act.transfers[ti].pricing) act.transfers[ti].pricing = [];
+                        const pi = act.transfers[ti].pricing.length;
+                        const isSIC = (act.transfers[ti].type || 'sic') === 'sic';
+                        const newP = { car_name:'', car_type:'sedan', price_adult:null, price_child:null, price_full:null };
+                        act.transfers[ti].pricing.push(newP);
+                        const pList = row.querySelector('.transfer-pricing-list');
+                        if (pList) {
+                            const d2 = document.createElement('div');
+                            d2.innerHTML = buildPricingRow(newP, di, ai, ti, pi, isSIC, false);
+                            const pRow = d2.firstElementChild;
+                            pList.appendChild(pRow);
+                            bindPricingRowInputs(pRow, days, di, ai, ti, pi, false);
+                        }
+                    });
                 }
             })
         );
@@ -1322,11 +1548,18 @@ const PackageBuilder = (() => {
                 const di = +btn.dataset.dayIdx, ai = +btn.dataset.actIdx, ti = +btn.dataset.trIdx;
                 const tr = days[di].activities[ai].transfers[ti];
                 if (!tr.pricing) tr.pricing = [];
-                tr.pricing.push({ car_name:'', car_type:'sedan', price_adult:null, price_child:null, price_full:null });
-                const listEl = document.getElementById(`transferList_${di}_${ai}`);
-                if (listEl) {
-                    listEl.innerHTML = buildTransferRows(days[di].activities[ai], di, ai);
-                    bindActivityCardEvents(days);
+                const pi     = tr.pricing.length;
+                const isSIC  = (tr.type || 'sic') === 'sic';
+                const newP   = { car_name:'', car_type:'sedan', price_adult:null, price_child:null, price_full:null };
+                tr.pricing.push(newP);
+                // Only append the new row — find the specific pricing list div
+                const tRow = document.querySelector(`#transferList_${di}_${ai} [data-tr-idx="${ti}"] .transfer-pricing-list`);
+                if (tRow) {
+                    const div = document.createElement('div');
+                    div.innerHTML = buildPricingRow(newP, di, ai, ti, pi, isSIC, false);
+                    const row = div.firstElementChild;
+                    tRow.appendChild(row);
+                    bindPricingRowInputs(row, days, di, ai, ti, pi, false);
                 }
             })
         );
@@ -2010,7 +2243,14 @@ const PackageBuilder = (() => {
                 }
                 modal.remove();
                 toast('success', 'Package finalized successfully!');
-                setTimeout(() => window.location.href = 'index-packages.php', 1500);
+                // Open PDF modal so user can immediately download
+                setTimeout(() => {
+                    if (typeof PdfGenerator !== 'undefined') {
+                        PdfGenerator.openAfterFinalize(state.sys_id);
+                    } else {
+                        window.location.href = 'index-packages.php';
+                    }
+                }, 600);
             } catch(e) {
                 const errEl = modal.querySelector('#finalizeError');
                 errEl.textContent = 'Network error: ' + e.message;

@@ -54,6 +54,7 @@ $activitiesBaseApi  = $ip_port."api/masterdata/activities/";
     </script>
 
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
+    <script src="../assets/js/pdf-generator.js?time=<?php echo time(); ?>"></script>
     <script src="../assets/js/package-builder.js?time=<?php echo time(); ?>"></script>
 
     <script>

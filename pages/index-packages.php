@@ -45,6 +45,7 @@ if (empty($ip_port)) {
     </script>
 
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
+    <script src="../assets/js/pdf-generator.js?time=<?php echo time(); ?>"></script>
     <script src="../assets/js/packages-list.js?time=<?php echo time(); ?>"></script>
 
     <script>
