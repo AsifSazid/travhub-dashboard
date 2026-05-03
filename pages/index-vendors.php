@@ -6,9 +6,7 @@ if (empty($ip_port)) {
 }
 
 $storeAllVendorApi = $ip_port . "api/vendors/all-vendors.php";
-$storeDeleteApi = $ip_port . "api/vendors/delete-vendor.php";
-$storeClientApi = $ip_port . "api/clients/vendor-store.php";
-$removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
+$toggleVendorClientApi = $ip_port . "api/vendors/vendor-store.php";
 
 ?>
 
@@ -18,12 +16,50 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete Work Entry</title>
+    <title>Vendor Lists</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .toast-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .toast-error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .toast-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .switch-loading {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .table-row-hover:hover {
+            background-color: #f9fafb;
+            transition: background-color 0.2s ease;
+        }
+    </style>
     <script>
         tailwind.config = {
             theme: {
@@ -80,7 +116,7 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
                     </div>
 
                     <div class="overflow-x-auto table-container">
-                        <table id="clientTable" class="min-w-full divide-y divide-gray-200">
+                        <table id="vendorTable" class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl No</th>
@@ -93,7 +129,15 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="clientTableBody" class="bg-white divide-y divide-gray-200">
+                            <tbody id="vendorTableBody" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                                            <p class="text-sm">Loading vendors...</p>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -109,77 +153,104 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
 
     <script>
         const API_URL_FOR_ALL_VENDORS = "<?php echo $storeAllVendorApi; ?>";
-        const API_URL_FOR_VENDOR_DELETE = "<?php echo $storeDeleteApi; ?>";
-        const API_URL_FOR_CLIENT_STORE = "<?php echo $storeClientApi;?>";
-        const API_URL_FOR_CLIENT_REMOVE = "<?php echo $removeVendorClientApi;?>";
+        const API_URL_FOR_TOGGLE_CLIENT = "<?php echo $toggleVendorClientApi; ?>";
 
-        // Client
-        const tableBody = document.getElementById('clientTableBody');
+        const tableBody = document.getElementById('vendorTableBody');
+        let vendorsData = [];
 
-        function loadVendor() {
-            let vendorsData = [];
+        function loadVendors() {
+            // Show loading state
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                            <p class="text-sm">Loading vendors...</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
             fetch(API_URL_FOR_ALL_VENDORS)
                 .then(res => res.json())
                 .then(data => {
-                    vendorsData = data.vendors;
-                    renderDropdown(vendorsData);
+                    if (data.success && data.vendors) {
+                        vendorsData = data.vendors;
+                        renderTable(vendorsData);
+                    } else {
+                        renderTable([]);
+                        if (data.message) {
+                            showToast(data.message, 'warning');
+                        }
+                    }
                 })
-                .catch(err => console.error(err));
+                .catch(err => {
+                    console.error('Error loading vendors:', err);
+                    renderTable([]);
+                    showToast('Failed to load vendors. Please check your connection.', 'error');
+                });
         }
 
-        function renderDropdown(list) {
-            // আগের ডাটা মুছে ফেলা
+        function renderTable(list) {
             tableBody.innerHTML = '';
             
             if (!list || list.length === 0) {
                 const tr = document.createElement('tr');
-        
                 tr.innerHTML = `
                     <td colspan="8" class="px-6 py-10 text-center text-gray-500">
                         <div class="flex flex-col items-center gap-2">
-                            <i class="fas fa-users-slash text-3xl text-gray-400"></i>
+                            <i class="fas fa-store-slash text-3xl text-gray-400"></i>
                             <p class="text-sm">No Vendors Found!</p>
+                            <p class="text-xs text-gray-400 mt-1">Click "Add New Vendor" to create one</p>
                         </div>
                     </td>
                 `;
-        
                 tableBody.appendChild(tr);
                 return;
             }
 
             list.forEach((vendor, index) => {
-                const phoneObj = JSON.parse(vendor.phone);
-                const primaryPhone = phoneObj.primary_no;
+                try {
+                    const phoneObj = JSON.parse(vendor.phone || '{}');
+                    const primaryPhone = phoneObj.primary_no || 'Unknown';
 
-                const emailObj = JSON.parse(vendor.email);
-                const primaryEmail = emailObj.primary;
+                    const emailObj = JSON.parse(vendor.email || '{}');
+                    const primaryEmail = emailObj.primary || 'Unknown';
 
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50";
+                    const tr = document.createElement('tr');
+                    tr.className = "table-row-hover transition-colors duration-150";
+                    tr.setAttribute('data-vendor-id', vendor.id);
 
-                // টেবিল রো (Row) এর ভেতরে কলামগুলো তৈরি করা
-                tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index+1}</td>
+                    const vendorSysId = vendor.vendor_sys_id || vendor.sys_id || 'No ID';
+                    const vendorName = vendor.name || 'No Name';
+                    
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
-                                ${vendor.sys_id || 'No ID'}
+                            <a href="show-vendors.php?vendor_id=${vendorSysId}" class="text-blue-600 hover:text-blue-800 hover:underline" title="Details">
+                                ${escapeHtml(vendorSysId)}
                             </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
-                                ${vendor.name || 'No Name'}
+                            <a href="show-vendors.php?vendor_id=${vendorSysId}" class="text-blue-600 hover:text-blue-800 hover:underline" title="Details">
+                                ${escapeHtml(vendorName)}
                             </a>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${primaryPhone || 'Unknown'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${primaryEmail || 'Unknown'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${vendor.type || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${escapeHtml(primaryPhone)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(primaryEmail)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(vendor.type)}">
+                                ${vendor.type || 'Unknown'}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <label class="inline-flex items-center cursor-pointer">
                                 <input 
                                     type="checkbox"
-                                    class="sr-only peer"
+                                    class="sr-only peer client-toggle"
+                                    data-vendor-id="${vendor.id}"
                                     ${vendor.is_client == 1 ? 'checked' : ''}
-                                    onchange="toggleClient(${vendor.id}, this)"
+                                    onchange="toggleClientStatus(${vendor.id}, this)"
                                 >
                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
                                     peer-checked:bg-green-600 
@@ -190,73 +261,143 @@ $removeVendorClientApi = $ip_port . "api/clients/edit-vendor-client.php";
                             </label>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <a href="show-vendors.php?vendor_id=${vendor.sys_id}" title="Details">
+                            <a href="show-vendors.php?vendor_id=${vendorSysId}" class="text-blue-600 hover:text-blue-800 transition-colors" title="Details">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </td>
                     `;
 
-                tableBody.appendChild(tr);
+                    tableBody.appendChild(tr);
+                } catch (error) {
+                    console.error('Error rendering vendor:', vendor, error);
+                }
             });
         }
 
-        function toggleClient(vendorId, checkbox) {
-            const url = checkbox.checked ?
-                API_URL_FOR_CLIENT_STORE :
-                API_URL_FOR_CLIENT_REMOVE;
-
-            fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        vendor_id: vendorId
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Vendor added successfully');
-                    } else {
-                        alert('Failed to add vendor');
-                        checkbox.checked = false;
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    checkbox.checked = false;
-                    alert('Something went wrong');
-                });
+        function getTypeColor(type) {
+            const colors = {
+                'individual': 'bg-blue-100 text-blue-800',
+                'company': 'bg-purple-100 text-purple-800',
+                'retailer': 'bg-green-100 text-green-800',
+                'wholesaler': 'bg-orange-100 text-orange-800',
+                'distributor': 'bg-red-100 text-red-800'
+            };
+            return colors[type?.toLowerCase()] || 'bg-gray-100 text-gray-800';
         }
 
-        function deleteVendor(clientId) {
-            fetch(API_URL_FOR_VENDOR_DELETE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        client_id: clientId
-                    })
+        function toggleClientStatus(vendorId, checkbox) {
+            const action = checkbox.checked ? 'enable' : 'disable';
+            
+            // Disable checkbox while processing
+            checkbox.disabled = true;
+            const parentLabel = checkbox.closest('label');
+            if (parentLabel) {
+                parentLabel.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            
+            fetch(API_URL_FOR_TOGGLE_CLIENT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    vendor_id: vendorId,
+                    action: action
                 })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Vendor deleted successfully');
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const message = checkbox.checked ? 
+                        '✓ Vendor converted to client successfully!' : 
+                        '✓ Client relation removed successfully!';
+                    showToast(message, 'success');
+                    
+                    // Update the is_client status in local data
+                    const vendorIndex = vendorsData.findIndex(v => v.id == vendorId);
+                    if (vendorIndex !== -1) {
+                        vendorsData[vendorIndex].is_client = checkbox.checked ? 1 : 0;
                     }
-                    loadVendor();
-                })
-                .catch(err => {
-                    console.error(err);
-                    checkbox.checked = false;
-                    alert('Something went wrong');
-                });
-
-
+                } else {
+                    // Rollback checkbox state
+                    checkbox.checked = !checkbox.checked;
+                    showToast(data.message || '✗ Failed to toggle client status', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                checkbox.checked = !checkbox.checked;
+                showToast('✗ Network error! Please check your connection and try again.', 'error');
+            })
+            .finally(() => {
+                checkbox.disabled = false;
+                const parentLabel = checkbox.closest('label');
+                if (parentLabel) {
+                    parentLabel.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
         }
 
-        loadVendor();
+        function showToast(message, type = 'success') {
+            // Remove existing toasts
+            const existingToasts = document.querySelectorAll('.custom-toast');
+            existingToasts.forEach(toast => toast.remove());
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            const toastClass = type === 'success' ? 'toast-success' : (type === 'warning' ? 'toast-warning' : 'toast-error');
+            toast.className = `custom-toast fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 animate-fade-in ${toastClass}`;
+            
+            const icon = type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle');
+            
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas ${icon} text-lg"></i>
+                    <span class="text-sm font-medium">${escapeHtml(message)}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                toast.style.transition = 'all 0.3s ease-out';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Load vendors when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVendors();
+        });
+        
+        // Auto-refresh every 30 seconds (optional)
+        let refreshInterval;
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (refreshInterval) clearInterval(refreshInterval);
+            } else {
+                loadVendors();
+                refreshInterval = setInterval(loadVendors, 30000);
+            }
+        });
+        
+        // Start auto-refresh
+        refreshInterval = setInterval(loadVendors, 30000);
     </script>
 </body>
 

@@ -1,5 +1,7 @@
 <?php
+session_start();
 require '../../server/db_connection.php'; // $pdo
+require '../../server/generate_meta_data.php';
 require '../../server/uuid_with_system_id_generator.php';
 
 header('Content-Type: application/json');
@@ -10,6 +12,9 @@ header('Access-Control-Allow-Headers: Content-Type');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+/* ======================
+   Validate Request
+   ====================== */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode([
         'success' => false,
@@ -20,194 +25,224 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-if (empty($data['vendor_id'])) {
+if (empty($data['client_id'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Vendor ID required'
+        'message' => 'Client ID required'
     ]);
     exit;
 }
 
-$vendor_id = (int) $data['vendor_id'];
+$client_id = $data['client_id'];
+$action = $data['action'] ?? 'toggle'; // 'toggle', 'enable', 'disable'
 
 try {
-    // 🔐 Start Transaction
     $pdo->beginTransaction();
 
     /* ======================
-       1️⃣ Fetch Vendor
+       1️⃣ Fetch Client
        ====================== */
     $stmt = $pdo->prepare("
-        SELECT *
-        FROM vendors
+        SELECT id, uuid, client_sys_id, name, email, phone, address, is_vendor
+        FROM clients
         WHERE id = :id
         LIMIT 1
     ");
-    $stmt->execute(['id' => $vendor_id]);
-    $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute(['id' => $client_id]);
+    $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$vendor) {
-        throw new Exception('Vendor not found');
+    if (!$client) {
+        throw new Exception('Client not found');
     }
 
-    if ((int)$vendor['is_client'] === 1) {
-        $pdo->rollBack();
-        echo json_encode([
-            'success' => true,
-            'message' => 'Vendor already client'
-        ]);
-        exit;
-    }
-
-
-    $clientSearchStmt = $pdo->prepare("
-        SELECT *
-        FROM clients
-        WHERE vendor_id = :id
+    /* ======================
+       2️⃣ Check if Already Vendor (from both sides)
+       ====================== */
+    $checkStmt = $pdo->prepare("
+        SELECT id, uuid, vendor_sys_id, name, status, is_client
+        FROM vendors
+        WHERE client_sys_id = :client_sys_id
+           OR id = (SELECT vendor_sys_id FROM clients WHERE id = :client_id)
         LIMIT 1
     ");
-    $clientSearchStmt->execute(['id' => $vendor_id]);
-    $foundedClient = $clientSearchStmt->fetch(PDO::FETCH_ASSOC);
-    if ($foundedClient) {
-        $stmt = $pdo->prepare("
+    $checkStmt->execute([
+        'client_sys_id' => $client_id,
+        'client_id' => $client_id
+    ]);
+    
+    $existingVendor = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+    /* ======================
+       3️⃣ If Disable/Remove Action
+       ====================== */
+    if ($action === 'disable' || ($action === 'toggle' && $existingVendor)) {
+        
+        if (!$existingVendor) {
+            throw new Exception('No vendor relation found to disable');
+        }
+        
+        // Only remove the relationship, don't delete the vendor
+        $updateClient = $pdo->prepare("
+            UPDATE clients
+            SET is_vendor = 0
+            WHERE id = :client_id
+        ");
+        $updateClient->execute(['client_id' => $client_id]);
+        
+        // Mark vendor as inactive but keep record
+        $updateVendor = $pdo->prepare("
             UPDATE vendors
-            SET
-                is_client      = 1,
-                client_id      = :client_id,
-                client_uuid    = :client_uuid,
-                client_sys_id  = :client_sys_id,
-                client_name    = :client_name
+            SET is_client = 0,
+                status = 'inactive'
             WHERE id = :vendor_id
         ");
-
-        $stmt->execute([
-            'client_id'     => $foundedClient['id'],
-            'client_uuid'   => $foundedClient['uuid'],
-            'client_sys_id' => $foundedClient['client_sys_id'],
-            'client_name'   => $foundedClient['name'],
-            'vendor_id'     => $vendor_id
-        ]);
-
+        $updateVendor->execute(['vendor_id' => $existingVendor['id']]);
+        
         $pdo->commit();
+        
         echo json_encode([
             'success' => true,
-            'message' => 'Vendor and client Synchronization Complete'
+            'message' => 'Client removed from vendors (but vendor record kept)',
+            'is_active' => false
         ]);
         exit;
     }
 
     /* ======================
-       2️⃣ Generate Client IDs
+       4️⃣ If Already Exists → Sync (Enable)
        ====================== */
-    $clientIDs = generateIDs('clients');
-
-    $client_uuid   = $clientIDs['uuid'];
-    $client_sys_id = $clientIDs['sys_id'];
-    $client_name   = $vendor['name'];
+    if ($existingVendor) {
+        
+        // Reactivate the relation
+        $updateClient = $pdo->prepare("
+            UPDATE clients
+            SET is_vendor = 1,
+                vendor_sys_id = :vendor_sys_id
+            WHERE id = :client_id
+        ");
+        $updateClient->execute([
+            'vendor_sys_id' => $existingVendor['vendor_sys_id'],
+            'client_id' => $client_id
+        ]);
+        
+        $updateVendor = $pdo->prepare("
+            UPDATE vendors
+            SET is_client = 1,
+                status = 'active'
+            WHERE id = :vendor_id
+        ");
+        $updateVendor->execute(['vendor_id' => $existingVendor['id']]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Existing vendor-client relation reactivated',
+            'is_active' => true,
+            'vendor' => [
+                'id' => $existingVendor['id'],
+                'sys_id' => $existingVendor['vendor_sys_id'],
+                'name' => $existingVendor['name']
+            ]
+        ]);
+        exit;
+    }
 
     /* ======================
-       3️⃣ Insert Client
+       5️⃣ Create New Vendor
        ====================== */
-    $stmt = $pdo->prepare("
-        INSERT INTO clients (
+    $vendorIDs = generateIDs('vendors');
+    
+    $vendor_uuid   = $vendorIDs['uuid'];
+    $vendor_sys_id = $vendorIDs['sys_id'];
+    $vendor_name   = $client['name'];
+    
+    $metaDataJson = buildMetaData(
+        null,
+        $_SESSION['user_name'] ?? 'system'
+    );
+    
+    $insertVendor = $pdo->prepare("
+        INSERT INTO vendors (
             uuid,
-            client_sys_id,
+            vendor_sys_id,
             type,
             name,
             email,
             phone,
             address,
             status,
-            is_vendor,
-            vendor_id,
-            vendor_uuid,
-            vendor_sys_id,
-            vendor_name,
-            created_by,
-            updated_by
+            is_client,
+            client_sys_id,
+            meta_data
         )
         VALUES (
             :uuid,
-            :client_sys_id,
+            :vendor_sys_id,
             :type,
             :name,
             :email,
             :phone,
             :address,
             :status,
-            :is_vendor,
-            :vendor_id,
-            :vendor_uuid,
-            :vendor_sys_id,
-            :vendor_name,
-            :created_by,
-            :updated_by
+            :is_client,
+            :client_sys_id,
+            :meta_data
         )
     ");
-
-    $stmt->execute([
-        'uuid'           => $client_uuid,
-        'client_sys_id'  => $client_sys_id,
-        'type'           => 'vendor',
-        'name'           => $client_name,
-        'email'          => $vendor['email'],
-        'phone'          => $vendor['phone'],
-        'address'        => $vendor['address'],
+    
+    $insertVendor->execute([
+        'uuid'           => $vendor_uuid,
+        'vendor_sys_id'  => $vendor_sys_id,
+        'type'           => 'client',
+        'name'           => $vendor_name,
+        'email'          => $client['email'],
+        'phone'          => $client['phone'],
+        'address'        => $client['address'],
         'status'         => 'active',
-        'is_vendor'      => '1',
-        'vendor_id'      => $vendor['id'],
-        'vendor_uuid'    => $vendor['uuid'],
-        'vendor_sys_id'  => $vendor['vendor_sys_id'],
-        'vendor_name'    => $vendor['name'],
-        'created_by'     => 'system',
-        'updated_by'     => 'system'
+        'is_client'      => 1,
+        'client_sys_id'  => $client_id,
+        'meta_data'      => $metaDataJson
     ]);
-
-    $client_db_id = $pdo->lastInsertId();
-
+    
+    $vendor_db_id = $pdo->lastInsertId();
+    
     /* ======================
-       4️⃣ Update Vendor with Client Info
+       6️⃣ Update Client
        ====================== */
-    $stmt = $pdo->prepare("
-        UPDATE vendors
-        SET
-            is_client      = 1,
-            client_id      = :client_id,
-            client_uuid    = :client_uuid,
-            client_sys_id  = :client_sys_id,
-            client_name    = :client_name
-        WHERE id = :vendor_id
+    $updateClient = $pdo->prepare("
+        UPDATE clients
+        SET is_vendor = 1,
+            vendor_sys_id = :vendor_sys_id
+        WHERE id = :client_id
     ");
-
-    $stmt->execute([
-        'client_id'     => $client_db_id,
-        'client_uuid'   => $client_uuid,
-        'client_sys_id' => $client_sys_id,
-        'client_name'   => $client_name,
-        'vendor_id'     => $vendor_id
+    
+    $updateClient->execute([
+        'vendor_sys_id' => $vendor_sys_id,
+        'client_id'     => $client['id']
     ]);
-
-    // ✅ Commit
+    
     $pdo->commit();
-
+    
     echo json_encode([
         'success' => true,
-        'message' => 'Vendor converted to client successfully',
-        'client'  => [
-            'id'       => $client_db_id,
-            'uuid'     => $client_uuid,
-            'sys_id'   => $client_sys_id,
-            'name'     => $client_name
+        'message' => 'Client converted to vendor successfully',
+        'is_active' => true,
+        'vendor'  => [
+            'id' => $vendor_db_id,
+            'sys_id' => $vendor_sys_id,
+            'name'   => $vendor_name
         ]
     ]);
+    
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-
+    
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
     ]);
 }
-
+?>

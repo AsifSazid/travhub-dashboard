@@ -93,10 +93,14 @@ if (!is_array($data['guest_names'])) {
 // Helper to handle htmlspecialchars safely in PHP 8.1+
 function safeHtml($str) {
     if (is_array($str)) {
-        // If it's an array, convert to string representation or return empty string
-        return htmlspecialchars(implode(', ', $str) ?? "");
+        return htmlspecialchars(implode(', ', array_filter($str)), ENT_QUOTES, 'UTF-8');
     }
-    return htmlspecialchars($str ?? "", ENT_QUOTES, 'UTF-8');
+
+    if (!is_string($str)) {
+        $str = strval($str); // force convert (safe fallback)
+    }
+
+    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
 function formatDate($dateStr) {
@@ -238,35 +242,34 @@ $raw_price = is_numeric($data['total_price']) ? floatval($data['total_price']) :
                 <div>
                     <h2 class="section-title" contenteditable="true" id="hotel-name"><?php echo safeHtml($data['hotel_name']); ?></h2>
                     <?php
-                        // Full address in one line
-                        $fullAddress = [];
-                        
-                        if (isset($data['hotel_address'])) {
-                            if (is_array($data['hotel_address'])) {
-                                if (isset($data['hotel_address'][0]) && is_array($data['hotel_address'][0])) {
-                                    // Format: address_line_1, address_line_2, city, state, zip
-                                    $addr = $data['hotel_address'][0];
-                                    if (!empty($addr['address_line_1'])) $fullAddress[] = $addr['address_line_1'];
-                                    if (!empty($addr['address_line_2'])) $fullAddress[] = $addr['address_line_2'];
-                                    if (!empty($addr['address_city'])) $fullAddress[] = $addr['address_city'];
-                                    if (!empty($addr['address_state'])) $fullAddress[] = $addr['address_state'];
-                                    if (!empty($addr['address_zip_code'])) $fullAddress[] = $addr['address_zip_code'];
-                                } else {
-                                    if (!empty($data['hotel_address']['address_line_1'])) $fullAddress[] = $data['hotel_address']['address_line_1'];
-                                    if (!empty($data['hotel_address']['address_line_2'])) $fullAddress[] = $data['hotel_address']['address_line_2'];
-                                    if (!empty($data['hotel_address']['address_city'])) $fullAddress[] = $data['hotel_address']['address_city'];
-                                    if (!empty($data['hotel_address']['address_state'])) $fullAddress[] = $data['hotel_address']['address_state'];
-                                    if (!empty($data['hotel_address']['address_zip_code'])) $fullAddress[] = $data['hotel_address']['address_zip_code'];
-                                }
-                            }
+                    $fullAddress = [];
+                    
+                    if (!empty($data['hotel_address']) && is_array($data['hotel_address'])) {
+                    
+                        $addr = $data['hotel_address'][0] ?? $data['hotel_address'];
+                    
+                        if (is_array($addr)) {
+                            if (!empty($addr['address_line_1'])) $fullAddress[] = $addr['address_line_1'];
+                            if (!empty($addr['address_line_2'])) $fullAddress[] = $addr['address_line_2'];
+                            if (!empty($addr['address_city'])) $fullAddress[] = $addr['address_city'];
+                            if (!empty($addr['address_state'])) $fullAddress[] = $addr['address_state'];
+                            if (!empty($addr['address_zip_code'])) $fullAddress[] = $addr['address_zip_code'];
                         }
-                        
-                        if (!empty($fullAddress)) {
-                            echo '<p style="color: var(--text-muted); font-size: 12px; max-width: 500px;" contenteditable="true" id="hotel-address">' . safeHtml(implode(', ', $fullAddress)) . '</p>';
-                        } else {
-                            echo '<p style="color: var(--text-muted); font-size: 12px; max-width: 500px;" contenteditable="true" id="hotel-address">' . safeHtml($data['hotel_address'] ?? 'Address not available') . '</p>';
-                        }
+                    }
+                    
+                    // Final text
+                    $addressText = !empty($fullAddress)
+                        ? implode(', ', $fullAddress)
+                        : (is_string($data['hotel_address'] ?? null) ? $data['hotel_address'] : 'Address not available');
                     ?>
+                    
+                    <p 
+                        style="color: var(--text-muted); font-size: 12px; max-width: 500px;" 
+                        contenteditable="true" 
+                        id="hotel-address"
+                    >
+                        <?= safeHtml($addressText); ?>
+                    </p>
                     <p style="margin-top: 5px; font-size: 12px;">
                         <strong>Phone:</strong> 
                         <span contenteditable="true" id="hotel-phone"><?php echo safeHtml($data['hotel_phone']); ?></span>

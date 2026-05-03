@@ -641,7 +641,8 @@ const PackageBuilder = (() => {
 
     function renderStep4() {
         const cities = state.steps[2].cities;
-        document.getElementById('stepContent').innerHTML = `
+        const sc = document.getElementById('stepContent');
+        sc.innerHTML = `
         <h2 class="text-lg font-bold text-gray-800 mb-1">Accommodation</h2>
         <p class="text-sm text-gray-400 mb-6">Add hotels for each city</p>
         ${cities.length === 0
@@ -650,21 +651,67 @@ const PackageBuilder = (() => {
                    <p>No cities selected. Go back to Step 2 to select cities.</p>
                </div>`
             : `<div class="space-y-5" id="hotelsContainer">${cities.map(city => renderCityHotels(city)).join('')}</div>`}`;
-        if (cities.length) rebindHotelEvents();
+
+        if (!cities.length) return;
+
+        // ── Single delegated listener on the whole container ─────────
+        const container = document.getElementById('hotelsContainer');
+
+        container.addEventListener('click', e => {
+            // Add Hotel
+            const addBtn = e.target.closest('.add-hotel-btn');
+            if (addBtn) {
+                const cityId = addBtn.dataset.cityId;  // keep as raw string
+                const city   = state.steps[2].cities.find(c => String(c.id) === String(cityId));
+                const hotel  = { city_id: cityId, city_name: city?.name||'', hotel_title:'' };
+                state.steps[4].hotels.push(hotel);
+                const list = document.getElementById(`hotelsList_${cityId}`);
+                if (!list) { console.error('hotelsList not found for cityId:', cityId); return; }
+                const idx  = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId)).length - 1;
+                const div  = document.createElement('div');
+                div.innerHTML = hotelRowHTML(cityId, idx);
+                list.appendChild(div.firstElementChild);
+                return;
+            }
+            // Remove Hotel
+            const removeBtn = e.target.closest('.remove-hotel');
+            if (removeBtn) {
+                const row        = removeBtn.closest('.hotel-row');
+                const cityId     = row.dataset.cityId;
+                const idx        = parseInt(row.dataset.idx);
+                const cityHotels = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId));
+                const globalIdx  = state.steps[4].hotels.indexOf(cityHotels[idx]);
+                if (globalIdx >= 0) state.steps[4].hotels.splice(globalIdx, 1);
+                row.remove();
+                return;
+            }
+        });
+
+        // Input delegation — update state on typing
+        container.addEventListener('input', e => {
+            const inp = e.target.closest('.hotel-name');
+            if (!inp) return;
+            const row        = inp.closest('.hotel-row');
+            const cityId     = row.dataset.cityId;
+            const idx        = parseInt(row.dataset.idx);
+            const cityHotels = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId));
+            if (cityHotels[idx]) cityHotels[idx].hotel_title = inp.value;
+        });
     }
 
     function renderCityHotels(city) {
-        const cityHotels = state.steps[4].hotels.filter(h => h.city_id === city.id);
+        const cityId     = city.id;  // keep raw — may be sys_id string or integer
+        const cityHotels = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId));
         return `
-        <div class="border border-gray-200 rounded-2xl p-4" data-city-id="${city.id}">
+        <div class="border border-gray-200 rounded-2xl p-4">
             <div class="flex items-center gap-2 mb-3">
                 <i class="fa-solid fa-location-dot text-blue-500"></i>
                 <h3 class="font-semibold text-gray-700">${escHtml(city.name)}</h3>
             </div>
-            <div class="space-y-2" id="hotelsList_${city.id}">
-                ${cityHotels.map((h,i) => hotelRowHTML(city.id, i, h)).join('')}
+            <div class="space-y-2" id="hotelsList_${cityId}">
+                ${cityHotels.map((h,i) => hotelRowHTML(cityId, i, h)).join('')}
             </div>
-            <button type="button" data-city-id="${city.id}"
+            <button type="button" data-city-id="${cityId}"
                     class="add-hotel-btn mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
                 <i class="fa-solid fa-plus-circle"></i> Add Hotel
             </button>
@@ -674,50 +721,14 @@ const PackageBuilder = (() => {
     function hotelRowHTML(cityId, idx, hotel = {}) {
         return `
         <div class="flex items-center gap-2 hotel-row" data-city-id="${cityId}" data-idx="${idx}">
-            <input type="text" placeholder="Hotel name" value="${escHtml(hotel.hotel_title||'')}"
+            <i class="fa-solid fa-hotel text-gray-300 text-sm flex-shrink-0"></i>
+            <input type="text" placeholder="Hotel name"
+                   value="${escHtml(hotel?.hotel_title||'')}"
                    class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 hotel-name">
-            <select class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 hotel-type">
-                ${['3 Star','4 Star','5 Star','Budget','Boutique','Resort'].map(t=>
-                    `<option value="${t}" ${hotel.type===t?'selected':''}>${t}</option>`).join('')}
-            </select>
-            <button type="button" class="remove-hotel w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition text-xs">
+            <button type="button" class="remove-hotel w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition text-xs flex-shrink-0">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>`;
-    }
-
-    function rebindHotelEvents() {
-        document.querySelectorAll('.add-hotel-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const cityId = parseInt(btn.dataset.cityId);
-                const city   = state.steps[2].cities.find(c => c.id === cityId);
-                state.steps[4].hotels.push({ city_id: cityId, city_name: city?.name||'', hotel_title:'', type:'3 Star' });
-                const container = document.getElementById(`hotelsList_${cityId}`);
-                const idx       = state.steps[4].hotels.filter(h => h.city_id === cityId).length - 1;
-                container.insertAdjacentHTML('beforeend', hotelRowHTML(cityId, idx));
-                rebindHotelEvents();
-            });
-        });
-        document.querySelectorAll('.remove-hotel').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const row      = btn.closest('.hotel-row');
-                const cityId   = parseInt(row.dataset.cityId);
-                const idx      = parseInt(row.dataset.idx);
-                const cityHotels = state.steps[4].hotels.filter(h => h.city_id === cityId);
-                const globalIdx  = state.steps[4].hotels.indexOf(cityHotels[idx]);
-                if (globalIdx >= 0) state.steps[4].hotels.splice(globalIdx, 1);
-                row.remove();
-            });
-        });
-        document.querySelectorAll('.hotel-row').forEach(row => {
-            const cityId     = parseInt(row.dataset.cityId);
-            const idx        = parseInt(row.dataset.idx);
-            const cityHotels = state.steps[4].hotels.filter(h => h.city_id === cityId);
-            const hotel      = cityHotels[idx];
-            if (!hotel) return;
-            row.querySelector('.hotel-name').addEventListener('input', e => { hotel.hotel_title = e.target.value; });
-            row.querySelector('.hotel-type').addEventListener('change', e => { hotel.type = e.target.value; });
-        });
     }
 
     // ─── Step 5: Pricing ─────────────────────────────────────────
