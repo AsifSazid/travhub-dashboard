@@ -945,16 +945,25 @@ const PackageBuilder = (() => {
 
         document.getElementById('addDayBtn').addEventListener('click', () => {
             const d = state.steps[5].pack_itenaries;
+            const dayNum   = d.length + 1;
+            const startDate = state.steps[3]?.start_date || '';
+            let autoDate = '';
+            if (startDate) {
+                const base = new Date(startDate);
+                base.setDate(base.getDate() + (dayNum - 1));
+                autoDate = base.toISOString().split('T')[0];
+            }
             d.push({
-                day_number    : d.length + 1,
+                day_number    : dayNum,
                 title         : '',
-                date          : '',
+                date          : autoDate,
                 day_start_time: '08:00',
                 day_hours     : 16,
                 overnight_stay: '',
                 meals         : [],
-                activities    : [],   // activity objects from masterdata
-                transfers     : [],   // standalone transfer objects (parent-level)
+                activities    : [],
+                transfers     : [],
+                flights       : [],
             });
             renderItineraryDays();
         });
@@ -1036,7 +1045,7 @@ const PackageBuilder = (() => {
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-3">
                         <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities & Transfers</h4>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 flex-wrap">
                             <button type="button" data-idx="${i}"
                                     class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
                                 <i class="fa-solid fa-person-hiking text-xs"></i> Add Activity
@@ -1044,6 +1053,10 @@ const PackageBuilder = (() => {
                             <button type="button" data-idx="${i}"
                                     class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
                                 <i class="fa-solid fa-van-shuttle text-xs"></i> Add Transfer
+                            </button>
+                            <button type="button" data-idx="${i}"
+                                    class="btn-add-flight text-xs px-3 py-1.5 rounded-lg border border-sky-400 text-sky-600 hover:bg-sky-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-plane text-xs"></i> Add Flight
                             </button>
                         </div>
                     </div>
@@ -1053,6 +1066,10 @@ const PackageBuilder = (() => {
                     <!-- Standalone transfers -->
                     <div class="day-transfer-list mt-2 space-y-2" id="dayTransList_${i}">
                         ${buildStandaloneTransferList(day, i)}
+                    </div>
+                    <!-- Flights -->
+                    <div class="day-flight-list mt-2 space-y-2" id="dayFlightList_${i}">
+                        ${buildFlightList(day, i)}
                     </div>
                 </div>
             </div>`;
@@ -1109,10 +1126,38 @@ const PackageBuilder = (() => {
             })
         );
 
+        // Flight add
+        el.querySelectorAll('.btn-add-flight').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di = +btn.dataset.idx;
+                if (!days[di].flights) days[di].flights = [];
+                days[di].flights.push({
+                    flight_number : '',
+                    dep_airport   : '',
+                    dep_date      : days[di].date || '',
+                    dep_time      : '',
+                    arr_airport   : '',
+                    arr_date      : days[di].date || '',
+                    arr_time      : '',
+                });
+                const listEl = document.getElementById(`dayFlightList_${di}`);
+                if (listEl) {
+                    const div = document.createElement('div');
+                    const fi  = days[di].flights.length - 1;
+                    div.innerHTML = buildFlightCard(days[di].flights[fi], di, fi);
+                    const card = div.firstElementChild;
+                    listEl.appendChild(card);
+                    bindFlightCardEvents(card, days, di, fi);
+                }
+            })
+        );
+
         // Activity card events (edit fields + remove + drag)
         bindActivityCardEvents(days);
         // Standalone transfer events
         bindStandaloneTransferEvents(days);
+        // Flight events
+        bindAllFlightEvents(days);
     }
 
     // ── Build activity cards for a day ──────────────────────────────
@@ -1338,6 +1383,255 @@ const PackageBuilder = (() => {
         });
         row.querySelector('.pr-full')?.addEventListener('input', e => {
             const p = getAct().pricing[pi]; if (p) p.price_full = parseFloat(e.target.value)||null;
+        });
+    }
+
+        // ── Flight list builder ──────────────────────────────────────────
+    function buildFlightList(day, dayIdx) {
+        const flights = day.flights || [];
+        if (!flights.length) return '';
+        return flights.map((f, fi) => buildFlightCard(f, dayIdx, fi)).join('');
+    }
+
+    function buildTransitLeg(leg, dayIdx, fi, ti) {
+        return `
+        <div class="transit-leg border-t border-sky-100 pt-2 mt-2" data-tr-leg="${ti}">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-1">
+                    <i class="fa-solid fa-arrows-turn-right text-amber-400" style="font-size:10px"></i>
+                    Transit ${ti + 1}
+                </p>
+                <button type="button" class="btn-remove-transit text-red-400 hover:text-red-600 text-xs"
+                        data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}" title="Remove transit">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <p class="text-xs text-gray-400 flex items-center gap-1">
+                        <i class="fa-solid fa-plane-departure text-amber-400" style="font-size:10px"></i> Departure
+                    </p>
+                    <input type="text" value="${escHtml(leg.dep_airport||'')}" placeholder="Airport"
+                           class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-dep-airport"
+                           data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" value="${leg.dep_date||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-dep-date"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}">
+                        <input type="time" value="${leg.dep_time||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-dep-time"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <p class="text-xs text-gray-400 flex items-center gap-1">
+                        <i class="fa-solid fa-plane-arrival text-amber-400" style="font-size:10px"></i> Arrival
+                    </p>
+                    <input type="text" value="${escHtml(leg.arr_airport||'')}" placeholder="Airport"
+                           class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-arr-airport"
+                           data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" value="${leg.arr_date||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-arr-date"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}">
+                        <input type="time" value="${leg.arr_time||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-arr-time"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-ti="${ti}">
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function buildTransitLeg(leg, dayIdx, fi, ti) {
+        return `
+        <div class="transit-leg border border-amber-200 rounded-xl bg-amber-50/40 overflow-hidden mb-2"
+             data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+            <div class="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-100">
+                <i class="fa-solid fa-arrows-turn-right text-amber-500" style="font-size:10px"></i>
+                <span class="flex-1 text-xs font-semibold text-amber-700">Transit ${ti + 1}</span>
+                <button type="button" class="btn-remove-transit text-red-400 hover:text-red-600"
+                        data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+            <div class="p-3 grid grid-cols-2 gap-4">
+                <!-- Transit Departure -->
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                        <i class="fa-solid fa-plane-departure text-amber-400" style="font-size:10px"></i> Dep
+                    </p>
+                    <input type="text" value="${escHtml(leg.dep_airport||'')}" placeholder="Airport"
+                           class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-dep-airport"
+                           data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" value="${leg.dep_date||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-dep-date"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                        <input type="time" value="${leg.dep_time||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-dep-time"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                    </div>
+                </div>
+                <!-- Transit Arrival -->
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                        <i class="fa-solid fa-plane-arrival text-amber-400" style="font-size:10px"></i> Arr
+                    </p>
+                    <input type="text" value="${escHtml(leg.arr_airport||'')}" placeholder="Airport"
+                           class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-arr-airport"
+                           data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" value="${leg.arr_date||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-arr-date"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                        <input type="time" value="${leg.arr_time||''}"
+                               class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 tr-arr-time"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}" data-tr-idx="${ti}">
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+        function buildFlightCard(f, dayIdx, fi) {
+        const transits = f.transits || [];
+        return `
+        <div class="flight-card border border-sky-200 rounded-xl bg-sky-50/30 overflow-hidden"
+             data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+
+            <!-- Header -->
+            <div class="flex items-center gap-2 px-3 py-2.5 bg-sky-50 border-b border-sky-100">
+                <i class="fa-solid fa-plane text-sky-500 text-xs"></i>
+                <span class="text-xs font-semibold text-sky-700 uppercase tracking-wide">Flight</span>
+                <input type="text" value="${escHtml(f.flight_number||'')}" placeholder="Flight no. (e.g. BG-001)"
+                       class="flex-1 text-sm font-bold bg-transparent border-none outline-none text-sky-800 placeholder:text-sky-300 fl-number"
+                       data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                <button type="button" class="btn-remove-flight text-red-400 hover:text-red-600 ml-1"
+                        data-day-idx="${dayIdx}" data-fl-idx="${fi}" title="Remove flight">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Departure + Arrival -->
+            <div class="p-3">
+                <div class="grid grid-cols-2 gap-4 mb-3">
+                    <!-- Departure -->
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                            <i class="fa-solid fa-plane-departure text-sky-400" style="font-size:10px"></i> Departure
+                        </p>
+                        <input type="text" value="${escHtml(f.dep_airport||'')}" placeholder="e.g. DAC / Hazrat Shahjalal"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-sky-400 fl-dep-airport"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" value="${f.dep_date||''}"
+                                   class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-sky-400 fl-dep-date"
+                                   data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                            <input type="time" value="${f.dep_time||''}"
+                                   class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-sky-400 fl-dep-time"
+                                   data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                        </div>
+                    </div>
+                    <!-- Arrival -->
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                            <i class="fa-solid fa-plane-arrival text-sky-400" style="font-size:10px"></i> Arrival
+                        </p>
+                        <input type="text" value="${escHtml(f.arr_airport||'')}" placeholder="e.g. BKK / Suvarnabhumi"
+                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-sky-400 fl-arr-airport"
+                               data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" value="${f.arr_date||''}"
+                                   class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-sky-400 fl-arr-date"
+                                   data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                            <input type="time" value="${f.arr_time||''}"
+                                   class="px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-sky-400 fl-arr-time"
+                                   data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transit legs -->
+                <div class="transit-legs-container">
+                    ${transits.map((leg, ti) => buildTransitLeg(leg, dayIdx, fi, ti)).join('')}
+                </div>
+
+                <!-- Add Transit button -->
+                <button type="button" class="btn-add-transit mt-2 text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50 transition flex items-center gap-1"
+                        data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+                    <i class="fa-solid fa-arrows-turn-right text-xs"></i> Add Transit
+                </button>
+            </div>
+        </div>`;
+    }
+
+    function bindFlightCardEvents(card, days, di, fi) {
+        const get = () => (days[di].flights || [])[fi];
+
+        // Main flight fields
+        card.querySelector('.fl-number')?.addEventListener('input',     e => { const f=get(); if(f) f.flight_number = e.target.value; });
+        card.querySelector('.fl-dep-airport')?.addEventListener('input', e => { const f=get(); if(f) f.dep_airport   = e.target.value; });
+        card.querySelector('.fl-dep-date')?.addEventListener('change',   e => { const f=get(); if(f) f.dep_date      = e.target.value; });
+        card.querySelector('.fl-dep-time')?.addEventListener('change',   e => { const f=get(); if(f) f.dep_time      = e.target.value; });
+        card.querySelector('.fl-arr-airport')?.addEventListener('input', e => { const f=get(); if(f) f.arr_airport   = e.target.value; });
+        card.querySelector('.fl-arr-date')?.addEventListener('change',   e => { const f=get(); if(f) f.arr_date      = e.target.value; });
+        card.querySelector('.fl-arr-time')?.addEventListener('change',   e => { const f=get(); if(f) f.arr_time      = e.target.value; });
+
+        // Remove flight
+        card.querySelector('.btn-remove-flight')?.addEventListener('click', () => {
+            days[di].flights.splice(fi, 1);
+            const listEl = document.getElementById(`dayFlightList_${di}`);
+            if (listEl) { listEl.innerHTML = buildFlightList(days[di], di); bindAllFlightEvents(days); }
+        });
+
+        // Add Transit
+        card.querySelector('.btn-add-transit')?.addEventListener('click', () => {
+            const f = get(); if (!f) return;
+            if (!f.transits) f.transits = [];
+            const ti     = f.transits.length;
+            const newLeg = { dep_airport:'', dep_date:'', dep_time:'', arr_airport:'', arr_date:'', arr_time:'' };
+            f.transits.push(newLeg);
+            const container = card.querySelector('.transit-legs-container');
+            if (container) {
+                const div = document.createElement('div');
+                div.innerHTML = buildTransitLeg(newLeg, di, fi, ti);
+                const leg = div.firstElementChild;
+                container.appendChild(leg);
+                bindTransitLegEvents(leg, days, di, fi, ti);
+            }
+        });
+
+        // Bind existing transit legs on load
+        card.querySelectorAll('.transit-leg').forEach(leg => {
+            const ti = +leg.dataset.trIdx;
+            bindTransitLegEvents(leg, days, di, fi, ti);
+        });
+    }
+
+    function bindTransitLegEvents(leg, days, di, fi, ti) {
+        const getTr = () => ((days[di].flights||[])[fi]?.transits||[])[ti];
+        leg.querySelector('.tr-dep-airport')?.addEventListener('input',  e => { const t=getTr(); if(t) t.dep_airport = e.target.value; });
+        leg.querySelector('.tr-dep-date')?.addEventListener('change',    e => { const t=getTr(); if(t) t.dep_date    = e.target.value; });
+        leg.querySelector('.tr-dep-time')?.addEventListener('change',    e => { const t=getTr(); if(t) t.dep_time    = e.target.value; });
+        leg.querySelector('.tr-arr-airport')?.addEventListener('input',  e => { const t=getTr(); if(t) t.arr_airport = e.target.value; });
+        leg.querySelector('.tr-arr-date')?.addEventListener('change',    e => { const t=getTr(); if(t) t.arr_date    = e.target.value; });
+        leg.querySelector('.tr-arr-time')?.addEventListener('change',    e => { const t=getTr(); if(t) t.arr_time    = e.target.value; });
+        leg.querySelector('.btn-remove-transit')?.addEventListener('click', () => {
+            const f = (days[di].flights||[])[fi]; if (!f) return;
+            f.transits.splice(ti, 1);
+            const listEl = document.getElementById(`dayFlightList_${di}`);
+            if (listEl) { listEl.innerHTML = buildFlightList(days[di], di); bindAllFlightEvents(days); }
+        });
+    }
+
+    function bindAllFlightEvents(days) {
+        const el = document.getElementById('itineraryDays');
+        if (!el) return;
+        el.querySelectorAll('.flight-card').forEach(card => {
+            const di = +card.dataset.dayIdx;
+            const fi = +card.dataset.flIdx;
+            bindFlightCardEvents(card, days, di, fi);
         });
     }
 

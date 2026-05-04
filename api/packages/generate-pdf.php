@@ -206,6 +206,15 @@ if ($isBullet) {
                 <?php endforeach; endif; ?>
             </li>
             <?php endforeach; ?>
+            <?php foreach (($day['flights'] ?? []) as $fl): ?>
+            <li>&#9992; <strong><?= esc($fl['flight_number'] ?: 'Flight') ?></strong>
+                <?= $fl['dep_airport'] ? ' ' . esc($fl['dep_airport']) : '' ?>
+                <?= $fl['dep_time'] ? fmtTime($fl['dep_time']) : '' ?>
+                <?= ($fl['dep_date']) ? date('d M', strtotime($fl['dep_date'])) : '' ?>
+                &#8594; <?= $fl['arr_airport'] ? esc($fl['arr_airport']) : '?' ?>
+                <?= $fl['arr_time'] ? fmtTime($fl['arr_time']) : '' ?>
+            </li>
+            <?php endforeach; ?>
             <?php foreach (($day['transfers'] ?? []) as $tr): ?>
             <li>&#8618; <strong><?= esc($tr['title'] ?: 'Transfer') ?></strong> [<?= strtoupper($tr['type'] ?? 'SIC') ?>]
                 <?= $tr['start_time'] ? ' ' . fmtTime($tr['start_time']) . '–' . fmtTime($tr['end_time']) : '' ?>
@@ -412,6 +421,41 @@ if ($isBullet) {
         <?php endif; ?>
     </div>
     <?php endforeach; ?>
+
+    <!-- Flights for this day (detailed) -->
+    <?php if (!empty($day['flights'])): ?>
+    <div style="margin-top:4pt;">
+    <?php foreach ($day['flights'] as $fl): ?>
+    <div style="border:0.5pt solid #7dd3fc;border-radius:3pt;padding:5pt 7pt;margin-bottom:4pt;background:#f0f9ff;">
+        <p style="margin:0 0 3pt;font-weight:700;font-size:9pt;color:#0c4a6e;">
+            &#9992; <?= esc($fl['flight_number'] ?? '—') ?>
+        </p>
+        <table style="margin:0;font-size:8pt;" width="100%">
+            <tr>
+                <td width="12%" style="color:#0369a1;font-weight:700;font-size:7pt;">DEP</td>
+                <td><?= esc($fl['dep_airport'] ?? '—') ?></td>
+                <td width="26%"><?= $fl['dep_date'] ? date('d M Y', strtotime($fl['dep_date'])) : '—' ?></td>
+                <td width="14%" style="text-align:right;"><?= fmtTime($fl['dep_time'] ?? null) ?></td>
+            </tr>
+            <?php foreach (($fl['transits'] ?? []) as $ti => $tr): ?>
+            <tr style="background:#fffbeb;">
+                <td style="color:#b45309;font-weight:700;font-size:7pt;">T<?= $ti+1 ?></td>
+                <td style="color:#92400e;"><?= esc($tr['dep_airport']??'—') ?> → <?= esc($tr['arr_airport']??'—') ?></td>
+                <td style="color:#92400e;"><?= $tr['dep_date'] ? date('d M Y', strtotime($tr['dep_date'])) : '—' ?></td>
+                <td style="text-align:right;color:#92400e;"><?= fmtTime($tr['dep_time']??null) ?></td>
+            </tr>
+            <?php endforeach; ?>
+            <tr>
+                <td style="color:#0369a1;font-weight:700;font-size:7pt;">ARR</td>
+                <td><?= esc($fl['arr_airport'] ?? '—') ?></td>
+                <td><?= $fl['arr_date'] ? date('d M Y', strtotime($fl['arr_date'])) : '—' ?></td>
+                <td style="text-align:right;"><?= fmtTime($fl['arr_time'] ?? null) ?></td>
+            </tr>
+        </table>
+    </div>
+    <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <?php endforeach; // end days ?>
 

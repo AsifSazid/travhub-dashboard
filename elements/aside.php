@@ -78,9 +78,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-tasks mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Work List</span>
                     </a>
-                    <a href="create-works.php"
+                    <a href="create-work.php"
                         class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'create-works.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'create-work.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-circle-plus mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Generate Work</span>
                     </a>

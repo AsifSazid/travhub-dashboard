@@ -1,6 +1,7 @@
 <?php
 // Prevent any accidental output before JSON
 ob_start();
+session_start();
 
 // Headers
 header("Access-Control-Allow-Origin: *");
@@ -54,8 +55,7 @@ try {
                 lead_info, 
                 lead_status,
                 meta_data,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $pdo->prepare($sql);
 
@@ -70,7 +70,6 @@ try {
         isset($data['leadInfo']) ? json_encode($data['leadInfo'], JSON_UNESCAPED_UNICODE) : null,
         'pending',
         $metaDataJson,
-        $now
     ]);
 
     // Clean output buffer before sending JSON

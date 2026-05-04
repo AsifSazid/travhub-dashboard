@@ -1,0 +1,3385 @@
+{
+    "countries": [
+        {
+            "id": 1,
+            "name": "Andorra",
+            "code": "AD",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 2,
+            "name": "Argentina",
+            "code": "AR",
+            "currency": "Peso",
+            "currency_code": "ARS",
+            "default_rate": 0.13,
+            "region": "South America"
+        },
+        {
+            "id": 3,
+            "name": "Australia",
+            "code": "AU",
+            "currency": "Dollar",
+            "currency_code": "AUD",
+            "default_rate": 78.4,
+            "region": "Oceania"
+        },
+        {
+            "id": 4,
+            "name": "Austria",
+            "code": "AT",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 5,
+            "name": "Azerbaijan",
+            "code": "AZ",
+            "currency": "Manat",
+            "currency_code": "AZN",
+            "default_rate": 70.2,
+            "region": "Asia"
+        },
+        {
+            "id": 6,
+            "name": "Bahamas",
+            "code": "BS",
+            "currency": "Dollar",
+            "currency_code": "BSD",
+            "default_rate": 119.5,
+            "region": "North America"
+        },
+        {
+            "id": 7,
+            "name": "Bahrain",
+            "code": "BH",
+            "currency": "Dinar",
+            "currency_code": "BHD",
+            "default_rate": 317.4,
+            "region": "Middle East"
+        },
+        {
+            "id": 8,
+            "name": "Bangladesh",
+            "code": "BD",
+            "currency": "Taka",
+            "currency_code": "BDT",
+            "default_rate": 1,
+            "region": "Asia"
+        },
+        {
+            "id": 9,
+            "name": "Belgium",
+            "code": "BE",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 10,
+            "name": "Bhutan",
+            "code": "BT",
+            "currency": "Ngultrum",
+            "currency_code": "BTN",
+            "default_rate": 1.43,
+            "region": "Asia"
+        },
+        {
+            "id": 11,
+            "name": "Brazil",
+            "code": "BR",
+            "currency": "Real",
+            "currency_code": "BRL",
+            "default_rate": 23.9,
+            "region": "South America"
+        },
+        {
+            "id": 12,
+            "name": "Brunei",
+            "code": "BN",
+            "currency": "Dollar",
+            "currency_code": "BND",
+            "default_rate": 89.1,
+            "region": "Asia"
+        },
+        {
+            "id": 13,
+            "name": "Cambodia",
+            "code": "KH",
+            "currency": "Riel",
+            "currency_code": "KHR",
+            "default_rate": 0.029,
+            "region": "Asia"
+        },
+        {
+            "id": 14,
+            "name": "Canada",
+            "code": "CA",
+            "currency": "Dollar",
+            "currency_code": "CAD",
+            "default_rate": 88.3,
+            "region": "North America"
+        },
+        {
+            "id": 15,
+            "name": "Chile",
+            "code": "CL",
+            "currency": "Peso",
+            "currency_code": "CLP",
+            "default_rate": 0.13,
+            "region": "South America"
+        },
+        {
+            "id": 16,
+            "name": "China",
+            "code": "CN",
+            "currency": "Yuan",
+            "currency_code": "CNY",
+            "default_rate": 16.5,
+            "region": "Asia"
+        },
+        {
+            "id": 17,
+            "name": "Colombia",
+            "code": "CO",
+            "currency": "Peso",
+            "currency_code": "COP",
+            "default_rate": 0.03,
+            "region": "South America"
+        },
+        {
+            "id": 18,
+            "name": "Croatia",
+            "code": "HR",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 19,
+            "name": "Cyprus",
+            "code": "CY",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Middle East"
+        },
+        {
+            "id": 20,
+            "name": "Czech Republic",
+            "code": "CZ",
+            "currency": "Koruna",
+            "currency_code": "CZK",
+            "default_rate": 5.25,
+            "region": "Europe"
+        },
+        {
+            "id": 21,
+            "name": "Denmark",
+            "code": "DK",
+            "currency": "Krone",
+            "currency_code": "DKK",
+            "default_rate": 17.5,
+            "region": "Europe"
+        },
+        {
+            "id": 22,
+            "name": "Egypt",
+            "code": "EG",
+            "currency": "Pound",
+            "currency_code": "EGP",
+            "default_rate": 2.45,
+            "region": "Africa"
+        },
+        {
+            "id": 23,
+            "name": "Estonia",
+            "code": "EE",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 24,
+            "name": "Finland",
+            "code": "FI",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 25,
+            "name": "France",
+            "code": "FR",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 26,
+            "name": "Georgia",
+            "code": "GE",
+            "currency": "Lari",
+            "currency_code": "GEL",
+            "default_rate": 45.1,
+            "region": "Asia"
+        },
+        {
+            "id": 27,
+            "name": "Germany",
+            "code": "DE",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 28,
+            "name": "Greece",
+            "code": "GR",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 29,
+            "name": "Hungary",
+            "code": "HU",
+            "currency": "Forint",
+            "currency_code": "HUF",
+            "default_rate": 0.33,
+            "region": "Europe"
+        },
+        {
+            "id": 30,
+            "name": "Iceland",
+            "code": "IS",
+            "currency": "Krona",
+            "currency_code": "ISK",
+            "default_rate": 0.87,
+            "region": "Europe"
+        },
+        {
+            "id": 31,
+            "name": "India",
+            "code": "IN",
+            "currency": "Rupee",
+            "currency_code": "INR",
+            "default_rate": 1.43,
+            "region": "Asia"
+        },
+        {
+            "id": 32,
+            "name": "Indonesia",
+            "code": "ID",
+            "currency": "Rupiah",
+            "currency_code": "IDR",
+            "default_rate": 0.0076,
+            "region": "Asia"
+        },
+        {
+            "id": 33,
+            "name": "Ireland",
+            "code": "IE",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 34,
+            "name": "Israel",
+            "code": "IL",
+            "currency": "Shekel",
+            "currency_code": "ILS",
+            "default_rate": 32.1,
+            "region": "Middle East"
+        },
+        {
+            "id": 35,
+            "name": "Italy",
+            "code": "IT",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 36,
+            "name": "Japan",
+            "code": "JP",
+            "currency": "Yen",
+            "currency_code": "JPY",
+            "default_rate": 0.81,
+            "region": "Asia"
+        },
+        {
+            "id": 37,
+            "name": "Jordan",
+            "code": "JO",
+            "currency": "Dinar",
+            "currency_code": "JOD",
+            "default_rate": 168.5,
+            "region": "Middle East"
+        },
+        {
+            "id": 38,
+            "name": "Kenya",
+            "code": "KE",
+            "currency": "Shilling",
+            "currency_code": "KES",
+            "default_rate": 0.92,
+            "region": "Africa"
+        },
+        {
+            "id": 39,
+            "name": "Kuwait",
+            "code": "KW",
+            "currency": "Dinar",
+            "currency_code": "KWD",
+            "default_rate": 389.2,
+            "region": "Middle East"
+        },
+        {
+            "id": 40,
+            "name": "Luxembourg",
+            "code": "LU",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 41,
+            "name": "Malaysia",
+            "code": "MY",
+            "currency": "Ringgit",
+            "currency_code": "MYR",
+            "default_rate": 25.4,
+            "region": "Asia"
+        },
+        {
+            "id": 42,
+            "name": "Maldives",
+            "code": "MV",
+            "currency": "Rufiyaa",
+            "currency_code": "MVR",
+            "default_rate": 7.75,
+            "region": "Asia"
+        },
+        {
+            "id": 43,
+            "name": "Malta",
+            "code": "MT",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 44,
+            "name": "Mauritius",
+            "code": "MU",
+            "currency": "Rupee",
+            "currency_code": "MUR",
+            "default_rate": 2.65,
+            "region": "Africa"
+        },
+        {
+            "id": 45,
+            "name": "Mexico",
+            "code": "MX",
+            "currency": "Peso",
+            "currency_code": "MXN",
+            "default_rate": 7.1,
+            "region": "North America"
+        },
+        {
+            "id": 46,
+            "name": "Monaco",
+            "code": "MC",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 47,
+            "name": "Morocco",
+            "code": "MA",
+            "currency": "Dirham",
+            "currency_code": "MAD",
+            "default_rate": 11.8,
+            "region": "Africa"
+        },
+        {
+            "id": 48,
+            "name": "Nepal",
+            "code": "NP",
+            "currency": "Rupee",
+            "currency_code": "NPR",
+            "default_rate": 0.89,
+            "region": "Asia"
+        },
+        {
+            "id": 49,
+            "name": "Netherlands",
+            "code": "NL",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 50,
+            "name": "New Zealand",
+            "code": "NZ",
+            "currency": "Dollar",
+            "currency_code": "NZD",
+            "default_rate": 72.5,
+            "region": "Oceania"
+        },
+        {
+            "id": 51,
+            "name": "Norway",
+            "code": "NO",
+            "currency": "Krone",
+            "currency_code": "NOK",
+            "default_rate": 11.2,
+            "region": "Europe"
+        },
+        {
+            "id": 52,
+            "name": "Oman",
+            "code": "OM",
+            "currency": "Rial",
+            "currency_code": "OMR",
+            "default_rate": 310.4,
+            "region": "Middle East"
+        },
+        {
+            "id": 53,
+            "name": "Pakistan",
+            "code": "PK",
+            "currency": "Rupee",
+            "currency_code": "PKR",
+            "default_rate": 0.43,
+            "region": "Asia"
+        },
+        {
+            "id": 54,
+            "name": "Peru",
+            "code": "PE",
+            "currency": "Sol",
+            "currency_code": "PEN",
+            "default_rate": 32.4,
+            "region": "South America"
+        },
+        {
+            "id": 55,
+            "name": "Philippines",
+            "code": "PH",
+            "currency": "Peso",
+            "currency_code": "PHP",
+            "default_rate": 2.12,
+            "region": "Asia"
+        },
+        {
+            "id": 56,
+            "name": "Poland",
+            "code": "PL",
+            "currency": "Zloty",
+            "currency_code": "PLN",
+            "default_rate": 29.8,
+            "region": "Europe"
+        },
+        {
+            "id": 57,
+            "name": "Portugal",
+            "code": "PT",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 58,
+            "name": "Qatar",
+            "code": "QA",
+            "currency": "Rial",
+            "currency_code": "QAR",
+            "default_rate": 32.8,
+            "region": "Middle East"
+        },
+        {
+            "id": 59,
+            "name": "Russia",
+            "code": "RU",
+            "currency": "Rouble",
+            "currency_code": "RUB",
+            "default_rate": 1.3,
+            "region": "Europe"
+        },
+        {
+            "id": 60,
+            "name": "Saudi Arabia",
+            "code": "SA",
+            "currency": "Riyal",
+            "currency_code": "SAR",
+            "default_rate": 31.85,
+            "region": "Middle East"
+        },
+        {
+            "id": 61,
+            "name": "Singapore",
+            "code": "SG",
+            "currency": "Dollar",
+            "currency_code": "SGD",
+            "default_rate": 88.7,
+            "region": "Asia"
+        },
+        {
+            "id": 62,
+            "name": "South Africa",
+            "code": "ZA",
+            "currency": "Rand",
+            "currency_code": "ZAR",
+            "default_rate": 6.45,
+            "region": "Africa"
+        },
+        {
+            "id": 63,
+            "name": "South Korea",
+            "code": "KR",
+            "currency": "Won",
+            "currency_code": "KRW",
+            "default_rate": 0.089,
+            "region": "Asia"
+        },
+        {
+            "id": 64,
+            "name": "Spain",
+            "code": "ES",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 65,
+            "name": "Sri Lanka",
+            "code": "LK",
+            "currency": "Rupee",
+            "currency_code": "LKR",
+            "default_rate": 0.38,
+            "region": "Asia"
+        },
+        {
+            "id": 66,
+            "name": "Sweden",
+            "code": "SE",
+            "currency": "Krona",
+            "currency_code": "SEK",
+            "default_rate": 11.4,
+            "region": "Europe"
+        },
+        {
+            "id": 67,
+            "name": "Switzerland",
+            "code": "CH",
+            "currency": "Franc",
+            "currency_code": "CHF",
+            "default_rate": 135.2,
+            "region": "Europe"
+        },
+        {
+            "id": 68,
+            "name": "Taiwan",
+            "code": "TW",
+            "currency": "Dollar",
+            "currency_code": "TWD",
+            "default_rate": 3.75,
+            "region": "Asia"
+        },
+        {
+            "id": 69,
+            "name": "Thailand",
+            "code": "TH",
+            "currency": "Baht",
+            "currency_code": "THB",
+            "default_rate": 3.35,
+            "region": "Asia"
+        },
+        {
+            "id": 70,
+            "name": "Turkey",
+            "code": "TR",
+            "currency": "Lira",
+            "currency_code": "TRY",
+            "default_rate": 3.7,
+            "region": "Middle East"
+        },
+        {
+            "id": 71,
+            "name": "United Arab Emirates",
+            "code": "AE",
+            "currency": "Dirham",
+            "currency_code": "AED",
+            "default_rate": 32.55,
+            "region": "Middle East"
+        },
+        {
+            "id": 72,
+            "name": "United Kingdom",
+            "code": "GB",
+            "currency": "Pound",
+            "currency_code": "GBP",
+            "default_rate": 151.2,
+            "region": "Europe"
+        },
+        {
+            "id": 73,
+            "name": "United States",
+            "code": "US",
+            "currency": "Dollar",
+            "currency_code": "USD",
+            "default_rate": 119.5,
+            "region": "North America"
+        },
+        {
+            "id": 74,
+            "name": "Vatican City",
+            "code": "VA",
+            "currency": "Euro",
+            "currency_code": "EUR",
+            "default_rate": 130.5,
+            "region": "Europe"
+        },
+        {
+            "id": 75,
+            "name": "Vietnam",
+            "code": "VN",
+            "currency": "Dong",
+            "currency_code": "VND",
+            "default_rate": 0.0048,
+            "region": "Asia"
+        }
+    ],
+    "cities": [
+        {
+            "id": 1,
+            "name": "Andorra la Vella",
+            "country_id": 1,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 2,
+            "name": "Escaldes-Engordany",
+            "country_id": 1,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 2,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 3,
+            "name": "Encamp",
+            "country_id": 1,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 4,
+            "name": "Buenos Aires",
+            "country_id": 2,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 5,
+            "name": "Cordoba",
+            "country_id": 2,
+            "type": [
+                "education",
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 6,
+            "name": "Mendoza",
+            "country_id": 2,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 7,
+            "name": "Sydney",
+            "country_id": 3,
+            "type": [
+                "tourism",
+                "business",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 8,
+            "name": "Melbourne",
+            "country_id": 3,
+            "type": [
+                "tourism",
+                "conference",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 9,
+            "name": "Brisbane",
+            "country_id": 3,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 10,
+            "name": "Vienna",
+            "country_id": 4,
+            "type": [
+                "tourism",
+                "conference",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 11,
+            "name": "Salzburg",
+            "country_id": 4,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 12,
+            "name": "Innsbruck",
+            "country_id": 4,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 13,
+            "name": "Baku",
+            "country_id": 5,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 14,
+            "name": "Ganja",
+            "country_id": 5,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 2,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 15,
+            "name": "Gabala",
+            "country_id": 5,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 16,
+            "name": "Nassau",
+            "country_id": 6,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 17,
+            "name": "Freeport",
+            "country_id": 6,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 18,
+            "name": "Exuma",
+            "country_id": 6,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 19,
+            "name": "Manama",
+            "country_id": 7,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 20,
+            "name": "Muharraq",
+            "country_id": 7,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 21,
+            "name": "Riffa",
+            "country_id": 7,
+            "type": [
+                "business"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 22,
+            "name": "Dhaka",
+            "country_id": 8,
+            "type": [
+                "business",
+                "conference",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 23,
+            "name": "Chattogram",
+            "country_id": 8,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 24,
+            "name": "Sylhet",
+            "country_id": 8,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 25,
+            "name": "Brussels",
+            "country_id": 9,
+            "type": [
+                "business",
+                "conference",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 26,
+            "name": "Antwerp",
+            "country_id": 9,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 27,
+            "name": "Bruges",
+            "country_id": 9,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 28,
+            "name": "Thimphu",
+            "country_id": 10,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 29,
+            "name": "Paro",
+            "country_id": 10,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 30,
+            "name": "Punakha",
+            "country_id": 10,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 31,
+            "name": "Rio de Janeiro",
+            "country_id": 11,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 32,
+            "name": "Sao Paulo",
+            "country_id": 11,
+            "type": [
+                "business",
+                "conference",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 33,
+            "name": "Brasilia",
+            "country_id": 11,
+            "type": [
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 34,
+            "name": "Bandar Seri Begawan",
+            "country_id": 12,
+            "type": [
+                "business",
+                "religious"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 35,
+            "name": "Kuala Belait",
+            "country_id": 12,
+            "type": [
+                "business"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 36,
+            "name": "Seria",
+            "country_id": 12,
+            "type": [
+                "business"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 37,
+            "name": "Phnom Penh",
+            "country_id": 13,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 38,
+            "name": "Siem Reap",
+            "country_id": 13,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 39,
+            "name": "Sihanoukville",
+            "country_id": 13,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 40,
+            "name": "Toronto",
+            "country_id": 14,
+            "type": [
+                "business",
+                "education",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 41,
+            "name": "Vancouver",
+            "country_id": 14,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 42,
+            "name": "Montreal",
+            "country_id": 14,
+            "type": [
+                "conference",
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 43,
+            "name": "Santiago",
+            "country_id": 15,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 44,
+            "name": "Valparaiso",
+            "country_id": 15,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 45,
+            "name": "Vina del Mar",
+            "country_id": 15,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 46,
+            "name": "Beijing",
+            "country_id": 16,
+            "type": [
+                "business",
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 47,
+            "name": "Shanghai",
+            "country_id": 16,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 48,
+            "name": "Guangzhou",
+            "country_id": 16,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 49,
+            "name": "Bogota",
+            "country_id": 17,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 50,
+            "name": "Medellin",
+            "country_id": 17,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 51,
+            "name": "Cartagena",
+            "country_id": 17,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 52,
+            "name": "Zagreb",
+            "country_id": 18,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 53,
+            "name": "Split",
+            "country_id": 18,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 54,
+            "name": "Dubrovnik",
+            "country_id": 18,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 55,
+            "name": "Nicosia",
+            "country_id": 19,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 56,
+            "name": "Limassol",
+            "country_id": 19,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 57,
+            "name": "Paphos",
+            "country_id": 19,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 58,
+            "name": "Prague",
+            "country_id": 20,
+            "type": [
+                "tourism",
+                "conference",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 59,
+            "name": "Brno",
+            "country_id": 20,
+            "type": [
+                "education",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 60,
+            "name": "Ostrava",
+            "country_id": 20,
+            "type": [
+                "business"
+            ],
+            "popularity": 2,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 61,
+            "name": "Copenhagen",
+            "country_id": 21,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 62,
+            "name": "Aarhus",
+            "country_id": 21,
+            "type": [
+                "education",
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 63,
+            "name": "Odense",
+            "country_id": 21,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 64,
+            "name": "Cairo",
+            "country_id": 22,
+            "type": [
+                "tourism",
+                "religious",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 65,
+            "name": "Alexandria",
+            "country_id": 22,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 66,
+            "name": "Luxor",
+            "country_id": 22,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 67,
+            "name": "Tallinn",
+            "country_id": 23,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 68,
+            "name": "Tartu",
+            "country_id": 23,
+            "type": [
+                "education"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 69,
+            "name": "Parnu",
+            "country_id": 23,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 70,
+            "name": "Helsinki",
+            "country_id": 24,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 71,
+            "name": "Espoo",
+            "country_id": 24,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 72,
+            "name": "Tampere",
+            "country_id": 24,
+            "type": [
+                "education",
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 73,
+            "name": "Paris",
+            "country_id": 25,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 74,
+            "name": "Lyon",
+            "country_id": 25,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 75,
+            "name": "Marseille",
+            "country_id": 25,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 76,
+            "name": "Tbilisi",
+            "country_id": 26,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 77,
+            "name": "Batumi",
+            "country_id": 26,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 78,
+            "name": "Kutaisi",
+            "country_id": 26,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 79,
+            "name": "Berlin",
+            "country_id": 27,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 80,
+            "name": "Munich",
+            "country_id": 27,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 81,
+            "name": "Frankfurt",
+            "country_id": 27,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 82,
+            "name": "Athens",
+            "country_id": 28,
+            "type": [
+                "tourism",
+                "business",
+                "religious"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 83,
+            "name": "Thessaloniki",
+            "country_id": 28,
+            "type": [
+                "education",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 84,
+            "name": "Santorini",
+            "country_id": 28,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 85,
+            "name": "Budapest",
+            "country_id": 29,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 86,
+            "name": "Debrecen",
+            "country_id": 29,
+            "type": [
+                "education"
+            ],
+            "popularity": 2,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 87,
+            "name": "Szeged",
+            "country_id": 29,
+            "type": [
+                "education",
+                "tourism"
+            ],
+            "popularity": 2,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 88,
+            "name": "Reykjavik",
+            "country_id": 30,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 89,
+            "name": "Akureyri",
+            "country_id": 30,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 90,
+            "name": "Vik",
+            "country_id": 30,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 91,
+            "name": "Delhi",
+            "country_id": 31,
+            "type": [
+                "business",
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 92,
+            "name": "Mumbai",
+            "country_id": 31,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 93,
+            "name": "Varanasi",
+            "country_id": 31,
+            "type": [
+                "religious",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 94,
+            "name": "Jakarta",
+            "country_id": 32,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 95,
+            "name": "Bali",
+            "country_id": 32,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 96,
+            "name": "Yogyakarta",
+            "country_id": 32,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 97,
+            "name": "Dublin",
+            "country_id": 33,
+            "type": [
+                "business",
+                "education",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 98,
+            "name": "Cork",
+            "country_id": 33,
+            "type": [
+                "education",
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 99,
+            "name": "Galway",
+            "country_id": 33,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 100,
+            "name": "Jerusalem",
+            "country_id": 34,
+            "type": [
+                "religious",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 101,
+            "name": "Tel Aviv",
+            "country_id": 34,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 102,
+            "name": "Haifa",
+            "country_id": 34,
+            "type": [
+                "education",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 103,
+            "name": "Rome",
+            "country_id": 35,
+            "type": [
+                "tourism",
+                "religious",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 104,
+            "name": "Milan",
+            "country_id": 35,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 105,
+            "name": "Florence",
+            "country_id": 35,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 106,
+            "name": "Tokyo",
+            "country_id": 36,
+            "type": [
+                "tourism",
+                "business",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 107,
+            "name": "Osaka",
+            "country_id": 36,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 108,
+            "name": "Kyoto",
+            "country_id": 36,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 109,
+            "name": "Amman",
+            "country_id": 37,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 110,
+            "name": "Petra",
+            "country_id": 37,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 111,
+            "name": "Aqaba",
+            "country_id": 37,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 112,
+            "name": "Nairobi",
+            "country_id": 38,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 113,
+            "name": "Mombasa",
+            "country_id": 38,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 114,
+            "name": "Kisumu",
+            "country_id": 38,
+            "type": [
+                "business"
+            ],
+            "popularity": 2,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 115,
+            "name": "Kuwait City",
+            "country_id": 39,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 116,
+            "name": "Al Jahra",
+            "country_id": 39,
+            "type": [
+                "business"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 117,
+            "name": "Salmiya",
+            "country_id": 39,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 118,
+            "name": "Luxembourg City",
+            "country_id": 40,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 119,
+            "name": "Esch-sur-Alzette",
+            "country_id": 40,
+            "type": [
+                "education"
+            ],
+            "popularity": 2,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 120,
+            "name": "Echternach",
+            "country_id": 40,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 2,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 121,
+            "name": "Kuala Lumpur",
+            "country_id": 41,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 122,
+            "name": "Penang",
+            "country_id": 41,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 123,
+            "name": "Malacca",
+            "country_id": 41,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 124,
+            "name": "Male",
+            "country_id": 42,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 125,
+            "name": "Maafushi",
+            "country_id": 42,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 126,
+            "name": "Hulhumale",
+            "country_id": 42,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 127,
+            "name": "Valletta",
+            "country_id": 43,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 128,
+            "name": "Sliema",
+            "country_id": 43,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 129,
+            "name": "Mdina",
+            "country_id": 43,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 130,
+            "name": "Port Louis",
+            "country_id": 44,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 131,
+            "name": "Grand Baie",
+            "country_id": 44,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 132,
+            "name": "Flic en Flac",
+            "country_id": 44,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 133,
+            "name": "Mexico City",
+            "country_id": 45,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 134,
+            "name": "Cancun",
+            "country_id": 45,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 135,
+            "name": "Guadalajara",
+            "country_id": 45,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 136,
+            "name": "Monaco-Ville",
+            "country_id": 46,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 137,
+            "name": "Monte Carlo",
+            "country_id": 46,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 138,
+            "name": "Fontvieille",
+            "country_id": 46,
+            "type": [
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 139,
+            "name": "Casablanca",
+            "country_id": 47,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 140,
+            "name": "Marrakesh",
+            "country_id": 47,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 141,
+            "name": "Rabat",
+            "country_id": 47,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 142,
+            "name": "Kathmandu",
+            "country_id": 48,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 143,
+            "name": "Pokhara",
+            "country_id": 48,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 144,
+            "name": "Lumbini",
+            "country_id": 48,
+            "type": [
+                "religious"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 145,
+            "name": "Amsterdam",
+            "country_id": 49,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 146,
+            "name": "Rotterdam",
+            "country_id": 49,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 147,
+            "name": "The Hague",
+            "country_id": 49,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 148,
+            "name": "Auckland",
+            "country_id": 50,
+            "type": [
+                "business",
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 149,
+            "name": "Wellington",
+            "country_id": 50,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 150,
+            "name": "Queenstown",
+            "country_id": 50,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 151,
+            "name": "Oslo",
+            "country_id": 51,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 152,
+            "name": "Bergen",
+            "country_id": 51,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 153,
+            "name": "Tromso",
+            "country_id": 51,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 154,
+            "name": "Muscat",
+            "country_id": 52,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 155,
+            "name": "Salalah",
+            "country_id": 52,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 156,
+            "name": "Nizwa",
+            "country_id": 52,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 157,
+            "name": "Karachi",
+            "country_id": 53,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 158,
+            "name": "Lahore",
+            "country_id": 53,
+            "type": [
+                "tourism",
+                "religious",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 159,
+            "name": "Islamabad",
+            "country_id": 53,
+            "type": [
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 160,
+            "name": "Lima",
+            "country_id": 54,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 161,
+            "name": "Cusco",
+            "country_id": 54,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 162,
+            "name": "Arequipa",
+            "country_id": 54,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 163,
+            "name": "Manila",
+            "country_id": 55,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 164,
+            "name": "Cebu",
+            "country_id": 55,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 165,
+            "name": "Boracay",
+            "country_id": 55,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 166,
+            "name": "Angeles",
+            "country_id": 55,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 167,
+            "name": "Palawan",
+            "country_id": 55,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 168,
+            "name": "Warsaw",
+            "country_id": 56,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 169,
+            "name": "Krakow",
+            "country_id": 56,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 170,
+            "name": "Gdansk",
+            "country_id": 56,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 171,
+            "name": "Lisbon",
+            "country_id": 57,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 172,
+            "name": "Porto",
+            "country_id": 57,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 173,
+            "name": "Faro",
+            "country_id": 57,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 174,
+            "name": "Doha",
+            "country_id": 58,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 175,
+            "name": "Al Wakrah",
+            "country_id": 58,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 176,
+            "name": "Lusail",
+            "country_id": 58,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 177,
+            "name": "Moscow",
+            "country_id": 59,
+            "type": [
+                "business",
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 178,
+            "name": "Saint Petersburg",
+            "country_id": 59,
+            "type": [
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 179,
+            "name": "Kazan",
+            "country_id": 59,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 180,
+            "name": "Mecca",
+            "country_id": 60,
+            "type": [
+                "religious"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 181,
+            "name": "Riyadh",
+            "country_id": 60,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 182,
+            "name": "Jeddah",
+            "country_id": 60,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 183,
+            "name": "Singapore City",
+            "country_id": 61,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 184,
+            "name": "Sentosa",
+            "country_id": 61,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 185,
+            "name": "Jurong",
+            "country_id": 61,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 186,
+            "name": "Johannesburg",
+            "country_id": 62,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 187,
+            "name": "Cape Town",
+            "country_id": 62,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 188,
+            "name": "Durban",
+            "country_id": 62,
+            "type": [
+                "tourism",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 189,
+            "name": "Seoul",
+            "country_id": 63,
+            "type": [
+                "business",
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 190,
+            "name": "Busan",
+            "country_id": 63,
+            "type": [
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 191,
+            "name": "Jeju",
+            "country_id": 63,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 192,
+            "name": "Madrid",
+            "country_id": 64,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 193,
+            "name": "Barcelona",
+            "country_id": 64,
+            "type": [
+                "tourism",
+                "business",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 194,
+            "name": "Seville",
+            "country_id": 64,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 195,
+            "name": "Colombo",
+            "country_id": 65,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 196,
+            "name": "Kandy",
+            "country_id": 65,
+            "type": [
+                "tourism",
+                "religious"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 197,
+            "name": "Galle",
+            "country_id": 65,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 198,
+            "name": "Stockholm",
+            "country_id": 66,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 199,
+            "name": "Gothenburg",
+            "country_id": 66,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 200,
+            "name": "Malmo",
+            "country_id": 66,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 201,
+            "name": "Zurich",
+            "country_id": 67,
+            "type": [
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 202,
+            "name": "Geneva",
+            "country_id": 67,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 203,
+            "name": "Lucerne",
+            "country_id": 67,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 204,
+            "name": "Taipei",
+            "country_id": 68,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 205,
+            "name": "Kaohsiung",
+            "country_id": 68,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 206,
+            "name": "Taichung",
+            "country_id": 68,
+            "type": [
+                "education",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 207,
+            "name": "Bangkok",
+            "country_id": 69,
+            "type": [
+                "tourism",
+                "business",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 208,
+            "name": "Phuket",
+            "country_id": 69,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 209,
+            "name": "Chiang Mai",
+            "country_id": 69,
+            "type": [
+                "tourism",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 210,
+            "name": "Pattaya",
+            "country_id": 69,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 211,
+            "name": "Istanbul",
+            "country_id": 70,
+            "type": [
+                "tourism",
+                "business",
+                "religious"
+            ],
+            "popularity": 5,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 212,
+            "name": "Ankara",
+            "country_id": 70,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 3,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 213,
+            "name": "Antalya",
+            "country_id": 70,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 214,
+            "name": "Dubai",
+            "country_id": 71,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 215,
+            "name": "Abu Dhabi",
+            "country_id": 71,
+            "type": [
+                "business",
+                "conference",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 216,
+            "name": "Sharjah",
+            "country_id": 71,
+            "type": [
+                "education",
+                "religious"
+            ],
+            "popularity": 4,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 217,
+            "name": "London",
+            "country_id": 72,
+            "type": [
+                "tourism",
+                "business",
+                "education"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 218,
+            "name": "Manchester",
+            "country_id": 72,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 219,
+            "name": "Edinburgh",
+            "country_id": 72,
+            "type": [
+                "tourism",
+                "conference"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 220,
+            "name": "New York",
+            "country_id": 73,
+            "type": [
+                "business",
+                "tourism",
+                "conference"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 221,
+            "name": "Los Angeles",
+            "country_id": 73,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 222,
+            "name": "Chicago",
+            "country_id": 73,
+            "type": [
+                "business",
+                "education"
+            ],
+            "popularity": 4,
+            "cost_level": "high",
+            "visa_ease": "hard"
+        },
+        {
+            "id": 223,
+            "name": "Vatican City",
+            "country_id": 74,
+            "type": [
+                "religious",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 224,
+            "name": "St. Peter's Square",
+            "country_id": 74,
+            "type": [
+                "religious"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 225,
+            "name": "Vatican Museums",
+            "country_id": 74,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "high",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 226,
+            "name": "Ho Chi Minh City",
+            "country_id": 75,
+            "type": [
+                "business",
+                "tourism"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 227,
+            "name": "Hanoi",
+            "country_id": 75,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 5,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 228,
+            "name": "Da Nang",
+            "country_id": 75,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 4,
+            "cost_level": "low",
+            "visa_ease": "easy"
+        }
+    ]
+}
