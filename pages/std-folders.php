@@ -1,5 +1,6 @@
 <?php
     $api_file_explorer = $ip_port . "api/travelers/file-explorer.php";
+    $server_path = trim(file_get_contents('../server-name.txt'));
 ?>
 <style>
     .context-menu-item {
@@ -1029,6 +1030,7 @@
 <script>
     const travelerId = `<?php echo $travelerId; ?>`;
     const SERVER_NAME = `<?php echo $_SESSION['scp']; ?>`;
+    const SERVER_PATH = `<?php echo $server_path; ?>_travelers`;
     const API_FILE_EXPLORER = `<?php echo $api_file_explorer; ?>`;
 
     const FileExplorer = {
@@ -1279,9 +1281,9 @@
             
             if (docType === 'nid') {
                 // Script is in pages folder
-                return `./nid-data-entry.php?path=${encodeURIComponent(relativePath)}`;
+                return `./nid-data-entry.php?path=${SERVER_PATH}/${encodeURIComponent(relativePath)}`;
             } else if (docType === 'passport') {
-                return `./passport-data-entry.php?path=${encodeURIComponent(relativePath)}`;
+                return `./passport-data-entry.php?path=${SERVER_PATH}/${encodeURIComponent(relativePath)}`;
             }
             return null;
         },
@@ -1990,6 +1992,8 @@
                 
                 // Open the image editor with the SMB path
                 const editorUrl = `img-editor.php?img=${encodeURIComponent(smbPath)}`;
+                
+                // const editorUrl = `http://103.104.219.3:899/rnd_running/traveler_profile/editor.php?img=${encodeURIComponent(smbPath)}`;
                 window.open(editorUrl, '_blank');
                 
                 this.showToast('Opening image editor...', 'info');
@@ -2019,7 +2023,7 @@
             relativePath = relativePath.replace(/^\/+|\/+$/g, '');
             
             // Construct the full SMB path
-            const smbPath = `rnd_traveler/${this.state.travelerFolder}/${relativePath}`;
+            const smbPath = `${SERVER_PATH}/${this.state.travelerFolder}/${relativePath}`;
             
             // Remove any double slashes that might have been created
             return smbPath.replace(/\/+/g, '/');
@@ -2696,7 +2700,7 @@
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('#context-menu')) {
                     this.hideContextMenu();
-                }
+            }
             });
             
             document.addEventListener('keydown', (e) => {

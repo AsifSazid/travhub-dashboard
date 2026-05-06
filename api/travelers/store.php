@@ -54,17 +54,33 @@ try {
     
     // server
     makeDir("travelers/{$travelerFolderName}", 'all_documents');
+    makeDir("travelers/{$travelerFolderName}", 'passport_identity');
+    makeDir("travelers/{$travelerFolderName}", 'personal_documents');
+    makeDir("travelers/{$travelerFolderName}", 'professional_documents');
+    makeDir("travelers/{$travelerFolderName}", 'financial_documents');
+    makeDir("travelers/{$travelerFolderName}", 'travel_history');
+    makeDir("travelers/{$travelerFolderName}", 'photos_signature');
+    makeDir("travelers/{$travelerFolderName}", 'country_tie_documents');
     makeDir("travelers/{$travelerFolderName}", 'nid');
-    makeDir("travelers/{$travelerFolderName}", 'office_documents');
-    makeDir("travelers/{$travelerFolderName}", 'others');
-    makeDir("travelers/{$travelerFolderName}", 'passports');
+    // makeDir("travelers/{$travelerFolderName}", 'all_documents');
+    // makeDir("travelers/{$travelerFolderName}", 'office_documents');
+    // makeDir("travelers/{$travelerFolderName}", 'others');
+    // makeDir("travelers/{$travelerFolderName}", 'passports');
     
     //cloud server    
     makeSMBDir($cloud_traveler_path, 'all_documents');
+    makeSMBDir($cloud_traveler_path, 'passport_identity');
+    makeSMBDir($cloud_traveler_path, 'personal_documents');
+    makeSMBDir($cloud_traveler_path, 'professional_documents');
+    makeSMBDir($cloud_traveler_path, 'financial_documents');
+    makeSMBDir($cloud_traveler_path, 'travel_history');
+    makeSMBDir($cloud_traveler_path, 'photos_signature');
+    makeSMBDir($cloud_traveler_path, 'country_tie_documents');
     makeSMBDir($cloud_traveler_path, 'nid');
-    makeSMBDir($cloud_traveler_path, 'office_documents');
-    makeSMBDir($cloud_traveler_path, 'others');
-    makeSMBDir($cloud_traveler_path, 'passports');
+    // makeSMBDir($cloud_traveler_path, 'all_documents');
+    // makeSMBDir($cloud_traveler_path, 'office_documents');
+    // makeSMBDir($cloud_traveler_path, 'others');
+    // makeSMBDir($cloud_traveler_path, 'passports');
     
     // Prepare SQL
     $stmt = $pdo->prepare("

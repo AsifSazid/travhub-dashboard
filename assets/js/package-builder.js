@@ -1310,10 +1310,11 @@ const PackageBuilder = (() => {
         return transfers.map((tr, ti) => {
             const isSIC = (tr.type || 'sic') === 'sic';
             return `
-            <div class="standalone-transfer-card border border-orange-200 rounded-xl bg-orange-50/30 overflow-hidden"
-                 data-day-idx="${dayIdx}" data-tr-idx="${ti}">
+            <div class="standalone-transfer-card border border-orange-200 rounded-xl bg-orange-50/30 overflow-hidden cursor-grab active:cursor-grabbing"
+                 draggable="true" data-day-idx="${dayIdx}" data-tr-idx="${ti}">
                 <!-- Header -->
                 <div class="flex items-center gap-2 px-3 py-2.5 bg-orange-50 border-b border-orange-100">
+                    <i class="fa-solid fa-grip-lines text-orange-300 cursor-grab" style="font-size:11px"></i>
                     <i class="fa-solid fa-van-shuttle text-orange-400 text-xs"></i>
                     <input type="text" value="${escHtml(tr.title||'')}" placeholder="Transfer title (e.g. Airport → Hotel)"
                            class="flex-1 text-sm font-semibold bg-transparent border-none outline-none text-orange-800 placeholder:text-orange-300 st-title"
@@ -1497,11 +1498,12 @@ const PackageBuilder = (() => {
         function buildFlightCard(f, dayIdx, fi) {
         const transits = f.transits || [];
         return `
-        <div class="flight-card border border-sky-200 rounded-xl bg-sky-50/30 overflow-hidden"
-             data-day-idx="${dayIdx}" data-fl-idx="${fi}">
+        <div class="flight-card border border-sky-200 rounded-xl bg-sky-50/30 overflow-hidden cursor-grab active:cursor-grabbing"
+             draggable="true" data-day-idx="${dayIdx}" data-fl-idx="${fi}">
 
             <!-- Header -->
             <div class="flex items-center gap-2 px-3 py-2.5 bg-sky-50 border-b border-sky-100">
+                <i class="fa-solid fa-grip-lines text-sky-300 cursor-grab" style="font-size:11px"></i>
                 <i class="fa-solid fa-plane text-sky-500 text-xs"></i>
                 <span class="text-xs font-semibold text-sky-700 uppercase tracking-wide">Flight</span>
                 <input type="text" value="${escHtml(f.flight_number||'')}" placeholder="Flight no. (e.g. BG-001)"
@@ -1632,6 +1634,30 @@ const PackageBuilder = (() => {
             const di = +card.dataset.dayIdx;
             const fi = +card.dataset.flIdx;
             bindFlightCardEvents(card, days, di, fi);
+
+            // Drag & drop reorder
+            card.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ type:'flight', di, fi }));
+                card.classList.add('opacity-50');
+            });
+            card.addEventListener('dragend', () => card.classList.remove('opacity-50'));
+            card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('ring-2','ring-sky-400'); });
+            card.addEventListener('dragleave', () => card.classList.remove('ring-2','ring-sky-400'));
+            card.addEventListener('drop', e => {
+                e.preventDefault();
+                card.classList.remove('ring-2','ring-sky-400');
+                try {
+                    const from = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    if (from.type !== 'flight') return;
+                    const toDi = +card.dataset.dayIdx, toFi = +card.dataset.flIdx;
+                    if (from.di !== toDi || from.fi === toFi) return;
+                    const arr = days[from.di].flights;
+                    const [moved] = arr.splice(from.fi, 1);
+                    arr.splice(toFi, 0, moved);
+                    const listEl = document.getElementById(`dayFlightList_${toDi}`);
+                    if (listEl) { listEl.innerHTML = buildFlightList(days[toDi], toDi); bindAllFlightEvents(days); }
+                } catch(e) {}
+            });
         });
     }
 
@@ -1694,6 +1720,32 @@ const PackageBuilder = (() => {
                 }
             })
         );
+        // Drag & drop reorder for standalone transfers
+        el.querySelectorAll('.standalone-transfer-card').forEach(card => {
+            card.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ type:'transfer', di: +card.dataset.dayIdx, ti: +card.dataset.trIdx }));
+                card.classList.add('opacity-50');
+            });
+            card.addEventListener('dragend', () => card.classList.remove('opacity-50'));
+            card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('ring-2','ring-orange-400'); });
+            card.addEventListener('dragleave', () => card.classList.remove('ring-2','ring-orange-400'));
+            card.addEventListener('drop', e => {
+                e.preventDefault();
+                card.classList.remove('ring-2','ring-orange-400');
+                try {
+                    const from = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    if (from.type !== 'transfer') return;
+                    const toDi = +card.dataset.dayIdx, toTi = +card.dataset.trIdx;
+                    if (from.di !== toDi || from.ti === toTi) return;
+                    const arr = days[from.di].transfers;
+                    const [moved] = arr.splice(from.ti, 1);
+                    arr.splice(toTi, 0, moved);
+                    const listEl = document.getElementById(`dayTransList_${toDi}`);
+                    if (listEl) { listEl.innerHTML = buildStandaloneTransferList(days[toDi], toDi); bindStandaloneTransferEvents(days); }
+                } catch(e) {}
+            });
+        });
+
         el.querySelectorAll('.btn-add-st-car').forEach(btn =>
             btn.addEventListener('click', () => {
                 const di = +btn.dataset.dayIdx, ti = +btn.dataset.trIdx;

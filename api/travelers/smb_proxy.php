@@ -2,7 +2,7 @@
 /**
  * smb_proxy.php - Proxy for serving images from SMB storage
  */
-require_once '../../server/live_storage.php';
+require_once 'live_storage.php';
 
 // Disable error reporting to prevent HTML output
 error_reporting(0);
