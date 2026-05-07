@@ -1281,9 +1281,9 @@
             
             if (docType === 'nid') {
                 // Script is in pages folder
-                return `./nid-data-entry.php?path=${SERVER_PATH}/${encodeURIComponent(relativePath)}`;
+                return `./nid-data-entry.php?path=${SERVER_PATH}/${encodeURIComponent(relativePath)}&tid=${travelerId}`;
             } else if (docType === 'passport') {
-                return `./passport-data-entry.php?path=${SERVER_PATH}/${encodeURIComponent(relativePath)}`;
+                return `./passport-data-entry.php?path=${SERVER_PATH}/${encodeURIComponent(relativePath)}&tid=${travelerId}`;
             }
             return null;
         },
@@ -1991,7 +1991,7 @@
                 const smbPath = this.getSmbPathForEditor(this.state.contextItem);
                 
                 // Open the image editor with the SMB path
-                const editorUrl = `img-editor.php?img=${encodeURIComponent(smbPath)}`;
+                const editorUrl = `img-editor.php?img=${encodeURIComponent(smbPath)}&tid=${travelerId}`;
                 
                 // const editorUrl = `http://103.104.219.3:899/rnd_running/traveler_profile/editor.php?img=${encodeURIComponent(smbPath)}`;
                 window.open(editorUrl, '_blank');

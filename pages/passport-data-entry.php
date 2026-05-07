@@ -1,4 +1,5 @@
 <?php
+// passport-data-entry.php - Main file for NID card processing
 
 session_start();
 
@@ -10,7 +11,7 @@ $filePath = $_GET['path'] ?? null;
 if (!$filePath) die("No file path provided.");
 
 $pathParts = explode('/', $filePath);
-$traveler_id = $pathParts[1] ?? 'unknown';
+$traveler_id = $_GET['tid'] ?? null;
 
 $GEMINI_API_KEY = trim(file_get_contents('../gemini-apikey.txt'));
 $apiKey = $GEMINI_API_KEY;
@@ -19,36 +20,48 @@ $model = 'gemini-2.0-flash-lite';
 // --- HANDLE SAVE DATA ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_db') {
     header('Content-Type: application/json');
-    $newEntry = json_decode($_POST['json_data'], true);
-    $tid = $_POST['traveler_id'];
+    
+    // 1. Prepare the data
+    $newEntry = json_decode($_POST['json_data'] ?? '', true);
+    $tid = $_POST['traveler_id'] ?? '';
     $pageType = $_POST['page_type'] ?? 'unknown';
     
-    // Add metadata to the entry
+    // Add metadata
     $newEntry['_metadata'] = [
-        'saved_at' => date('Y-m-d H:i:s'),
-        'page_type' => $pageType,
-        'source_file' => $filePath
+        'saved_at'   => date('Y-m-d H:i:s'),
+        'page_type'  => $pageType,
+        'source_file'=> $filePath ?? 'unknown',
+        'created_by' => $_SESSION['user_name'] ?? 'system'
     ];
     
-    $stmt = $conn->prepare("SELECT passport FROM traveler_profile WHERE traveler_id = ?");
-    $stmt->bind_param("s", $tid);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($row = $result->fetch_assoc()) {
-        $history = json_decode($row['passport'], true) ?: [];
-        $history[] = $newEntry;
-        $finalJson = json_encode($history);
-        $update = $conn->prepare("UPDATE traveler_profile SET passport = ? WHERE traveler_id = ?");
-        $update->bind_param("ss", $finalJson, $tid);
-        $success = $update->execute();
-    } else {
-        $stmt = $conn->prepare("INSERT INTO traveler_profile (traveler_id, passport) VALUES (?, ?)");
-        $jsonStr = json_encode([$newEntry]);
-        $stmt->bind_param("ss", $tid, $jsonStr);
-        $success = $stmt->execute();
+    try {
+        // 2. Check for existing record
+        $stmt = $pdo->prepare("SELECT passport_info FROM travelers WHERE sys_id = ?");
+        $stmt->execute([$tid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($row) {
+            // 3. Append to existing history
+            // Use ?? '' to prevent PHP 8.1+ deprecation warnings on null values
+            $history = json_decode($row['passport_info'] ?? '', true) ?: [];
+            $history[] = $newEntry;
+            $finalJson = json_encode($history);
+            
+            $update = $pdo->prepare("UPDATE travelers SET passport_info = ? WHERE sys_id = ?");
+            $success = $update->execute([$finalJson, $tid]);
+        } else {
+            // 4. Create new record
+            $jsonStr = json_encode([$newEntry]);
+            $insert = $pdo->prepare("INSERT INTO travelers (sys_id, passport_info) VALUES (?, ?)");
+            $success = $insert->execute([$tid, $jsonStr]);
+        }
+        
+        echo json_encode(['success' => $success]);
+
+    } catch (PDOException $e) {
+        // Return the error message for debugging
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
-    echo json_encode(['success' => $success]);
     exit;
 }
 

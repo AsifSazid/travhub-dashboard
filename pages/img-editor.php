@@ -2,6 +2,7 @@
 /**
  * editor.php - Image Editor for SMB Storage
  */
+$travelerId = $_GET['tid'];
 ?>
 <!DOCTYPE html>
 <html>
@@ -62,13 +63,14 @@
     <script src="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.js"></script>
 
     <script>
+        const TRAVELER_ID = '<?php echo $travelerId; ?>';
         const saveBtn = document.getElementById('saveBtn');
         const urlParams = new URLSearchParams(window.location.search);
         const rawSmbPath = urlParams.get('img'); // Example: "rnd_traveler/niloy_5c0e526c/all_documents/photo.jpg"
         
         // 1. Correctly determine the redirect URL
         // Based on up_show_files.php, we need the "folder" parameter (e.g., niloy_5c0e526c)
-        let redirectUrl = 'up_show_files.php';
+        let redirectUrl = 'show-travelers.php';
         if (rawSmbPath) {
             // Clean the path and split it
             const parts = rawSmbPath.split('/').filter(p => p.length > 0);
@@ -77,7 +79,7 @@
             // We want parts[1] which is the traveler folder ID
             if (parts.length >= 2) {
                 const travelerFolder = parts[1];
-                redirectUrl = 'up_show_files.php?folder=' + encodeURIComponent(travelerFolder);
+                redirectUrl = `show-travelers.php?traveler_id=${TRAVELER_ID}`;
             }
         }
 
@@ -140,8 +142,10 @@
                 const formData = new FormData();
                 formData.append('image', imageData);
                 formData.append('path', rawSmbPath);
+                
+                const SMB_SAVE_EDITOR = '../api/travelers/smb_save_editor.php'
 
-                const response = await fetch('smb_save_editor.php', {
+                const response = await fetch(SMB_SAVE_EDITOR, {
                     method: 'POST',
                     body: formData
                 });
@@ -156,7 +160,7 @@
 
                 if (data.success) {
                     alert('✅ Saved successfully!');
-                    window.location.href = redirectUrl;
+                    window.location.href
                 } else {
                     throw new Error(data.message || 'Server error');
                 }
