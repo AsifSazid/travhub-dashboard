@@ -28,6 +28,17 @@ try {
         } elseif ($row['paid_amount'] > 0 && $row['due_amount'] > 0) {
             $status = 'partial';
         }
+        
+        $meta_data = json_decode($row['meta_data'] ?? '{}', true) ?: [];
+        
+        $created_by = $meta_data['created_by_date']['user'] ?? 'System';
+        
+        // Updated By extraction (Last item from array logic)
+        $updated_by = 'Not updated';
+        if (!empty($meta_data['updated_by_date']) && is_array($meta_data['updated_by_date'])) {
+            $last_update = end($meta_data['updated_by_date']);
+            $updated_by = $last_update['user'] ?? 'System';
+        }
 
         // Check overdue
         $due_date = new DateTime($row['date']);
@@ -50,6 +61,8 @@ try {
             "due_amount" => floatval($row['due_amount']),
             "created_at" => $row['created_at'],
             "updated_at" => $row['updated_at'],
+            "created_by" => $created_by,
+            "updated_by" => $updated_by,
             "invoice_date" => $row['date'],
             "due_date" => $due_date->format('Y-m-d'),
             "status" => $status,

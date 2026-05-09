@@ -2374,27 +2374,19 @@ $base_ip_path = trim($ip_port, "/");
                 const handler = function () {
                     const rate = parseFloat(rateInput.value) || 0;
                     const qty  = parseFloat(qtyInput.value) || 0;
-                    const amount = rate * qty;
+                    const amount = rate * qty; // সরাসরি গুণফল
                 
                     const formatted = amount.toFixed(2);
                     amountSpan.textContent = formatted;
                     totalAmountSpan.textContent = formatted;
                     amountInput.value = formatted;
                     
-                    // টোটালের সাইন আপডেট করুন
-                    const netTotal = totalAmount >= 0 ? amount : -amount;
-                    const itemTotalClass = netTotal >= 0 ? 'text-green-700' : 'text-red-700';
-                    const totalSign = netTotal >= 0 ? '' : '-';
-                    
-                    // টোটাল স্প্যান আপডেট করুন
-                    const totalDisplay = item.querySelector('.text-lg');
-                    totalDisplay.className = `${itemTotalClass} font-bold text-lg`;
-                    totalDisplay.innerHTML = `${totalSign}৳<span class="total-amount">${Math.abs(netTotal).toFixed(2)}</span>`;
-                    
-                    // নেট টোটাল স্প্যান আপডেট করুন
-                    const netDisplay = item.querySelector('.font-medium:has(.calculated-amount)');
-                    netDisplay.className = `${itemTotalClass} font-medium`;
-                    netDisplay.innerHTML = `Net Total: ${totalSign}৳<span class="calculated-amount">${Math.abs(netTotal).toFixed(2)}</span>`;
+                    // কালার আপডেট লজিক
+                    if (amount < 0) {
+                        item.querySelector('.text-lg').classList.replace('text-green-700', 'text-red-700');
+                    } else {
+                        item.querySelector('.text-lg').classList.replace('text-red-700', 'text-green-700');
+                    }
                 
                     calculateTotal();
                 };
@@ -2517,7 +2509,7 @@ $base_ip_path = trim($ip_port, "/");
                                 <i class="fas fa-tag mr-2"></i> Rate (per unit)
                             </label>
                             <input type="number" name="work_rate[]" class="work-rate w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" 
-                                   value="${data.work_rate||0}" min="0" step="0.01" placeholder="0.00">
+                                   value="${data.work_rate||0}" placeholder="0.00">
                         </div>
                     </div>
                     <div class="form-group mb-4">
@@ -2666,13 +2658,24 @@ $base_ip_path = trim($ip_port, "/");
         function calculateDue() {
             const total = parseFloat(document.getElementById('total_amount').value) || 0;
             const paid = parseFloat(document.getElementById('paid_amount').value) || 0;
-            const due = Math.max(0, total - paid);
-    
+            
+            // Math.max(0, ...) সরিয়ে শুধু বিয়োগফল রাখুন
+            const due = total - paid; 
+        
             document.getElementById('due_amount_display').innerText = due.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
             document.getElementById('due_amount').value = due.toFixed(2);
+            
+            // ডিউ যদি মাইনাস হয় তবে লাল রঙের বদলে অন্য কালার দিতে পারেন (ঐচ্ছিক)
+            if (due < 0) {
+                document.getElementById('due_amount_display').classList.remove('due');
+                document.getElementById('due_amount_display').style.color = '#3b82f6'; // Blue for advance
+            } else {
+                document.getElementById('due_amount_display').style.color = '';
+                document.getElementById('due_amount_display').classList.add('due');
+            }
         }
     
         /* ========== 16. FORM MANAGEMENT ========== */

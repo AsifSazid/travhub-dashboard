@@ -783,7 +783,7 @@ if ($http_code == 200 && !empty($response)) {
                                             <div class="form-group">
                                                 <label class="form-label"><i class="fas fa-tag"></i> Rate (per unit)</label>
                                                 <input type="number" name="work_items[<?php echo $index; ?>][rate]" class="form-control"
-                                                    value="<?php echo htmlspecialchars($item['rate'] ?? 0); ?>" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
+                                                    value="<?php echo htmlspecialchars($item['rate'] ?? 0); ?>" oninput="calcAmount(this)" placeholder="0.00">
                                             </div>
                                         </div>
                                         <div class="form-group">
@@ -824,7 +824,7 @@ if ($http_code == 200 && !empty($response)) {
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label"><i class="fas fa-tag"></i> Rate (per unit)</label>
-                                            <input type="number" name="work_items[0][rate]" class="form-control" value="0" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
+                                            <input type="number" name="work_items[0][rate]" class="form-control" value="0" oninput="calcAmount(this)" placeholder="0.00">
                                         </div>
                                     </div>
                                     <div class="form-group">
@@ -1233,7 +1233,7 @@ if ($http_code == 200 && !empty($response)) {
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-tag"></i> Rate (per unit)</label>
-                        <input type="number" name="work_items[${workItemCounter}][rate]" class="form-control" value="0" min="0" step="0.01" oninput="calcAmount(this)" placeholder="0.00">
+                        <input type="number" name="work_items[${workItemCounter}][rate]" class="form-control" value="0" oninput="calcAmount(this)" placeholder="0.00">
                     </div>
                 </div>
                 <div class="form-group">
@@ -1288,15 +1288,14 @@ if ($http_code == 200 && !empty($response)) {
 
         function calculateTotal() {
             let total = 0;
-            
-            // শুধুমাত্র visible items calculate করবে
             document.querySelectorAll('#work_items .item-card').forEach(card => {
                 if (card.style.display !== 'none') {
                     const amountInput = card.querySelector('input[name^="work_items["][name$="[amount]"]');
+                    // সরাসরি ভ্যালু যোগ হবে (ভ্যালু মাইনাস থাকলে স্বয়ংক্রিয়ভাবে বিয়োগ হয়ে যাবে)
                     total += parseFloat(amountInput.value) || 0;
                 }
             });
-
+        
             document.getElementById('total_amount_display').innerText = '৳ ' + total.toFixed(2);
             document.getElementById('total_amount').value = total.toFixed(2);
             calculateDue();
@@ -1305,10 +1304,22 @@ if ($http_code == 200 && !empty($response)) {
         function calculateDue() {
             const total = parseFloat(document.getElementById('total_amount').value) || 0;
             const paid = parseFloat(document.getElementById('paid_amount').value) || 0;
-            const due = Math.max(0, total - paid);
-
+            
+            // Math.max(0, ...) সরিয়ে দিন
+            const due = total - paid; 
+        
             document.getElementById('due_amount_display').innerText = '৳ ' + due.toFixed(2);
             document.getElementById('due_amount').value = due.toFixed(2);
+            
+            // ঐচ্ছিক: ডিউ নেগেটিভ হলে কালার পরিবর্তন (Red এর বদলে Blue)
+            const display = document.getElementById('due_amount_display');
+            if (due < 0) {
+                display.style.color = '#3b82f6'; // Blue color for advance
+            } else if (due > 0) {
+                display.style.color = 'var(--danger)';
+            } else {
+                display.style.color = 'var(--primary)';
+            }
         }
 
         /* ---------------- Bank/MFS Modal Functions ---------------- */

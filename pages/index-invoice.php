@@ -1061,6 +1061,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 const dueDate = new Date(invoice.due_date);
                 const now = new Date();
                 const isOverdue = invoice.status === 'overdue';
+                const updatedDate = invoice.updated_at ? new Date(invoice.updated_at) : null;
                 
                 html += `
                     <div class="invoice-card bg-white border border-gray-200 rounded-lg p-5 hover:border-green-300 fade-in mb-4">
@@ -1132,6 +1133,30 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                                         <div class="text-base font-bold text-red-800">
                                             ৳ ${invoice.due_amount.toFixed(2)}
                                         </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Meta Information (Created & Updated) -->
+                                <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                                    <div class="flex flex-wrap gap-x-6 gap-y-1">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-user-plus mr-1 text-gray-400"></i>
+                                            <span>Created by: ${escapeHtml(invoice.created_by || 'N/A')}</span>
+                                            <span class="mx-1">•</span>
+                                            <i class="far fa-calendar-alt mr-1 text-gray-400"></i>
+                                            <span>${createdDate.toLocaleString()}</span>
+                                        </div>
+                                        ${invoice.updated_by || invoice.updated_at ? `
+                                            <div class="flex items-center">
+                                                <i class="fas fa-user-edit mr-1 text-gray-400"></i>
+                                                <span>Updated by: ${escapeHtml(invoice.updated_by || 'N/A')}</span>
+                                                ${updatedDate ? `
+                                                    <span class="mx-1">•</span>
+                                                    <i class="far fa-edit mr-1 text-gray-400"></i>
+                                                    <span>${updatedDate.toLocaleString()}</span>
+                                                ` : ''}
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 </div>
                             </div>
