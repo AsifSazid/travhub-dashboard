@@ -3166,6 +3166,18 @@
         },
         {
             "id": 211,
+            "name": "Krabi",
+            "country_id": 69,
+            "type": [
+                "tourism",
+                "business"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "easy"
+        },
+        {
+            "id": 212,
             "name": "Istanbul",
             "country_id": 70,
             "type": [
@@ -3178,7 +3190,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 212,
+            "id": 213,
             "name": "Ankara",
             "country_id": 70,
             "type": [
@@ -3190,7 +3202,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 213,
+            "id": 214,
             "name": "Antalya",
             "country_id": 70,
             "type": [
@@ -3201,7 +3213,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 214,
+            "id": 215,
             "name": "Dubai",
             "country_id": 71,
             "type": [
@@ -3214,7 +3226,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 215,
+            "id": 216,
             "name": "Abu Dhabi",
             "country_id": 71,
             "type": [
@@ -3227,7 +3239,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 216,
+            "id": 217,
             "name": "Sharjah",
             "country_id": 71,
             "type": [
@@ -3239,7 +3251,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 217,
+            "id": 218,
             "name": "London",
             "country_id": 72,
             "type": [
@@ -3252,7 +3264,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 218,
+            "id": 219,
             "name": "Manchester",
             "country_id": 72,
             "type": [
@@ -3264,7 +3276,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 219,
+            "id": 220,
             "name": "Edinburgh",
             "country_id": 72,
             "type": [
@@ -3276,7 +3288,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 220,
+            "id": 221,
             "name": "New York",
             "country_id": 73,
             "type": [
@@ -3289,7 +3301,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 221,
+            "id": 222,
             "name": "Los Angeles",
             "country_id": 73,
             "type": [
@@ -3301,7 +3313,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 222,
+            "id": 223,
             "name": "Chicago",
             "country_id": 73,
             "type": [
@@ -3313,7 +3325,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 223,
+            "id": 224,
             "name": "Vatican City",
             "country_id": 74,
             "type": [
@@ -3325,7 +3337,7 @@
             "visa_ease": "medium"
         },
         {
-            "id": 224,
+            "id": 225,
             "name": "St. Peter's Square",
             "country_id": 74,
             "type": [
@@ -3336,7 +3348,7 @@
             "visa_ease": "medium"
         },
         {
-            "id": 225,
+            "id": 226,
             "name": "Vatican Museums",
             "country_id": 74,
             "type": [
@@ -3347,7 +3359,7 @@
             "visa_ease": "medium"
         },
         {
-            "id": 226,
+            "id": 227,
             "name": "Ho Chi Minh City",
             "country_id": 75,
             "type": [
@@ -3359,7 +3371,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 227,
+            "id": 228,
             "name": "Hanoi",
             "country_id": 75,
             "type": [
@@ -3371,7 +3383,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 228,
+            "id": 229,
             "name": "Da Nang",
             "country_id": 75,
             "type": [

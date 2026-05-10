@@ -1,26 +1,23 @@
 <?php
-
 include_once('./authenticate.php');
+
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
-
 $storeTravelerApi = $ip_port . "api/travelers/store.php";
-
+$extractApi = $ip_port . "api/travelers/extract-document.php";
+$checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete Work Entry</title>
+    <title>Create Traveler - Smart Extraction</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
     <script>
         tailwind.config = {
@@ -40,267 +37,635 @@ $storeTravelerApi = $ip_port . "api/travelers/store.php";
         }
     </script>
 </head>
-
 <body class="bg-gray-50 font-sans">
-    <!-- Top Navigation -->
     <?php include '../elements/header.php'; ?>
-
-    <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
 
-    <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+    <main id="mainContent" class="pt-16 pl-64 lg:mt-16 transition-all duration-300">
         <div class="p-6">
-            <div class="grid grid-cols-6 gap-4">
-                <div class="col-span-6 bg-white rounded-lg shadow p-4">
-                    <!-- Header -->
-                    <div class="mb-6 border-b pb-4">
-                        <h1 class="text-2xl font-bold text-gray-800">Add New Traveler</h1>
-                        <p class="text-gray-600 mt-1">Fill in the traveler details below</p>
+            <div class="max-w-4xl mx-auto">
+                
+                <!-- Header -->
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800">Add New Traveler</h1>
+                    <p class="text-gray-600 mt-1">Upload document for smart extraction or enter details manually</p>
+                </div>
+
+                <!-- Mode Selection Tabs -->
+                <div class="bg-white rounded-lg shadow mb-6">
+                    <div class="border-b border-gray-200">
+                        <nav class="flex -mb-px">
+                            <button onclick="switchMode('upload')" id="uploadTab" 
+                                class="mode-tab active px-6 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600">
+                                <i class="fas fa-file-upload mr-2"></i>Upload & Extract
+                            </button>
+                            <button onclick="switchMode('manual')" id="manualTab"
+                                class="mode-tab px-6 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">
+                                <i class="fas fa-keyboard mr-2"></i>Manual Entry
+                            </button>
+                        </nav>
                     </div>
 
-                    <!-- Success/Error Messages (Initially Hidden) -->
-                    <div id="messageContainer" class="hidden mb-6">
-                        <div id="successMessage" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                            <span class="block sm:inline" id="successText"></span>
+                    <!-- Upload & Extract Mode -->
+                    <div id="uploadMode" class="p-6">
+                        <!-- Document Type Selection -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Document Type *</label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="uploadDocType" value="passport" checked 
+                                        class="w-4 h-4 text-blue-600" onchange="onDocumentTypeChange()">
+                                    <span class="ml-2"><i class="fas fa-passport mr-1"></i>Passport</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="uploadDocType" value="nid"
+                                        class="w-4 h-4 text-blue-600" onchange="onDocumentTypeChange()">
+                                    <span class="ml-2"><i class="fas fa-id-card mr-1"></i>NID</span>
+                                </label>
+                            </div>
                         </div>
-                        <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                            <span class="block sm:inline" id="errorText"></span>
+
+                        <!-- File Upload Area -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Upload Document</label>
+                            <div id="dropZone" 
+                                class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-gray-50">
+                                <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,.webp" class="hidden">
+                                <div id="uploadPrompt">
+                                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                                    <p class="text-sm text-gray-600">Drag & drop file here or click to browse</p>
+                                    <p class="text-xs text-gray-400 mt-1">Supports JPG, PNG, PDF, WebP</p>
+                                </div>
+                                <div id="uploadPreview" class="hidden">
+                                    <img id="previewImage" class="max-h-48 mx-auto rounded-lg shadow mb-3" alt="Preview">
+                                    <p id="fileName" class="text-sm text-gray-700 font-medium"></p>
+                                    <button type="button" onclick="removeFile()" class="mt-2 text-xs text-red-600 hover:text-red-800">
+                                        <i class="fas fa-times mr-1"></i>Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Extract Button -->
+                        <button type="button" onclick="extractDocument()" id="extractBtn"
+                            class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-magic mr-2"></i>Extract Information
+                        </button>
+
+                        <!-- Extraction Status -->
+                        <div id="extractionStatus" class="hidden mt-4">
+                            <div id="extractingLoader" class="hidden flex items-center gap-2 text-blue-600">
+                                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                <span>Extracting information from document...</span>
+                            </div>
+                            <div id="extractionSuccess" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                                <i class="fas fa-check-circle mr-2"></i><span id="extractionSuccessText"></span>
+                            </div>
+                            <div id="extractionError" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                                <i class="fas fa-exclamation-circle mr-2"></i><span id="extractionErrorText"></span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Traveler Form -->
-                    <form id="travelerForm" class="space-y-6">
+                    <!-- Manual Entry Mode -->
+                    <div id="manualMode" class="hidden p-6">
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="manualDocType" value="passport" checked
+                                        class="w-4 h-4 text-blue-600" onchange="onDocumentTypeChange()">
+                                    <span class="ml-2"><i class="fas fa-passport mr-1"></i>Passport</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="manualDocType" value="nid"
+                                        class="w-4 h-4 text-blue-600" onchange="onDocumentTypeChange()">
+                                    <span class="ml-2"><i class="fas fa-id-card mr-1"></i>NID</span>
+                                </label>
+                            </div>
+                        </div>
 
-                        <?php include('./form-elements/basic-form-for-ctv.php'); ?>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Full Name <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" id="fullName" name="full_name"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter full name" required>
+                            </div>
+                            <div>
+                                <label for="dateOfBirth" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Date of Birth
+                                </label>
+                                <input type="text" id="dateOfBirth" name="date_of_birth"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="DD MMM YYYY (e.g., 31 DEC 1983)">
+                            </div>
+                            <div>
+                                <label id="documentNumberLabel" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Passport Number
+                                </label>
+                                <input type="text" id="documentNumber" name="document_number"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter document number">
+                            </div>
+                        </div>
+                        
+                        <!-- Check Duplicate Button -->
+                        <button type="button" onclick="checkDuplicate()" id="checkDuplicateBtn"
+                            class="mt-4 px-4 py-2 border border-yellow-300 bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100">
+                            <i class="fas fa-search mr-2"></i>Check for Duplicates
+                        </button>
+                    </div>
+                </div>
 
-                        <!-- Form Actions -->
-                        <div class="flex justify-end space-x-3 pt-6 border-t">
-                            <button type="button" onclick="resetForm()"
-                                class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                Reset
+                <!-- Duplicate Results Section -->
+                <div id="duplicateResults" class="hidden bg-white rounded-lg shadow mb-6 p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>Potential Duplicates Found
+                    </h3>
+                    <div id="duplicateList" class="space-y-3 mb-4"></div>
+                    
+                    <div class="border-t pt-4">
+                        <p class="text-sm text-gray-600 mb-3">What would you like to do?</p>
+                        <div class="flex gap-3 flex-wrap">
+                            <button onclick="proceedWithCreation()" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2">
+                                <i class="fas fa-check"></i>Yes, Create Anyway
                             </button>
-                            <button type="submit"
-                                class="px-6 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                Add Traveler
+                            <button onclick="modifyDetails()" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
+                                <i class="fas fa-edit"></i>Modify Details
+                            </button>
+                            <button onclick="cancelDuplicates()" 
+                                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-2">
+                                <i class="fas fa-times"></i>No, Cancel
                             </button>
                         </div>
-                    </form>
+                    </div>
+                </div>
+
+                <!-- Create Button -->
+                <div class="flex justify-end space-x-3">
+                    <button onclick="resetForm()" class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Reset
+                    </button>
+                    <button onclick="createTraveler()" id="createBtn"
+                        class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50">
+                        <i class="fas fa-user-plus mr-2"></i>Create Traveler
+                    </button>
+                </div>
+
+                <!-- Messages -->
+                <div id="messageContainer" class="hidden mt-4">
+                    <div id="successMessage" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        <span id="successText"></span>
+                    </div>
+                    <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <span id="errorText"></span>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
-
     <script>
-        const API_URL_FOR_TRAVELER_STORE = "<?php echo $storeTravelerApi; ?>";
-
-        // Secondary Phone Management
-        function addSecondaryPhone() {
-            const container = document.getElementById('secondaryPhoneContainer');
-            const div = document.createElement('div');
-            div.className = 'flex gap-2 secondary-phone-input';
-            div.innerHTML = `
-                <select name="secondary_phone_type[]" class="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="mobile">Mobile</option>
-                    <option value="home">Home</option>
-                    <option value="work">Work</option>
-                    <option value="other">Other</option>
-                </select>
-                <input type="tel" name="secondary_phone_number[]"
-                    class="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="+1 (555) 987-6543">
-                <button type="button" onclick="removeSecondaryPhone(this)" class="px-3 py-2 text-red-600 hover:text-red-800">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            `;
-            container.appendChild(div);
-        }
-
-        function removeSecondaryPhone(button) {
-            button.closest('.secondary-phone-input').remove();
-        }
-
-        // Secondary Email Management
-        function addSecondaryEmail() {
-            const container = document.getElementById('secondaryEmailContainer');
-            const div = document.createElement('div');
-            div.className = 'flex gap-2 secondary-email-input';
-            div.innerHTML = `
-                <select name="secondary_email_type[]" class="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="work">Work</option>
-                    <option value="personal">Personal</option>
-                    <option value="other">Other</option>
-                </select>
-                <input type="email" name="secondary_email_address[]"
-                    class="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="john.secondary@example.com">
-                <button type="button" onclick="removeSecondaryEmail(this)" class="px-3 py-2 text-red-600 hover:text-red-800">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            `;
-            container.appendChild(div);
-        }
-
-        function removeSecondaryEmail(button) {
-            button.closest('.secondary-email-input').remove();
-        }
-
-        // Form Reset
-        function resetForm() {
-            if (confirm('Are you sure you want to reset the form? All entered data will be lost.')) {
-                document.getElementById('travelerForm').reset();
-                // Reset secondary phone and email inputs
-                const secondaryPhoneContainer = document.getElementById('secondaryPhoneContainer');
-                const secondaryEmailContainer = document.getElementById('secondaryEmailContainer');
-
-                // Clear all secondary phone inputs
-                secondaryPhoneContainer.innerHTML = '';
-
-                // Clear all secondary email inputs
-                secondaryEmailContainer.innerHTML = '';
-
-                showMessage('Form has been reset', 'success');
+        const EXTRACT_API = "<?php echo $extractApi; ?>";
+        const STORE_API = "<?php echo $storeTravelerApi; ?>";
+        const CHECK_DUPLICATE_API = "<?php echo $checkDuplicateApi; ?>";
+    
+        let currentMode = 'upload';
+        let extractedData = null;
+        let fullExtractedData = null;
+        let uploadedFile = null;
+        let uploadedFilePath = null;
+        let isExtractionDone = false;
+        let duplicateFound = false;
+        let duplicateData = null;
+        let forceCreate = false;
+    
+        // Update labels based on document type
+        function onDocumentTypeChange() {
+            const docType = getSelectedDocumentType();
+            const label = document.getElementById('documentNumberLabel');
+            const input = document.getElementById('documentNumber');
+            
+            if (docType === 'passport') {
+                label.textContent = 'Passport Number';
+                input.placeholder = 'Enter passport number';
+            } else {
+                label.textContent = 'NID Number';
+                input.placeholder = 'Enter NID number';
             }
         }
-
-        // Form Submission
-        document.getElementById('travelerForm').addEventListener('submit', async function(e) {
+    
+        function getSelectedDocumentType() {
+            if (currentMode === 'upload') {
+                return document.querySelector('input[name="uploadDocType"]:checked').value;
+            } else {
+                return document.querySelector('input[name="manualDocType"]:checked').value;
+            }
+        }
+    
+        // Mode switching
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('uploadMode').classList.toggle('hidden', mode !== 'upload');
+            document.getElementById('manualMode').classList.toggle('hidden', mode !== 'manual');
+            
+            const uploadTab = document.getElementById('uploadTab');
+            const manualTab = document.getElementById('manualTab');
+            
+            if (mode === 'upload') {
+                uploadTab.classList.add('text-blue-600', 'border-blue-600', 'active');
+                uploadTab.classList.remove('text-gray-500', 'border-transparent');
+                manualTab.classList.add('text-gray-500', 'border-transparent');
+                manualTab.classList.remove('text-blue-600', 'border-blue-600', 'active');
+            } else {
+                manualTab.classList.add('text-blue-600', 'border-blue-600', 'active');
+                manualTab.classList.remove('text-gray-500', 'border-transparent');
+                uploadTab.classList.add('text-gray-500', 'border-transparent');
+                uploadTab.classList.remove('text-blue-600', 'border-blue-600', 'active');
+            }
+            
+            onDocumentTypeChange();
+        }
+    
+        // File handling
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+    
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-blue-500', 'bg-blue-50'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-blue-500', 'bg-blue-50'); });
+        dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-
-            // Show loading state
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Adding...';
-            submitBtn.disabled = true;
-
-            // Collect form data
-            const formData = new FormData(this);
-            const data = {
-                type: formData.get('type'),
-                full_name: formData.get('full_name'),
-                status: 'active',
-                created_by: 'current_user' // Replace with actual user from session
-            };
-
-            // Collect phone information with type
-            const primaryPhoneType = formData.get('primary_phone_type');
-            const primaryPhone = formData.get('primary_phone');
-
-            const secondaryPhoneTypes = formData.getAll('secondary_phone_type[]');
-            const secondaryPhoneNumbers = formData.getAll('secondary_phone_number[]');
-
-            // Format phone data as per requirement
-            data.phone = {
-                primary_no: primaryPhone,
-                secondary_no: secondaryPhoneTypes.map((type, index) => ({
-                    type: type,
-                    number: secondaryPhoneNumbers[index]
-                }))
-            };
-
-            // Collect email information with type
-            const primaryEmailType = formData.get('primary_email_type');
-            const primaryEmail = formData.get('primary_email');
-
-            const secondaryEmailTypes = formData.getAll('secondary_email_type[]');
-            const secondaryEmailAddresses = formData.getAll('secondary_email_address[]');
-
-            // Format email data as per requirement
-            data.email = {
-                primary: primaryEmail,
-                secondary: secondaryEmailTypes.map((type, index) => ({
-                    type: type,
-                    address: secondaryEmailAddresses[index]
-                }))
-            };
-
-            // Collect address
-            data.address = {
-                address_line_1: formData.get('address_line_1'),
-                address_line_2: formData.get('address_line_2'),
-                city: formData.get('city'),
-                state: formData.get('state'),
-                zip_code: formData.get('zip_code')
-            };
-
-            console.log('Data to send:', data); // For debugging
-
-            // Send to server
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+    
+        function handleFile(file) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+            if (!allowedTypes.includes(file.type)) {
+                showMessage('Unsupported file type. Please upload JPG, PNG, PDF, or WebP.', 'error');
+                return;
+            }
+    
+            uploadedFile = file;
+            isExtractionDone = false;
+            extractedData = null;
+            fullExtractedData = null;
+    
+            document.getElementById('uploadPrompt').classList.add('hidden');
+            document.getElementById('uploadPreview').classList.remove('hidden');
+            document.getElementById('fileName').textContent = file.name;
+    
+            if (file.type !== 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = (e) => { document.getElementById('previewImage').src = e.target.result; };
+                reader.readAsDataURL(file);
+            }
+    
+            hideExtractionMessages();
+            document.getElementById('extractionStatus').classList.add('hidden');
+        }
+    
+        function removeFile() {
+            uploadedFile = null;
+            uploadedFilePath = null;
+            extractedData = null;
+            fullExtractedData = null;
+            isExtractionDone = false;
+            fileInput.value = '';
+            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('uploadPreview').classList.add('hidden');
+            document.getElementById('extractionStatus').classList.add('hidden');
+            hideExtractionMessages();
+        }
+    
+        function hideExtractionMessages() {
+            document.getElementById('extractingLoader').classList.add('hidden');
+            document.getElementById('extractionSuccess').classList.add('hidden');
+            document.getElementById('extractionError').classList.add('hidden');
+        }
+    
+        // Extract document
+        async function extractDocument() {
+            if (!uploadedFile) { showMessage('Please upload a document first.', 'error'); return; }
+    
+            const btn = document.getElementById('extractBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white inline-block mr-2"></div>Extracting...';
+    
+            document.getElementById('extractionStatus').classList.remove('hidden');
+            hideExtractionMessages();
+            document.getElementById('extractingLoader').classList.remove('hidden');
+    
+            const formData = new FormData();
+            formData.append('file', uploadedFile);
+            formData.append('document_type', getSelectedDocumentType());
+    
             try {
-                const response = await fetch(API_URL_FOR_TRAVELER_STORE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-
+                const response = await fetch(EXTRACT_API, { method: 'POST', body: formData });
                 const result = await response.json();
-
+    
+                document.getElementById('extractingLoader').classList.add('hidden');
+    
                 if (result.success) {
-                    showMessage('Traveler added successfully!', 'success');
-                    // Reset form after successful submission
+                    extractedData = result.data;
+                    fullExtractedData = result.full_extracted_data;
+                    uploadedFilePath = result.file_path;
+                    isExtractionDone = true;
+    
+                    // Populate form fields
+                    document.getElementById('fullName').value = result.data.full_name || '';
+                    document.getElementById('dateOfBirth').value = result.data.date_of_birth || '';
+                    document.getElementById('documentNumber').value = result.data.document_number || '';
+    
+                    document.getElementById('extractionSuccess').classList.remove('hidden');
+                    document.getElementById('extractionSuccessText').textContent = 
+                        `Extracted: ${result.data.full_name || 'N/A'} | ${result.data.document_number || 'N/A'} | DOB: ${result.data.date_of_birth || 'N/A'}`;
+                    
+                    showMessage('Document extracted successfully! Review details below.', 'success');
+                    
+                    // Auto-check duplicates after extraction
+                    setTimeout(() => checkDuplicate(), 500);
+                } else {
+                    document.getElementById('extractionError').classList.remove('hidden');
+                    document.getElementById('extractionErrorText').textContent = result.message;
+                    showMessage(result.message || 'Extraction failed', 'error');
+                }
+            } catch (error) {
+                document.getElementById('extractingLoader').classList.add('hidden');
+                document.getElementById('extractionError').classList.remove('hidden');
+                document.getElementById('extractionErrorText').textContent = 'Network error: ' + error.message;
+                showMessage('Network error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Extract Information';
+            }
+        }
+    
+        // Check for duplicates
+        async function checkDuplicate() {
+            const fullName = document.getElementById('fullName').value.trim();
+            const documentNumber = document.getElementById('documentNumber').value.trim();
+            const dateOfBirth = document.getElementById('dateOfBirth').value.trim();
+            const documentType = getSelectedDocumentType();
+    
+            if (!fullName && !documentNumber && !dateOfBirth) {
+                showMessage('Please enter at least one field to check for duplicates.', 'warning');
+                return;
+            }
+    
+            const btn = document.getElementById('checkDuplicateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 inline-block mr-2"></div>Checking...';
+    
+            try {
+                const response = await fetch(CHECK_DUPLICATE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: fullName,
+                        document_number: documentNumber,
+                        document_type: documentType,
+                        date_of_birth: dateOfBirth
+                    })
+                });
+    
+                const result = await response.json();
+    
+                if (result.has_duplicates) {
+                    duplicateFound = true;
+                    duplicateData = result.duplicates;
+                    showDuplicateResults(result.duplicates);
+                    
+                    const exactMatches = result.duplicates.filter(d => d.match_type === 'exact');
+                    const partialMatches = result.duplicates.filter(d => d.match_type === 'partial');
+                    
+                    if (exactMatches.length > 0) {
+                        showMessage(`⚠️ Found ${exactMatches.length} exact match(es)! This traveler already exists.`, 'warning');
+                    } else if (partialMatches.length > 0) {
+                        showMessage(`🔍 Found ${partialMatches.length} partial match(es). Please verify if this is the same person.`, 'info');
+                    }
+                } else {
+                    duplicateFound = false;
+                    document.getElementById('duplicateResults').classList.add('hidden');
+                    showMessage('✅ No duplicates found. Ready to create traveler!', 'success');
+                }
+            } catch (error) {
+                showMessage('Error checking duplicates: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-search mr-2"></i>Check for Duplicates';
+            }
+        }
+    
+        // Show duplicate results
+        function showDuplicateResults(duplicates) {
+            const container = document.getElementById('duplicateResults');
+            const list = document.getElementById('duplicateList');
+            
+            list.innerHTML = duplicates.map(dup => `
+                <div class="border ${dup.match_type === 'exact' ? 'border-red-300 bg-red-50' : 'border-yellow-300 bg-yellow-50'} rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs font-bold uppercase px-2 py-1 rounded-full ${
+                                    dup.match_type === 'exact' 
+                                        ? 'bg-red-200 text-red-800' 
+                                        : 'bg-yellow-200 text-yellow-800'
+                                }">
+                                    ${dup.match_type === 'exact' ? '⚠️ Exact Match' : '🔍 Partial Match'}
+                                </span>
+                                <span class="text-xs text-gray-500">${dup.match_reason || ''}</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <span class="text-gray-500">Name:</span>
+                                    <span class="font-semibold text-gray-800">${dup.name || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">${dup.column === 'passport_no' ? 'Passport' : 'NID'}:</span>
+                                    <span class="font-semibold text-gray-800">${dup.document_number || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">DOB:</span>
+                                    <span class="font-semibold text-gray-800">${dup.date_of_birth || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Status:</span>
+                                    <span class="font-semibold ${
+                                        dup.status === 'active' ? 'text-green-600' : 'text-gray-600'
+                                    }">${dup.status || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Created By:</span>
+                                    <span class="text-gray-700">${dup.created_by || 'system'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Created At:</span>
+                                    <span class="text-gray-700">${dup.created_at || 'N/A'}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-2 text-xs text-gray-400">
+                                Sys ID: ${dup.sys_id}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.classList.remove('hidden');
+        }
+    
+        // Proceed with creation despite duplicates
+        function proceedWithCreation() {
+            forceCreate = true;
+            document.getElementById('duplicateResults').classList.add('hidden');
+            showMessage('Creating traveler with force override...', 'info');
+            createTraveler();
+        }
+    
+        // Cancel due to duplicates
+        function cancelDuplicates() {
+            document.getElementById('duplicateResults').classList.add('hidden');
+            duplicateFound = false;
+            showMessage('Creation cancelled. You can modify details and try again.', 'info');
+        }
+    
+        // Modify details (keep form data, just hide duplicate results)
+        function modifyDetails() {
+            document.getElementById('duplicateResults').classList.add('hidden');
+            duplicateFound = false;
+            showMessage('You can now modify the details. The duplicate results have been hidden.', 'info');
+            
+            // Scroll back to the form
+            document.getElementById('fullName').focus();
+            document.getElementById('fullName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    
+        // Create traveler
+        async function createTraveler() {
+            if (duplicateFound && !forceCreate) {
+                showMessage('Please review duplicates first. Choose an action below.', 'warning');
+                return;
+            }
+    
+            const fullName = document.getElementById('fullName').value.trim();
+            const dateOfBirth = document.getElementById('dateOfBirth').value.trim();
+            const documentNumber = document.getElementById('documentNumber').value.trim();
+            const documentType = getSelectedDocumentType();
+    
+            if (!fullName) {
+                showMessage('Full name is required.', 'error');
+                return;
+            }
+    
+            const btn = document.getElementById('createBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white inline-block mr-2"></div>Creating...';
+    
+            const travelerData = {
+                full_name: fullName,
+                date_of_birth: dateOfBirth || null,
+                document_type: documentType,
+                document_number: documentNumber || null,
+                file_path: null,
+                extracted_data: null,
+                force_create: forceCreate
+            };
+    
+            if (currentMode === 'upload' && isExtractionDone && uploadedFilePath) {
+                travelerData.file_path = uploadedFilePath;
+                travelerData.extracted_data = fullExtractedData;
+            }
+    
+            try {
+                const response = await fetch(STORE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(travelerData)
+                });
+    
+                const result = await response.json();
+    
+                if (result.success) {
+                    showMessage('Traveler created successfully! Redirecting...', 'success');
                     setTimeout(() => {
-                        resetForm();
+                        window.location.href = 'index-travelers.php';
                     }, 1500);
-                } 
-                // else {
-                //     showMessage(result.message || 'Failed to add traveler', 'error');
-                // }
+                } else {
+                    showMessage(result.message || 'Failed to create traveler', 'error');
+                }
             } catch (error) {
                 showMessage('Network error: ' + error.message, 'error');
             } finally {
-                // Reset button state
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-user-plus mr-2"></i>Create Traveler';
+                forceCreate = false;
             }
-        });
-
-        // Show Messages
+        }
+    
+        // Reset form
+        function resetForm() {
+            if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
+                document.getElementById('fullName').value = '';
+                document.getElementById('dateOfBirth').value = '';
+                document.getElementById('documentNumber').value = '';
+                removeFile();
+                extractedData = null;
+                fullExtractedData = null;
+                isExtractionDone = false;
+                duplicateFound = false;
+                forceCreate = false;
+                document.getElementById('duplicateResults').classList.add('hidden');
+                document.getElementById('messageContainer').classList.add('hidden');
+                showMessage('Form reset successfully.', 'success');
+            }
+        }
+    
+        // Messages
         function showMessage(message, type) {
             const container = document.getElementById('messageContainer');
             const successDiv = document.getElementById('successMessage');
             const errorDiv = document.getElementById('errorMessage');
-
+            const successText = document.getElementById('successText');
+            const errorText = document.getElementById('errorText');
+    
             container.classList.remove('hidden');
-
+    
+            // Reset styles
+            successDiv.className = 'hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative';
+            errorDiv.className = 'hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative';
+    
             if (type === 'success') {
                 successDiv.classList.remove('hidden');
-                errorDiv.classList.add('hidden');
-                document.getElementById('successText').textContent = message;
-            } else {
+                successText.textContent = message;
+            } else if (type === 'error') {
                 errorDiv.classList.remove('hidden');
-                successDiv.classList.add('hidden');
-                document.getElementById('errorText').textContent = message;
+                errorText.textContent = message;
+            } else if (type === 'warning') {
+                errorDiv.classList.remove('hidden');
+                errorDiv.className = 'bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative';
+                errorText.textContent = message;
+            } else if (type === 'info') {
+                successDiv.classList.remove('hidden');
+                successDiv.className = 'bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative';
+                successText.textContent = message;
             }
-
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                container.classList.add('hidden');
-            }, 5000);
+    
+            setTimeout(() => { container.classList.add('hidden'); }, 6000);
         }
+    
+        // Initialize
+        onDocumentTypeChange();
     </script>
 </body>
-
 </html>
