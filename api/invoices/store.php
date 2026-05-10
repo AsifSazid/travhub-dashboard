@@ -47,7 +47,8 @@ function sanitize($data)
     if (is_array($data)) {
         return array_map('sanitize', $data);
     }
-    return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
+    $senitizeData = htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
+    return $senitizeData;
 }
 
 // Function to convert number to words in English
@@ -303,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'title' => isset($work_titles[$i]) ? sanitize($work_titles[$i]) : '',
                     'qty' => isset($work_qtys[$i]) ? (int) $work_qtys[$i] : 1,
                     'rate' => isset($work_rates[$i]) ? (float) $work_rates[$i] : 0,
-                    'particular' => isset($work_particulars[$i]) ? sanitize($work_particulars[$i]) : '',
+                    'particular' => isset($work_particulars[$i]) ? $work_particulars[$i] : '',
                     'amount' => isset($amounts[$i]) ? (float) $amounts[$i] : 0
                 ];
             }
