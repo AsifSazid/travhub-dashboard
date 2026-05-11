@@ -300,7 +300,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </div>
                 <div class="ml-3 overflow-hidden user-info-text">
                     <p class="text-white font-medium truncate"><?php echo $_SESSION['user_name'] ?></p>
-                    <p class="text-gray-400 text-sm truncate">Managing Director</p>
+                    <p class="text-gray-400 text-sm truncate"><?php echo $_SESSION['designation'] ?></p>
                 </div>
             </div>
             <a href="../auth/logout.php"
