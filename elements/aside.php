@@ -38,7 +38,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'index-travelers.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-users mr-3"></i>
-                        <span class="sidebar-text transition-all duration-300">Traveller's Profile</span>
+                        <span class="sidebar-text transition-all duration-300">Travelers</span>
                     </a>
                     <a href="index-vendors.php"
                         class="flex items-center p-3 rounded-lg 

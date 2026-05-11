@@ -134,9 +134,9 @@ $travelerId = $_GET['traveler_id'];
                         <div class="grid grid-cols-3 gap-6 h-full">
                             <div class="col-span-2 h-full">
                                 <div class="text-center">
-                                    <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Traveler's Dashboard</h3>
-                                    <p class="text-gray-600">Traveler Info will be displayed here</p>
+                                    <!--<i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>-->
+                                    <!--<h3 class="text-xl font-semibold mb-2">Traveler's Dashboard</h3>-->
+                                    <?php include('st-details.php') ?> <!-- st means Show Traveler -->
                                 </div>
                             </div>
                             <div class="flex items-center justify-center h-full border-l border-gray-400">
@@ -238,7 +238,7 @@ $travelerId = $_GET['traveler_id'];
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[1].getAttribute('data-tab');
+                const firstTabId = tabButtons[0].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

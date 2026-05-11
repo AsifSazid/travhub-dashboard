@@ -2,7 +2,7 @@
 /**
  * Store Traveler - Creates traveler with file management and duplicate validation
  */
-
+session_start();
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
@@ -61,7 +61,7 @@ try {
     $subDirectories = [
         'all_documents', 'passport_identity', 'personal_documents',
         'professional_documents', 'financial_documents', 'travel_history',
-        'photos_signature', 'country_tie_documents', 'nid'
+        'photos_signature', 'countries_documents', 'nid'
     ];
     
     foreach ($subDirectories as $subDir) {

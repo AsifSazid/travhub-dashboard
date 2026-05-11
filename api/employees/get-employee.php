@@ -1,4 +1,17 @@
 <?php
+// Allow requests from your specific frontend domain
+header("Access-Control-Allow-Origin: https://travhub.com.bd");
+
+// Allow specific methods (GET is what you're using)
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+
+// Allow specific headers if your frontend sends them (like Content-Type or Authorization)
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+// Handle Preflight (OPTIONS) requests
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    exit;
+}
 
 require '../../server/db_connection.php';
 
