@@ -452,12 +452,63 @@ const PackageCalculation = (() => {
             const res  = await fetch(`../api/package-calculation/get.php?packageId=${encodeURIComponent(packageSysId)}`);
             const json = await res.json();
             hideLoader();
+
+            // Package data from response
+            const pkgHotels    = json.package_hotels    || json.data?.package_hotels    || [];
+            const pkgItenaries = json.package_itenaries || json.data?.package_itenaries || [];
+
+            // Build activity list from itinerary (one row per activity per day)
+            function prefillActivities() {
+                const actBody = document.getElementById('activityBody');
+                if (!actBody) return;
+                actBody.innerHTML = '';  // clear blank row
+                let added = 0;
+                pkgItenaries.forEach(day => {
+                    (day.activities || []).forEach(act => {
+                        addActivityRow({
+                            days_count : 1,
+                            date       : day.date || '',
+                            particular : act.name || '',
+                            price_local: '',
+                            total_pax  : 1,
+                        });
+                        added++;
+                    });
+                });
+                if (!added) addActivityRow();
+            }
+
+            function prefillHotels() {
+                const hotelBody = document.getElementById('hotelBody');
+                if (!hotelBody) return;
+                if (pkgHotels.length) {
+                    hotelBody.innerHTML = '';
+                    pkgHotels.forEach(h => {
+                        if (h.hotel_title) addHotelRow({
+                            hotel_name : h.hotel_title,
+                            check_in   : h.check_in  || '',
+                            check_out  : h.check_out || '',
+                        });
+                    });
+                } else {
+                    addHotelRow();
+                }
+            }
+
             if (!json.success || !json.exists) {
-                addActivityRow();
-                addHotelRow();
+                prefillActivities();
+                prefillHotels();
                 return;
             }
+
             populateCalculationData(json.data);
+
+            // After loading saved calculation, check if activity/hotel rows are empty
+            // and prefill from package if so
+            const actBody   = document.getElementById('activityBody');
+            const hotelBody = document.getElementById('hotelBody');
+            if (actBody && actBody.querySelectorAll('tr').length === 0)   prefillActivities();
+            if (hotelBody && hotelBody.querySelectorAll('tr').length === 0) prefillHotels();
         } catch(e) {
             hideLoader();
             toast('error', 'Failed to load saved calculation');

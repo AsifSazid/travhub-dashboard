@@ -10,7 +10,7 @@
 
 const PackageBuilder = (() => {
     const BASE_API   = '../api/packages';
-    const TOTAL_STEPS = 8;
+    const TOTAL_STEPS = 9;
 
     let state = {
         uuid       : null,   // packages.uuid  — used for all API calls
@@ -26,7 +26,8 @@ const PackageBuilder = (() => {
             5: { pack_itenaries:[] },
             6: { currency_title:'', currency_code:'', currency_symbol:'', overall_price:'', air_ticket_details:'', pack_price:[] },
             7: { pack_inclusions:[], pack_exclusions:[] },
-            8: {}
+            8: { cover_image:'', full_description:'', ai_rating:0 },
+            9: {}
         },
         allCountries   : [],
         allCities      : [],
@@ -85,6 +86,7 @@ const PackageBuilder = (() => {
             state.steps[5] = { pack_itenaries: pkg.pack_itenaries||[] };
             state.steps[6] = { currency_title: pkg.currency_title||'', currency_code: pkg.currency_code||'', currency_symbol: pkg.currency_symbol||'', overall_price: pkg.overall_price||'', air_ticket_details: pkg.air_ticket_details||'', pack_price: pkg.pack_price||[] };
             state.steps[7] = { pack_inclusions: pkg.pack_inclusions||[], pack_exclusions: pkg.pack_exclusions||[] };
+            state.steps[8] = { cover_image: pkg.cover_image||'', full_description: pkg.full_description||'', ai_rating: pkg.ai_rating||0 };
             state.calcDetails = pkg.package_calculations_details || null;
             state.currentStep = pkg.progress_step || 1;
         } catch(e) {
@@ -144,7 +146,7 @@ const PackageBuilder = (() => {
     }
 
     // ─── Step Indicator ──────────────────────────────────────────
-    const STEP_LABELS = ['Basic Info','Destination','Quotation','Accommodation','Itinerary','Pricing','Inc/Exc','Review'];
+    const STEP_LABELS = ['Basic Info','Destination','Quotation','Accommodation','Itinerary','Pricing','Inc/Exc','AI & Cover','Review'];
 
     function renderStepIndicator() {
         const el = document.getElementById('stepIndicator');
@@ -230,7 +232,7 @@ const PackageBuilder = (() => {
     function showStep(n) {
         state.currentStep = n;
         renderStepIndicator();
-        const fn = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5_itinerary, renderStep6_pricing, renderStep7, renderStep8][n];
+        const fn = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5_itinerary, renderStep6_pricing, renderStep7, renderStep8_ai, renderStep9_review][n];
         if (fn) fn();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -285,7 +287,7 @@ const PackageBuilder = (() => {
     // ─── Auto-save ───────────────────────────────────────────────
     function startAutoSave() {
         state.autoSaveTimer = setInterval(async () => {
-            if (state.uuid && state.currentStep > 0 && state.currentStep < 8) {  // skip review step
+            if (state.uuid && state.currentStep > 0 && state.currentStep < 9) {  // skip review step
                 collectStepData();
                 await saveStep(state.currentStep, true);
                 updateAutoSaveStatus();
@@ -331,9 +333,8 @@ const PackageBuilder = (() => {
         const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
 
         if (s === 1) {
-            state.steps[1].title         = get('s1_title');
-            state.steps[1].description   = get('s1_description');
-            state.steps[1].rating        = parseInt(get('s1_rating_val') || 0);
+            state.steps[1].title       = get('s1_title');
+            state.steps[1].description = get('s1_description');
         }
         if (s === 3) {
             state.steps[3].duration      = get('s3_duration');
@@ -371,74 +372,22 @@ const PackageBuilder = (() => {
         const d = state.steps[1];
         document.getElementById('stepContent').innerHTML = `
         <h2 class="text-lg font-bold text-gray-800 mb-1">Basic Information</h2>
-        <p class="text-sm text-gray-400 mb-6">Enter the core details of your travel package</p>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="space-y-5">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Package Title <span class="text-red-500">*</span></label>
-                    <input id="s1_title" type="text" value="${escHtml(d.title)}" placeholder="e.g. Amazing Thailand 5D4N"
-                           class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
-                    <textarea id="s1_description" rows="4" placeholder="Describe this package…"
-                              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none">${escHtml(d.description)}</textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Rating</label>
-                    <div class="flex items-center gap-2" id="starRating">
-                        ${[1,2,3,4,5].map(n=>`
-                        <button type="button" data-star="${n}"
-                                class="text-2xl transition star-btn ${n <= d.rating ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}">
-                            <i class="fa-solid fa-star"></i>
-                        </button>`).join('')}
-                        <input type="hidden" id="s1_rating_val" value="${d.rating}">
-                        <span id="ratingLabel" class="ml-2 text-sm text-gray-500">${d.rating > 0 ? d.rating + ' star' + (d.rating>1?'s':'') : 'No rating'}</span>
-                    </div>
-                </div>
+        <p class="text-sm text-gray-400 mb-6">Enter the package title and a short client-facing description</p>
+        <div class="max-w-2xl space-y-5">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Package Title <span class="text-red-500">*</span></label>
+                <input id="s1_title" type="text" value="${escHtml(d.title)}" placeholder="e.g. Amazing Thailand 5D4N"
+                       class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Cover Image</label>
-                <div id="imgDropZone"
-                     class="relative border-2 border-dashed border-gray-200 rounded-2xl h-56 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition overflow-hidden"
-                     onclick="document.getElementById('imgFileInput').click()">
-                    ${d.image
-                        ? `<img id="imgPreview" src="../${d.image}" class="absolute inset-0 w-full h-full object-cover rounded-2xl">`
-                        : `<div id="imgPlaceholder" class="text-center">
-                               <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-300 mb-2 block"></i>
-                               <p class="text-sm text-gray-400">Click or drag & drop</p>
-                               <p class="text-xs text-gray-300 mt-0.5">JPG, PNG, WEBP — Max 5MB</p>
-                           </div>`}
-                    <input type="file" id="imgFileInput" accept="image/*" class="hidden">
-                </div>
-                ${d.image ? `<button id="removeImg" class="mt-2 text-xs text-red-500 hover:underline"><i class="fa-solid fa-trash mr-1"></i>Remove image</button>` : ''}
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Short Description
+                    <span class="text-xs text-gray-400 font-normal ml-1">(shown to clients)</span>
+                </label>
+                <textarea id="s1_description" rows="5" placeholder="A brief overview of this package for the client…"
+                          class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none">${escHtml(d.description)}</textarea>
+                <p class="text-xs text-gray-400 mt-1">You can generate a full description with AI in Step 8.</p>
             </div>
         </div>`;
-
-        document.querySelectorAll('.star-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const v = parseInt(btn.dataset.star);
-                document.getElementById('s1_rating_val').value = v;
-                document.getElementById('ratingLabel').textContent = v + ' star' + (v>1?'s':'');
-                document.querySelectorAll('.star-btn').forEach(b => {
-                    b.classList.toggle('text-amber-400', parseInt(b.dataset.star) <= v);
-                    b.classList.toggle('text-gray-300',  parseInt(b.dataset.star) > v);
-                });
-            });
-        });
-
-        const fileInput = document.getElementById('imgFileInput');
-        const dropZone  = document.getElementById('imgDropZone');
-        if (fileInput) fileInput.addEventListener('change', e => handleImageUpload(e.target.files[0]));
-        if (dropZone) {
-            dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-blue-400'); });
-            dropZone.addEventListener('drop',     e => { e.preventDefault(); handleImageUpload(e.dataTransfer.files[0]); });
-        }
-        document.getElementById('removeImg')?.addEventListener('click', e => {
-            e.stopPropagation();
-            state.steps[1].image = '';
-            renderStep1();
-        });
     }
 
     async function handleImageUpload(file) {
@@ -637,6 +586,79 @@ const PackageBuilder = (() => {
                 el.value = v;
             });
         });
+
+        // ── Smart date/duration auto-calc ──────────────────────────
+        function parseDurationDays(str) {
+            // Accepts: "5 Days 4 Nights", "5D4N", "5", "5 days", etc.
+            const m = str.match(/(\d+)\s*[Dd]ay/);
+            if (m) return parseInt(m[1]);
+            const n = str.match(/^(\d+)$/);
+            if (n) return parseInt(n[1]);
+            return null;
+        }
+        function formatDuration(days) {
+            if (!days || days < 1) return '';
+            const nights = Math.max(0, days - 1);
+            return `${days} Day${days>1?'s':''} ${nights} Night${nights!==1?'s':''}`;
+        }
+        function addDays(dateStr, days) {
+            const d = new Date(dateStr);
+            d.setDate(d.getDate() + days);
+            return d.toISOString().split('T')[0];
+        }
+        function diffDays(startStr, endStr) {
+            const a = new Date(startStr), b = new Date(endStr);
+            return Math.round((b - a) / 86400000);
+        }
+
+        const durEl   = document.getElementById('s3_duration');
+        const startEl = document.getElementById('s3_start_date');
+        const endEl   = document.getElementById('s3_end_date');
+
+        function autoCalcQuotation(changed) {
+            const durVal   = durEl.value.trim();
+            const startVal = startEl.value;
+            const endVal   = endEl.value;
+            const durDays  = parseDurationDays(durVal);
+
+            if (changed === 'duration' || changed === 'start') {
+                // Duration + Start → End
+                if (durDays && startVal) {
+                    endEl.value = addDays(startVal, durDays - 1);
+                    state.steps[3].end_date = endEl.value;
+                }
+            }
+            if (changed === 'duration' || changed === 'end') {
+                // Duration + End → Start
+                if (durDays && endVal && !startVal) {
+                    startEl.value = addDays(endVal, -(durDays - 1));
+                    state.steps[3].start_date = startEl.value;
+                }
+            }
+            if (changed === 'start' || changed === 'end') {
+                // Start + End → Duration
+                if (startVal && endVal) {
+                    const days = diffDays(startVal, endVal) + 1;
+                    if (days > 0) {
+                        durEl.value = formatDuration(days);
+                        state.steps[3].duration = durEl.value;
+                        // Also update itinerary dates if days exist
+                        const itin = state.steps[5].pack_itenaries;
+                        itin.forEach((day, i) => {
+                            if (startVal) {
+                                const base = new Date(startVal);
+                                base.setDate(base.getDate() + i);
+                                day.date = base.toISOString().split('T')[0];
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        durEl?.addEventListener('input',   () => autoCalcQuotation('duration'));
+        startEl?.addEventListener('change', () => autoCalcQuotation('start'));
+        endEl?.addEventListener('change',   () => autoCalcQuotation('end'));
     }
 
     function renderStep4() {
@@ -663,7 +685,7 @@ const PackageBuilder = (() => {
             if (addBtn) {
                 const cityId = addBtn.dataset.cityId;  // keep as raw string
                 const city   = state.steps[2].cities.find(c => String(c.id) === String(cityId));
-                const hotel  = { city_id: cityId, city_name: city?.name||'', hotel_title:'' };
+                const hotel  = { city_id: cityId, city_name: city?.name||'', hotel_title:'', check_in:'', check_out:'' };
                 state.steps[4].hotels.push(hotel);
                 const list = document.getElementById(`hotelsList_${cityId}`);
                 if (!list) { console.error('hotelsList not found for cityId:', cityId); return; }
@@ -687,7 +709,7 @@ const PackageBuilder = (() => {
             }
         });
 
-        // Input delegation — update state on typing
+        // Input/change delegation — update state on typing or date change
         container.addEventListener('input', e => {
             const inp = e.target.closest('.hotel-name');
             if (!inp) return;
@@ -696,6 +718,17 @@ const PackageBuilder = (() => {
             const idx        = parseInt(row.dataset.idx);
             const cityHotels = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId));
             if (cityHotels[idx]) cityHotels[idx].hotel_title = inp.value;
+        });
+        container.addEventListener('change', e => {
+            const inp = e.target.closest('.hotel-checkin, .hotel-checkout');
+            if (!inp) return;
+            const row        = inp.closest('.hotel-row');
+            const cityId     = row.dataset.cityId;
+            const idx        = parseInt(row.dataset.idx);
+            const cityHotels = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId));
+            if (!cityHotels[idx]) return;
+            if (inp.classList.contains('hotel-checkin'))  cityHotels[idx].check_in  = inp.value;
+            if (inp.classList.contains('hotel-checkout')) cityHotels[idx].check_out = inp.value;
         });
     }
 
@@ -720,14 +753,28 @@ const PackageBuilder = (() => {
 
     function hotelRowHTML(cityId, idx, hotel = {}) {
         return `
-        <div class="flex items-center gap-2 hotel-row" data-city-id="${cityId}" data-idx="${idx}">
-            <i class="fa-solid fa-hotel text-gray-300 text-sm flex-shrink-0"></i>
-            <input type="text" placeholder="Hotel name"
-                   value="${escHtml(hotel?.hotel_title||'')}"
-                   class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 hotel-name">
-            <button type="button" class="remove-hotel w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition text-xs flex-shrink-0">
-                <i class="fa-solid fa-times"></i>
-            </button>
+        <div class="hotel-row border border-gray-100 rounded-xl p-3 space-y-2" data-city-id="${cityId}" data-idx="${idx}">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-hotel text-gray-300 text-sm flex-shrink-0"></i>
+                <input type="text" placeholder="Hotel name"
+                       value="${escHtml(hotel?.hotel_title||'')}"
+                       class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 hotel-name">
+                <button type="button" class="remove-hotel w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition text-xs flex-shrink-0">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pl-6">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-0.5">Check-in</label>
+                    <input type="date" value="${hotel?.check_in||''}"
+                           class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 hotel-checkin">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-0.5">Check-out</label>
+                    <input type="date" value="${hotel?.check_out||''}"
+                           class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 hotel-checkout">
+                </div>
+            </div>
         </div>`;
     }
 
@@ -834,6 +881,9 @@ const PackageBuilder = (() => {
                 </button>
             </div>
             <div id="priceOptionsList" class="space-y-3"></div>
+            <button id="addPriceOptionBottom" class="mt-3 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition flex items-center gap-1">
+                <i class="fa-solid fa-plus text-xs"></i> Add Option
+            </button>
         </div>
      
         <!-- Advanced Calculator -->
@@ -866,10 +916,9 @@ const PackageBuilder = (() => {
         showCalcBanner();
      
         // Event listeners
-        document.getElementById('addPriceOption').addEventListener('click', () => {
-            state.steps[6].pack_price.push({ id: Date.now(), title:'', price:'', hotels:{} });
-            renderPriceOptions();
-        });
+        const addPriceOpt = () => { state.steps[6].pack_price.push({ id: Date.now(), title:'', price:'', hotels:{} }); renderPriceOptions(); };
+        document.getElementById('addPriceOption')?.addEventListener('click', addPriceOpt);
+        document.getElementById('addPriceOptionBottom')?.addEventListener('click', addPriceOpt);
      
         document.getElementById('openCalculatorBtn').addEventListener('click', () => {
             if (!state.sys_id) {
@@ -939,13 +988,18 @@ const PackageBuilder = (() => {
                 <i class="fa-solid fa-plus text-xs"></i> Add Day
             </button>
         </div>
-        <div id="itineraryDays" class="space-y-5"></div>`;
+        <div id="itineraryDays" class="space-y-5"></div>
+        <div class="mt-4">
+            <button id="addDayBtnBottom" class="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition">
+                <i class="fa-solid fa-plus text-xs"></i> Add Day
+            </button>
+        </div>`;
 
         renderItineraryDays();
 
-        document.getElementById('addDayBtn').addEventListener('click', () => {
+        const addDayFn = () => {
             const d = state.steps[5].pack_itenaries;
-            const dayNum   = d.length + 1;
+            const dayNum    = d.length + 1;
             const startDate = state.steps[3]?.start_date || '';
             let autoDate = '';
             if (startDate) {
@@ -966,7 +1020,9 @@ const PackageBuilder = (() => {
                 flights       : [],
             });
             renderItineraryDays();
-        });
+        };
+        document.getElementById('addDayBtn')?.addEventListener('click', addDayFn);
+        document.getElementById('addDayBtnBottom')?.addEventListener('click', addDayFn);
     }
 
     // ── Itinerary day renderer ────────────────────────────────────────
@@ -1041,6 +1097,25 @@ const PackageBuilder = (() => {
                     </div>
                 </div>
 
+                <!-- Hotel overnight suggestion -->
+                ${(() => {
+                    const matchedHotels = state.steps[4].hotels.filter(h =>
+                        h.check_in && h.check_in === (day.date||'') && h.hotel_title
+                    );
+                    if (!matchedHotels.length) return '';
+                    return `<div class="px-4 pb-2 flex flex-wrap gap-2">
+                        <span class="text-xs text-gray-400">Overnight suggestion:</span>
+                        ${matchedHotels.map(h => `
+                        <button type="button"
+                                class="btn-suggest-overnight text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition"
+                                data-hotel="${escHtml(h.hotel_title)}"
+                                data-city="${escHtml(h.city_name||'')}"
+                                data-day-idx="${i}">
+                            <i class="fa-solid fa-moon mr-1 text-blue-400"></i>${escHtml(h.hotel_title)} (${escHtml(h.city_name||'')})
+                        </button>`).join('')}
+                    </div>`;
+                })()}
+
                 <!-- Activity list for this day -->
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-3">
@@ -1070,6 +1145,22 @@ const PackageBuilder = (() => {
                     <!-- Flights -->
                     <div class="day-flight-list mt-2 space-y-2" id="dayFlightList_${i}">
                         ${buildFlightList(day, i)}
+                    </div>
+                    <!-- Bottom add buttons (same as top) -->
+                    <div class="flex gap-2 flex-wrap mt-3 pt-3 border-t border-gray-100">
+                        <span class="text-xs text-gray-400 self-center">Add more:</span>
+                        <button type="button" data-idx="${i}"
+                                class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-person-hiking text-xs"></i> Activity
+                        </button>
+                        <button type="button" data-idx="${i}"
+                                class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-van-shuttle text-xs"></i> Transfer
+                        </button>
+                        <button type="button" data-idx="${i}"
+                                class="btn-add-flight text-xs px-3 py-1.5 rounded-lg border border-sky-400 text-sky-600 hover:bg-sky-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-plane text-xs"></i> Flight
+                        </button>
                     </div>
                 </div>
             </div>`;
@@ -1104,6 +1195,21 @@ const PackageBuilder = (() => {
                 days.splice(+btn.dataset.idx, 1);
                 days.forEach((d,i) => d.day_number = i+1);
                 renderItineraryDays();
+            })
+        );
+
+        // Hotel overnight suggestion
+        el.querySelectorAll('.btn-suggest-overnight').forEach(btn =>
+            btn.addEventListener('click', () => {
+                const di       = +btn.dataset.dayIdx;
+                const cityName = btn.dataset.city || btn.dataset.hotel;
+                // overnight_stay must match a city name (select option value)
+                days[di].overnight_stay = cityName;
+                const sel = el.querySelector(`.day-overnight[data-idx="${di}"]`);
+                if (sel) sel.value = cityName;
+                btn.classList.add('bg-green-100','border-green-400','text-green-700');
+                btn.classList.remove('bg-blue-50','border-blue-200','text-blue-700');
+                btn.innerHTML = `<i class="fa-solid fa-check mr-1"></i>${btn.dataset.hotel} → ${cityName}`;
             })
         );
 
@@ -2281,6 +2387,9 @@ const PackageBuilder = (() => {
                     </button>
                 </div>
                 <div id="inclusionsList" class="space-y-3"></div>
+                <button id="addInclusionBtnBottom" class="mt-3 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-xs"></i> Add Inclusion
+                </button>
             </div>
             <div>
                 <div class="flex items-center justify-between mb-3">
@@ -2292,18 +2401,19 @@ const PackageBuilder = (() => {
                     </button>
                 </div>
                 <div id="exclusionsList" class="space-y-2"></div>
+                <button id="addExclusionBtnBottom" class="mt-3 text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-xs"></i> Add Exclusion
+                </button>
             </div>
         </div>`;
         renderInclusions();
         renderExclusions();
-        document.getElementById('addInclusionBtn').addEventListener('click', () => {
-            state.steps[7].pack_inclusions.push({ id: Date.now(), title:'', icon:'fa-check-circle', sub_titles:[] });
-            renderInclusions();
-        });
-        document.getElementById('addExclusionBtn').addEventListener('click', () => {
-            state.steps[7].pack_exclusions.push('');
-            renderExclusions();
-        });
+        const addInclusion = () => { state.steps[7].pack_inclusions.push({ id: Date.now(), title:'', icon:'fa-check-circle', sub_titles:[] }); renderInclusions(); };
+        const addExclusion = () => { state.steps[7].pack_exclusions.push(''); renderExclusions(); };
+        document.getElementById('addInclusionBtn')?.addEventListener('click', addInclusion);
+        document.getElementById('addExclusionBtn')?.addEventListener('click', addExclusion);
+        document.getElementById('addInclusionBtnBottom')?.addEventListener('click', addInclusion);
+        document.getElementById('addExclusionBtnBottom')?.addEventListener('click', addExclusion);
     }
 
     function renderInclusions() {
@@ -2385,7 +2495,198 @@ const PackageBuilder = (() => {
         }));
     }
 
-    function renderStep8() {
+    function renderStep8_ai() {
+        const d = state.steps[8];
+        document.getElementById('stepContent').innerHTML = `
+        <h2 class="text-lg font-bold text-gray-800 mb-1">AI Assistant & Cover Page</h2>
+        <p class="text-sm text-gray-400 mb-6">Upload a cover image and let AI enhance your package</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Cover page upload -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Cover Page Image</label>
+                <div id="coverDropZone"
+                     class="relative border-2 border-dashed border-gray-200 rounded-2xl h-52 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition overflow-hidden"
+                     onclick="document.getElementById('coverFileInput').click()">
+                    ${d.cover_image
+                        ? `<img src="../${d.cover_image}" class="absolute inset-0 w-full h-full object-cover rounded-2xl">`
+                        : `<div class="text-center">
+                               <i class="fa-solid fa-image text-3xl text-gray-300 mb-2 block"></i>
+                               <p class="text-sm text-gray-400">Click or drag to upload cover image</p>
+                               <p class="text-xs text-gray-300 mt-0.5">JPG, PNG, WEBP — Max 5MB</p>
+                           </div>`}
+                    <input type="file" id="coverFileInput" accept="image/*" class="hidden">
+                </div>
+                ${d.cover_image ? `<button id="removeCoverImg" class="mt-2 text-xs text-red-500 hover:underline"><i class="fa-solid fa-trash mr-1"></i>Remove</button>` : ''}
+            </div>
+
+            <!-- AI actions -->
+            <div class="space-y-4">
+                <!-- Generate Description -->
+                <div class="border border-gray-200 rounded-2xl p-4">
+                    <h3 class="font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-violet-500"></i> Generate Full Description
+                    </h3>
+                    <p class="text-xs text-gray-400 mb-3">AI writes a detailed client-facing description based on your package data.</p>
+                    <button id="btnGenDesc" class="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-sparkles"></i> Generate Description
+                    </button>
+                    <div id="genDescResult" class="mt-3 hidden">
+                        <textarea id="genDescText" rows="5"
+                                  class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"></textarea>
+                        <div class="flex gap-2 mt-2">
+                            <button id="btnApplyDesc" class="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition">
+                                <i class="fa-solid fa-check mr-1"></i> Apply to Package
+                            </button>
+                            <button id="btnRegenDesc" class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium transition">
+                                <i class="fa-solid fa-rotate-right mr-1"></i> Regenerate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Rating -->
+                <div class="border border-gray-200 rounded-2xl p-4">
+                    <h3 class="font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-star text-amber-500"></i> AI Package Rating
+                    </h3>
+                    <p class="text-xs text-gray-400 mb-3">AI evaluates your package and suggests a star rating with reasoning.</p>
+                    <button id="btnAiRate" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-star"></i> Rate Package with AI
+                    </button>
+                    <div id="aiRateResult" class="mt-3 hidden">
+                        <div id="aiRatingDisplay" class="flex items-center gap-2 mb-2"></div>
+                        <p id="aiRatingReason" class="text-xs text-gray-500 italic"></p>
+                        <button id="btnApplyRating" class="mt-2 text-xs px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 font-medium transition">
+                            <i class="fa-solid fa-check mr-1"></i> Apply Rating
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="aiError" class="hidden mt-4 text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3"></div>`;
+
+        // Cover image upload
+        const coverInput = document.getElementById('coverFileInput');
+        const coverZone  = document.getElementById('coverDropZone');
+        if (coverInput) coverInput.addEventListener('change', e => handleCoverUpload(e.target.files[0]));
+        if (coverZone) {
+            coverZone.addEventListener('dragover', e => { e.preventDefault(); coverZone.classList.add('border-blue-400'); });
+            coverZone.addEventListener('drop',     e => { e.preventDefault(); handleCoverUpload(e.dataTransfer.files[0]); });
+        }
+        document.getElementById('removeCoverImg')?.addEventListener('click', e => {
+            e.stopPropagation(); state.steps[8].cover_image = ''; renderStep8_ai();
+        });
+
+        // Generate description
+        const genDesc = async () => {
+            const btn = document.getElementById('btnGenDesc');
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Generating…';
+            document.getElementById('aiError')?.classList.add('hidden');
+            try {
+                const res  = await fetch('../api/packages/ai-assist.php', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ action: 'description', package: buildAiContext() })
+                });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                document.getElementById('genDescText').value = json.text;
+                document.getElementById('genDescResult').classList.remove('hidden');
+            } catch(e) {
+                const el = document.getElementById('aiError');
+                el.textContent = 'AI Error: ' + e.message; el.classList.remove('hidden');
+            } finally {
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-sparkles mr-2"></i>Generate Description';
+            }
+        };
+        document.getElementById('btnGenDesc')?.addEventListener('click', genDesc);
+        document.getElementById('btnRegenDesc')?.addEventListener('click', genDesc);
+        document.getElementById('btnApplyDesc')?.addEventListener('click', () => {
+            const text = document.getElementById('genDescText')?.value;
+            if (text) {
+                state.steps[1].description = text;
+                state.steps[8].full_description = text;
+                toast('success', 'Description applied to package!');
+            }
+        });
+
+        // AI Rating
+        document.getElementById('btnAiRate')?.addEventListener('click', async () => {
+            const btn = document.getElementById('btnAiRate');
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Analyzing…';
+            document.getElementById('aiError')?.classList.add('hidden');
+            try {
+                const res  = await fetch('../api/packages/ai-assist.php', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ action: 'rating', package: buildAiContext() })
+                });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                const stars = parseInt(json.rating) || 3;
+                document.getElementById('aiRatingDisplay').innerHTML =
+                    Array.from({length:5},(_,i)=>`<i class="fa-${i<stars?'solid':'regular'} fa-star text-amber-400 text-lg"></i>`).join('') +
+                    `<span class="text-sm font-bold text-gray-700 ml-1">${stars}/5</span>`;
+                document.getElementById('aiRatingReason').textContent = json.reason || '';
+                document.getElementById('aiRateResult').classList.remove('hidden');
+                document.getElementById('btnApplyRating').dataset.stars = stars;
+            } catch(e) {
+                const el = document.getElementById('aiError');
+                el.textContent = 'AI Error: ' + e.message; el.classList.remove('hidden');
+            } finally {
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-star mr-2"></i>Rate Package with AI';
+            }
+        });
+        document.getElementById('btnApplyRating')?.addEventListener('click', function() {
+            const stars = parseInt(this.dataset.stars) || 3;
+            state.steps[8].ai_rating = stars;
+            state.steps[1].rating    = stars;
+            toast('success', `Rating ${stars}★ applied!`);
+        });
+    }
+
+    async function handleCoverUpload(file) {
+        if (!file) return;
+        if (!state.uuid) { toast('error', 'Save the package first (Step 1)'); return; }
+        const formData = new FormData();
+        formData.append('uuid',  state.uuid);
+        formData.append('image', file);
+        formData.append('type',  'cover');
+        showLoader('Uploading cover image…');
+        try {
+            const res  = await fetch('../api/packages/upload-image.php', { method:'POST', body: formData });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.message);
+            state.steps[8].cover_image = json.image;
+            hideLoader(); toast('success', 'Cover image uploaded');
+            renderStep8_ai();
+        } catch(e) { hideLoader(); toast('error', e.message); }
+    }
+
+    function buildAiContext() {
+        const s = state.steps;
+        const days = s[5].pack_itenaries || [];
+        return {
+            title       : s[1].title,
+            description : s[1].description,
+            countries   : (s[2].countries||[]).map(c=>c.name).join(', '),
+            cities      : (s[2].cities||[]).map(c=>c.name).join(', '),
+            duration    : s[3].duration,
+            start_date  : s[3].start_date,
+            end_date    : s[3].end_date,
+            pax         : s[3].no_of_pax,
+            days        : days.length,
+            activities  : days.flatMap(d=>(d.activities||[]).map(a=>a.name)).filter(Boolean),
+            transfers   : days.flatMap(d=>(d.transfers||[]).map(t=>t.title)).filter(Boolean),
+            flights     : days.flatMap(d=>(d.flights||[]).map(f=>f.flight_number)).filter(Boolean),
+            inclusions  : (s[7].pack_inclusions||[]).map(i=>i.title||i).filter(Boolean),
+            exclusions  : (s[7].pack_exclusions||[]).filter(Boolean),
+            overall_price: s[6].overall_price,
+            currency    : s[6].currency_title,
+        };
+    }
+
+        function renderStep9_review() {
         const s   = state.steps;
         const sym = s[6].currency_symbol || '';
         document.getElementById('stepContent').innerHTML = `
@@ -2448,7 +2749,7 @@ const PackageBuilder = (() => {
             try {
                 await fetch(`${BASE_API}/step-save.php`, {
                     method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ uuid: state.uuid, step_number: 8, step_data: {} })
+                    body: JSON.stringify({ uuid: state.uuid, step_number: 9, step_data: {} })
                 });
                 hideLoader();
                 toast('success', 'Package saved!');

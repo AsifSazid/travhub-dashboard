@@ -24,9 +24,14 @@ try {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($row) {
-        // Decode the JSON column
         $row['calculation_data'] = json_decode($row['calculation_data'] ?? '{}', true);
         $row['meta_data']        = json_decode($row['meta_data']        ?? '{}', true);
+        // Also fetch package hotels for pre-fill
+        $hStmt = $pdo->prepare("SELECT hotels, pack_itenaries FROM packages WHERE sys_id = :sid LIMIT 1");
+        $hStmt->execute([':sid' => $package_sys_id]);
+        $pkgHRow = $hStmt->fetch(PDO::FETCH_ASSOC);
+        $row['package_hotels']    = json_decode($pkgHRow['hotels']         ?? '[]', true) ?: [];
+        $row['package_itenaries'] = json_decode($pkgHRow['pack_itenaries'] ?? '[]', true) ?: [];
 
         echo json_encode([
             'success' => true,
@@ -68,8 +73,20 @@ try {
         }
     }
 
-    // Nothing found
-    echo json_encode(['success' => true, 'exists' => false]);
+    // Nothing found — but still return package hotels so calculator can pre-fill
+    $hotelsStmt = $pdo->prepare("SELECT hotels, pack_itenaries, title FROM packages WHERE sys_id = :sid LIMIT 1");
+    $hotelsStmt->execute([':sid' => $package_sys_id]);
+    $pkgRow = $hotelsStmt->fetch(PDO::FETCH_ASSOC);
+    $hotels     = json_decode($pkgRow['hotels']         ?? '[]', true) ?: [];
+    $itenaries  = json_decode($pkgRow['pack_itenaries'] ?? '[]', true) ?: [];
+
+    echo json_encode([
+        'success'           => true,
+        'exists'            => false,
+        'package_hotels'    => $hotels,
+        'package_itenaries' => $itenaries,
+        'package_title'     => $pkgRow['title'] ?? '',
+    ]);
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'exists' => false, 'message' => $e->getMessage()]);

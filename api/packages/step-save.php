@@ -149,7 +149,23 @@ try {
             break;
 
         case 8:
-            // Step 8 = Review — just mark as saved
+            // Step 8 = AI & Cover Page
+            if (isset($step_data['cover_image'])) {
+                $updateFields[] = 'cover_image = :cover_image';
+                $params[':cover_image'] = $step_data['cover_image'];
+            }
+            if (isset($step_data['full_description'])) {
+                $updateFields[] = 'full_description = :full_description';
+                $params[':full_description'] = $step_data['full_description'];
+            }
+            if (isset($step_data['ai_rating'])) {
+                $updateFields[] = 'rating = :rating';
+                $params[':rating'] = (int)$step_data['ai_rating'];
+            }
+            break;
+
+        case 9:
+            // Step 9 = Review — just mark as saved
             $updateFields[] = "completion_status = 'saved'";
             break;
     }

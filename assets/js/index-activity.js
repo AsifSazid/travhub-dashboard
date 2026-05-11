@@ -174,6 +174,10 @@ const ActivityManager = (() => {
                             <button onclick="ActivityManager._addListItem('itineraries')" class="text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add</button>
                         </div>
                         <div id="itinerariesList" class="space-y-2"></div>
+                        <div class="flex items-center justify-between mt-3">
+                            <div></div>
+                            <button onclick="ActivityManager._addListItem('itineraries')" class="text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                        </div>
                     </div>
                     <div id="tab-inc-exc" class="hidden">
                     <div class="grid grid-cols-2 gap-6">
@@ -199,6 +203,10 @@ const ActivityManager = (() => {
                             <button id="btnAddTransfer" class="text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add Transfer</button>
                         </div>
                         <div id="transfersList" class="space-y-3"></div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div></div>
+                            <button id="btnAddTransfer" class="text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition"><i class="fa-solid fa-plus mr-1"></i>Add Transfer</button>
+                        </div>
                     </div>
                 </div>
                 <div id="actError" class="hidden mx-6 mb-2 text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 flex-shrink-0"></div>
@@ -472,8 +480,7 @@ const ActivityManager = (() => {
         row.className = 'bg-gray-50 rounded-xl p-3 space-y-2';
         row.innerHTML = `
             <div class="flex items-center gap-2">
-                <input type="text" placeholder="Title" value="${esc(item.title||'')}" class="item-title flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                <input type="text" placeholder="Icon (FA, optional)" value="${esc(item.icon||'')}" class="item-icon w-36 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <input type="text" placeholder="Time" value="${esc(item.title||'')}" class="item-title flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">
                 <button class="text-red-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <textarea placeholder="Description…" rows="2" class="item-desc w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400">${esc(item.description||'')}</textarea>`;

@@ -229,6 +229,13 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
             </div>
         </div>
     </main>
+    
+    <div class="pt-16 pl-64 lg:mt-16 m-4 transition-all duration-300">
+        <div class="p-6 bg-yellow-50">
+            <p><i class="fas fa-info-circle mr-2 text-yellow-600"></i><strong>Running WorkFlow:</strong> Upload a Passport/Nid or Form Fillup->Extract Data->Find in DB->Create Traveler->Open Traveler->Info Update->Files Upload->Rename Files by Human->File Organizations by Human</p>
+            <p><i class="fas fa-info-circle mr-2 text-yellow-600"></i><strong>Upcoming WorkFlow:</strong> Upload a Passport/Nid or Form Fillup->Extract Data->Find in DB->Create Traveler->Open Traveler->Info Update->Files Upload->Suggested File Name and Rename Files by System->File Organizations by System</p>
+        </div>
+    </div>
 
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script>
