@@ -735,11 +735,15 @@ const PackageBuilder = (() => {
     function renderCityHotels(city) {
         const cityId     = city.id;  // keep raw — may be sys_id string or integer
         const cityHotels = state.steps[4].hotels.filter(h => String(h.city_id) === String(cityId));
+        // Resolve country name from allCountries using city.country_id
+        const country    = state.allCountries.find(c => c.id === city.country_id || String(c.id) === String(city.country_id));
+        const countryName = country?.name || '';
         return `
         <div class="border border-gray-200 rounded-2xl p-4">
             <div class="flex items-center gap-2 mb-3">
                 <i class="fa-solid fa-location-dot text-blue-500"></i>
                 <h3 class="font-semibold text-gray-700">${escHtml(city.name)}</h3>
+                ${countryName ? `<span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${escHtml(countryName)}</span>` : ''}
             </div>
             <div class="space-y-2" id="hotelsList_${cityId}">
                 ${cityHotels.map((h,i) => hotelRowHTML(cityId, i, h)).join('')}
@@ -997,17 +1001,71 @@ const PackageBuilder = (() => {
 
         renderItineraryDays();
 
-        const addDayFn = () => {
-            const d = state.steps[5].pack_itenaries;
-            const dayNum    = d.length + 1;
-            const startDate = state.steps[3]?.start_date || '';
-            let autoDate = '';
-            if (startDate) {
-                const base = new Date(startDate);
-                base.setDate(base.getDate() + (dayNum - 1));
-                autoDate = base.toISOString().split('T')[0];
-            }
+        const addDayFn = () => showDayModeModal();
+        document.getElementById('addDayBtn')?.addEventListener('click', addDayFn);
+        document.getElementById('addDayBtnBottom')?.addEventListener('click', addDayFn);
+    }
+
+    // ── Day mode choice modal ────────────────────────────────────────
+    function showDayModeModal() {
+        document.getElementById('dayModeModal')?.remove();
+
+        const d         = state.steps[5].pack_itenaries;
+        const dayNum    = d.length + 1;
+        const startDate = state.steps[3]?.start_date || '';
+        let autoDate    = '';
+        if (startDate) {
+            const base = new Date(startDate);
+            base.setDate(base.getDate() + (dayNum - 1));
+            autoDate = base.toISOString().split('T')[0];
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'dayModeModal';
+        modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-6';
+        modal.innerHTML = `
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100">
+                <h3 class="text-base font-bold text-gray-800">How do you want to build Day ${dayNum}?</h3>
+                <p class="text-xs text-gray-400 mt-1">Choose a format for this day's itinerary</p>
+            </div>
+            <div class="p-6 grid grid-cols-2 gap-4">
+                <!-- Library mode -->
+                <button id="chooseLibrary" class="text-left border-2 border-blue-200 hover:border-blue-500 rounded-2xl p-4 transition group">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-3 transition">
+                        <i class="fa-solid fa-database text-blue-600"></i>
+                    </div>
+                    <p class="font-bold text-gray-800 text-sm mb-1">From Library</p>
+                    <p class="text-xs text-gray-400 leading-relaxed">Pick activities from masterdata. Includes hour tracking, transfers and flights.</p>
+                    <div class="mt-3 flex flex-wrap gap-1">
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Hour limit</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">Transfers</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-sky-50 text-sky-600">Flights</span>
+                    </div>
+                </button>
+                <!-- Custom mode -->
+                <button id="chooseCustom" class="text-left border-2 border-emerald-200 hover:border-emerald-500 rounded-2xl p-4 transition group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center mb-3 transition">
+                        <i class="fa-solid fa-pen text-emerald-600"></i>
+                    </div>
+                    <p class="font-bold text-gray-800 text-sm mb-1">Custom</p>
+                    <p class="text-xs text-gray-400 leading-relaxed">Write activities freely with rich text. No hour limit, no masterdata dependency.</p>
+                    <div class="mt-3 flex flex-wrap gap-1">
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">No hour limit</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Rich text</span>
+                    </div>
+                </button>
+            </div>
+            <div class="px-6 pb-5">
+                <button id="cancelDayMode" class="w-full py-2 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition">Cancel</button>
+            </div>
+        </div>`;
+
+        document.body.appendChild(modal);
+
+        const pushDay = (mode) => {
             d.push({
+                day_mode      : mode,
                 day_number    : dayNum,
                 title         : '',
                 date          : autoDate,
@@ -1019,13 +1077,22 @@ const PackageBuilder = (() => {
                 transfers     : [],
                 flights       : [],
             });
+            modal.remove();
             renderItineraryDays();
+            // Scroll to new day
+            setTimeout(() => {
+                const days = document.querySelectorAll('[data-day-idx]');
+                days[days.length - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         };
-        document.getElementById('addDayBtn')?.addEventListener('click', addDayFn);
-        document.getElementById('addDayBtnBottom')?.addEventListener('click', addDayFn);
+
+        modal.querySelector('#chooseLibrary').addEventListener('click', () => pushDay('library'));
+        modal.querySelector('#chooseCustom').addEventListener('click',  () => pushDay('custom'));
+        modal.querySelector('#cancelDayMode').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
     }
 
-    // ── Itinerary day renderer ────────────────────────────────────────
+        // ── Itinerary day renderer ────────────────────────────────────────
     function renderItineraryDays() {
         const el   = document.getElementById('itineraryDays');
         if (!el) return;
@@ -1033,7 +1100,10 @@ const PackageBuilder = (() => {
         const mealOptions = ['Breakfast','Lunch','Dinner','Snacks'];
 
         el.innerHTML = days.map((day, i) => {
-            const usedHours  = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+            // Only library activities count toward the day hour limit (custom activities are exempt)
+            const usedHours  = (day.activities||[])
+                .filter(a => a.entry_type !== 'custom')
+                .reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
             const limitHours = parseFloat(day.day_hours||16);
             const pct        = Math.min(100, Math.round((usedHours/limitHours)*100));
             const barColor   = pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-400' : 'bg-green-500';
@@ -1041,58 +1111,70 @@ const PackageBuilder = (() => {
             return `
             <div class="border border-gray-200 rounded-2xl overflow-hidden" data-day-idx="${i}">
                 <!-- Day header -->
-                <div class="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                <div class="${day.day_mode==='custom' ? 'bg-emerald-50 border-b border-emerald-100' : 'bg-gray-50'} px-4 py-3 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <span class="font-bold text-gray-700 text-sm">Day ${day.day_number}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${day.day_mode==='custom' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-50 text-blue-600'}">
+                            ${day.day_mode==='custom' ? '<i class="fa-solid fa-pen mr-1"></i>Custom' : '<i class="fa-solid fa-database mr-1"></i>Library'}
+                        </span>
+                        ${day.day_mode !== 'custom' ? `
                         <div class="flex items-center gap-1.5">
                             <div class="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
                                 <div class="h-full ${barColor} rounded-full transition-all" style="width:${pct}%"></div>
                             </div>
                             <span class="text-xs ${pct>=100?'text-red-500 font-semibold':'text-gray-400'}">${usedHours}h / ${limitHours}h</span>
-                        </div>
+                        </div>` : ''}
                     </div>
                     <button type="button" data-idx="${i}" class="remove-day text-red-400 hover:text-red-600 text-xs transition">
                         <i class="fa-solid fa-trash"></i> Remove
                     </button>
                 </div>
 
-                <!-- Day config -->
-                <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 border-b border-gray-100">
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Day Title</label>
-                        <input type="text" placeholder="e.g. Arrival & City Tour" value="${escHtml(day.title)}"
-                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-title" data-idx="${i}">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Date</label>
-                        <input type="date" value="${day.date||''}"
-                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-date" data-idx="${i}">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Overnight Stay</label>
-                        <select class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-overnight" data-idx="${i}">
-                            <option value="">-- Select city --</option>
-                            ${state.steps[2].cities.map(c=>`<option value="${escHtml(c.name)}" ${day.overnight_stay===c.name?'selected':''}>${escHtml(c.name)}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Day Start Time</label>
-                        <input type="time" value="${day.day_start_time||'08:00'}"
-                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-start-time" data-idx="${i}">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Day Length (hours)</label>
-                        <input type="number" min="1" max="24" step="0.5" value="${day.day_hours||16}"
-                               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-hours" data-idx="${i}">
-                    </div>
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Meals</label>
-                        <div class="flex flex-wrap gap-3 pt-1">
-                            ${mealOptions.map(m=>`
-                            <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" value="${m}" class="day-meal rounded" data-idx="${i}" ${(day.meals||[]).includes(m)?'checked':''}>
-                                <span class="text-xs text-gray-600">${m}</span>
-                            </label>`).join('')}
+                <!-- Day config — fields differ by mode -->
+                <div class="p-4 border-b border-gray-100">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <!-- Title — always shown -->
+                        <div class="col-span-2">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Day Title</label>
+                            <input type="text" placeholder="e.g. Arrival & City Tour" value="${escHtml(day.title)}"
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-title" data-idx="${i}">
+                        </div>
+                        <!-- Date — always shown -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Date</label>
+                            <input type="date" value="${day.date||''}"
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-date" data-idx="${i}">
+                        </div>
+                        <!-- Overnight Stay — always shown -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Overnight Stay</label>
+                            <select class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-overnight" data-idx="${i}">
+                                <option value="">-- Select city --</option>
+                                ${state.steps[2].cities.map(c=>`<option value="${escHtml(c.name)}" ${day.overnight_stay===c.name?'selected':''}>${escHtml(c.name)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <!-- Day Start Time + Day Length — LIBRARY mode only -->
+                        ${day.day_mode !== 'custom' ? `
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Day Start Time</label>
+                            <input type="time" value="${day.day_start_time||'08:00'}"
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-start-time" data-idx="${i}">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Day Length (hours)</label>
+                            <input type="number" min="1" max="24" step="0.5" value="${day.day_hours||16}"
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 day-hours" data-idx="${i}">
+                        </div>` : ''}
+                        <!-- Meals — always shown -->
+                        <div class="col-span-2">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Meals</label>
+                            <div class="flex flex-wrap gap-3 pt-1">
+                                ${mealOptions.map(m=>`
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" value="${m}" class="day-meal rounded" data-idx="${i}" ${(day.meals||[]).includes(m)?'checked':''}>
+                                    <span class="text-xs text-gray-600">${m}</span>
+                                </label>`).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1119,11 +1201,15 @@ const PackageBuilder = (() => {
                 <!-- Activity list for this day -->
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities & Transfers</h4>
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            ${day.day_mode==='custom' ? 'Activities' : 'Activities & Transfers'}
+                        </h4>
                         <div class="flex gap-2 flex-wrap">
+                            ${day.day_mode === 'custom' ? `
+                            <!-- Custom mode: manual activity + transfer + flight -->
                             <button type="button" data-idx="${i}"
-                                    class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
-                                <i class="fa-solid fa-person-hiking text-xs"></i> Add Activity
+                                    class="btn-add-custom-activity text-xs px-3 py-1.5 rounded-lg border border-emerald-400 text-emerald-600 hover:bg-emerald-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-xs"></i> Add Activity
                             </button>
                             <button type="button" data-idx="${i}"
                                     class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
@@ -1132,7 +1218,20 @@ const PackageBuilder = (() => {
                             <button type="button" data-idx="${i}"
                                     class="btn-add-flight text-xs px-3 py-1.5 rounded-lg border border-sky-400 text-sky-600 hover:bg-sky-50 transition flex items-center gap-1">
                                 <i class="fa-solid fa-plane text-xs"></i> Add Flight
+                            </button>` : `
+                            <!-- Library mode: search from masterdata + transfers + flights -->
+                            <button type="button" data-idx="${i}"
+                                    class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-database text-xs"></i> From Library
                             </button>
+                            <button type="button" data-idx="${i}"
+                                    class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-van-shuttle text-xs"></i> Add Transfer
+                            </button>
+                            <button type="button" data-idx="${i}"
+                                    class="btn-add-flight text-xs px-3 py-1.5 rounded-lg border border-sky-400 text-sky-600 hover:bg-sky-50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-plane text-xs"></i> Add Flight
+                            </button>`}
                         </div>
                     </div>
                     <div class="day-activity-list space-y-2" data-day-idx="${i}" id="dayActList_${i}">
@@ -1146,12 +1245,13 @@ const PackageBuilder = (() => {
                     <div class="day-flight-list mt-2 space-y-2" id="dayFlightList_${i}">
                         ${buildFlightList(day, i)}
                     </div>
-                    <!-- Bottom add buttons (same as top) -->
+                    <!-- Bottom add buttons — same as top, conditional on mode -->
                     <div class="flex gap-2 flex-wrap mt-3 pt-3 border-t border-gray-100">
                         <span class="text-xs text-gray-400 self-center">Add more:</span>
+                        ${day.day_mode === 'custom' ? `
                         <button type="button" data-idx="${i}"
-                                class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
-                            <i class="fa-solid fa-person-hiking text-xs"></i> Activity
+                                class="btn-add-custom-activity text-xs px-3 py-1.5 rounded-lg border border-emerald-400 text-emerald-600 hover:bg-emerald-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i> Add Activity
                         </button>
                         <button type="button" data-idx="${i}"
                                 class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
@@ -1160,7 +1260,19 @@ const PackageBuilder = (() => {
                         <button type="button" data-idx="${i}"
                                 class="btn-add-flight text-xs px-3 py-1.5 rounded-lg border border-sky-400 text-sky-600 hover:bg-sky-50 transition flex items-center gap-1">
                             <i class="fa-solid fa-plane text-xs"></i> Flight
+                        </button>` : `
+                        <button type="button" data-idx="${i}"
+                                class="btn-open-activity-picker text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-database text-xs"></i> From Library
                         </button>
+                        <button type="button" data-idx="${i}"
+                                class="btn-add-standalone-transfer text-xs px-3 py-1.5 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-van-shuttle text-xs"></i> Transfer
+                        </button>
+                        <button type="button" data-idx="${i}"
+                                class="btn-add-flight text-xs px-3 py-1.5 rounded-lg border border-sky-400 text-sky-600 hover:bg-sky-50 transition flex items-center gap-1">
+                            <i class="fa-solid fa-plane text-xs"></i> Flight
+                        </button>`}
                     </div>
                 </div>
             </div>`;
@@ -1213,9 +1325,14 @@ const PackageBuilder = (() => {
             })
         );
 
-        // Activity picker open
+        // Activity picker open (from library)
         el.querySelectorAll('.btn-open-activity-picker').forEach(btn =>
             btn.addEventListener('click', () => openActivityPicker(+btn.dataset.idx))
+        );
+
+        // Add custom activity
+        el.querySelectorAll('.btn-add-custom-activity').forEach(btn =>
+            btn.addEventListener('click', () => addCustomActivity(+btn.dataset.idx, days))
         );
 
         // Standalone transfer add
@@ -1333,83 +1450,161 @@ const PackageBuilder = (() => {
     }
 
     function buildDayActivityList(day, dayIdx) {
-        const acts = day.activities || [];
-        if (!acts.length) return `<p class="text-xs text-gray-400 italic py-2">No activities added yet. Click "Add Activity" to search.</p>`;
+        const acts    = day.activities || [];
+        const isCustomDay = day.day_mode === 'custom';
+
+        if (!acts.length) {
+            return isCustomDay
+                ? `<p class="text-xs text-gray-400 italic py-2">No activities yet. Click "Add Activity" to create one.</p>`
+                : `<p class="text-xs text-gray-400 italic py-2">No activities yet. Use "From Library" to search masterdata.</p>`;
+        }
 
         return acts.map((act, ai) => {
-            const typeColors = { tour:'bg-blue-50 text-blue-700', transfer:'bg-violet-50 text-violet-700', both:'bg-teal-50 text-teal-700' };
-            const tc = typeColors[act.type] || 'bg-gray-100 text-gray-600';
-
-            return `
-            <div class="activity-card border border-gray-200 rounded-xl bg-white overflow-hidden"
-                 draggable="true" data-day-idx="${dayIdx}" data-act-idx="${ai}">
-
-                <!-- Card header: drag + name + type badge + duration + remove -->
-                <div class="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border-b border-gray-100">
-                    <i class="fa-solid fa-grip-lines text-gray-300 cursor-grab active:cursor-grabbing" style="font-size:12px"></i>
-                    <span class="flex-1 text-sm font-semibold text-gray-700">${escHtml(act.name)}</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full ${tc}">${act.type||'tour'}</span>
-                    <span class="text-xs font-mono text-gray-400 act-dur-display">${act.duration_hours||0}h</span>
-                    <button type="button" data-day-idx="${dayIdx}" data-act-idx="${ai}"
-                            class="btn-remove-act text-red-400 hover:text-red-600 ml-1" title="Remove activity">
-                        <i class="fa-solid fa-xmark text-xs"></i>
-                    </button>
-                </div>
-
-                <!-- Editable fields: time, duration, location, note -->
-                <div class="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 border-b border-gray-50">
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-0.5">Start Time</label>
-                        <input type="time" value="${act.start_time||''}"
-                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-start-time"
-                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-0.5">End Time</label>
-                        <input type="time" value="${act.end_time||''}"
-                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-end-time"
-                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-0.5">Duration (hrs)</label>
-                        <input type="number" min="0" step="0.5" value="${act.duration_hours||0}"
-                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-duration bg-gray-50"
-                               data-day-idx="${dayIdx}" data-act-idx="${ai}" readonly>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-0.5">Location</label>
-                        <input type="text" value="${escHtml(act.location||'')}" placeholder="Venue"
-                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-location"
-                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
-                    </div>
-                    <div class="col-span-2 md:col-span-4">
-                        <label class="block text-xs text-gray-400 mb-0.5">Note</label>
-                        <input type="text" value="${escHtml(act.note||'')}" placeholder="Optional note"
-                               class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-note"
-                               data-day-idx="${dayIdx}" data-act-idx="${ai}">
-                    </div>
-                </div>
-
-                <!-- Transfers section -->
-                <div class="p-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transfers</span>
-                        <button type="button" class="btn-add-transfer text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-600 hover:bg-orange-50 transition"
-                                data-day-idx="${dayIdx}" data-act-idx="${ai}">
-                            <i class="fa-solid fa-plus mr-1"></i> Add Transfer
+            if (isCustomDay) {
+                // ── CUSTOM DAY card ────────────────────────────────────
+                return `
+                <div class="activity-card border border-emerald-200 rounded-xl bg-white overflow-hidden"
+                     draggable="true" data-day-idx="${dayIdx}" data-act-idx="${ai}" data-entry-type="custom">
+                    <!-- Drag handle + remove -->
+                    <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 border-b border-emerald-100">
+                        <i class="fa-solid fa-grip-lines text-emerald-300 cursor-grab active:cursor-grabbing" style="font-size:11px"></i>
+                        <span class="flex-1 text-xs font-semibold text-emerald-600 uppercase tracking-wide">Activity</span>
+                        <button type="button" data-day-idx="${dayIdx}" data-act-idx="${ai}"
+                                class="btn-remove-act text-red-400 hover:text-red-600" title="Remove">
+                            <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                     </div>
-                    <div class="transfer-list" id="transferList_${dayIdx}_${ai}">
-                        ${buildTransferRows(act, dayIdx, ai)}
-                        ${!(act.transfers||[]).length ? '<p class="text-xs text-gray-400 italic">No transfers. Click Add Transfer to add one.</p>' : ''}
+                    <!-- Row 1: Title | Start Time | End Time | Location -->
+                    <div class="p-3 grid grid-cols-4 gap-2 border-b border-gray-50">
+                        <div class="col-span-2">
+                            <label class="block text-xs text-gray-400 mb-0.5">Activity Title <span class="text-red-400">*</span></label>
+                            <input type="text" value="${escHtml(act.name||'')}" placeholder="e.g. Phi Phi Island Tour"
+                                   class="w-full px-2 py-1.5 text-sm font-semibold border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400 act-name-input"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-0.5">Start Time</label>
+                            <input type="text" value="${act.start_time||''}"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400 act-start-time"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-0.5">Location</label>
+                            <input type="text" value="${escHtml(act.location||'')}" placeholder="Venue / Area"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400 act-location"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
                     </div>
-                </div>
+                    <!-- Row 2: Rich text description -->
+                    <div class="p-3">
+                        <label class="block text-xs text-gray-400 mb-1">Description</label>
+                        <!-- Toolbar -->
+                        <div class="rich-toolbar flex items-center gap-0.5 mb-1.5 p-1 bg-gray-50 border border-gray-200 rounded-lg">
+                            ${[
+                                {cmd:'bold',       label:'<b>B</b>',       title:'Bold'},
+                                {cmd:'italic',     label:'<i>I</i>',       title:'Italic'},
+                                {cmd:'underline',  label:'<u>U</u>',       title:'Underline'},
+                            ].map(b=>`
+                            <button type="button" data-cmd="${b.cmd}"
+                                    class="rich-cmd w-6 h-6 text-xs border border-gray-200 rounded bg-white hover:bg-gray-100 transition"
+                                    data-day-idx="${dayIdx}" data-act-idx="${ai}" title="${b.title}">${b.label}</button>`).join('')}
+                            <span class="w-px h-4 bg-gray-300 mx-1"></span>
+                            ${[
+                                {cmd:'insertUnorderedList', label:'&#8226;&#8226;', title:'Bullet list'},
+                                {cmd:'insertOrderedList',   label:'1.',             title:'Numbered list'},
+                            ].map(b=>`
+                            <button type="button" data-cmd="${b.cmd}"
+                                    class="rich-cmd px-1.5 h-6 text-xs border border-gray-200 rounded bg-white hover:bg-gray-100 transition"
+                                    data-day-idx="${dayIdx}" data-act-idx="${ai}" title="${b.title}">${b.label}</button>`).join('')}
+                            <span class="w-px h-4 bg-gray-300 mx-1"></span>
+                            ${[
+                                {cmd:'indent',  label:'→', title:'Indent (sub-bullet)'},
+                                {cmd:'outdent', label:'←', title:'Outdent'},
+                            ].map(b=>`
+                            <button type="button" data-cmd="${b.cmd}"
+                                    class="rich-cmd w-6 h-6 text-xs border border-gray-200 rounded bg-white hover:bg-gray-100 transition"
+                                    data-day-idx="${dayIdx}" data-act-idx="${ai}" title="${b.title}">${b.label}</button>`).join('')}
+                        </div>
+                        <!-- Editable area -->
+                        <div contenteditable="true"
+                             class="act-rich-desc min-h-[70px] w-full px-2.5 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white"
+                             data-day-idx="${dayIdx}" data-act-idx="${ai}"
+                             style="line-height:1.6;">${act.description||''}</div>
+                    </div>
+                </div>`;
 
-            </div>`;
+            } else {
+                // ── LIBRARY DAY card ───────────────────────────────────
+                const typeColors = { tour:'bg-blue-50 text-blue-700', transfer:'bg-violet-50 text-violet-700', both:'bg-teal-50 text-teal-700' };
+                const tc = typeColors[act.type] || 'bg-gray-100 text-gray-600';
+
+                return `
+                <div class="activity-card border border-gray-200 rounded-xl bg-white overflow-hidden"
+                     draggable="true" data-day-idx="${dayIdx}" data-act-idx="${ai}" data-entry-type="library">
+                    <!-- Header -->
+                    <div class="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border-b border-gray-100">
+                        <i class="fa-solid fa-grip-lines text-gray-300 cursor-grab active:cursor-grabbing" style="font-size:12px"></i>
+                        <span class="flex-1 text-sm font-semibold text-gray-700">${escHtml(act.name)}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${tc}">${act.type||'tour'}</span>
+                        <span class="text-xs font-mono text-gray-400 act-dur-display">${act.duration_hours||0}h</span>
+                        <button type="button" data-day-idx="${dayIdx}" data-act-idx="${ai}"
+                                class="btn-remove-act text-red-400 hover:text-red-600 ml-1" title="Remove">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    </div>
+                    <!-- Fields -->
+                    <div class="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 border-b border-gray-50">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-0.5">Start Time</label>
+                            <input type="time" value="${act.start_time||''}"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-start-time"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-0.5">End Time</label>
+                            <input type="time" value="${act.end_time||''}"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-end-time"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-0.5">Duration (hrs)</label>
+                            <input type="number" min="0" step="0.5" value="${act.duration_hours||0}"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 act-duration"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-0.5">Location</label>
+                            <input type="text" value="${escHtml(act.location||'')}" placeholder="Venue"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-location"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
+                        <div class="col-span-2 md:col-span-4">
+                            <label class="block text-xs text-gray-400 mb-0.5">Note</label>
+                            <input type="text" value="${escHtml(act.note||'')}" placeholder="Optional note"
+                                   class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 act-note"
+                                   data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                        </div>
+                    </div>
+                    <!-- Transfers -->
+                    <div class="p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transfers</span>
+                            <button type="button" class="btn-add-transfer text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-600 hover:bg-orange-50 transition"
+                                    data-day-idx="${dayIdx}" data-act-idx="${ai}">
+                                <i class="fa-solid fa-plus mr-1"></i> Add Transfer
+                            </button>
+                        </div>
+                        <div class="transfer-list" id="transferList_${dayIdx}_${ai}">
+                            ${buildTransferRows(act, dayIdx, ai)}
+                            ${!(act.transfers||[]).length ? '<p class="text-xs text-gray-400 italic">No transfers. Click Add Transfer to add one.</p>' : ''}
+                        </div>
+                    </div>
+                </div>`;
+            }
         }).join('');
     }
 
-    // ── Standalone Transfer list (parent-level, not child of activity) ──
+        // ── Standalone Transfer list (parent-level, not child of activity) ──
     function buildStandaloneTransferList(day, dayIdx) {
         const transfers = day.transfers || [];
         if (!transfers.length) return '';
@@ -1903,12 +2098,31 @@ const PackageBuilder = (() => {
             });
         });
 
+        // Custom activity name input
+        el.querySelectorAll('.act-name-input').forEach(inp =>
+            inp.addEventListener('input', e => { days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx].name = e.target.value; })
+        );
+
         el.querySelectorAll('.act-location').forEach(inp =>
             inp.addEventListener('input', e => { days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx].location = e.target.value; })
         );
         el.querySelectorAll('.act-note').forEach(inp =>
             inp.addEventListener('input', e => { days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx].note = e.target.value; })
         );
+
+        // Rich text description (custom activities)
+        el.querySelectorAll('.act-rich-desc').forEach(div => {
+            div.addEventListener('input', e => {
+                days[+e.target.dataset.dayIdx].activities[+e.target.dataset.actIdx].description = e.target.innerHTML;
+            });
+        });
+        // Rich text toolbar commands
+        el.querySelectorAll('.rich-cmd').forEach(btn => {
+            btn.addEventListener('mousedown', e => {
+                e.preventDefault(); // keep focus in contenteditable
+                document.execCommand(btn.dataset.cmd, false, null);
+            });
+        });
 
         // ── Transfer title + type ────────────────────────────────────
         el.querySelectorAll('.tr-title').forEach(inp =>
@@ -2095,7 +2309,10 @@ const PackageBuilder = (() => {
 
     // ── Update day progress bar without full re-render ───────────────
     function updateDayProgress(dayIdx, day) {
-        const usedHours  = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+        // Only library activities count toward the day hour limit
+        const usedHours  = (day.activities||[])
+            .filter(a => a.entry_type !== 'custom')
+            .reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
         const limitHours = parseFloat(day.day_hours||16);
         const pct        = Math.min(100, Math.round((usedHours/limitHours)*100));
         const barColor   = pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-400' : 'bg-green-500';
@@ -2107,14 +2324,57 @@ const PackageBuilder = (() => {
         if (label) { label.textContent = `${usedHours}h / ${limitHours}h`; label.className = `text-xs ${pct>=100?'text-red-500 font-semibold':'text-gray-400'}`; }
     }
 
-    // ── Activity Picker (search modal per day) ───────────────────────
+    // ── Add Custom Activity (manual entry, no masterdata dependency) ────
+    async function addCustomActivity(dayIdx, days) {
+        const day = days[dayIdx];
+
+        // Resolve country_sys_id for car loading — use first selected country
+        const countrySysId = (() => {
+            const c = state.steps[2].countries[0];
+            if (!c) return null;
+            if (c.sys_id && c.sys_id.includes('-')) return c.sys_id;
+            const full = state.allCountries.find(x => x.id === c.id || x.id === parseInt(c.id));
+            return full?.sys_id || null;
+        })();
+
+        if (!day.activities) day.activities = [];
+        day.activities.push({
+            entry_type     : 'custom',
+            sys_id         : null,
+            original_sys_id: null,
+            country_sys_id : countrySysId,
+            name           : '',
+            type           : 'custom',
+            location       : '',
+            start_time     : '',
+            end_time       : '',
+            duration_hours : 0,
+            description    : '',   // rich text HTML
+            note           : '',
+            transfers      : [],
+        });
+
+        // Re-render the activity list for this day only (not full re-render)
+        const listEl = document.getElementById(`dayActList_${dayIdx}`);
+        if (listEl) {
+            listEl.innerHTML = buildDayActivityList(day, dayIdx);
+            bindActivityCardEvents(days);
+            // Focus the name input of the new card
+            const newCard = listEl.querySelector('.activity-card:last-child .act-name-input');
+            newCard?.focus();
+        }
+    }
+
+        // ── Activity Picker (search modal per day) ───────────────────────
     async function openActivityPicker(dayIdx) {
         // Remove existing picker if open
         document.getElementById('actPickerModal')?.remove();
 
         const day       = state.steps[5].pack_itenaries[dayIdx];
         const limitHrs  = parseFloat(day.day_hours||16);
-        const usedHrs   = (day.activities||[]).reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
+        const usedHrs   = (day.activities||[])
+            .filter(a => a.entry_type !== 'custom')
+            .reduce((s,a)=>s+(parseFloat(a.duration_hours)||0),0);
         const remaining = Math.max(0, limitHrs - usedHrs);
 
         // Get country sys_ids from Step 2 selected countries

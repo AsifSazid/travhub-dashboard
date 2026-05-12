@@ -90,6 +90,10 @@ if (!is_array($data['guest_names'])) {
     $data['guest_names'] = [$data['guest_names']];
 }
 
+$occupancy = $data['occupancy'] ?? null;
+preg_match_all('!\d+!', $occupancy, $matches);
+$guest_number = $matches[0][1] ?? count($data['guest_names']); 
+
 // Helper to handle htmlspecialchars safely in PHP 8.1+
 function safeHtml($str) {
     if (is_array($str)) {
@@ -295,7 +299,7 @@ $raw_price = is_numeric($data['total_price']) ? floatval($data['total_price']) :
                 <div class="date-value"><span contenteditable="true" id="nights-count"><?php echo $nights; ?></span> Nights</div>
                 <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;" id="room-guest-count">
                     <span contenteditable="true" id="total-rooms"><?php echo safeHtml($data['total_rooms']); ?></span> Room(s) | 
-                    <span contenteditable="true" id="total-guests"><?php echo count($data['guest_names']); ?></span> Guest(s)
+                    <span contenteditable="true" id="total-guests"><?php echo $guest_number; ?></span> Guest(s)
                 </div>
             </div>
         </div>
@@ -354,13 +358,13 @@ $raw_price = is_numeric($data['total_price']) ? floatval($data['total_price']) :
         <!-- 1. Add the Checkbox just before the Payment Summary Section -->
         <div class="section no-print" style="border: none; padding-bottom: 0;">
             <label class="toggle-label">
-                <input type="checkbox" id="togglePricing" checked onchange="toggleFareSummary()" style="width: 16px; height: 16px;">
+                <input type="checkbox" id="togglePricing" unchecked onchange="toggleFareSummary()" style="width: 16px; height: 16px;">
                 SHOW PRICING SUMMARY
             </label>
         </div>
         
         <!-- 2. Add id="pricing-area" to the section you want to hide/show -->
-        <div class="section" id="pricing-area" style="border: none;">
+        <div class="section" id="pricing-area" style="border: none; display: none">
             <h2 class="section-title">Payment Summary</h2>
             <div class="pricing-table">
                 <div class="price-row">
