@@ -50,9 +50,22 @@ if (!$pkg) {
     die('Error: Package not found');
 }
 
-// $packIti = json_decode($pkg['pack_itenaries']);
+$packIti = json_decode($pkg['pack_itenaries']);
+$allFlights = [];
 
-// var_dump($packIti[0]->flights);
+if (is_array($packIti)) {
+    foreach ($packIti as $itinerary) {
+        // $itinerary ekhane prothom thekei ekta object
+        // Jodi flights data thake, seta $allFlights array-te push korbe
+        if (isset($itinerary->flights) && !empty($itinerary->flights)) {
+            // array_merge use kora hoyeche jate sob itinerary-r flight ekta array-te ashe
+            $allFlights = array_merge($allFlights, $itinerary->flights);
+        }
+    }
+}
+
+// Result check korar jonno
+// var_dump($allFlights);
 // die;
 
 // ============================================================
@@ -738,13 +751,69 @@ else:
 <table style="margin-bottom: 12pt; width: 100%; border-collapse: collapse; border: 2px solid #FFF;">
     <tr class="bg-dark">
         <td class="text-white bold white-border">#</td> 
-        <td class="text-white bold white-border">Flight</td>
-        <td class="text-white bold white-border">From</td> 
-        <td class="text-white bold white-border">To</td>
         <td class="text-white bold white-border">Date</td>
         <td class="text-white bold white-border">Dep</td> 
         <td class="text-white bold white-border">Arr</td>
+        <td class="text-white bold white-border">Note</td>
     </tr>
+
+    <?php 
+    $sl = 1;
+    if (!empty($allFlights)) {
+        foreach ($allFlights as $flight) {
+    ?>
+    <!-- Main Flight Row -->
+    <tr style="background-color: #f9f9f9;">
+        <td class="white-border"><?= $sl++; ?></td>
+        <td class="white-border"><?= $flight->dep_date; ?></td>
+        <td class="white-border">
+            <strong><?= $flight->dep_airport; ?></strong><br>
+            <?= $flight->dep_time; ?>
+        </td>
+        <td class="white-border">
+            <strong><?= $flight->arr_airport; ?></strong><br>
+            <?= $flight->arr_time; ?>
+        </td>
+        <td class="white-border">
+            <strong>Flight: <?= $flight->flight_number; ?></strong>
+        </td>
+    </tr>
+
+    <!-- Transit/Child Part -->
+    <?php if(!empty($flight->transits)): ?>
+    <tr>
+        <td colspan="5" style="padding: 0; border: 1px solid #eee;">
+            <table style="width: 95%; margin: 5px auto 10px auto; border-collapse: collapse; background-color: #ffffff;">
+                <tr style="background-color: #e9ecef;">
+                    <td colspan="4" style="font-size: 10px; padding: 2px 10px; border-bottom: 1px solid #ccc;">
+                        <strong>Transit Details:</strong>
+                    </td>
+                </tr>
+                <?php foreach ($flight->transits as $index => $transit): ?>
+                <tr style="font-size: 11px;">
+                    <td style="padding: 5px 10px; width: 25%; border-bottom: 1px solid #eee;">
+                        <?= !empty($transit->dep_date) ? $transit->dep_date : $flight->dep_date; ?>
+                    </td>
+                    <td style="padding: 5px 10px; width: 35%; border-bottom: 1px solid #eee;">
+                        <span style="color: #555;">From:</span> <?= $transit->dep_airport; ?> (<?= $transit->dep_time; ?>)
+                    </td>
+                    <td style="padding: 5px 10px; width: 35%; border-bottom: 1px solid #eee;">
+                        <span style="color: #555;">To:</span> <?= $transit->arr_airport; ?> (<?= $transit->arr_time; ?>)
+                    </td>
+                    <td style="padding: 5px 10px; width: 5%; border-bottom: 1px solid #eee; text-align: center;">
+                        <small>Leg <?= $index + 1; ?></small>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        </td>
+    </tr>
+    <?php endif; ?>
+
+    <?php 
+        } 
+    } 
+    ?>
 </table>
 
 
@@ -775,15 +844,16 @@ else:
 
 
 
-<table style="margin-bottom:12pt;">
-  <tr>
-    <td width="25%"><p class="info-label">Destinations</p><p class="info-value"><?= $cities ?: $countries ?></p></td>
-    <td width="20%"><p class="info-label">Duration</p><p class="info-value"><?= $duration ?: '—' ?></p></td>
-    <td width="25%"><p class="info-label">Travel Dates</p><p class="info-value"><?= $startDate ?> &ndash; <?= $endDate ?></p></td>
-    <td width="15%"><p class="info-label">Passengers</p><p class="info-value"><?= esc($paxStr) ?></p></td>
-    <td width="15%"><p class="info-label">Total Days</p><p class="info-value"><?= count($pkg['pack_itenaries']) ?> day(s)</p></td>
-  </tr>
-</table>
+
+<!--<table style="margin-bottom:12pt;">-->
+<!--  <tr>-->
+<!--    <td width="25%"><p class="info-label">Destinations</p><p class="info-value"><?= $cities ?: $countries ?></p></td>-->
+<!--    <td width="20%"><p class="info-label">Duration</p><p class="info-value"><?= $duration ?: '—' ?></p></td>-->
+<!--    <td width="25%"><p class="info-label">Travel Dates</p><p class="info-value"><?= $startDate ?> &ndash; <?= $endDate ?></p></td>-->
+<!--    <td width="15%"><p class="info-label">Passengers</p><p class="info-value"><?= esc($paxStr) ?></p></td>-->
+<!--    <td width="15%"><p class="info-label">Total Days</p><p class="info-value"><?= count($pkg['pack_itenaries']) ?> day(s)</p></td>-->
+<!--  </tr>-->
+<!--</table>-->
 
 <!-- Day-by-Day Itinerary (Detailed) -->
 <h2>Day-by-Day Itinerary</h2>
