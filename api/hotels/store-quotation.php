@@ -27,7 +27,17 @@ if (empty($data['quotations'])) {
 
 $id = $data['id'] ?? null;
 $uuid = $data['uuid'] ?? null;
+$rawClient = $data['client'] ?? null;
 
+if (!$rawClient) {
+    echo json_encode(['success' => false, 'message' => 'Client missing']);
+    exit;
+}
+
+$parts = explode('|', $rawClient);
+$clientSysID = trim($parts[0]);
+
+$title = $data['title'];
 $informations = $data['informations'];
 $quotations = $data['quotations'];
 $percentage = $data['percentage'] ?? 0;
@@ -58,11 +68,12 @@ try {
 
         if ($existing) {
             $stmt = $pdo->prepare("
-                UPDATE hotel_quatations
+                UPDATE hotel_quotations
                 SET 
                     informations = :informations,
                     quotations = :quotations,
                     percentage = :percentage,
+                    form_data = :form_data,
                     meta_data = :meta_data
                 WHERE id = :id
             ");
@@ -71,6 +82,7 @@ try {
                 ':informations' => $informations,
                 ':quotations' => $quotations,
                 ':percentage' => $percentage,
+                ':form_data' => json_encode($formData, JSON_UNESCAPED_UNICODE),
                 ':meta_data' => json_encode($metaData, JSON_UNESCAPED_UNICODE),
                 ':id' => $existing['id']
             ]);
@@ -90,22 +102,28 @@ try {
     $ids = generateIDs('hotel_quotations');
 
     $stmt = $pdo->prepare("
-        INSERT INTO hotel_quatations 
+        INSERT INTO hotel_quotations 
         (
             uuid, 
             sys_id, 
+            client_sys_id,
+            title,
             informations, 
             quotations, 
             percentage, 
+            form_data,
             meta_data
         )
         VALUES 
         (
             :uuid, 
             :sys_id, 
+            :client_sys_id,
+            :title,
             :informations, 
             :quotations, 
             :percentage, 
+            :form_data,
             :meta_data
         )
     ");
@@ -113,9 +131,12 @@ try {
     $stmt->execute([
         ':uuid' => $ids['uuid'],
         ':sys_id' => $ids['sys_id'],
+        ':client_sys_id' => $clientSysID,
+        ':title' => $title,
         ':informations' => $informations,
         ':quotations' => $quotations,
         ':percentage' => $percentage,
+        ':form_data' => json_encode($formData, JSON_UNESCAPED_UNICODE),
         ':meta_data' => json_encode($metaData, JSON_UNESCAPED_UNICODE)
     ]);
 

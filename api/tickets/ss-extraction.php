@@ -106,6 +106,13 @@ Rules:
 - Prices as numbers only (no commas, no currency symbols).
 - If a field is not visible, leave it as empty string or 0.
 
+Transit / connection rules:
+- A segment represents the journey from its starting airport to its final destination.
+- The top-level dep_airport/arr_airport for a segment is the FIRST flight of that journey only.
+- If the journey has a layover/transit (e.g. DAC -> SIN [transit] -> MNL), set has_transit = true, fill transit_time (e.g. "Tr 3 Hours"), and put EACH onward flight in the connections array.
+- If the journey is a single non-stop flight, set has_transit = false and leave connections as [].
+- Each connections entry needs dep_airport, dep_time, arr_airport, arr_time, and arr_day_indicator. flight_no is optional.
+
 Use this exact structure:
 
 {
@@ -126,7 +133,18 @@ Use this exact structure:
       "arr_airport": "",
       "arr_time": "HH:MM",
       "arr_day_indicator": false,
-      "transit_time": ""
+      "has_transit": false,
+      "transit_time": "",
+      "connections": [
+        {
+          "dep_airport": "",
+          "dep_time": "HH:MM",
+          "arr_airport": "",
+          "arr_time": "HH:MM",
+          "arr_day_indicator": false,
+          "flight_no": ""
+        }
+      ]
     }
   ],
   "baggage_1_desc": "Without Baggage",

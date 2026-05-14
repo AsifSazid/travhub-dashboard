@@ -153,6 +153,32 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </div>
             </div>
             
+            <!-- Quotation Accordion -->
+            <div class="accordion-item mt-4" data-accordion="quotation">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fas fa-user-tie mr-3"></i>
+                        <span class="font-medium sidebar-text transition-all duration-300">Quotations</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 sidebar-text"></i>
+                </button>
+
+                <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <a href="air-ticket-quotation.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'air-ticket-quotation.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-ticket mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Air Ticket Quotation</span>
+                    </a>
+                    <a href="hotel-quotation.php"
+                       class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'hotel-quotation.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-hotel mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Hotel Booking Quotation</span>
+                    </a>
+                </div>
+            </div>
+            
             <!-- Tools Accordion -->
             <div class="accordion-item mt-4" data-accordion="tools">
                 <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">

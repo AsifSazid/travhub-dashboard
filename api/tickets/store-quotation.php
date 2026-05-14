@@ -27,17 +27,22 @@ if (empty($data['quotations'])) {
 
 $id = $data['id'] ?? null;
 $uuid = $data['uuid'] ?? null;
+$rawClient = $data['client'] ?? null;
 
+if (!$rawClient) {
+    echo json_encode(['success' => false, 'message' => 'Client missing']);
+    exit;
+}
+
+$parts = explode('|', $rawClient);
+$clientSysID = trim($parts[0]);
+
+$title = $data['title'];
 $informations = $data['informations'];
 $quotations = $data['quotations'];
 $percentage = $data['percentage'] ?? 0;
 $veFixedPrice = $data['ve_fixed_price'] ?? 0;
 $formData = $data['form_data'] ?? [];
-
-$metaData = buildMetaData(
-    null,
-    $_SESSION['user_name'] ?? 'system'
-);
 
 try {
 
@@ -61,6 +66,7 @@ try {
             $stmt = $pdo->prepare("
                 UPDATE air_ticket_quotations
                 SET 
+                    client_sys_id = :client_sys_id,
                     informations = :informations,
                     quotations = :quotations,
                     percentage = :percentage,
@@ -68,12 +74,21 @@ try {
                     meta_data = :meta_data
                 WHERE id = :id
             ");
+            
+            $existingMeta = $existing['meta_data'] ?? null;
+            
+            $metaData = buildMetaData(
+                $existingMeta,  
+                $_SESSION['user_name'] ?? 'system'
+            );
 
             $stmt->execute([
+                ':client_sys_id' => $clientSysID,
                 ':informations' => $informations,
                 ':quotations' => $quotations,
                 ':percentage' => $percentage,
                 ':ve_fixed_price' => $veFixedPrice,
+                ':form_data' => json_encode($formData, JSON_UNESCAPED_UNICODE),
                 ':meta_data' => json_encode($metaData, JSON_UNESCAPED_UNICODE),
                 ':id' => $existing['id']
             ]);
@@ -91,26 +106,37 @@ try {
     }
 
     $ids = generateIDs('air_ticket_quotations');
+    
+    $metaData = buildMetaData(
+        null,
+        $_SESSION['user_name'] ?? 'system'
+    );
 
     $stmt = $pdo->prepare("
         INSERT INTO air_ticket_quotations 
         (
             uuid, 
             sys_id, 
+            client_sys_id,
+            title,
             informations, 
             quotations, 
             percentage, 
             ve_fixed_price,
+            form_data,
             meta_data
         )
         VALUES 
         (
             :uuid, 
             :sys_id, 
+            :client_sys_id, 
+            :title, 
             :informations, 
             :quotations, 
             :percentage, 
             :ve_fixed_price,
+            :form_date,
             :meta_data
         )
     ");
@@ -118,10 +144,13 @@ try {
     $stmt->execute([
         ':uuid' => $ids['uuid'],
         ':sys_id' => $ids['sys_id'],
+        ':client_sys_id' => $clientSysID,
+        ':title' => $title,
         ':informations' => $informations,
         ':quotations' => $quotations,
         ':percentage' => $percentage,
         ':ve_fixed_price' => $veFixedPrice,
+        ':form_date' => json_encode($formData),
         ':meta_data' => json_encode($metaData, JSON_UNESCAPED_UNICODE)
     ]);
 
