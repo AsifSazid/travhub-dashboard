@@ -68,10 +68,11 @@ if (empty($ip_port)) $ip_port = "http://103.104.219.3:898/";
 
 <?php include '../elements/header.php'; ?>
 <?php include '../elements/aside.php'; ?>
+<?php include '../elements/preview-model.php'; ?>
 <?php include '../elements/floating-menus.php'; ?>
 
 <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
-<div class="max-w-7xl mx-auto px-4 py-8">
+<div class="max-w-screen-2xl mx-auto px-4 py-8">
 
   <!-- Header -->
   <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -107,7 +108,7 @@ if (empty($ip_port)) $ip_port = "http://103.104.219.3:898/";
     <span id="statsText" class="text-sm text-slate-400">Loading...</span>
   </div>
 
-  <div id="quotationGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6"></div>
+  <div id="quotationGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6"></div>
   <div id="paginationRow" class="flex flex-wrap items-center justify-between gap-3"></div>
 
 </div>

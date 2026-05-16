@@ -1,62 +1,92 @@
 <?php
+session_start();
 
 require '../../server/db_connection.php';
 
 header('Content-Type: application/json');
 
-$sysId = $_GET['sys_id'] ?? '';
+// ── Params ────────────────────────────────────────────────────
+$search = trim($_GET['search'] ?? '');
+$page   = max(1, (int)($_GET['page']  ?? 1));
+$limit  = max(1, min(48, (int)($_GET['limit'] ?? 12)));
+$offset = ($page - 1) * $limit;
 
-// 1. Basic validation
-if (empty($sysId)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Missing sys_id parameter'
-    ]);
-    exit;
+$allowedSorts = [
+    'created_at DESC',
+    'created_at ASC',
+    'title ASC',
+    'title DESC',
+];
+$sort = in_array($_GET['sort'] ?? '', $allowedSorts)
+    ? $_GET['sort']
+    : 'created_at DESC';
+
+// ── WHERE clause ──────────────────────────────────────────────
+$where  = 'WHERE 1=1';
+$params = [];
+
+if ($search !== '') {
+    $where .= " AND (
+        hq.title            LIKE :search
+        OR hq.sys_id        LIKE :search
+        OR hq.client_sys_id LIKE :search
+        OR cl.name          LIKE :search
+    )";
+    $params[':search'] = '%' . $search . '%';
 }
 
-try {
-    // 2. Fetch the specific record
-    $stmt = $pdo->prepare("SELECT * FROM air_ticket_quatations WHERE sys_id = ? LIMIT 1");
-    $stmt->execute([$sysId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+// ── Total count ───────────────────────────────────────────────
+$countSql = "
+    SELECT COUNT(*)
+    FROM hotel_quotations hq
+    LEFT JOIN clients cl ON cl.sys_id = hq.client_sys_id
+    $where
+";
 
-    // 3. Handle 404 (Not Found)
-    if (!$row) {
-        http_response_code(404);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Document not found'
-        ]);
-        exit;
-    }
+$countStmt = $pdo->prepare($countSql);
+$countStmt->execute($params);
+$total = (int) $countStmt->fetchColumn();
 
-    // 4. Process JSON columns
-    // We map these to ensure they return as arrays/objects rather than raw strings
-    $jsonFields = ['informations', 'quotations', 'form_data', 'meta_data'];
-    
-    foreach ($jsonFields as $field) {
-        if (isset($row[$field])) {
-            $decoded = json_decode($row[$field], true);
-            // Default to empty array if decoding fails or is null
-            $row[$field] = $decoded ?? [];
-        }
-    }
+// ── Data query ────────────────────────────────────────────────
+$dataSql = "
+    SELECT
+        hq.sys_id,
+        hq.client_sys_id,
+        hq.title,
+        cl.name                      AS client_name,
+        JSON_LENGTH(hq.informations) AS quotation_count,
+        hq.created_at
+    FROM hotel_quotations hq
+    LEFT JOIN clients cl ON cl.sys_id = hq.client_sys_id
+    $where
+    ORDER BY hq.$sort
+    LIMIT :limit OFFSET :offset
+";
 
-    // 5. Explicit Type Casting (Optional but recommended)
-    // Ensures numeric values aren't returned as strings from the DB
-    $row['percentage'] = (float)$row['percentage'];
-    $row['ve_fixed_price'] = (float)$row['ve_fixed_price'];
+$dataStmt = $pdo->prepare($dataSql);
 
-    echo json_encode([
-        'success' => true,
-        'data' => $row
-    ]);
-
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Internal Server Error: ' . $e->getMessage()
-    ]);
+foreach ($params as $key => $val) {
+    $dataStmt->bindValue($key, $val);
 }
+
+$dataStmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+$dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$dataStmt->execute();
+
+$rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Format ────────────────────────────────────────────────────
+foreach ($rows as &$row) {
+    $row['quotation_count'] = (int) ($row['quotation_count'] ?? 0);
+    $row['client_name']     = $row['client_name'] ?? $row['client_sys_id'] ?? '—';
+}
+unset($row);
+
+// ── Response ──────────────────────────────────────────────────
+echo json_encode([
+    'success' => true,
+    'total'   => $total,
+    'page'    => $page,
+    'limit'   => $limit,
+    'data'    => $rows,
+], JSON_UNESCAPED_UNICODE);

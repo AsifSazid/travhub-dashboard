@@ -68,53 +68,55 @@ if (empty($ip_port)) $ip_port = "http://103.104.219.3:898/";
 
 <?php include '../elements/header.php'; ?>
 <?php include '../elements/aside.php'; ?>
+<?php include '../elements/preview-model.php'; ?>
+
 <?php include '../elements/floating-menus.php'; ?>
 
 <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
-<div class="max-w-7xl mx-auto px-4 py-8">
-
-  <!-- Header -->
-  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-900">Air Ticket Quotations</h1>
-      <p class="text-sm text-slate-500 mt-0.5">All flight quotation documents</p>
+    <div class="max-w-screen-2xl mx-auto px-4 py-8">
+    
+      <!-- Header -->
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Air Ticket Quotations</h1>
+          <p class="text-sm text-slate-500 mt-0.5">All flight quotation documents</p>
+        </div>
+        <a href="air-ticket-quotation.php" class="btn-add">
+          <i class="fas fa-plus text-xs"></i> Add New Quotation
+        </a>
+      </div>
+    
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-3 mb-4">
+        <div class="search-wrap">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" class="input-filter" placeholder="Search title, sys_id, client...">
+        </div>
+        <select id="sortSelect" class="input-filter no-icon" style="width:auto;flex:none;">
+          <option value="created_at DESC">Newest First</option>
+          <option value="created_at ASC">Oldest First</option>
+          <option value="title ASC">Title A–Z</option>
+          <option value="title DESC">Title Z–A</option>
+        </select>
+        <select id="limitSelect" class="input-filter no-icon" style="width:auto;flex:none;">
+          <option value="12">12 per page</option>
+          <option value="24">24 per page</option>
+          <option value="48">48 per page</option>
+        </select>
+      </div>
+    
+      <!-- Stats -->
+      <div class="flex items-center justify-between mb-4">
+        <span id="statsText" class="text-sm text-slate-400">Loading...</span>
+      </div>
+    
+      <!-- Grid -->
+      <div id="quotationGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6"></div>
+    
+      <!-- Pagination -->
+      <div id="paginationRow" class="flex flex-wrap items-center justify-between gap-3"></div>
+    
     </div>
-    <a href="air-ticket-quotation.php" class="btn-add">
-      <i class="fas fa-plus text-xs"></i> Add New Quotation
-    </a>
-  </div>
-
-  <!-- Filters -->
-  <div class="flex flex-wrap gap-3 mb-4">
-    <div class="search-wrap">
-      <i class="fas fa-search"></i>
-      <input type="text" id="searchInput" class="input-filter" placeholder="Search title, sys_id, client...">
-    </div>
-    <select id="sortSelect" class="input-filter no-icon" style="width:auto;flex:none;">
-      <option value="created_at DESC">Newest First</option>
-      <option value="created_at ASC">Oldest First</option>
-      <option value="title ASC">Title A–Z</option>
-      <option value="title DESC">Title Z–A</option>
-    </select>
-    <select id="limitSelect" class="input-filter no-icon" style="width:auto;flex:none;">
-      <option value="12">12 per page</option>
-      <option value="24">24 per page</option>
-      <option value="48">48 per page</option>
-    </select>
-  </div>
-
-  <!-- Stats -->
-  <div class="flex items-center justify-between mb-4">
-    <span id="statsText" class="text-sm text-slate-400">Loading...</span>
-  </div>
-
-  <!-- Grid -->
-  <div id="quotationGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6"></div>
-
-  <!-- Pagination -->
-  <div id="paginationRow" class="flex flex-wrap items-center justify-between gap-3"></div>
-
-</div>
 </main>
 
 <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
