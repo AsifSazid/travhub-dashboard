@@ -356,7 +356,7 @@ let savedUuid = null;
 let isSaved = false;
 
 const EXTRACT_API = "../api/ticket-calculation/extract-gds.php";
-const SAVE_API = "../api/ticket-calculation/save-quotation.php";
+const SAVE_API = "../api/ticket-calculation/save-calculation.php";
 
 document.addEventListener("DOMContentLoaded", function () {
     const urlParams = new URLSearchParams(window.location.search);
@@ -822,13 +822,13 @@ function removeFare(index) {
 function generateCopyText() {
     const airline = document.getElementById("airline").value.trim() || "Airline";
 
-    let text = `${airline}:\n`;
+    let text = `${airline.toUpperCase()}:\n`;
 
     currentSegments.forEach((seg, index) => {
-        text += `${index + 1}. ${seg.flight || ""} ${seg.class || ""} ${seg.date || ""} ${seg.route || ""} ${seg.status || "HS"} ${seg.departure || ""} ${seg.arrival || ""}\n`;
+        text += `${index + 1} . ${formatFlight(seg.flight)} ${seg.class || ""} ${seg.date || ""} ${removeDash(seg.route || "")} ${seg.status || "HS"} ${seg.departure || ""} ${formatArrival(seg.arrival || "")}\n`;
     });
 
-    text += `Price:\n`;
+    text += `\n*Price:*\n`;
 
     let grandTotal = 0;
 
@@ -839,15 +839,38 @@ function generateCopyText() {
 
         grandTotal += total;
 
-        text += `\n${fare.type || "PAX"} x ${pax}\n`;
-        text += `- Gross: BDT ${formatMoney(fare.gross_fare)} per person\n`;
-        text += `- Payable: BDT ${formatMoney(payable)}/- per person.\n`;
-        text += `Total payable: ${formatMoney(total)}/-\n`;
+        text += `- Gross: BDT ${formatMoney(fare.gross_fare)} per person \n`;
+        text += `- *Payable: BDT ${formatMoney(payable)}/- per person.*\n`;
     });
 
-    text += `\nGrand Total Payable: ${formatMoney(grandTotal)}/-`;
+    text += `*Total payable: ${formatMoney(grandTotal)}/-*`;
 
     return text.trim();
+}
+
+function formatFlight(flight) {
+    const value = String(flight || "").trim().toUpperCase();
+
+    const match = value.match(/^([A-Z]{2})(\d+)$/);
+
+    if (!match) return value;
+
+    const code = match[1];
+    const number = match[2].padStart(4, " ");
+
+    return `${code}${number}`;
+}
+
+function formatArrival(arrival) {
+    const value = String(arrival || "").trim();
+
+    if (!value) return "";
+
+    return value;
+}
+
+function removeDash(route) {
+    return String(route || "").replaceAll("-", "");
 }
 
 function renderMarkdownPreview() {

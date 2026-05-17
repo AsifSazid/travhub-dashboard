@@ -24,6 +24,7 @@ function generateUUID(PDO $pdo, string $tag): string
         'hotel_bookings' => ['table' => 'hotel_bookings', 'column' => 'sys_id', 'short' => 'HB'],
         'hotel_quotations' => ['table' => 'hotel_quotations', 'column' => 'sys_id', 'short' => 'HQ'],
         'air_ticket_quotations' => ['table' => 'air_ticket_quotations', 'column' => 'sys_id', 'short' => 'AQ'],
+        'air_ticket_calculations' => ['table' => 'air_ticket_calculations', 'column' => 'sys_id', 'short' => 'TC'],
         'packages' => ['table' => 'packages', 'column' => 'sys_id', 'short' => 'PK'],
         'package-calculator' => ['table' => 'package_calculations', 'column' => 'sys_id', 'short' => 'PC'],
 

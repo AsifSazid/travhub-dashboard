@@ -171,7 +171,7 @@ try {
         ':uuid'              => $uuid['uuid'],
         ':sys_id'            => $uuid['sys_id'],
         ':employee_id'       => $data['employee_id'],
-        ':employee_id'       => $data['employee_name'],
+        ':employee_name'       => $data['employee_name'],
         ':effective_date'    => $data['effective_date'],
         ':basic_salary'      => $basic_salary,
         ':house_rent'        => $house_rent,

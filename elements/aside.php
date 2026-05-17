@@ -211,9 +211,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </button>
 
                 <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
-                    <a href="air-ticket-price-calculation.php"
+                    <a href="index-at-calculation.php"
                         class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'air-ticket-price-calculation.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'index-at-calculation.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-passport mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Air Ticket Price Calculation</span>
                     </a>
