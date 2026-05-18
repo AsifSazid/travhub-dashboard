@@ -358,7 +358,7 @@ function renderPaymentCards(data) {
 
     data.forEach(row => {
 
-        const workflow = (row.workflow_status || 'prepared').toLowerCase();
+        const workflow = (row.status || 'prepared').toLowerCase();
 
         const workflowBadge = workflowClass(workflow);
 
@@ -395,17 +395,19 @@ function renderPaymentCards(data) {
                         </h3>
                     </div>
 
-                    <span class="px-3 py-1 text-xs font-semibold rounded-full border ${workflowBadge}">
-                        ${workflow.toUpperCase()}
-                    </span>
+                    <div>
+                        <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100 mb-2 me-2">
+                            ${paymentType}
+                        </span>
+    
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full border ${workflowBadge}">
+                            ${workflow.toUpperCase()}
+                        </span>
+                    </div>
 
                 </div>
 
                 <div class="mb-4">
-
-                    <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100 mb-2">
-                        ${paymentType}
-                    </span>
 
                     <p class="text-sm text-gray-500">
                         Net Payable Amount

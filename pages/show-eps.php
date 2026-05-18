@@ -37,7 +37,7 @@ $authorizedCount = 0;
 foreach ($salaryRows as $row) {
     $totalPaid += (float)($row['net_payable_salary'] ?? 0);
 
-    $workflowStatus = strtolower($row['workflow_status'] ?? 'prepared');
+    $workflowStatus = strtolower($row['status'] ?? 'prepared');
 
     if ($workflowStatus === 'authorized') {
         $authorizedCount++;
@@ -417,7 +417,8 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                         <?php foreach ($salaryRows as $row): ?>
                             <?php
                                 $status = strtolower($row['status'] ?? 'pending');
-                                $workflowStatus = strtolower($row['workflow_status'] ?? 'prepared');
+                                $workflowStatus = strtolower($row['status'] ?? 'prepared');
+
                                 $paymentType = strtolower($row['payment_type'] ?? 'salary');
 
                                 $statusClass = statusBadgeClass($status);
@@ -454,20 +455,23 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                                             <p class="text-xs text-gray-500">Slip ID</p>
                                             <h3 class="font-bold text-gray-900"><?php echo safeText($slipId); ?></h3>
                                         </div>
+                                        
+                                        <div>
+                                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100 me-2">
+                                                <?php echo safeText(paymentTypeLabel($paymentType)); ?>
+                                            </span>
+                                            
+                                            <?php if($workflowStatus == 'collected') { ?>
+                                            <span class="px-3 py-1 text-xs font-semibold rounded-full border <?php echo $statusClass; ?>">
+                                                Payment: <?php echo strtoupper(safeText($workflowStatus)); ?>
+                                            </span>
+                                            <?php }else{ ?>
+                                            <span class="px-3 py-1 text-xs font-semibold rounded-full border <?php echo $workflowClass; ?>">
+                                                <?php echo strtoupper(safeText($workflowStatus)); ?>
+                                            </span>
+                                            <?php } ?>
+                                        </div>
 
-                                        <span class="px-3 py-1 text-xs font-semibold rounded-full border <?php echo $workflowClass; ?>">
-                                            <?php echo strtoupper(safeText($workflowStatus)); ?>
-                                        </span>
-                                    </div>
-
-                                    <div class="flex items-center justify-between gap-3 mb-4">
-                                        <span class="px-3 py-1 text-xs font-semibold rounded-full border <?php echo $statusClass; ?>">
-                                            Payment: <?php echo strtoupper(safeText($status)); ?>
-                                        </span>
-
-                                        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                                            <?php echo safeText(paymentTypeLabel($paymentType)); ?>
-                                        </span>
                                     </div>
 
                                     <div class="mb-4">

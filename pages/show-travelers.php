@@ -1,5 +1,7 @@
 <?php
 include_once('./authenticate.php');
+require_once '../server/db_connection.php';
+
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -108,6 +110,10 @@ $travelerId = $_GET['traveler_id'];
                             <i class="fas fa-folder mr-2"></i>
                             Documents
                         </button>
+                        <button class="tab-button flex items-center" data-tab="docs-sum">
+                            <i class="fas fa-folder mr-2"></i>
+                            Docs & Summary
+                        </button>
                         <button class="tab-button flex items-center" data-tab="information">
                             <i class="fas fa-info-circle mr-2"></i>
                             Information
@@ -154,6 +160,15 @@ $travelerId = $_GET['traveler_id'];
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 h-full">
                                 <?php include('st-documents.php') ?> <!-- st means Show Traveler -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents & Summary Tab -->
+                    <div id="docs-sum" class="tab-content">
+                        <div class="grid grid-cols-2 gap-6 h-full">
+                            <div class="col-span-2 h-full">
+                                <?php include('st-summary.php') ?> <!-- st means Show Traveler -->
                             </div>
                         </div>
                     </div>
@@ -238,7 +253,7 @@ $travelerId = $_GET['traveler_id'];
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                const firstTabId = tabButtons[2].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

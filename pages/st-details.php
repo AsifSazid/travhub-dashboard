@@ -4,7 +4,7 @@
  * Displays traveler information with inline editing capability
  */
 
-require_once '../server/db_connection.php';
+
 
 $travelerId = $_GET['traveler_id'] ?? null;
 

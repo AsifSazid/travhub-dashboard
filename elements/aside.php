@@ -17,6 +17,15 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
 
+            <li>
+                <a href="my-pms.php"
+                    class="flex items-center p-3 rounded-lg 
+                   <?= $currentPage == 'my-pms.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                    <i class="fa-solid fa-wallet mr-3"></i>
+                    <span class="sidebar-text transition-all duration-300">My PMS</span>
+                </a>
+            </li>
+
             <!-- Stake Holder Accordion -->
             <div class="accordion-item mt-4" data-accordion="stake-holder">
                 <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
