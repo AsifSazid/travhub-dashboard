@@ -45,6 +45,7 @@ ini_set('display_errors', 0);
 // Config
 // ============================================================================
 $GEMINI_API_KEY = trim(@file_get_contents('../../gemini-apikey.txt'));
+
 if (empty($GEMINI_API_KEY)) {
     echo json_encode(['success' => false, 'message' => 'Gemini API key not configured']);
     exit;
@@ -56,7 +57,8 @@ if (!is_dir($TMP_BASE)) {
 }
 
 $ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
-$MAX_BYTES   = 20 * 1024 * 1024;
+// $MAX_BYTES   = 100 * 1024 * 1024;  // 100 MB - requires PHP config: upload_max_filesize=100M, post_max_size=110M, memory_limit=512M, max_execution_time=300
+$MAX_BYTES   = 50 * 1024 * 1024;  // 100 MB - requires PHP config: upload_max_filesize=100M, post_max_size=110M, memory_limit=512M, max_execution_time=300
 $JPG_QUALITY = 85;
 $JPG_DPI     = 150;
 $MAX_PAGES   = 30;
@@ -100,7 +102,7 @@ if (!in_array($ext, $ALLOWED_EXT, true)) {
     exit;
 }
 if ($file['size'] > $MAX_BYTES) {
-    echo json_encode(['success' => false, 'message' => 'File too large (max 20 MB)']);
+    echo json_encode(['success' => false, 'message' => 'File too large (max 100 MB)']);
     exit;
 }
 
@@ -110,6 +112,9 @@ if ($file['size'] > $MAX_BYTES) {
 $token   = bin2hex(random_bytes(16));
 $workDir = $TMP_BASE . $token . '/';
 mkdir($workDir, 0777, true);
+
+var_dump($token, $workDir);
+die;
 
 $srcPath = $workDir . 'source.' . $ext;
 if (!move_uploaded_file($file['tmp_name'], $srcPath)) {
@@ -169,12 +174,16 @@ try {
         $pdo->query("SELECT doc_type FROM doc_type_registry WHERE is_active=1")
             ->fetchAll(PDO::FETCH_COLUMN)
     ), true) ?: []);
-    if (!in_array($classification['doc_type'], $pdo->query(
-        "SELECT doc_type FROM doc_type_registry WHERE is_active=1")
-        ->fetchAll(PDO::FETCH_COLUMN), true)) {
+    // if (!in_array($classification['doc_type'], $pdo->query(
+    //     "SELECT doc_type FROM doc_type_registry WHERE is_active=1")
+    //     ->fetchAll(PDO::FETCH_COLUMN), true)) {
+    //     $classification['doc_type'] = 'other';
+    // }
+
+    if (!in_array($classification['doc_type'], $allowedTypes, true)) {
         $classification['doc_type'] = 'other';
     }
-
+    
     // ========================================================================
     // LAYER 2: Identity-based dedup (doc_type + doc_number match)
     // LAYER 3: Per-page pHash merge plan
@@ -357,7 +366,7 @@ function classifyWithGemini($pageFiles, $apiKey) {
         ];
     }
 
-    $model = 'gemini-2.0-flash';
+    $model = 'gemini-2.0-flash-lite';
     $payload = [
         'contents' => [['parts' => $parts]],
         'generationConfig' => [

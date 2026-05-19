@@ -1,8 +1,24 @@
 <?php
 /**
- * TravHub Smart Upload v3 — Bulk Upload UI
- * ========================================
- * Drop-zone → parallel classification → review cards → commit → summary regen.
+ * TravHub Smart Upload v3 — Bulk Upload UI (UCPT-compliant)
+ * ==========================================================
+ * UCPT zone with all four input methods visible:
+ *   - Upload (click to browse)
+ *   - Drag-Drop
+ *   - Paste Image (Ctrl+V — zone-focused, single image per paste, multi-paste OK)
+ *   - Text input (visible per UCPT rule; submission shows "Unsupported — working on it!")
+ *
+ * 100MB hard limit per file (frontend validates BEFORE upload).
+ *
+ * ⚠️ PHP CONFIG REQUIRED for 100MB to actually work end-to-end:
+ *   upload_max_filesize = 100M
+ *   post_max_size       = 110M
+ *   max_execution_time  = 300
+ *   memory_limit        = 512M
+ *
+ * Imagick policy.xml may also need:
+ *   <policy domain="resource" name="memory" value="512MiB"/>
+ *   <policy domain="resource" name="disk"   value="2GiB"/>
  *
  * URL: /pages/smart-upload.php?traveler=TR-XXXXXX
  */
@@ -36,22 +52,30 @@ $docTypes = $pdo->query("
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Smart Upload — <?= htmlspecialchars($traveler['name']) ?></title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
   .spinner { border: 2px solid transparent; border-top-color: currentColor; border-radius: 9999px; animation: spin 0.6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .ucpt-zone { transition: all 0.2s ease; }
+  .ucpt-zone:focus-within { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  .ucpt-zone.dragover { background-color: #eff6ff; border-color: #3b82f6; }
+  .ucpt-zone.paste-flash { background-color: #ecfdf5; border-color: #10b981; }
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
 <?php @include __DIR__ . '/../elements/aside.php'; ?>
+<?php @include __DIR__ . '/../elements/header.php'; ?>
 
 <main class="md:ml-64 p-4 md:p-8">
 
   <!-- Header -->
   <header class="mb-6 flex items-center justify-between flex-wrap gap-4">
     <div>
-      <a href="show-travelers.php?sys_id=<?= htmlspecialchars($traveler['sys_id']) ?>"
-         class="text-sm text-gray-500 hover:text-gray-700">← Back to profile</a>
+      <a href="show-travelers.php?traveler_id=<?= htmlspecialchars($traveler['sys_id']) ?>"
+         class="text-sm text-gray-500 hover:text-gray-700">
+        <i class="fas fa-arrow-left mr-1"></i> Back to profile
+      </a>
       <h1 class="text-2xl font-semibold text-gray-900 mt-1">Smart Document Upload</h1>
       <p class="text-sm text-gray-600 mt-1">
         Traveler: <strong><?= htmlspecialchars($traveler['name']) ?></strong>
@@ -64,7 +88,7 @@ $docTypes = $pdo->query("
   <!-- Passport status selector -->
   <div class="mb-4 bg-white border border-gray-200 rounded-xl p-4">
     <div class="text-sm font-medium text-gray-700 mb-2">
-      If uploading a passport, treat it as:
+      <i class="fas fa-passport text-gray-500 mr-1"></i> If uploading a passport, treat it as:
     </div>
     <div class="flex gap-6 text-sm flex-wrap">
       <label class="flex items-center gap-2 cursor-pointer">
@@ -83,25 +107,74 @@ $docTypes = $pdo->query("
     </div>
   </div>
 
-  <!-- Dropzone -->
-  <div id="dropzone"
-       class="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center bg-white hover:bg-gray-50 transition cursor-pointer">
-    <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M7 16a4 4 0 01-.88-7.9 5 5 0 019.9-1A5.5 5.5 0 0118 17H7zm5-9v6m0 0l-2-2m2 2l2-2"/>
-    </svg>
-    <p class="font-medium text-gray-700">Drop documents here, or click to browse</p>
-    <p class="text-xs mt-1 text-gray-500">
-      PDFs auto-convert to JPG pages · multi-page docs stay together · max 20 MB each
-    </p>
-    <input type="file" id="fileInput" multiple
-           accept=".pdf,.jpg,.jpeg,.png,.webp" class="hidden">
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- UCPT ZONE                                                            -->
+  <!-- Upload + Drag-Drop + Paste Image + Text — all visible at once       -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="ucptZone"
+       tabindex="0"
+       class="ucpt-zone border-2 border-dashed border-gray-300 rounded-2xl bg-white p-6 md:p-8 focus:outline-none">
+
+    <!-- Click-to-upload + drag-drop hint -->
+    <div class="text-center mb-6">
+      <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+      <p class="font-medium text-gray-700">
+        <button type="button" onclick="document.getElementById('fileInput').click()"
+                class="text-blue-600 hover:underline">Click to browse</button>,
+        drag &amp; drop files here, or
+        <span class="text-emerald-600 font-medium">click inside this zone</span> and paste an image (Ctrl+V)
+      </p>
+      <p class="text-xs mt-2 text-gray-500">
+        PDF, JPG, PNG, WEBP · multi-page docs stay together · max <strong>100 MB</strong> per file
+      </p>
+      <p class="text-[11px] mt-1 text-gray-400">
+        <i class="fas fa-keyboard"></i> Paste is zone-focused. Click anywhere on this zone first, then Ctrl+V.
+      </p>
+      <input type="file" id="fileInput" multiple
+             accept=".pdf,.jpg,.jpeg,.png,.webp" class="hidden">
+    </div>
+
+    <!-- Divider -->
+    <div class="relative my-4">
+      <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+      <div class="relative flex justify-center text-xs">
+        <span class="bg-white px-3 text-gray-400 uppercase tracking-wider">Or paste text</span>
+      </div>
+    </div>
+
+    <!-- Text input (UCPT rule: visible but currently disabled) -->
+    <div class="grid grid-cols-1 gap-2">
+      <textarea id="textInput"
+                rows="4"
+                placeholder="Paste or type document text here (OCR output, statement contents, letter body, etc.)"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono resize-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none"></textarea>
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[11px] text-gray-400">
+          <i class="fas fa-flask text-amber-500"></i> Text classification is in development
+        </span>
+        <button type="button"
+                id="processTextBtn"
+                class="px-4 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+          Process Text
+        </button>
+      </div>
+    </div>
+
+    <!-- "Unsupported" banner appears here when text is submitted -->
+    <div id="textUnsupportedBanner" class="hidden mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+      <i class="fas fa-tools text-amber-600 mr-1"></i>
+      <strong>Unsupported — we're working on it!</strong>
+      <p class="text-xs mt-1 text-amber-700">For now, please upload, drop, or paste an image of the document instead.</p>
+    </div>
   </div>
 
   <!-- Review section -->
   <div id="reviewSection" class="hidden mt-8">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold text-gray-900">Review & Confirm</h2>
+      <h2 class="text-lg font-semibold text-gray-900">
+        Review &amp; Confirm
+        <span id="reviewCount" class="ml-2 text-sm font-normal text-gray-500"></span>
+      </h2>
       <div class="flex gap-2">
         <button id="cancelBtn"
                 class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
@@ -117,7 +190,7 @@ $docTypes = $pdo->query("
     <div id="reviewCards" class="space-y-4"></div>
   </div>
 
-  <!-- Status overlay (commit + summary regen) -->
+  <!-- Status overlay -->
   <div id="statusOverlay" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-40">
     <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 text-center">
       <div class="w-12 h-12 spinner text-blue-600 mx-auto mb-4"></div>
@@ -125,6 +198,9 @@ $docTypes = $pdo->query("
       <p class="text-sm text-gray-600" id="statusMsg">Storing files and writing to database</p>
     </div>
   </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl text-sm z-50 max-w-sm"></div>
 </main>
 
 <!-- Bio diff modal -->
@@ -149,50 +225,150 @@ $docTypes = $pdo->query("
 
 <script>
 // ============================================================================
-// State
+// Config + State
 // ============================================================================
 const TRAVELER_SYS_ID = <?= json_encode($traveler['sys_id']) ?>;
-const DOC_TYPES = <?= json_encode($docTypes) ?>;
+const DOC_TYPES       = <?= json_encode($docTypes) ?>;
+// const MAX_BYTES       = 100 * 1024 * 1024; // 100 MB hard limit (frontend)
+const MAX_BYTES       = 50 * 1024 * 1024; // 100 MB hard limit (frontend)
+const ALLOWED_EXTS    = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
 
-const $dropzone     = document.getElementById('dropzone');
-const $fileInput    = document.getElementById('fileInput');
-const $reviewSection= document.getElementById('reviewSection');
-const $reviewCards  = document.getElementById('reviewCards');
-const $commitBtn    = document.getElementById('commitBtn');
-const $cancelBtn    = document.getElementById('cancelBtn');
-const $overlay      = document.getElementById('statusOverlay');
-const $statusTitle  = document.getElementById('statusTitle');
-const $statusMsg    = document.getElementById('statusMsg');
+const $zone          = document.getElementById('ucptZone');
+const $fileInput     = document.getElementById('fileInput');
+const $textInput     = document.getElementById('textInput');
+const $processTextBtn= document.getElementById('processTextBtn');
+const $textBanner    = document.getElementById('textUnsupportedBanner');
+const $reviewSection = document.getElementById('reviewSection');
+const $reviewCards   = document.getElementById('reviewCards');
+const $reviewCount   = document.getElementById('reviewCount');
+const $commitBtn     = document.getElementById('commitBtn');
+const $cancelBtn     = document.getElementById('cancelBtn');
+const $overlay       = document.getElementById('statusOverlay');
+const $statusTitle   = document.getElementById('statusTitle');
+const $statusMsg     = document.getElementById('statusMsg');
+const $toast         = document.getElementById('toast');
 
-const pending = new Map();      // token -> classify response (with user overrides applied at commit time)
+let zoneFocused = false;            // true while UCPT zone holds keyboard focus
+const pending = new Map();           // token -> classification response
 let currentDiffToken = null;
 let rowCounter = 0;
+let pastedCounter = 0;
 
 // ============================================================================
-// Drag & drop wiring
+// UCPT Channel 1+2: Click-to-browse + Drag-drop
 // ============================================================================
-$dropzone.addEventListener('click', () => $fileInput.click());
-$dropzone.addEventListener('dragover', e => {
-  e.preventDefault();
-  $dropzone.classList.add('bg-blue-50');
-});
-$dropzone.addEventListener('dragleave', () => $dropzone.classList.remove('bg-blue-50'));
-$dropzone.addEventListener('drop', e => {
-  e.preventDefault();
-  $dropzone.classList.remove('bg-blue-50');
-  handleFiles(e.dataTransfer.files);
-});
 $fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
+$zone.addEventListener('dragover', e => {
+  e.preventDefault();
+  $zone.classList.add('dragover');
+});
+$zone.addEventListener('dragleave', e => {
+  // Only clear when leaving the zone itself, not bubbling from a child
+  if (e.target === $zone) $zone.classList.remove('dragover');
+});
+$zone.addEventListener('drop', e => {
+  e.preventDefault();
+  $zone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+// ============================================================================
+// UCPT Channel 3: Paste Image (zone-focused, sequential multi-paste)
+// ============================================================================
+
+// Track whether the UCPT zone is focused (zone-focused paste rule from spec)
+$zone.addEventListener('focus', () => { zoneFocused = true; });
+$zone.addEventListener('blur',  () => { zoneFocused = false; });
+$zone.addEventListener('click', () => $zone.focus());
+
+// Listen globally but only act when zone is focused (and not inside textarea)
+document.addEventListener('paste', e => {
+  if (!zoneFocused) return;
+
+  // Don't hijack paste when typing inside the textarea
+  if (document.activeElement === $textInput) return;
+
+  const items = (e.clipboardData || window.clipboardData)?.items;
+  if (!items) return;
+
+  // Find FIRST image in clipboard (per spec: single image per paste,
+  // user can paste again for additional images)
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const blob = item.getAsFile();
+      if (!blob) continue;
+
+      // Synthesize a File with a friendly name
+      pastedCounter++;
+      const ext = (item.type.split('/')[1] || 'png').toLowerCase();
+      const safeExt = ext === 'jpeg' ? 'jpg' : ext;
+      const filename = `pasted-image-${pastedCounter}.${safeExt}`;
+      const file = new File([blob], filename, { type: item.type });
+
+      // Visual feedback
+      $zone.classList.add('paste-flash');
+      setTimeout(() => $zone.classList.remove('paste-flash'), 400);
+
+      e.preventDefault();
+      handleFiles([file]);
+      return; // exit after first image
+    }
+  }
+});
+
+// ============================================================================
+// UCPT Channel 4: Text input — placeholder (unsupported notice)
+// ============================================================================
+$processTextBtn.addEventListener('click', () => {
+  const text = $textInput.value.trim();
+  if (text.length === 0) {
+    toast('Type or paste some text first');
+    return;
+  }
+  $textBanner.classList.remove('hidden');
+  $textBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+$textInput.addEventListener('input', () => {
+  // Hide banner once user starts editing again
+  if ($textBanner && !$textBanner.classList.contains('hidden')) {
+    $textBanner.classList.add('hidden');
+  }
+});
+
+// ============================================================================
+// File pipeline (shared by all 3 working channels)
+// ============================================================================
 async function handleFiles(fileList) {
-  if (!fileList.length) return;
+  if (!fileList || !fileList.length) return;
   $reviewSection.classList.remove('hidden');
 
   const files = Array.from(fileList);
-  const indices = files.map(f => insertSkeleton(f));
+  const accepted = [];
+  for (const f of files) {
+    const reason = validateFile(f);
+    if (reason) {
+      toast(`${f.name}: ${reason}`, 'error');
+      continue;
+    }
+    accepted.push(f);
+  }
 
-  // Concurrency limit 3 — PDF rasterization is heavy on the server
-  await runParallel(files.map((f, idx) => () => classifyOne(f, indices[idx])), 3);
+  const indices = accepted.map(f => insertSkeleton(f));
+  await runParallel(accepted.map((f, idx) => () => classifyOne(f, indices[idx])), 3);
+  updateReviewCount();
+}
+
+function validateFile(file) {
+  if (file.size > MAX_BYTES) {
+    return `Too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max 100 MB)`;
+  }
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (!ALLOWED_EXTS.includes(ext)) {
+    return `Unsupported type (.${ext})`;
+  }
+  return null;
 }
 
 async function classifyOne(file, rowIdx) {
@@ -211,7 +387,6 @@ async function classifyOne(file, rowIdx) {
       renderError(rowIdx, data.message || 'Failed', data.duplicate, data.layer);
       return;
     }
-
     pending.set(data.token, { ...data, _userPassportStatus: passportStatus });
     renderCard(rowIdx, data);
   } catch (err) {
@@ -222,6 +397,7 @@ async function classifyOne(file, rowIdx) {
 function runParallel(tasks, concurrency) {
   return new Promise(resolve => {
     let i = 0, active = 0, done = 0;
+    if (tasks.length === 0) return resolve();
     const next = () => {
       while (active < concurrency && i < tasks.length) {
         active++;
@@ -237,19 +413,20 @@ function runParallel(tasks, concurrency) {
 }
 
 // ============================================================================
-// Skeleton + error rendering
+// Review-card rendering
 // ============================================================================
 function insertSkeleton(file) {
   const idx = ++rowCounter;
   const card = document.createElement('div');
   card.id = `card-${idx}`;
   card.className = 'bg-white rounded-xl shadow-sm p-5 border border-gray-200';
+  const sizeMb = (file.size / 1024 / 1024).toFixed(1);
   card.innerHTML = `
     <div class="flex items-center gap-3">
       <span class="w-4 h-4 spinner text-blue-600"></span>
       <div class="flex-1 min-w-0">
         <div class="font-medium text-gray-900 truncate">${escapeHtml(file.name)}</div>
-        <div class="text-xs text-gray-500 mt-1">Rasterizing & classifying with Gemini…</div>
+        <div class="text-xs text-gray-500 mt-1">${sizeMb} MB · Rasterizing & classifying with Gemini…</div>
       </div>
     </div>`;
   $reviewCards.appendChild(card);
@@ -268,9 +445,6 @@ function renderError(idx, msg, isDup, layer) {
   card.innerHTML = `<div class="text-${tone}-800 font-medium">${icon} ${escapeHtml(msg)} ${badge}</div>`;
 }
 
-// ============================================================================
-// Review card
-// ============================================================================
 function renderCard(idx, data) {
   const card = document.getElementById(`card-${idx}`);
   if (!card) return;
@@ -291,7 +465,7 @@ function renderCard(idx, data) {
   let passportBanner = '';
   if (data.doc_type === 'passport' && data.passport_analysis) {
     const a = data.passport_analysis;
-    const scenarioLabels = {
+    const labels = {
       'first_time': '🆕 First passport for this traveler',
       'matches_existing_current': '🔄 Same passport already on file — only new visa pages will be added',
       'renewal_demote_old': '🆙 Passport renewal — old passport will be marked as Previous',
@@ -302,7 +476,7 @@ function renderCard(idx, data) {
       <div class="bg-blue-50 border-b border-blue-100 px-5 py-3 text-sm">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <span class="font-medium text-blue-900">${scenarioLabels[a.scenario] || a.scenario}</span>
+            <span class="font-medium text-blue-900">${labels[a.scenario] || a.scenario}</span>
             <span class="ml-2 text-xs text-blue-700">Status: <strong>${a.resolved_status}</strong></span>
           </div>
           ${diffCount > 0 ? `
@@ -314,7 +488,7 @@ function renderCard(idx, data) {
       </div>`;
   }
 
-  // Merge banner (growth detection: e.g. "5 of 10 pages already exist")
+  // Merge banner
   let mergeBanner = '';
   if (data.merge_analysis) {
     const m = data.merge_analysis;
@@ -339,7 +513,6 @@ function renderCard(idx, data) {
       </div>`;
   }
 
-  // Page badges
   const pageBadges = (data.pages || []).map(p => {
     const tag = p.country ? `${p.page_type} · ${p.country}` : p.page_type;
     return `<span class="inline-block px-2 py-0.5 text-[10px] bg-gray-100 text-gray-700 rounded mr-1 mb-1">
@@ -358,7 +531,8 @@ function renderCard(idx, data) {
         </div>
       </div>
       <button onclick="removeCard('${data.token}', ${idx})"
-              class="text-gray-400 hover:text-red-600 text-xl leading-none">&times;</button>
+              class="text-gray-400 hover:text-red-600 text-xl leading-none"
+              title="Remove">&times;</button>
     </div>
     ${passportBanner}
     ${mergeBanner}
@@ -410,7 +584,13 @@ function renderCard(idx, data) {
 window.removeCard = (token, idx) => {
   pending.delete(token);
   document.getElementById(`card-${idx}`)?.remove();
+  updateReviewCount();
 };
+
+function updateReviewCount() {
+  const n = pending.size;
+  $reviewCount.textContent = n > 0 ? `(${n} document${n !== 1 ? 's' : ''})` : '';
+}
 
 // ============================================================================
 // Bio diff modal
@@ -483,7 +663,7 @@ window.approveDiff = () => {
 };
 
 // ============================================================================
-// Commit + summary regeneration (the batch-end trigger)
+// Commit + batch-end summary regeneration
 // ============================================================================
 $commitBtn.addEventListener('click', async () => {
   const items = [];
@@ -514,11 +694,10 @@ $commitBtn.addEventListener('click', async () => {
   });
 
   if (!items.length) {
-    alert('Nothing to commit');
+    toast('Nothing to commit');
     return;
   }
 
-  // ----- Stage 1: commit documents -----
   showStatus('Committing documents...', 'Storing files and writing to database');
   $commitBtn.disabled = true;
 
@@ -532,24 +711,24 @@ $commitBtn.addEventListener('click', async () => {
     commitData = await res.json();
   } catch (err) {
     hideStatus();
-    alert('Network error during commit: ' + err.message);
+    toast('Network error during commit: ' + err.message, 'error');
     $commitBtn.disabled = false;
     return;
   }
 
   if (!commitData.success && commitData.committed === 0) {
     hideStatus();
-    alert('Commit failed: ' + (commitData.message || 'unknown'));
+    toast('Commit failed: ' + (commitData.message || 'unknown'), 'error');
     $commitBtn.disabled = false;
     return;
   }
 
-  // ----- Stage 2: batch-end summary regeneration (if anything was committed) -----
+  // Batch-end summary regeneration
   if (commitData.summary_dirty) {
     showStatus('Regenerating traveler summary...',
                `Calling Gemini with full traveler context (${commitData.committed} document${commitData.committed !== 1 ? 's' : ''} added)`);
     try {
-      const summaryRes = await fetch('/api/travelers/regenerate-summary.php', {
+      await fetch('/api/travelers/regenerate-summary.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -558,11 +737,6 @@ $commitBtn.addEventListener('click', async () => {
           information_updated_for: commitData.pending_trigger || 'Document upload batch',
         }),
       });
-      const summaryData = await summaryRes.json();
-      if (!summaryData.success) {
-        console.warn('Summary regen failed:', summaryData.error);
-        // Don't block — documents were committed successfully
-      }
     } catch (err) {
       console.warn('Summary regen network error:', err);
     }
@@ -570,7 +744,6 @@ $commitBtn.addEventListener('click', async () => {
 
   hideStatus();
 
-  // ----- Done -----
   const failed = commitData.results.filter(r => !r.success).length;
   let msg = `Committed ${commitData.committed} of ${commitData.total} documents.`;
   if (failed > 0) {
@@ -579,9 +752,8 @@ $commitBtn.addEventListener('click', async () => {
   }
   alert(msg);
 
-  // Redirect to profile
   setTimeout(() => {
-    location.href = `show-travelers.php?sys_id=${TRAVELER_SYS_ID}`;
+    location.href = `show-travelers.php?traveler_id=${TRAVELER_SYS_ID}`;
   }, 500);
 });
 
@@ -590,8 +762,17 @@ $cancelBtn.addEventListener('click', () => {
 });
 
 // ============================================================================
-// Status overlay helpers
+// Toast + status helpers
 // ============================================================================
+function toast(msg, tone = 'info') {
+  $toast.textContent = msg;
+  $toast.className = `fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-xl text-sm z-50 max-w-sm ${
+    tone === 'error' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'
+  }`;
+  $toast.classList.remove('hidden');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => $toast.classList.add('hidden'), 3500);
+}
 function showStatus(title, msg) {
   $statusTitle.textContent = title;
   $statusMsg.textContent = msg;
@@ -600,10 +781,6 @@ function showStatus(title, msg) {
 function hideStatus() {
   $overlay.classList.add('hidden');
 }
-
-// ============================================================================
-// Utility
-// ============================================================================
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'

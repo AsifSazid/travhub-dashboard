@@ -1,18 +1,14 @@
 <?php
+// st-summary.php — included by show-travelers.php
+// $pdo and $traveler are already in scope (no bootstrap needed)
 
-if (!isset($traveler) || !isset($pdo)) {
-    die('traveler-documents-tab.php requires $traveler and $pdo in scope');
-}
+$summary = !empty($traveler['summary']) ? json_decode($traveler['summary'], true) : null;
 
-// Parse current summary if present
-$summary = null;
-if (!empty($traveler['summary'])) {
-    $summary = json_decode($traveler['summary'], true);
-}
-
-// Fetch doc_type display names for headers
 $typeLabels = [];
-foreach ($pdo->query("SELECT doc_type, display_name, smb_folder FROM doc_type_registry WHERE is_active=1 ORDER BY display_order") as $r) {
+foreach ($pdo->query("SELECT doc_type, display_name, smb_folder
+                      FROM doc_type_registry
+                      WHERE is_active = 1
+                      ORDER BY display_order") as $r) {
     $typeLabels[$r['doc_type']] = ['name' => $r['display_name'], 'folder' => $r['smb_folder']];
 }
 ?>

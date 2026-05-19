@@ -9,6 +9,12 @@ if (empty($ip_port)) {
 
 $travelerId = $_GET['traveler_id'];
 
+// var_dump($pdo->query("SELECT doc_type, display_name, smb_folder
+//                       FROM doc_type_registry
+//                       WHERE is_active = 1
+//                       ORDER BY display_order"));
+// die;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
