@@ -1,4 +1,3 @@
-<!--std-folders.php-->
 <?php
     $api_file_explorer = $ip_port . "api/travelers/file-explorer.php";
     $server_path = trim(file_get_contents('../server-name.txt'));
@@ -850,93 +849,82 @@
         border-radius: 4px;
         font-weight: bold;
     }
-    
-    .fe-cut { opacity: .45; outline: 2px dashed #3b82f6; }
-    .pdf-badge {
-        position:absolute; top:6px; right:6px; background:#ef4444; color:#fff;
-        font-size:10px; padding:1px 5px; border-radius:8px; font-weight:bold;
-    }
 </style>
 
 <!-- Desktop with File Explorer -->
 <div id="travelersFile" class="mt-2 flex-1 h-[36rem]">
-    <div id="file-explorer" data-smb-path="<?= htmlspecialchars($traveler['smb_path'] ?? '') ?>" style="display:contents;">
-        <div class="bg-white rounded-lg overflow-hidden flex flex-col h-full shadow-2xl border border-gray-200">
-            <!-- Address Bar -->
-            <div class="bg-gray-100 px-4 py-2 flex items-center gap-3 border-b border-gray-300 flex-wrap">
-                <button class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onclick="FileExplorer.goBack()" id="btn-back" disabled>
-                    <i class="fas fa-arrow-left"></i>
+    <div class="bg-white rounded-lg overflow-hidden flex flex-col h-full shadow-2xl border border-gray-200">
+        <!-- Address Bar -->
+        <div class="bg-gray-100 px-4 py-2 flex items-center gap-3 border-b border-gray-300 flex-wrap">
+            <button class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick="FileExplorer.goBack()" id="btn-back" disabled>
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <button class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick="FileExplorer.goForward()" id="btn-forward" disabled>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            <button class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick="FileExplorer.goUp()" id="btn-up" disabled>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            <div class="flex-1 bg-gray-50 px-4 py-2 border-b border-gray-300 min-w-[200px]">
+                <div class="flex items-center gap-2 text-sm text-gray-600 flex-wrap" id="breadcrumb"></div>
+            </div>
+            
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="FileExplorer.setView('grid')" id="grid-view-btn">
+                    <i class="fas fa-th"></i> Grid
                 </button>
-                <button class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onclick="FileExplorer.goForward()" id="btn-forward" disabled>
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-                <button class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onclick="FileExplorer.goUp()" id="btn-up" disabled>
-                    <i class="fas fa-arrow-up"></i>
-                </button>
-                
-                <div class="flex-1 bg-gray-50 px-4 py-2 border-b border-gray-300 min-w-[200px]">
-                    <div class="flex items-center gap-2 text-sm text-gray-600 flex-wrap" id="breadcrumb"></div>
-                </div>
-                
-                <div class="view-toggle">
-                    <button class="view-btn active" onclick="FileExplorer.setView('grid')" id="grid-view-btn">
-                        <i class="fas fa-th"></i> Grid
-                    </button>
-                    <button class="view-btn" onclick="FileExplorer.setView('list')" id="list-view-btn">
-                        <i class="fas fa-list"></i> List
-                    </button>
-                </div>
-                
-                <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onclick="FileExplorer.refresh()" title="Refresh">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-                <button class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600" onclick="FileExplorer.openInExplorer()" title="Open in Explorer">
-                    <i class="fas fa-folder"></i> Explorer
-                </button>
-                <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" onclick="FileExplorer.createNewFolder()" title="New Folder">
-                    <i class="fas fa-plus"></i>
-                </button>
-                <button class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600" onclick="FileExplorer.showUploadModal()" title="Upload">
-                    <i class="fas fa-upload"></i>
-                </button>
-                <button class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" onclick="FileExplorer.togglePropertiesPanel()" title="Toggle Properties" id="toggle-panel-btn">
-                    <i class="fas fa-info-circle"></i>
+                <button class="view-btn" onclick="FileExplorer.setView('list')" id="list-view-btn">
+                    <i class="fas fa-list"></i> List
                 </button>
             </div>
-    
-            <!-- Main Content with Properties Panel -->
-            <div class="flex flex-1 overflow-hidden">
-                <div class="flex-1 p-5 overflow-y-auto" id="main-file-area">
-                    <div id="files-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                        <div class="col-span-full text-center py-10">
-                            <i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
-                            <p class="text-gray-600">Loading files...</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="properties-panel" id="properties-panel">
-                    <div class="properties-header">
-                        <h3><i class="fas fa-info-circle"></i> Properties</h3>
-                        <span class="close-panel" onclick="FileExplorer.closePropertiesPanel()">&times;</span>
-                    </div>
-                    <div id="properties-content">
-                        <div class="no-selection">
-                            <i class="fas fa-folder-open fa-3x mb-3"></i>
-                            <p>No file selected</p>
-                            <p class="text-sm">Click on any file to view its properties</p>
-                        </div>
+            
+            <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onclick="FileExplorer.refresh()" title="Refresh">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" onclick="FileExplorer.createNewFolder()" title="New Folder">
+                <i class="fas fa-plus"></i>
+            </button>
+            <button class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600" onclick="FileExplorer.showUploadModal()" title="Upload">
+                <i class="fas fa-upload"></i>
+            </button>
+            <button class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" onclick="FileExplorer.togglePropertiesPanel()" title="Toggle Properties" id="toggle-panel-btn">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+
+        <!-- Main Content with Properties Panel -->
+        <div class="flex flex-1 overflow-hidden">
+            <div class="flex-1 p-5 overflow-y-auto" id="main-file-area">
+                <div id="files-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    <div class="col-span-full text-center py-10">
+                        <i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
+                        <p class="text-gray-600">Loading files...</p>
                     </div>
                 </div>
             </div>
-    
-            <div class="bg-blue-500 text-white px-4 py-1 text-sm flex justify-between" id="status-bar">
-                <div id="status-text">Loading...</div>
-                <div id="folder-info"></div>
+            
+            <div class="properties-panel" id="properties-panel">
+                <div class="properties-header">
+                    <h3><i class="fas fa-info-circle"></i> Properties</h3>
+                    <span class="close-panel" onclick="FileExplorer.closePropertiesPanel()">&times;</span>
+                </div>
+                <div id="properties-content">
+                    <div class="no-selection">
+                        <i class="fas fa-folder-open fa-3x mb-3"></i>
+                        <p>No file selected</p>
+                        <p class="text-sm">Click on any file to view its properties</p>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <div class="bg-blue-500 text-white px-4 py-1 text-sm flex justify-between" id="status-bar">
+            <div id="status-text">Loading...</div>
+            <div id="folder-info"></div>
         </div>
     </div>
 </div>
@@ -949,61 +937,43 @@
 
 <div id="context-menu" class="fixed bg-white border border-gray-300 rounded shadow-xl z-50 hidden">
     <div class="py-2 px-4 min-w-[180px]">
-        <!-- FOLDER-only: create / upload into this folder -->
-        <div class="context-menu-item" data-show="folder" onclick="FileExplorer.contextAddFolder()">
-            <i class="fas fa-folder-plus w-5 mr-2 text-green-600"></i> Add New Folder
+        <div class="context-menu-item" onclick="FileExplorer.contextOpen()">
+            <i class="fas fa-folder-open w-5 mr-2 text-blue-500"></i> Open
         </div>
-        <div class="context-menu-item" data-show="folder" onclick="FileExplorer.contextUploadToFolder()">
-            <i class="fas fa-upload w-5 mr-2 text-purple-600"></i> Upload to this folder
-        </div>
-        <div class="context-menu-item" data-show="folder" onclick="FileExplorer.contextPaste()">
-            <i class="fas fa-paste w-5 mr-2 text-blue-500"></i> Paste
-        </div>
-
-        <!-- FILE-only: preview / edit -->
-        <div class="context-menu-item" data-show="file" onclick="FileExplorer.contextOpen()">
-            <i class="fas fa-folder-open w-5 mr-2 text-blue-500"></i> Preview
-        </div>
-        <div class="context-menu-item" data-show="file" onclick="FileExplorer.contextEdit()">
+        <div class="context-menu-item" onclick="FileExplorer.contextEdit()">
             <i class="fas fa-edit w-5 mr-2 text-blue-500"></i> Edit
         </div>
-
-        <div class="border-t border-gray-300 my-1" data-show="both"></div>
-
-        <!-- BOTH -->
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextRename()">
-            <i class="fas fa-pen w-5 mr-2 text-blue-500"></i> Rename
-        </div>
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextCut()">
+        <div class="border-t border-gray-300 my-1"></div>
+        <div class="context-menu-item" onclick="FileExplorer.contextCut()">
             <i class="fas fa-cut w-5 mr-2 text-blue-500"></i> Cut
         </div>
-        <div class="context-menu-item" data-show="file" onclick="FileExplorer.contextCopyFileToClipboard()">
-            <i class="fas fa-paste w-5 mr-2 text-blue-500"></i> Copy File to Clipboard
-        </div>
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextCopyPath()">
+        <div class="context-menu-item" onclick="FileExplorer.contextCopyPath()">
             <i class="fas fa-copy w-5 mr-2 text-blue-500"></i> Copy Path
         </div>
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextMove()">
+        <div class="context-menu-item" onclick="FileExplorer.contextCopyFileToClipboard()">
+            <i class="fas fa-paste w-5 mr-2 text-blue-500"></i> Copy File to Clipboard
+        </div>
+        <div class="context-menu-item" onclick="FileExplorer.contextMove()">
             <i class="fas fa-right-left w-5 mr-2 text-blue-500"></i> Move
         </div>
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextDuplicate()">
+        <div class="context-menu-item" onclick="FileExplorer.contextDuplicate()">
             <i class="fas fa-clone w-5 mr-2 text-blue-500"></i> Duplicate
         </div>
-
-        <!-- Dynamic Data Entry Item (unchanged; managed by existing code) -->
+        <div class="context-menu-item" onclick="FileExplorer.contextRename()">
+            <i class="fas fa-pen w-5 mr-2 text-blue-500"></i> Rename
+        </div>
+        <!-- Dynamic Data Entry Item -->
         <div id="data-entry-menu-item" class="context-menu-item" onclick="FileExplorer.contextDataEntry()" style="display: none;">
             <i class="fas fa-database w-5 mr-2 text-green-500"></i> Data Entry
         </div>
-
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextProperties()">
-            <i class="fas fa-info-circle w-5 mr-2 text-blue-500"></i> Properties
-        </div>
-        <div class="context-menu-item" data-show="both" onclick="FileExplorer.contextDelete()">
+        <div class="context-menu-item" onclick="FileExplorer.contextDelete()">
             <i class="fas fa-trash-alt w-5 mr-2 text-red-500"></i> Delete
+        </div>
+        <div class="context-menu-item" onclick="FileExplorer.contextProperties()">
+            <i class="fas fa-info-circle w-5 mr-2 text-blue-500"></i> Properties
         </div>
     </div>
 </div>
-
 
 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" id="upload-modal">
     <div class="bg-white rounded-lg p-6 w-full max-w-md">
@@ -1057,7 +1027,6 @@
     </div>
 </div>
 
-<!--<script src="../pages/std-folders-v2.js?v=<?php echo time(); ?>"></script>-->
 <script>
     const travelerId = `<?php echo $travelerId; ?>`;
     const SERVER_NAME = `<?php echo $_SESSION['scp']; ?>`;
@@ -2815,155 +2784,4 @@
     document.addEventListener('DOMContentLoaded', () => {
         FileExplorer.init();
     });
-    
-        /* ---- 1. Make the context menu show DIFFERENT items for folder vs file ---- */
-    const _origShowContextMenu = FileExplorer.showContextMenu.bind(FileExplorer);
-    FileExplorer.showContextMenu = function (e, file, element) {
-        _origShowContextMenu(e, file, element);   // keep original positioning + data-entry logic
-        const isFolder = file && file.type === 'folder';
-        const menu = document.getElementById('context-menu');
-        if (!menu) return;
-        menu.querySelectorAll('.context-menu-item').forEach(function (item) {
-            if (item.id === 'data-entry-menu-item') return;          // leave data-entry alone
-            const show = item.getAttribute('data-show') || 'both';
-            const visible = show === 'both'
-                || (show === 'folder' && isFolder)
-                || (show === 'file' && !isFolder);
-            item.style.display = visible ? 'flex' : 'none';
-        });
-        // also hide the separators when not relevant (optional tidy)
-    };
- 
-    /* ---- 2. FIX setView crash + persist choice in localStorage ---- */
-    FileExplorer.setView = function (view) {
-        this.state.currentView = view;
-        const container = document.getElementById('files-container');
-        const gridBtn = document.getElementById('grid-view-btn');
-        const listBtn = document.getElementById('list-view-btn');
-        if (gridBtn) gridBtn.classList.toggle('active', view === 'grid');   // guarded (was crashing on null)
-        if (listBtn) listBtn.classList.toggle('active', view === 'list');
-        if (container) {
-            container.className = (view === 'grid')
-                ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4'
-                : 'list-view';
-        }
-        if (this.state.currentFiles) this.renderFiles(this.state.currentFiles);
-        try { localStorage.setItem('travhub_explorer_view', view); } catch (e) {}
-    };
- 
-    /* ---- helper: the folder a right-clicked item targets ---- */
-    FileExplorer.fxTargetFolder = function (file) {
-        const base = this.state.currentPath || '';
-        if (file && file.type === 'folder') return base ? `${base}/${file.name}` : file.name;
-        return base;
-    };
- 
-    /* ---- 3. FOLDER: Add New Folder (right-click) ---- */
-    FileExplorer.contextAddFolder = async function () {
-        const target = this.fxTargetFolder(this.state.contextItem);
-        this.hideContextMenu();
-        const name = prompt('New folder name:');
-        if (!name || !name.trim()) return;
-        try {
-            const res = await fetch(this.config.apiBaseUrl + `?traveler_id=${travelerId}`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'create_folder', path: target, name: name.trim() })
-            });
-            const data = await res.json();
-            if (data.success) { this.showToast('Folder created', 'success'); await this.loadFolder(target); }
-            else this.showToast(data.error || 'Failed to create folder', 'error');
-        } catch (e) { this.showToast('Failed to create folder', 'error'); }
-    };
- 
-    /* ---- 4. FOLDER: Upload to this folder (right-click) ---- */
-    FileExplorer.contextUploadToFolder = function () {
-        const target = this.fxTargetFolder(this.state.contextItem);
-        this._fxUploadPath = target;
-        const label = document.getElementById('current-upload-path');
-        if (label) label.textContent = target || 'Root';
-        document.getElementById('upload-modal').classList.remove('hidden');
-        this.hideContextMenu();
-    };
- 
-    /* ---- 4b. make toolbar upload target current folder, and honor _fxUploadPath ---- */
-    const _origShowUploadModal = FileExplorer.showUploadModal.bind(FileExplorer);
-    FileExplorer.showUploadModal = function () { this._fxUploadPath = this.state.currentPath || ''; _origShowUploadModal(); };
- 
-    FileExplorer.uploadFiles = async function () {
-        const input = document.getElementById('file-upload');
-        if (!input || input.files.length === 0) { this.showToast('Please select files to upload', 'error'); return; }
-        const target = (this._fxUploadPath != null) ? this._fxUploadPath : (this.state.currentPath || '');
-        const fd = new FormData();
-        fd.append('action', 'upload');
-        fd.append('path', target);
-        fd.append('target_folder', target);
-        for (let i = 0; i < input.files.length; i++) fd.append('files[]', input.files[i]);
-        this.showToast('Uploading files...', 'info');
-        try {
-            const res = await fetch(this.config.apiBaseUrl + `?traveler_id=${travelerId}`, { method: 'POST', body: fd });
-            const data = await res.json();
-            if (data.success) { this.showToast(data.message || 'Files uploaded', 'success'); await this.loadFolder(target); this.closeUploadModal(); }
-            else this.showToast(data.error || 'Upload failed', 'error');
-        } catch (e) { this.showToast('Failed to upload files', 'error'); }
-        finally { this._fxUploadPath = null; }
-    };
- 
-    /* ---- 5. FOLDER: Paste (after Cut/Move) ---- */
-    FileExplorer.contextPaste = async function () {
-        if (this.state.clipboardAction !== 'cut' || !this.state.clipboardItem) {
-            this.showToast('Nothing to paste — use Cut or Move first', 'error'); this.hideContextMenu(); return;
-        }
-        const dest = this.fxTargetFolder(this.state.contextItem);
-        this.hideContextMenu();
-        try {
-            const res = await fetch(this.config.apiBaseUrl + `?traveler_id=${travelerId}`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'move',
-                    sourcePath: this.state.clipboardSourcePath,
-                    sourceName: this.state.clipboardSourceName,
-                    targetPath: dest, targetName: this.state.clipboardSourceName
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.showToast('Moved successfully', 'success');
-                this.state.clipboardAction = null; this.state.clipboardItem = null;
-                await this.loadFolder(dest);
-            } else this.showToast(data.error || 'Move failed', 'error');
-        } catch (e) { this.showToast('Move failed', 'error'); }
-    };
- 
-    /* ---- 6. Open in Windows Explorer (+ .bat fallback) ---- */
-    FileExplorer.openInExplorer = function () {
-        const el = document.getElementById('file-explorer');
-        let smb = el ? (el.getAttribute('data-smb-path') || '') : '';
-        if (!smb) { this.showToast('No SMB path configured (check travelers.smb_path)', 'error'); return; }
-        if (this.state.currentPath) smb = smb.replace(/\\+$/, '') + '\\' + this.state.currentPath.replace(/\//g, '\\');
-        try { window.location.href = 'file:///' + smb.replace(/\\/g, '/'); } catch (e) {}
-    
-        window.location.href = '/api/admin/download-explorer-bat.php?path=' 
-            + encodeURIComponent(smb);
-
-        this.showToast('Explorer opener downloaded.', 'info');
-        return;
-
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(relativePath);
-        }
-    
-        this.showToast('Folder path copied.', 'info');
-    };
- 
-    /* ---- 7. restore saved grid/list view on load ---- */
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            try {
-                const v = localStorage.getItem('travhub_explorer_view');
-                if (v) FileExplorer.setView(v);
-            } catch (e) {}
-        }, 400);
-    });
- 
-    console.info('[FX add-on] loaded — menus split, uploads + explorer wired');
 </script>

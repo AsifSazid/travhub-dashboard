@@ -265,31 +265,8 @@ class FileExplorerAPI
                 'extension'     => $isDir ? '' : strtolower(pathinfo($filename, PATHINFO_EXTENSION)),
                 'permissions'   => substr(sprintf('%o', fileperms($filePath)), -4),
                 'created'       => date('Y-m-d H:i:s', filectime($filePath)),
-                'total_pages'   => $this->pdfPageCount($filePath),
             ],
         ]);
-    }
-
-    /**
-     * Return PDF page count (1 for non-PDF or if Imagick unavailable).
-     */
-    private function pdfPageCount(string $filePath): int
-    {
-        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-        if ($ext !== 'pdf' || !extension_loaded('imagick')) {
-            return 1;
-        }
-        try {
-            $im = new Imagick();
-            $im->pingImage($filePath);
-            $n = $im->getNumberImages();
-            $im->clear();
-            $im->destroy();
-            return $n > 0 ? $n : 1;
-        } catch (Throwable $e) {
-            error_log('pdfPageCount failed: ' . $e->getMessage());
-            return 1;
-        }
     }
 
     private function listAllFolders(): void

@@ -1,23 +1,11 @@
 <?php
 // OMVManager.php
-require_once __DIR__ . '/env.php';
-
 if (!class_exists('OMV_SMB_Manager')) {
     class OMV_SMB_Manager {
-        // HARDENED: credentials now come from .env, with fallbacks to the
-        // previous hardcoded values so nothing breaks before .env is set up.
-        // Once .env is confirmed working, blank out these fallbacks.
-        private $host;
-        private $user;
-        private $pass;
-        private $share;
-
-        public function __construct() {
-            $this->host  = env('SMB_HOST', '103.104.219.3');
-            $this->user  = env('SMB_USER', 'travhub');
-            $this->pass  = env('SMB_PASSWORD', 'travhub@2025');
-            $this->share = env('SMB_SHARE', 'travhub');
-        }
+        private $host = '103.104.219.3';
+        private $user = 'travhub';
+        private $pass = 'travhub@2025';
+        private $share = 'travhub'; 
         
         public function create_folder($folder_name) {
             $cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'mkdir \"$folder_name\"' 2>&1";

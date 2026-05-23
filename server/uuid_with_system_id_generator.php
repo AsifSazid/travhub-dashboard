@@ -68,6 +68,10 @@ function generateUUID(PDO $pdo, string $tag): string
         'director_transactions'    => ['table' => 'director_transactions',    'column' => 'sys_id', 'short' => 'DT'],
         'director_dividends'    => ['table' => 'director_dividends',    'column' => 'sys_id', 'short' => 'DD'],
         'director_dividend_details'    => ['table' => 'director_dividends',    'column' => 'sys_id', 'short' => 'Dd'],
+        
+        // Document Intelligence Pipeline (v2)
+        'batches'   => ['table' => 'batches',   'column' => 'sys_id', 'short' => 'BT'],
+        'documents' => ['table' => 'documents', 'column' => 'sys_id', 'short' => 'DC'],
 
     ];
 

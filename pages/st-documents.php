@@ -1,5 +1,6 @@
 <?php
-    $docStore = '../api/travelers/doc_store.php';
+    // $docStore = '../api/travelers/doc_store.php';
+    $docStore = '../api/travelers/document_store_v2.php';
 ?>
 
 <div class="bg-white rounded-lg shadow px-4 flex flex-col text-left">
