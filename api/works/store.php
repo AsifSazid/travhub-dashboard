@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
@@ -6,8 +8,6 @@ require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-
-
 
 // get POST data (JSON)
 $input = json_decode(file_get_contents('php://input'), true);
