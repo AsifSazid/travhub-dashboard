@@ -129,25 +129,11 @@ $travelerId = $_GET['traveler_id'];
                 </div>
 
                 <!-- Tab Content Area -->
-                <div class="flex-1 overflow-y-auto">
+                <div class="flex-1 min-h-0 mt-4">
                     <!-- Details Tab -->
-                    <div id="details" class="tab-content active mt-4">
-                        <div class="grid grid-cols-3 gap-6 h-full">
-                            <div class="col-span-2 h-full">
-                                <div class="text-center">
-                                    <!--<i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>-->
-                                    <!--<h3 class="text-xl font-semibold mb-2">Traveler's Dashboard</h3>-->
-                                    <?php include('st-details.php') ?> <!-- st means Show Traveler -->
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-center h-full border-l border-gray-400">
-                                <div class="text-center">
-                                    <i class="fas fa-folder text-4xl text-blue-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Client Profile</h3>
-                                    <p class="text-gray-600">Client Profile management will be displayed here</p>
-                                </div>
-                            </div>
-                        </div>
+                    <div id="details" class="tab-content active h-full min-h-0">
+                        <?php include('st-details-backup.php') ?>
+                        <!--<?php include('st-details.php') ?>-->
                     </div>
 
                     <!-- Documents Tab -->

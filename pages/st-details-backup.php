@@ -162,42 +162,42 @@ $updateApi = $ip_port . "api/travelers/update.php";
                 <div>
                     <h3 class="text-2xl font-bold tracking-wide"><?php echo htmlspecialchars($traveler['name']); ?></h3>
                     <div class="flex items-center gap-4 mt-3 text-sm flex-wrap">
-                        <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/30 transition-all cursor-pointer group relative" 
-                             onclick="copyToClipboard(this, '<?php echo htmlspecialchars($traveler['passport_no'] ?? ''); ?>')"
-                             title="Click to copy passport number">
-                            <i class="fas fa-passport mr-1.5 text-blue-200"></i>
-                            <span class="font-medium">
-                                <?php echo !empty($traveler['passport_no']) ? htmlspecialchars($traveler['passport_no']) : '<span class="text-white/60 italic">Passport: -</span>'; ?>
-                            </span>
-                            <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1.5 transition-opacity"></i>
-                            <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                Click to copy
-                            </span>
-                        </div>
-                        <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/30 transition-all cursor-pointer group relative"
-                             onclick="copyToClipboard(this, '<?php echo htmlspecialchars($traveler['nid_no'] ?? ''); ?>')"
-                             title="Click to copy NID number">
-                            <i class="fas fa-id-card mr-1.5 text-blue-200"></i>
-                            <span class="font-medium">
-                                <?php echo !empty($traveler['nid_no']) ? htmlspecialchars($traveler['nid_no']) : '<span class="text-white/60 italic">NID: -</span>'; ?>
-                            </span>
-                            <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1.5 transition-opacity"></i>
-                            <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                Click to copy
-                            </span>
-                        </div>
-                        <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/30 transition-all cursor-pointer group relative"
-                             onclick="copyToClipboard(this, '<?php echo htmlspecialchars($traveler['date_of_birth'] ?? ''); ?>')"
-                             title="Click to copy date of birth">
-                            <i class="fas fa-calendar mr-1.5 text-blue-200"></i>
-                            <span class="font-medium">
-                                <?php echo !empty($traveler['date_of_birth']) ? htmlspecialchars($traveler['date_of_birth']) : '<span class="text-white/60 italic">DOB: -</span>'; ?>
-                            </span>
-                            <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1.5 transition-opacity"></i>
-                            <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                Click to copy
-                            </span>
-                        </div>
+                        <?php if ($traveler['passport_no']): ?>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/30 transition-all cursor-pointer group relative" 
+                                 onclick="copyToClipboard(this, '<?php echo htmlspecialchars($traveler['passport_no']); ?>')"
+                                 title="Click to copy passport number">
+                                <i class="fas fa-passport mr-1.5 text-blue-200"></i>
+                                <span class="font-medium"><?php echo htmlspecialchars($traveler['passport_no']); ?></span>
+                                <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1.5 transition-opacity"></i>
+                                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                    Click to copy
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($traveler['nid_no']): ?>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/30 transition-all cursor-pointer group relative"
+                                 onclick="copyToClipboard(this, '<?php echo htmlspecialchars($traveler['nid_no']); ?>')"
+                                 title="Click to copy NID number">
+                                <i class="fas fa-id-card mr-1.5 text-blue-200"></i>
+                                <span class="font-medium"><?php echo htmlspecialchars($traveler['nid_no']); ?></span>
+                                <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1.5 transition-opacity"></i>
+                                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                    Click to copy
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($traveler['date_of_birth']): ?>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/30 transition-all cursor-pointer group relative"
+                                 onclick="copyToClipboard(this, '<?php echo htmlspecialchars($traveler['date_of_birth']); ?>')"
+                                 title="Click to copy date of birth">
+                                <i class="fas fa-calendar mr-1.5 text-blue-200"></i>
+                                <span class="font-medium"><?php echo htmlspecialchars($traveler['date_of_birth']); ?></span>
+                                <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1.5 transition-opacity"></i>
+                                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                    Click to copy
+                                </span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="flex flex-col items-end gap-2">
@@ -214,12 +214,14 @@ $updateApi = $ip_port . "api/travelers/update.php";
                     <span class="font-mono text-xs font-medium"><?php echo htmlspecialchars($traveler['sys_id']); ?></span>
                     <i class="fas fa-copy text-xs opacity-0 group-hover:opacity-100 ml-1 transition-opacity"></i>
                 </div>
-                <div class="flex items-center gap-2 text-xs">
-                    <i class="fas fa-clock text-blue-300"></i>
-                    <span>Created: <strong><?php echo !empty($metaData['created_by_date']['date']) ? htmlspecialchars($metaData['created_by_date']['date']) : '-'; ?></strong></span>
-                    <span class="text-blue-300">by</span>
-                    <span><strong><?php echo !empty($metaData['created_by_date']['user']) ? htmlspecialchars($metaData['created_by_date']['user']) : 'system'; ?></strong></span>
-                </div>
+                <?php if (isset($metaData['created_by_date'])): ?>
+                    <div class="flex items-center gap-2 text-xs">
+                        <i class="fas fa-clock text-blue-300"></i>
+                        <span>Created: <strong><?php echo htmlspecialchars($metaData['created_by_date']['date'] ?? ''); ?></strong></span>
+                        <span class="text-blue-300">by</span>
+                        <span><strong><?php echo htmlspecialchars($metaData['created_by_date']['user'] ?? 'system'); ?></strong></span>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     
@@ -255,18 +257,20 @@ $updateApi = $ip_port . "api/travelers/update.php";
                                 value="<?php echo htmlspecialchars($phoneData['primary_no'] ?? ''); ?>"
                                 placeholder="+1 (555) 123-4567">
                             <div class="secondary-phones-container space-y-1 mb-2">
-                                <?php foreach (($phoneData['secondary_no'] ?? [['type' => 'mobile', 'number' => '']]) as $idx => $secPhone): ?>
-                                    <div class="flex items-center gap-2">
-                                        <select class="px-2 py-1 border border-gray-300 rounded text-xs">
-                                            <option value="mobile" <?php echo ($secPhone['type'] ?? '') === 'mobile' ? 'selected' : ''; ?>>Mobile</option>
-                                            <option value="home" <?php echo ($secPhone['type'] ?? '') === 'home' ? 'selected' : ''; ?>>Home</option>
-                                            <option value="work" <?php echo ($secPhone['type'] ?? '') === 'work' ? 'selected' : ''; ?>>Work</option>
-                                            <option value="other" <?php echo ($secPhone['type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
-                                        </select>
-                                        <input type="text" class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs" value="<?php echo htmlspecialchars($secPhone['number'] ?? ''); ?>" placeholder="Phone number">
-                                        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i></button>
-                                    </div>
-                                <?php endforeach; ?>
+                                <?php if (!empty($phoneData['secondary_no'])): ?>
+                                    <?php foreach ($phoneData['secondary_no'] as $idx => $secPhone): ?>
+                                        <div class="flex items-center gap-2">
+                                            <select class="px-2 py-1 border border-gray-300 rounded text-xs">
+                                                <option value="mobile" <?php echo ($secPhone['type'] ?? '') === 'mobile' ? 'selected' : ''; ?>>Mobile</option>
+                                                <option value="home" <?php echo ($secPhone['type'] ?? '') === 'home' ? 'selected' : ''; ?>>Home</option>
+                                                <option value="work" <?php echo ($secPhone['type'] ?? '') === 'work' ? 'selected' : ''; ?>>Work</option>
+                                                <option value="other" <?php echo ($secPhone['type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
+                                            </select>
+                                            <input type="text" class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs" value="<?php echo htmlspecialchars($secPhone['number'] ?? ''); ?>" placeholder="Phone number">
+                                            <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
                             <div class="flex gap-2">
                                 <button type="button" onclick="addSecondaryPhone(this)" class="text-xs text-blue-600 hover:text-blue-800">
@@ -304,17 +308,19 @@ $updateApi = $ip_port . "api/travelers/update.php";
                                 value="<?php echo htmlspecialchars($emailData['primary'] ?? ''); ?>"
                                 placeholder="john@example.com">
                             <div class="secondary-emails-container space-y-1 mb-2">
-                                <?php foreach (($emailData['secondary'] ?? [['type' => 'personal', 'address' => '']]) as $secEmail): ?>
-                                    <div class="flex items-center gap-2">
-                                        <select class="px-2 py-1 border border-gray-300 rounded text-xs">
-                                            <option value="work" <?php echo ($secEmail['type'] ?? '') === 'work' ? 'selected' : ''; ?>>Work</option>
-                                            <option value="personal" <?php echo ($secEmail['type'] ?? '') === 'personal' ? 'selected' : ''; ?>>Personal</option>
-                                            <option value="other" <?php echo ($secEmail['type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
-                                        </select>
-                                        <input type="email" class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs" value="<?php echo htmlspecialchars($secEmail['address'] ?? ''); ?>" placeholder="Email">
-                                        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i></button>
-                                    </div>
-                                <?php endforeach; ?>
+                                <?php if (!empty($emailData['secondary'])): ?>
+                                    <?php foreach ($emailData['secondary'] as $secEmail): ?>
+                                        <div class="flex items-center gap-2">
+                                            <select class="px-2 py-1 border border-gray-300 rounded text-xs">
+                                                <option value="work" <?php echo ($secEmail['type'] ?? '') === 'work' ? 'selected' : ''; ?>>Work</option>
+                                                <option value="personal" <?php echo ($secEmail['type'] ?? '') === 'personal' ? 'selected' : ''; ?>>Personal</option>
+                                                <option value="other" <?php echo ($secEmail['type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
+                                            </select>
+                                            <input type="email" class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs" value="<?php echo htmlspecialchars($secEmail['address'] ?? ''); ?>" placeholder="Email">
+                                            <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
                             <div class="flex gap-2">
                                 <button type="button" onclick="addSecondaryEmail(this)" class="text-xs text-blue-600 hover:text-blue-800">
@@ -346,19 +352,23 @@ $updateApi = $ip_port . "api/travelers/update.php";
                     <!-- Display Mode - Shows all fields stacked -->
                     <div class="field-display space-y-1.5">
                         <div class="text-sm text-gray-800">
-                            <div class="flex items-start gap-2">
-                                <span class="text-xs text-gray-400 w-20 flex-shrink-0">Line 1:</span>
-                                <span class="field-value flex-1" onclick="copyToClipboard(this, '<?php echo htmlspecialchars($addressData['address_line_1'] ?? ''); ?>')">
-                                    <?php echo !empty($addressData['address_line_1']) ? htmlspecialchars($addressData['address_line_1']) : '<span class="text-gray-400 italic">-</span>'; ?>
-                                </span>
-                            </div>
+                            <?php if (!empty($addressData['address_line_1'])): ?>
+                                <div class="flex items-start gap-2">
+                                    <span class="text-xs text-gray-400 w-20 flex-shrink-0">Line 1:</span>
+                                    <span class="field-value flex-1" onclick="copyToClipboard(this, '<?php echo htmlspecialchars($addressData['address_line_1']); ?>')">
+                                        <?php echo htmlspecialchars($addressData['address_line_1']); ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                             
-                            <div class="flex items-start gap-2">
-                                <span class="text-xs text-gray-400 w-20 flex-shrink-0">Line 2:</span>
-                                <span class="field-value flex-1" onclick="copyToClipboard(this, '<?php echo htmlspecialchars($addressData['address_line_2'] ?? ''); ?>')">
-                                    <?php echo !empty($addressData['address_line_2']) ? htmlspecialchars($addressData['address_line_2']) : '<span class="text-gray-400 italic">-</span>'; ?>
-                                </span>
-                            </div>
+                            <?php if (!empty($addressData['address_line_2'])): ?>
+                                <div class="flex items-start gap-2">
+                                    <span class="text-xs text-gray-400 w-20 flex-shrink-0">Line 2:</span>
+                                    <span class="field-value flex-1" onclick="copyToClipboard(this, '<?php echo htmlspecialchars($addressData['address_line_2']); ?>')">
+                                        <?php echo htmlspecialchars($addressData['address_line_2']); ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                             
                             <div class="flex items-start gap-2">
                                 <span class="text-xs text-gray-400 w-20 flex-shrink-0">City:</span>
@@ -387,6 +397,10 @@ $updateApi = $ip_port . "api/travelers/update.php";
                                     <?php echo !empty($addressData['country']) ? htmlspecialchars($addressData['country']) : '<span class="text-gray-400 italic">-</span>'; ?>
                                 </span>
                             </div>
+                            
+                            <?php if (empty($addressData['address_line_1']) && empty($addressData['city']) && empty($addressData['state'])): ?>
+                                <span class="text-gray-400 italic text-sm">No address provided. Click edit icon to add.</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                     
@@ -452,8 +466,8 @@ $updateApi = $ip_port . "api/travelers/update.php";
         </div>
     
         <!-- Passport Information Card -->
-        <?php
-            $bio = $latestPassport['bio_info'] ?? [];
+        <?php if ($latestPassport && isset($latestPassport['bio_info'])): 
+            $bio = $latestPassport['bio_info'];
         ?>
         <div class="info-card bg-white rounded-lg shadow p-5">
             <div class="flex items-center justify-between mb-4">
@@ -521,8 +535,8 @@ $updateApi = $ip_port . "api/travelers/update.php";
             </div>
     
             <!-- Emergency Contact Section -->
-            <?php
-                $emergency = $bio['emergency_contact'] ?? [];
+            <?php if (isset($bio['emergency_contact'])): 
+                $emergency = $bio['emergency_contact'];
             ?>
             <div class="mt-4 border-t pt-4">
                 <h5 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
@@ -561,6 +575,7 @@ $updateApi = $ip_port . "api/travelers/update.php";
                     <?php endforeach; ?>
                 </div>
             </div>
+            <?php endif; ?>
     
             <!-- MRZ Section -->
             <div class="mt-4 border-t pt-4">
@@ -597,10 +612,11 @@ $updateApi = $ip_port . "api/travelers/update.php";
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     
         <!-- NID Information Card -->
-        <?php
-            $nidData = $latestNid['nid_info'] ?? [];
+        <?php if ($latestNid && isset($latestNid['nid_info'])): 
+            $nidData = $latestNid['nid_info'];
         ?>
         <div class="info-card bg-white rounded-lg shadow p-5">
             <div class="flex items-center justify-between mb-4">
@@ -614,20 +630,10 @@ $updateApi = $ip_port . "api/travelers/update.php";
             
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <?php 
-                $nidFields = [
-                    'national_id' => 'National ID',
-                    'pin' => 'PIN',
-                    'name_bn' => 'Name Bangla',
-                    'name_en' => 'Name English',
-                    'father_name' => 'Father Name',
-                    'mother_name' => 'Mother Name',
-                    'date_of_birth' => 'Date of Birth',
-                    'blood_group' => 'Blood Group',
-                    'address' => 'Address',
-                    'issue_date' => 'Issue Date',
-                ];
-                foreach ($nidFields as $key => $label): 
-                    $value = $nidData[$key] ?? '';
+                $skipFields = ['photo_present'];
+                foreach ($nidData as $key => $value): 
+                    if (in_array($key, $skipFields)) continue;
+                    $label = ucwords(str_replace('_', ' ', $key));
                 ?>
                     <div class="editable-field border rounded-lg p-2" data-nid-field="<?php echo $key; ?>">
                         <div class="flex items-center justify-between mb-1">
@@ -656,6 +662,7 @@ $updateApi = $ip_port . "api/travelers/update.php";
                 <?php endforeach; ?>
             </div>
         </div>
+        <?php endif; ?>
     
     </div>
     

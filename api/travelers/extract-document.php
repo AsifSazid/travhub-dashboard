@@ -4,7 +4,7 @@
  * Extracts detailed passport/NID data using Gemini AI
  * Returns data with dates in DD-MM-YYYY format
  */
-
+session_start();
 require_once '../../server/db_connection.php';
 require_once '../../server/live_storage.php';
 require_once '../../server/make-dir.php';

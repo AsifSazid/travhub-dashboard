@@ -411,6 +411,11 @@
                 const fullSysId = getFullSysId(traveler.sys_id);
                 const shortAddress = traveler.addressFull.length > 100 ? traveler.addressFull.substring(0, 97) + '...' : traveler.addressFull;
                 
+                const meta = traveler.meta_data ? JSON.parse(traveler.meta_data) : {};
+                const created = meta.created_by_date || {};
+                const updatedArray = meta.updated_by_date || [];
+                const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
+                
                 cardsHtml += `
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col h-full">
                         <div class="p-4 flex-1">
@@ -466,7 +471,7 @@
                             <div class="grid grid-cols-2 gap-2 text-xs bg-white rounded-md mb-3">
                                 <div class="border-r border-gray-100 pr-1">
                                     <span class="text-gray-500 block"><i class="fas fa-user-plus mr-1"></i> Created By</span>
-                                    <span class="font-medium text-gray-700 truncate block has-tooltip" data-tooltip="${escapeHtml(traveler.createdBy)}">${escapeHtml(traveler.createdBy.length > 20 ? traveler.createdBy.substring(0,18)+'..' : traveler.createdBy)}</span>
+                                    <span class="font-medium text-gray-700 truncate block has-tooltip" data-tooltip="${escapeHtml(created.user)}">${escapeHtml(created.user.length > 20 ? created.user.substring(0,18)+'..' : created.user)}</span>
                                 </div>
                                 <div class="pl-1">
                                     <span class="text-gray-500 block"><i class="fas fa-user-edit mr-1"></i> Updated By</span>

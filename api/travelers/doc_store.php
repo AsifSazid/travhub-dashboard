@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 require '../../server/db_connection.php';
 require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
