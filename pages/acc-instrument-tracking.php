@@ -1,3 +1,6 @@
+<?php
+    $accInsTracking = $ip_port . "api/acc-instrument-tracking/all-tracking.php";
+?>
 <style>
 /* Previous styles remain the same */
 .category-tag {
@@ -370,6 +373,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let filteredData = [];
     const itemsPerPage = 6;
     
+    // API
+    const ACC_INS_TRACKING = "<?php echo $accInsTracking; ?>";
+    
     // DOM Elements
     const cardsContainer = document.getElementById('cardsContainer');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -440,8 +446,10 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchData() {
         try {
             showLoading(true);
-            const response = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/all-tracking.php');
+            const response = await fetch(ACC_INS_TRACKING);
             const data = await response.json();
+            
+            console.log(data);
             
             if (data.success && data.tracks) {
                 allData = data.tracks.map(item => ({
@@ -1207,5 +1215,6 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPage = 1;
         renderCards();
     }
+    
 });
 </script>

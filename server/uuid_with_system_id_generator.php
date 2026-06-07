@@ -19,7 +19,7 @@ function generateUUID(PDO $pdo, string $tag): string
         // Core Modules
         'clients'   => ['table' => 'clients',   'column' => 'sys_id', 'short' => 'CL'],
         'vendors'   => ['table' => 'vendors',   'column' => 'sys_id', 'short' => 'VR'],
-        'works'     => ['table' => 'works',     'column' => 'sys_id', 'short' => 'WK'],
+        'com_works'     => ['table' => 'com_works',     'column' => 'sys_id', 'short' => 'CW'],
         'travelers' => ['table' => 'travelers', 'column' => 'sys_id', 'short' => 'TR'],
         'hotel_bookings' => ['table' => 'hotel_bookings', 'column' => 'sys_id', 'short' => 'HB'],
         'hotel_quotations' => ['table' => 'hotel_quotations', 'column' => 'sys_id', 'short' => 'HQ'],

@@ -61,7 +61,7 @@ try {
         // $stmt->execute([$work_id]);
         
         // Delete the work
-        $stmt = $pdo->prepare("DELETE FROM works WHERE sys_id = ?");
+        $stmt = $pdo->prepare("DELETE FROM com_works WHERE sys_id = ?");
         $stmt->execute([$work_id]);
         
         // Remove work directory

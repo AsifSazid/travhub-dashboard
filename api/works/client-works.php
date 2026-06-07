@@ -8,7 +8,7 @@ $clientId = $_GET['client_id'];
 
 try {
     $stmt = $pdo->prepare("
-        SELECT * FROM works
+        SELECT * FROM com_works
         WHERE client_sys_id =?
         ORDER BY id DESC
     ");

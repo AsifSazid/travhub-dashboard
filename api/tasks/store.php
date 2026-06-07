@@ -5,6 +5,7 @@ require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
 require_once '../../server/live_storage.php';
+require_once '../../server/safe_folder_name.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -59,7 +60,7 @@ if (!$category || !$workId) {
 }
 
 // ---------------- GET WORK DIRECTORY ----------------
-$stmt = $pdo->prepare("SELECT sys_id , title , client_sys_id , client_name FROM works WHERE sys_id = ?");
+$stmt = $pdo->prepare("SELECT sys_id , title , client_sys_id , client_name FROM com_works WHERE sys_id = ?");
 $stmt->execute([$workId]);
 $work = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -76,17 +77,19 @@ $clientName  = preg_replace('/\s+/u', '', $work['client_name']);
 $workSysId   = preg_replace('/\s+/u', '', $work['sys_id']);          
 $workTitle   = preg_replace('/\s+/u', '_', $work['title']);         
 
-// Build folder path
-$taskFolderName = $cleanSysId . "+" . $taskTitle;
+$safeWorkTitle = safeFolderName($workTitle);
+$safeTaskTitle = safeFolderName($taskTitle);
+
+$taskFolderName = $safeTaskTitle . "+" . $cleanSysId;
 
 // For Server Storage
-$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle/tasks";
+$clientFolderName = "clients/{$clientSysId}_{$clientName}/{$safeWorkTitle}+{$workSysId}/tasks";
 $taskDirectory = makeDir($clientFolderName, $taskFolderName);
 
 // For Cloud Storage
-$clientCloudFolderName = "{$SERVER_CUS_PATH}_clients/{$clientSysId}_{$clientName}/{$workSysId}"."+"."$workTitle";
+$clientCloudFolderName = "{$SERVER_CUS_PATH}_clients/{$clientSysId}_{$clientName}/{$safeWorkTitle}+{$workSysId}";
 $clientCloudFullFolderName = makeSMBDir($clientCloudFolderName, 'tasks');
-$fullPath = makeSMBDir($clientCloudFullFolderName, $cleanSysId);
+$fullPath = makeSMBDir($clientCloudFullFolderName, $taskFolderName);
 
 // ---------------- FILE UPLOAD ----------------
 $uploadedFiles = [];

@@ -6,7 +6,7 @@ header('Content-Type: application/json'); // Tell the client this is JSON
 
 try {
     $stmt = $pdo->prepare("
-        SELECT * FROM works
+        SELECT * FROM com_works
         ORDER BY id DESC
     ");
     $stmt->execute();

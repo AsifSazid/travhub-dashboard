@@ -5,6 +5,8 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/../server/db_connection.php';
+require_once './../server/safe_folder_name.php';
+
 
 class FileExplorerAPI
 {
@@ -34,7 +36,7 @@ class FileExplorerAPI
 
         $stmt = $this->pdo->prepare(
             "SELECT title, sys_id, client_sys_id, client_name 
-             FROM works 
+             FROM com_works 
              WHERE sys_id = ? LIMIT 1"
         );
         $stmt->execute([$this->workId]);
@@ -56,9 +58,10 @@ class FileExplorerAPI
             preg_replace('/\s+/', '', $work['client_name']);
 
         // ✅ FIX: Work folder must match how tasks create it: "{sys_id}+{title}"
-        $cleanWorkSysId     = preg_replace('/\s+/', '', $work['sys_id']);
-        $cleanWorkTitle     = preg_replace('/\s+/', '_', $work['title']);
-        $this->workFolder   = $cleanWorkSysId . '+' . $cleanWorkTitle;
+        $cleanWorkSysId = preg_replace('/\s+/', '', $work['sys_id']);
+        $cleanWorkTitle = safeFolderName($work['title']);
+        
+        $this->workFolder = $cleanWorkTitle . '+' . $cleanWorkSysId;
 
         $this->basePath = $root . '/' . $this->clientFolder . '/' . $this->workFolder;
 

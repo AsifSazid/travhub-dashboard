@@ -81,7 +81,7 @@ try {
 
         makeDir($clientFolderName, $sysId);
 
-        $workStoreSql = "INSERT INTO works (
+        $workStoreSql = "INSERT INTO com_works (
                 uuid,
                 sys_id,
                 file_name, 

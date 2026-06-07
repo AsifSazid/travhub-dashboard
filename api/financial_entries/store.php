@@ -74,7 +74,7 @@ try {
     
     // ------------------ Work ------------------
     if ($workId) {
-        $stmt = $pdo->prepare("SELECT title FROM works WHERE sys_id = ?");
+        $stmt = $pdo->prepare("SELECT title FROM com_works WHERE sys_id = ?");
         $stmt->execute([$workId]);
         $workTitle = $stmt->fetchColumn();
     }

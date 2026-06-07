@@ -6,6 +6,8 @@ require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
+require_once '../../server/safe_folder_name.php';
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -69,7 +71,7 @@ try {
         $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE sys_id = ?");
         $updateStmt->execute([$updatedWorkName, $clientSysID]);
 
-        $uuid = generateIDs('works');
+        $uuid = generateIDs('com_works');
 
         $metaDataJson = buildMetaData(
             null,
@@ -77,12 +79,13 @@ try {
         );
         
         $sysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
-        $workFolderName = $sysId . '+' . str_replace(' ', '_', $workTitle);
+        $safeWorkTitle = safeFolderName($workTitle);
+        $workFolderName = $safeWorkTitle . '+' . $sysId;
 
         makeDir($clientFolderName, $workFolderName);
         $fullPath = makeSMBDir($cloudPath, $workFolderName);
         
-        $workStoreSql = "INSERT INTO works (
+        $workStoreSql = "INSERT INTO com_works (
                 uuid,
                 sys_id,
                 file_name, 
@@ -98,7 +101,7 @@ try {
         $workStoreStmt->execute([
             $uuid['uuid'],
             $uuid['sys_id'],
-            isset($workFileName) ? $workFileName : null,
+            isset($workFolderName) ? $workFolderName : null,
             isset($clientSysID) ? $clientSysID : null,
             isset($clientName) ? $clientName : null,
             isset($workTitle) ? $workTitle : null,
@@ -106,7 +109,6 @@ try {
             isset($metaDataJson) ? $metaDataJson : null
         ]);
 
-        mkdir($workDirectory, 0755, true);
         ob_clean();
 
         echo json_encode(['success' => true, 'message' => 'Work updated successfully!' . $fullPath]);

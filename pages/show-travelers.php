@@ -16,7 +16,7 @@ $travelerId = $_GET['traveler_id'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traveler's Profile</title>
-    <link rel="icon" type="image/png" href="./assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
@@ -132,8 +132,7 @@ $travelerId = $_GET['traveler_id'];
                 <div class="flex-1 min-h-0 mt-4">
                     <!-- Details Tab -->
                     <div id="details" class="tab-content active h-full min-h-0">
-                        <?php include('st-details-backup.php') ?>
-                        <!--<?php include('st-details.php') ?>-->
+                        <?php include('st-details.php') ?>
                     </div>
 
                     <!-- Documents Tab -->

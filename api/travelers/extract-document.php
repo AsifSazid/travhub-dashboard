@@ -16,6 +16,7 @@ ini_set('display_errors', 1);
 
 // Get Gemini API Key
 $GEMINI_API_KEY = trim(file_get_contents('../../gemini-apikey.txt'));
+$GEMINI_MODEL = trim(file_get_contents('../../gemini-model.txt'));
 if (empty($GEMINI_API_KEY)) {
     echo json_encode(['success' => false, 'message' => 'Gemini API key not configured']);
     exit;
@@ -63,9 +64,9 @@ if (!move_uploaded_file($file['tmp_name'], $tmpFilePath)) {
 
 try {
     if ($fileExtension === 'pdf') {
-        $extractedData = handlePDFExtraction($tmpFilePath, $GEMINI_API_KEY, $documentType);
+        $extractedData = handlePDFExtraction($tmpFilePath, $GEMINI_API_KEY, $GEMINI_MODEL, $documentType);
     } else {
-        $extractedData = handleImageExtraction($tmpFilePath, $fileExtension, $GEMINI_API_KEY, $documentType);
+        $extractedData = handleImageExtraction($tmpFilePath, $fileExtension, $GEMINI_API_KEY, $GEMINI_MODEL, $documentType);
     }
     
     echo json_encode([
@@ -119,7 +120,7 @@ function detectMimeType($filePath) {
     return $mimeMap[$ext] ?? 'image/jpeg';
 }
 
-function handleImageExtraction($filePath, $fileExtension, $apiKey, $documentType) {
+function handleImageExtraction($filePath, $fileExtension, $apiKey, $GEMINI_MODEL, $documentType) {
     $mimeType = detectMimeType($filePath);
     
     if (!is_readable($filePath)) {
@@ -134,10 +135,10 @@ function handleImageExtraction($filePath, $fileExtension, $apiKey, $documentType
     
     $prompt = buildExtractionPrompt($documentType);
     
-    return callGeminiAPI($apiKey, $prompt, $mimeType, $imageData, $documentType);
+    return callGeminiAPI($apiKey, $GEMINI_MODEL, $prompt, $mimeType, $imageData, $documentType);
 }
 
-function handlePDFExtraction($pdfPath, $apiKey, $documentType) {
+function handlePDFExtraction($pdfPath, $apiKey, $GEMINI_MODEL, $documentType) {
     if (!extension_loaded('imagick')) {
         throw new Exception('PDF processing requires Imagick PHP extension');
     }
@@ -185,7 +186,7 @@ function handlePDFExtraction($pdfPath, $apiKey, $documentType) {
             throw new Exception('Failed to extract any images from PDF');
         }
         
-        return executeGeminiRequest($apiKey, $parts, $documentType);
+        return executeGeminiRequest($apiKey, $GEMINI_MODEL, $parts, $documentType);
         
     } catch (ImagickException $e) {
         throw new Exception('PDF processing failed: ' . $e->getMessage());
@@ -282,18 +283,16 @@ Return ONLY valid JSON, no other text.";
     }
 }
 
-function callGeminiAPI($apiKey, $prompt, $mimeType, $imageData, $documentType) {
+function callGeminiAPI($apiKey, $GEMINI_MODEL, $prompt, $mimeType, $imageData, $documentType) {
     $parts = [
         ["text" => $prompt],
         ["inline_data" => ["mime_type" => $mimeType, "data" => $imageData]]
     ];
     
-    return executeGeminiRequest($apiKey, $parts, $documentType);
+    return executeGeminiRequest($apiKey, $GEMINI_MODEL, $parts, $documentType);
 }
 
-function executeGeminiRequest($apiKey, $parts, $documentType) {
-    $model = 'gemini-2.0-flash-lite';
-    
+function executeGeminiRequest($apiKey, $GEMINI_MODEL, $parts, $documentType) {
     $payload = [
         "contents" => [[
             "parts" => $parts
@@ -301,11 +300,11 @@ function executeGeminiRequest($apiKey, $parts, $documentType) {
         "generationConfig" => [
             "response_mime_type" => "application/json",
             "temperature" => 0.1,
-            "maxOutputTokens" => 1024
+            "maxOutputTokens" => 2048
         ]
     ];
     
-    $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}");
+    $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/{$GEMINI_MODEL}:generateContent?key={$apiKey}");
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
@@ -337,14 +336,30 @@ function executeGeminiRequest($apiKey, $parts, $documentType) {
         throw new Exception("Invalid API response structure");
     }
     
-    $rawText = $result['candidates'][0]['content']['parts'][0]['text'];
+    $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
     
-    $cleanJson = preg_replace('/^```json\s*|\s*```$/m', '', $rawText);
+    $cleanJson = trim($rawText);
+    
+    // Remove markdown fences if Gemini still returns them
+    $cleanJson = preg_replace('/```json|```/i', '', $cleanJson);
     $cleanJson = trim($cleanJson);
+    
+    // Extract only JSON object from response
+    $start = strpos($cleanJson, '{');
+    $end   = strrpos($cleanJson, '}');
+    
+    if ($start === false || $end === false || $end <= $start) {
+        error_log("Gemini RAW Response: " . $rawText);
+        throw new Exception("No valid JSON object found in Gemini response");
+    }
+    
+    $cleanJson = substr($cleanJson, $start, $end - $start + 1);
     
     $extractedData = json_decode($cleanJson, true);
     
     if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("Gemini RAW Response: " . $rawText);
+        error_log("Gemini CLEAN JSON: " . $cleanJson);
         throw new Exception("Failed to parse JSON: " . json_last_error_msg());
     }
     

@@ -8,7 +8,7 @@ $workId = $_GET['work_id'];
 
 try {
     $stmtForWork = $pdo->prepare("
-        SELECT * FROM works
+        SELECT * FROM com_works
         WHERE sys_id =?
         ORDER BY id ASC
     ");
