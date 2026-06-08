@@ -13,3 +13,6 @@ server-name.txt
 
 /tmp
 /uploads
+/grok
+/pages/vendor/smb/
+/pages/vendor/icewind/smb/
