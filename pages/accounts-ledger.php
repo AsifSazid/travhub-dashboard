@@ -330,10 +330,16 @@ $base_ip_path = trim($ip_port, "/");
                             <i class="fas fa-search mr-1"></i> Search
                         </button>
                     </div>
-                    <button class="px-4 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 transition-colors flex items-center"
-                        id="downloadCsvBtn">
-                        <i class="fas fa-download mr-1"></i> Download CSV
-                    </button>
+                    <div class="flex flex-wrap items-center space-x-3">
+                        <button class="px-4 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 transition-colors flex items-center"
+                            id="downloadCsvBtn">
+                            <i class="fas fa-download mr-1"></i> Download CSV
+                        </button>
+                        <button class="px-4 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors flex items-center"
+                            id="downloadXlBtn">
+                            <i class="fas fa-file-excel mr-1"></i> Download XL
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Statement Loading -->
@@ -417,6 +423,7 @@ $base_ip_path = trim($ip_port, "/");
             const saveTransactionBtn = document.getElementById('saveTransactionBtn');
             const transactionForm = document.getElementById('transactionForm');
             const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+            const downloadXlBtn = document.getElementById('downloadXlBtn');
             const searchStatementBtn = document.getElementById('searchStatementBtn');
             const fromDateFilter = document.getElementById('fromDateFilter');
             const toDateFilter = document.getElementById('toDateFilter');
@@ -853,6 +860,7 @@ $base_ip_path = trim($ip_port, "/");
                 statementTableContainer.classList.add('hidden');
                 noStatementData.classList.add('hidden');
                 downloadCsvBtn.disabled = true;
+                downloadXlBtn.disabled = true;
 
                 let url = `${API_STATEMENT_URL}?ledger_db_id=${accountId}`;
                 if (fromDate) url += `&from_date=${fromDate}`;
@@ -894,6 +902,7 @@ $base_ip_path = trim($ip_port, "/");
                 loadNextRows();
                 statementTableContainer.classList.remove('hidden');
                 downloadCsvBtn.disabled = false;
+                downloadXlBtn.disabled = false;
             
                 statementTableContainer.removeEventListener('scroll', handleScroll);
                 statementTableContainer.addEventListener('scroll', handleScroll);
@@ -1076,12 +1085,14 @@ $base_ip_path = trim($ip_port, "/");
                 `;
                 statementTableContainer.classList.remove('hidden');
                 downloadCsvBtn.disabled = true;
+                downloadXlBtn.disabled = true;
             }
 
             function showNoStatementData() {
                 noStatementData.classList.remove('hidden');
                 statementTableContainer.classList.remove('hidden');
                 downloadCsvBtn.disabled = true;
+                downloadXlBtn.disabled = true;
             }
 
             function showError() {
@@ -1134,6 +1145,61 @@ $base_ip_path = trim($ip_port, "/");
                 const link = document.createElement('a');
                 link.setAttribute('href', url);
                 link.setAttribute('download', `Statement_${currentAccountName}_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+            
+            downloadXlBtn.addEventListener('click', function() {
+                if (currentStatementData.length === 0) {
+                    alert('No data to download.');
+                    return;
+                }
+            
+                const rows = currentStatementData.map(item => `
+                    <tr>
+                        <td>${item.date || ''}</td>
+                        <td>${item.particular || ''}</td>
+                        <td>${item.transfer_method || ''}</td>
+                        <td>${parseFloat(item.withdraw || 0).toFixed(2)}</td>
+                        <td>${parseFloat(item.deposit || 0).toFixed(2)}</td>
+                        <td>${parseFloat(item.balance || 0).toFixed(2)}</td>
+                        <td>${parseFloat(item.reconsilation || 0).toFixed(2)}</td>
+                        <td>${item.is_historical == 1 ? 'Historical' : 'Current'}</td>
+                    </tr>
+                `).join('');
+            
+                const excelContent = `
+                    <html>
+                    <head><meta charset="UTF-8"></head>
+                    <body>
+                        <table border="1">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Particular</th>
+                                    <th>Method</th>
+                                    <th>Withdraw</th>
+                                    <th>Deposit</th>
+                                    <th>Balance</th>
+                                    <th>Reconciliation</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </body>
+                    </html>
+                `;
+            
+                const blob = new Blob([excelContent], {
+                    type: 'application/vnd.ms-excel;charset=utf-8;'
+                });
+            
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Statement_${currentAccountName}_${new Date().toISOString().slice(0,10)}.xls`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
