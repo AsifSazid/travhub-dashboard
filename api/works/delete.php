@@ -22,7 +22,7 @@ try {
     $pdo->beginTransaction();
     
     // First, get work details to find associated files
-    $stmt = $pdo->prepare("SELECT sys_id, title FROM works WHERE sys_id = ?");
+    $stmt = $pdo->prepare("SELECT sys_id, title FROM com_works WHERE sys_id = ?");
     $stmt->execute([$work_id]);
     $work = $stmt->fetch(PDO::FETCH_ASSOC);
     
