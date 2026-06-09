@@ -289,23 +289,53 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 sidebar-text"></i>
                 </button>
                 <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
-                    <a href="index-countries.php"
+                    <a href="masterdata-countries.php"
                         class="flex items-center p-3 rounded-lg
-                       <?= $currentPage == 'index-countries.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'masterdata-countries.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-globe mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Countries</span>
                     </a>
-                    <a href="index-activities.php"
+                    <a href="masterdata-activities.php"
                         class="flex items-center p-3 rounded-lg
-                       <?= $currentPage == 'index-activities.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'masterdata-activities.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-person-hiking mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Activities</span>
                     </a>
-                    <a href="index-cars.php"
+                    <a href="masterdata-cars.php"
                         class="flex items-center p-3 rounded-lg
-                       <?= $currentPage == 'index-cars.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                       <?= $currentPage == 'masterdata-cars.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-car mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Cars</span>
+                    </a>
+                    <a href="masterdata-components.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'masterdata-components.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-puzzle-piece mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Components</span>
+                    </a>
+                    <a href="masterdata-currencies.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'masterdata-currencies.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-money-bills mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Currencies</span>
+                    </a>
+                    <a href="masterdata-hotels.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'masterdata-hotels.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-hotel mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Hotels</span>
+                    </a>
+                    <a href="masterdata-suppliers.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'masterdata-suppliers.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-building mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Suppliers</span>
+                    </a>
+                    <a href="masterdata-transport.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'masterdata-transport.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-route mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Transports</span>
                     </a>
                 </div>
             </div>

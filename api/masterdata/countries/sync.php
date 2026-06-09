@@ -1,26 +1,50 @@
 <?php
 session_start();
-// api/masterdata/countries/sync.php
-// POST { "action": "import" }  ← JSON → DB  (add missing, update existing)
-// POST { "action": "export" }  ← DB  → JSON (rewrite countries.json)
+/**
+ * api/masterdata/countries/sync.php  (Gen-3)
+ * ═══════════════════════════════════════════
+ * POST { "action": "import" }  ← JSON → DB  (add missing, update existing)
+ * POST { "action": "export" }  ← DB  → JSON (rewrite countries.json)
+ *
+ * Also accepts JSON body directly for upload-based import:
+ * POST { "action": "import", "countries": [...], "cities": [...] }
+ *
+ * Changes from Gen-2:
+ *   • masterdata-id-generator.php → id_generator.php
+ *   • generateHierarchyIDs()      → generateChildIDs($pdo, 'countries', 'ROOT')
+ *   • JSON path resolved via server-name.txt (same pattern as json_sync.php)
+ *   • cities column: 'sys_id' field key (was 'id') for consistency
+ */
+
 header('Content-Type: application/json');
-require_once('../../../server/db_connection.php');
-require_once('../../../server/masterdata-id-generator.php');
-require_once('../../../server/generate_meta_data.php');
+
+require_once '../../../server/db_connection.php';
+require_once '../../../server/id_generator.php';
+require_once '../../../server/generate_meta_data.php';
 
 $input  = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = trim($input['action'] ?? 'import');
 
-$jsonPath = __DIR__ . '/../../countries.json';
+// ── Resolve countries.json path (same logic as json_sync.php) ─────────
+$serverName = trim(file_get_contents(__DIR__ . '/../../../server-name.txt') ?: '');
+$docRoot    = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+$jsonPath   = $serverName
+    ? "{$docRoot}/{$serverName}/api/countries.json"
+    : "{$docRoot}/api/countries.json";
 
 try {
+
+    // ══════════════════════════════════════════════════════════════════
+    // EXPORT: DB → JSON
+    // ══════════════════════════════════════════════════════════════════
     if ($action === 'export') {
-        // ── EXPORT: DB → JSON ─────────────────────────────────────────
+
         $rows = $pdo->query("
-            SELECT id, sys_id, name, code, currency, currency_code, default_rate, region, cities
-            FROM countries
-            WHERE status = 'active'
-            ORDER BY name ASC
+            SELECT id, sys_id, name, code, currency, currency_code,
+                   default_rate, region, cities
+            FROM   countries
+            WHERE  status = 'active'
+            ORDER  BY name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
         $countriesOut = [];
@@ -30,6 +54,7 @@ try {
         foreach ($rows as $i => $row) {
             $countriesOut[] = [
                 'id'            => $i + 1,
+                'sys_id'        => $row['sys_id'],
                 'name'          => $row['name'],
                 'code'          => $row['code'],
                 'currency'      => $row['currency'],
@@ -42,6 +67,7 @@ try {
             foreach ($cities as $city) {
                 $citiesOut[] = [
                     'id'         => $cityCounter++,
+                    'sys_id'     => $city['sys_id']     ?? ($row['sys_id'] . '-CTS-01'),
                     'name'       => $city['name'],
                     'country_id' => $i + 1,
                     'type'       => $city['type']       ?? [],
@@ -57,9 +83,15 @@ try {
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
         );
 
-        // Atomic write: temp file → rename
+        // Ensure directory exists
+        $dir = dirname($jsonPath);
+        if (!is_dir($dir)) mkdir($dir, 0775, true);
+
+        // Atomic write
         $tmp = $jsonPath . '.tmp';
-        file_put_contents($tmp, $json);
+        if (file_put_contents($tmp, $json) === false) {
+            echo json_encode(['success' => false, 'message' => "Cannot write to: {$jsonPath}"]); exit;
+        }
         rename($tmp, $jsonPath);
 
         echo json_encode([
@@ -67,24 +99,43 @@ try {
             'action'    => 'export',
             'countries' => count($countriesOut),
             'cities'    => count($citiesOut),
+            'path'      => $jsonPath,
             'message'   => 'countries.json updated from DB.',
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
 
+    // ══════════════════════════════════════════════════════════════════
+    // IMPORT: JSON → DB
+    // ══════════════════════════════════════════════════════════════════
     } else {
-        // ── IMPORT: JSON → DB ─────────────────────────────────────────
-        if (!file_exists($jsonPath)) {
-            echo json_encode(['success' => false, 'message' => 'countries.json not found']);
-            exit;
+
+        // Source 1: body payload (upload from browser)
+        if (!empty($input['countries'])) {
+            $countries  = $input['countries'];
+            $citiesFlat = $input['cities'] ?? [];
+
+        // Source 2: server-side countries.json file
+        } else {
+            if (!file_exists($jsonPath)) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => "countries.json not found at: {$jsonPath}. "
+                               . "Pass countries array in body or place file at that path.",
+                ]); exit;
+            }
+            $raw        = json_decode(file_get_contents($jsonPath), true) ?: [];
+            $countries  = $raw['countries'] ?? [];
+            $citiesFlat = $raw['cities']    ?? [];
         }
 
-        $raw       = json_decode(file_get_contents($jsonPath), true);
-        $countries = $raw['countries'] ?? [];
-        $citiesFlat = $raw['cities']   ?? [];
+        if (empty($countries)) {
+            echo json_encode(['success' => false, 'message' => 'No countries data to import']); exit;
+        }
 
-        // Group cities by country_id (old JSON int)
+        // Group cities by country_id (numeric index in JSON)
         $citiesByCountry = [];
         foreach ($citiesFlat as $city) {
-            $citiesByCountry[(int)$city['country_id']][] = $city;
+            $cid = (int)($city['country_id'] ?? 0);
+            if ($cid) $citiesByCountry[$cid][] = $city;
         }
 
         $inserted = 0;
@@ -92,81 +143,97 @@ try {
         $skipped  = 0;
         $log      = [];
 
-        foreach ($countries as $idx => $country) {
-            $code = strtoupper(trim($country['code']));
+        foreach ($countries as $country) {
+            $name          = trim($country['name']          ?? '');
+            $code          = strtoupper(trim($country['code'] ?? ''));
+            $currency      = trim($country['currency']      ?? '');
+            $currency_code = strtoupper(trim($country['currency_code'] ?? ''));
+            $default_rate  = max(0, (float)($country['default_rate'] ?? 1));
+            $region        = trim($country['region']        ?? '');
 
-            // Check by code (unique business key)
+            // Skip invalid rows
+            if (!$name || !$code) { $skipped++; continue; }
+
+            // Cities for this country (keyed by numeric id in JSON)
+            $jsonCountryId = (int)($country['id'] ?? 0);
+            $rawCities     = $citiesByCountry[$jsonCountryId] ?? [];
+
+            // ── Check if country already exists (by code) ─────────────
             $chk = $pdo->prepare("SELECT id, sys_id, meta_data FROM countries WHERE code = ? LIMIT 1");
             $chk->execute([$code]);
             $existing = $chk->fetch(PDO::FETCH_ASSOC);
 
-            $rawCities  = $citiesByCountry[$country['id']] ?? [];
-
             if ($existing) {
-                // Country exists — update fields + cities
+                // ── UPDATE ────────────────────────────────────────────
                 $countrySysId = $existing['sys_id'];
                 $dbId         = (int)$existing['id'];
-                $metaJson     = buildMetaData($existing['meta_data'], 'system');
-
-                $citiesJson = buildCitiesForSync($rawCities, $countrySysId, $dbId);
+                $meta         = buildMetaData($existing['meta_data'], 'system');
+                $citiesJson   = buildCitiesForSync($rawCities, $countrySysId, $dbId);
 
                 $pdo->prepare("
                     UPDATE countries SET
-                        name = :name, currency = :currency, currency_code = :currency_code,
-                        default_rate = :default_rate, region = :region,
-                        cities = :cities, meta_data = :meta_data
+                        name          = :name,
+                        currency      = :currency,
+                        currency_code = :currency_code,
+                        default_rate  = :default_rate,
+                        region        = :region,
+                        cities        = :cities,
+                        meta_data     = :meta
                     WHERE code = :code
                 ")->execute([
-                    ':name'          => $country['name'],
-                    ':currency'      => $country['currency'],
-                    ':currency_code' => $country['currency_code'],
-                    ':default_rate'  => $country['default_rate'],
-                    ':region'        => $country['region'],
+                    ':name'          => $name,
+                    ':currency'      => $currency,
+                    ':currency_code' => $currency_code,
+                    ':default_rate'  => $default_rate,
+                    ':region'        => $region,
                     ':cities'        => json_encode($citiesJson, JSON_UNESCAPED_UNICODE),
-                    ':meta_data'     => $metaJson,
+                    ':meta'          => $meta,
                     ':code'          => $code,
                 ]);
+
                 $updated++;
-                $log[] = "UPDATED: {$country['name']} ({$code})";
+                $log[] = "UPDATED: {$name} ({$code}) → {$countrySysId}";
 
             } else {
-                // New country — insert
-                $ids          = generateHierarchyIDs($pdo, 'countries');
+                // ── INSERT ────────────────────────────────────────────
+                // Gen-3 fix: generateChildIDs with 'ROOT' as parent
+                $ids          = generateChildIDs($pdo, 'countries', 'ROOT');
                 $countrySysId = $ids['sys_id'];
                 $uuid         = $ids['uuid'];
-                $metaJson     = buildMetaData(null, 'system');
+                $meta         = buildMetaData(null, 'system');
 
-                // First insert to get DB id
+                // Insert first (need lastInsertId for city back-reference)
                 $pdo->prepare("
                     INSERT INTO countries
                         (uuid, sys_id, name, code, currency, currency_code,
                          default_rate, region, cities, status, meta_data)
                     VALUES
                         (:uuid, :sys_id, :name, :code, :currency, :currency_code,
-                         :default_rate, :region, '[]', 'active', :meta_data)
+                         :default_rate, :region, '[]', 'active', :meta)
                 ")->execute([
                     ':uuid'          => $uuid,
                     ':sys_id'        => $countrySysId,
-                    ':name'          => $country['name'],
+                    ':name'          => $name,
                     ':code'          => $code,
-                    ':currency'      => $country['currency'],
-                    ':currency_code' => $country['currency_code'],
-                    ':default_rate'  => $country['default_rate'],
-                    ':region'        => $country['region'],
-                    ':meta_data'     => $metaJson,
+                    ':currency'      => $currency,
+                    ':currency_code' => $currency_code,
+                    ':default_rate'  => $default_rate,
+                    ':region'        => $region,
+                    ':meta'          => $meta,
                 ]);
-                $dbId = (int)$pdo->lastInsertId();
 
-                // Now build cities with correct DB id
+                $dbId       = (int)$pdo->lastInsertId();
                 $citiesJson = buildCitiesForSync($rawCities, $countrySysId, $dbId);
+
+                // Update cities column now we have the real DB id
                 $pdo->prepare("UPDATE countries SET cities = ? WHERE id = ?")
                     ->execute([json_encode($citiesJson, JSON_UNESCAPED_UNICODE), $dbId]);
 
                 $inserted++;
-                $log[] = "INSERTED: {$country['name']} ({$code}) → {$countrySysId}";
+                $log[] = "INSERTED: {$name} ({$code}) → {$countrySysId}";
             }
         }
-        
+
         echo json_encode([
             'success'  => true,
             'action'   => 'import',
@@ -174,23 +241,28 @@ try {
             'updated'  => $updated,
             'skipped'  => $skipped,
             'log'      => $log,
-            'message'  => "Sync complete. {$inserted} inserted, {$updated} updated.",
-        ]);
+            'message'  => "Sync complete. {$inserted} inserted, {$updated} updated, {$skipped} skipped.",
+        ], JSON_UNESCAPED_UNICODE);
     }
 
 } catch (Throwable $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-// ── Helper ────────────────────────────────────────────────────────────
+// ── Helper: build cities array for the cities JSON column ─────────────
+/**
+ * Gen-3: city key is 'sys_id' (not 'id').
+ * sys_id format: {country_sys_id}-CTS-{base36_pos}
+ * e.g. THR-26-CNT-01-CTS-01
+ */
 function buildCitiesForSync(array $rawCities, string $countrySysId, int $countryDbId): array
 {
     $result = [];
     foreach ($rawCities as $pos => $city) {
         $citySysId = $countrySysId . '-CTS-' . toBase36($pos + 1);
         $result[]  = [
-            'id'             => $citySysId,
-            'name'           => $city['name'],
+            'sys_id'         => $citySysId,
+            'name'           => trim($city['name'] ?? ''),
             'country_id'     => $countryDbId,
             'country_sys_id' => $countrySysId,
             'type'           => $city['type']       ?? [],

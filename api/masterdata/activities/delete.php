@@ -1,44 +1,22 @@
 <?php
 session_start();
-// api/masterdata/activities/delete.php
-// POST  { "sys_id": "..." }              ← soft delete
-// POST  { "sys_id": "...", "restore": true } ← restore
-header('Content-Type: application/json');
-require_once('../../../server/db_connection.php');
-require_once('../../../server/generate_meta_data.php');
+require_once '../../../server/api_bootstrap.php';
+require_once '../../../server/db_connection.php';
+require_once '../../../server/generate_meta_data.php';
+require_once '../../../server/json_sync.php';
 
-$input   = json_decode(file_get_contents('php://input'), true) ?: [];
-$sys_id  = trim($input['sys_id'] ?? '');
-$restore = !empty($input['restore']);
-
-if (empty($sys_id)) {
-    echo json_encode(['success' => false, 'message' => 'sys_id required']);
-    exit;
-}
-
+$in      = json_decode(file_get_contents('php://input'), true) ?: [];
+$sys_id  = trim($in['sys_id']  ?? '');
+$restore = !empty($in['restore']);
+if (!$sys_id) { echo json_encode(['success'=>false,'message'=>'sys_id required']); exit; }
 try {
-    $chk = $pdo->prepare("SELECT id, name, meta_data FROM activities WHERE sys_id = ? LIMIT 1");
-    $chk->execute([$sys_id]);
-    $row = $chk->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        echo json_encode(['success' => false, 'message' => 'Activity not found']);
-        exit;
-    }
-
-    $metaJson  = buildMetaData($row['meta_data'], $_SESSION['user_name'] ?? 'system');
+    $row = $pdo->prepare("SELECT meta_data FROM activities WHERE sys_id = ? LIMIT 1");
+    $row->execute([$sys_id]); $existing = $row->fetch();
+    if (!$existing) { echo json_encode(['success'=>false,'message'=>'Not found']); exit; }
+    $meta      = buildMetaData($existing['meta_data'], $_SESSION['user_name'] ?? 'system');
     $newStatus = $restore ? 'active' : 'deleted';
-
-    $pdo->prepare("UPDATE activities SET status = ?, meta_data = ? WHERE sys_id = ?")
-        ->execute([$newStatus, $metaJson, $sys_id]);
-
+    $pdo->prepare("UPDATE activities SET status = ?, meta_data = ? WHERE sys_id = ?")->execute([$newStatus, $meta, $sys_id]);
+    syncActivitiesJson($pdo);
     $action = $restore ? 'restored' : 'deleted';
-    echo json_encode([
-        'success' => true,
-        'action'  => $action,
-        'message' => "Activity '{$row['name']}' {$action}.",
-    ]);
-
-} catch (Throwable $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-}
+    echo json_encode(['success'=>true,'action'=>$action,'message'=>"Record {$action}."]);
+} catch (Throwable $e) { echo json_encode(['success'=>false,'message'=>$e->getMessage()]); }

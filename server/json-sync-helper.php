@@ -1,121 +1,237 @@
 <?php
-/**
- * TravHub — JSON Sync Helper
- * server/json-sync-helper.php
- *
- * Call after any successful DB write to keep the JSON files in sync.
- * Requires $pdo to already be available in scope.
- *
- * Usage:
- *   require_once('../../../server/json-sync-helper.php');
- *   // ... do DB insert/update ...
- *   exportCountriesToJson($pdo, __DIR__ . '/../../../countries.json');
- *   exportActivitiesToJson($pdo, __DIR__ . '/../../../activities.json');
- */
 
-// ── Export countries table → countries.json ──────────────────────────
-function exportCountriesToJson(PDO $pdo, string $jsonPath): bool
+function _jsonRoot(): string
+{
+    return rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/' .
+           trim(file_get_contents(__DIR__ . '/../server-name.txt') ?: '');
+}
+
+function _writeJson(string $path, mixed $data): bool
+{
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $tmp  = $path . '.tmp';
+    if (file_put_contents($tmp, $json) === false) return false;
+    return rename($tmp, $path);
+}
+
+// ── Countries + Cities ────────────────────────────────────────────────
+function syncCountriesJson(PDO $pdo): bool
 {
     try {
         $rows = $pdo->query("
             SELECT id, sys_id, name, code, currency, currency_code, default_rate, region, cities
-            FROM countries
-            WHERE status = 'active'
-            ORDER BY name ASC
-        ")->fetchAll(PDO::FETCH_ASSOC);
+            FROM countries WHERE status = 'active' ORDER BY name ASC
+        ")->fetchAll();
 
-        $countriesOut = [];
-        $citiesOut    = [];
-        $cityCounter  = 1;
+        $countries = [];
+        $cities    = [];
 
-        foreach ($rows as $i => $row) {
-            $countriesOut[] = [
-                'id'            => $i + 1,
+        foreach ($rows as $row) {
+            $countries[] = [
+                'sys_id'        => $row['sys_id'],
                 'name'          => $row['name'],
                 'code'          => $row['code'],
                 'currency'      => $row['currency'],
                 'currency_code' => $row['currency_code'],
-                'default_rate'  => (float)$row['default_rate'],
+                'default_rate'  => (float) $row['default_rate'],
                 'region'        => $row['region'],
             ];
-            $cities = json_decode($row['cities'] ?? '[]', true) ?: [];
-            foreach ($cities as $city) {
-                $citiesOut[] = [
-                    'id'         => $cityCounter++,
-                    'name'       => $city['name'],
-                    'country_id' => $i + 1,
-                    'type'       => $city['type']       ?? [],
-                    'popularity' => $city['popularity'] ?? 3,
-                    'cost_level' => $city['cost_level'] ?? 'medium',
-                    'visa_ease'  => $city['visa_ease']  ?? 'medium',
+            foreach (json_decode($row['cities'] ?? '[]', true) ?: [] as $city) {
+                $cities[] = [
+                    'sys_id'         => $city['sys_id'],
+                    'name'           => $city['name'],
+                    'country_sys_id' => $row['sys_id'],
+                    'country_name'   => $row['name'],
+                    'type'           => $city['type']       ?? [],
+                    'popularity'     => $city['popularity'] ?? 3,
+                    'cost_level'     => $city['cost_level'] ?? 'medium',
+                    'visa_ease'      => $city['visa_ease']  ?? 'medium',
                 ];
             }
         }
-
-        $json = json_encode(
-            ['countries' => $countriesOut, 'cities' => $citiesOut],
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
-        );
-
-        // Atomic write
-        $tmp = $jsonPath . '.tmp';
-        file_put_contents($tmp, $json);
-        return rename($tmp, $jsonPath);
-
+        return _writeJson(_jsonRoot() . '/api/countries.json',
+            ['countries' => $countries, 'cities' => $cities]);
     } catch (Throwable $e) {
-        error_log('exportCountriesToJson failed: ' . $e->getMessage());
+        error_log('syncCountriesJson: ' . $e->getMessage());
         return false;
     }
 }
 
-// ── Export activities table → activities.json ────────────────────────
-function exportActivitiesToJson(PDO $pdo, string $jsonPath): bool
+// ── Activities ─────────────────────────────────────────────────────────
+function syncActivitiesJson(PDO $pdo): bool
 {
     try {
         $rows = $pdo->query("
-            SELECT sys_id, city_sys_id, country_sys_id, name, type, price_range, duration_hours, popularity
+            SELECT sys_id, country_sys_id, country_name, city_sys_id, city_name,
+                   name, type, category, duration_hours, popularity, images
             FROM activities
-            WHERE status = 'active'
-            ORDER BY country_sys_id ASC, city_sys_id ASC, id ASC
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
-        // Build city_sys_id → sequential int map
-        $cityIdMap  = [];
-        $counter    = 0;
-        $dbCountries = $pdo->query("
-            SELECT cities FROM countries WHERE status = 'active' ORDER BY id ASC
-        ")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($dbCountries as $c) {
-            foreach (json_decode($c['cities'] ?? '[]', true) ?: [] as $city) {
-                $counter++;
-                $cityIdMap[$city['id']] = $counter;
-            }
-        }
+            WHERE status = 'active' AND is_package_override = 0
+            ORDER BY country_sys_id ASC, name ASC
+        ")->fetchAll();
 
         $out = [];
-        foreach ($rows as $i => $row) {
+        foreach ($rows as $row) {
+            $images = json_decode($row['images'] ?? '[]', true) ?: [];
             $out[] = [
-                'id'             => $i + 1,
-                'city_id'        => $cityIdMap[$row['city_sys_id']] ?? 0,
+                'sys_id'         => $row['sys_id'],
+                'country_sys_id' => $row['country_sys_id'],
+                'country_name'   => $row['country_name'],
+                'city_sys_id'    => $row['city_sys_id'],
+                'city_name'      => $row['city_name'],
                 'name'           => $row['name'],
                 'type'           => $row['type'],
-                'price_range'    => $row['price_range'],
-                'duration_hours' => (float)$row['duration_hours'],
-                'popularity'     => (int)$row['popularity'],
+                'category'       => $row['category'],
+                'duration_hours' => (float) $row['duration_hours'],
+                'popularity'     => (int)   $row['popularity'],
+                'thumb'          => $images[0]['url'] ?? null,
             ];
         }
-
-        $json = json_encode(
-            ['activities' => $out],
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
-        );
-
-        $tmp = $jsonPath . '.tmp';
-        file_put_contents($tmp, $json);
-        return rename($tmp, $jsonPath);
-
+        return _writeJson(_jsonRoot() . '/api/activities.json', ['activities' => $out]);
     } catch (Throwable $e) {
-        error_log('exportActivitiesToJson failed: ' . $e->getMessage());
+        error_log('syncActivitiesJson: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// ── Cars ───────────────────────────────────────────────────────────────
+function syncCarsJson(PDO $pdo): bool
+{
+    try {
+        $rows = $pdo->query("
+            SELECT sys_id, country_sys_id, country_name, name, type, seats, max_luggage
+            FROM cars WHERE status = 'active' ORDER BY country_sys_id ASC, name ASC
+        ")->fetchAll();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = [
+                'sys_id'         => $row['sys_id'],
+                'country_sys_id' => $row['country_sys_id'],
+                'country_name'   => $row['country_name'],
+                'name'           => $row['name'],
+                'type'           => $row['type'],
+                'seats'          => (int) $row['seats'],
+                'max_luggage'    => $row['max_luggage'],
+            ];
+        }
+        return _writeJson(_jsonRoot() . '/api/cars.json', ['cars' => $out]);
+    } catch (Throwable $e) {
+        error_log('syncCarsJson: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// ── Hotels ─────────────────────────────────────────────────────────────
+function syncHotelsJson(PDO $pdo): bool
+{
+    try {
+        $rows = $pdo->query("
+            SELECT sys_id, country_sys_id, country_name, city_sys_id, city_name,
+                   name, star_rating, check_in_time, check_out_time, images
+            FROM hotels WHERE status = 'active' ORDER BY country_sys_id ASC, name ASC
+        ")->fetchAll();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $images = json_decode($row['images'] ?? '[]', true) ?: [];
+            $out[] = [
+                'sys_id'         => $row['sys_id'],
+                'country_sys_id' => $row['country_sys_id'],
+                'country_name'   => $row['country_name'],
+                'city_sys_id'    => $row['city_sys_id'],
+                'city_name'      => $row['city_name'],
+                'name'           => $row['name'],
+                'star_rating'    => (int) ($row['star_rating'] ?? 0),
+                'check_in_time'  => $row['check_in_time'],
+                'check_out_time' => $row['check_out_time'],
+                'thumb'          => $images[0]['url'] ?? null,
+            ];
+        }
+        return _writeJson(_jsonRoot() . '/api/hotels.json', ['hotels' => $out]);
+    } catch (Throwable $e) {
+        error_log('syncHotelsJson: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// ── Currencies ────────────────────────────────────────────────────────
+function syncCurrenciesJson(PDO $pdo): bool
+{
+    try {
+        $rows = $pdo->query("
+            SELECT sys_id, currency_code, name, symbol, decimal_places
+            FROM currencies WHERE status = 'active' ORDER BY currency_code ASC
+        ")->fetchAll();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = [
+                'sys_id'         => $row['sys_id'],
+                'currency_code'  => $row['currency_code'],
+                'name'           => $row['name'],
+                'symbol'         => $row['symbol'],
+                'decimal_places' => (int) $row['decimal_places'],
+            ];
+        }
+        return _writeJson(_jsonRoot() . '/api/currencies.json', ['currencies' => $out]);
+    } catch (Throwable $e) {
+        error_log('syncCurrenciesJson: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// ── Transport Services ────────────────────────────────────────────────
+function syncTransportJson(PDO $pdo): bool
+{
+    try {
+        $rows = $pdo->query("
+            SELECT sys_id, country_sys_id, country_name, name, type,
+                   from_city_name, to_city_name, direction, duration_typical
+            FROM transport_services WHERE status = 'active' ORDER BY country_sys_id ASC, name ASC
+        ")->fetchAll();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = [
+                'sys_id'          => $row['sys_id'],
+                'country_sys_id'  => $row['country_sys_id'],
+                'country_name'    => $row['country_name'],
+                'name'            => $row['name'],
+                'type'            => $row['type'],
+                'from_city_name'  => $row['from_city_name'],
+                'to_city_name'    => $row['to_city_name'],
+                'direction'       => $row['direction'],
+                'duration_typical'=> $row['duration_typical'],
+            ];
+        }
+        return _writeJson(_jsonRoot() . '/api/transport.json', ['transport' => $out]);
+    } catch (Throwable $e) {
+        error_log('syncTransportJson: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// ── Components ────────────────────────────────────────────────────────
+function syncComponentsJson(PDO $pdo): bool
+{
+    try {
+        $rows = $pdo->query("
+            SELECT sys_id, name, category, description
+            FROM components WHERE status = 'active' ORDER BY category ASC, name ASC
+        ")->fetchAll();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = [
+                'sys_id'      => $row['sys_id'],
+                'name'        => $row['name'],
+                'category'    => $row['category'],
+                'description' => $row['description'],
+            ];
+        }
+        return _writeJson(_jsonRoot() . '/api/components.json', ['components' => $out]);
+    } catch (Throwable $e) {
+        error_log('syncComponentsJson: ' . $e->getMessage());
         return false;
     }
 }
