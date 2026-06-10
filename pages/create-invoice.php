@@ -2223,7 +2223,7 @@ $base_ip_path = trim($ip_port, "/");
                     details += `Net Total: ${finalSign}৳${netAmount.toFixed(2)}`;
                 } else if (financialStatements.length === 1) {
                     const stmt = financialStatements[0];
-                    details = `${stmt.purpose || ''} (${stmt.type})`;
+                    details = `${stmt.purpose || ''}`;
                 } else {
                     details = taskData.purpose || '';
                 }

@@ -660,13 +660,13 @@ $updateApi = $ip_port . "api/travelers/update.php";
     </div>
     
     
-    <!-- RIGHT PANEL: Client Summary Card (Independent Scroll) -->
+    <!-- RIGHT PANEL: Traveler Summary Card (Independent Scroll) -->
     <div class="border-l border-gray-300 pl-6 h-full max-h-full overflow-y-auto custom-scrollbar">
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col h-full min-h-0">
             <!-- Fixed Header -->
             <div class="text-center pb-4 mb-3 border-b border-gray-100 flex-shrink-0">
                 <i class="fas fa-user-circle text-5xl text-purple-600 mb-2 block"></i>
-                <h3 class="text-xl font-bold text-gray-800">Client Summary</h3>
+                <h3 class="text-xl font-bold text-gray-800">Traveler Summary</h3>
             </div>
             <!-- Scrollable Content Segment -->
             <div class="overflow-y-auto flex-1 pr-1 custom-scrollbar">

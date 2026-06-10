@@ -35,7 +35,7 @@ const MdTransport = (() => {
             const lbl = id === 'fltCountry' ? 'All Countries' : 'Select country';
             el.innerHTML = `<option value="">${lbl}</option>` +
                 countriesCache.map(c =>
-                    `<option value="${c.sys_id}" data-name="${esc(c.name)}">${esc(c.name)}</option>`
+                    `<option value="${c.sys_id}" data-name="${esc(c.name)}" data-currency="${c.currency_code}">${esc(c.name)}</option>`
                 ).join('');
         });
     }
@@ -223,6 +223,13 @@ const MdTransport = (() => {
             st.timer = setTimeout(() => { st.search = e.target.value; st.page = 1; load(); }, 400);
         };
         document.getElementById('fltCountry').onchange = e => { st.country = e.target.value; st.page = 1; load(); };
+        document.getElementById('fTCountry').onchange = () => {
+            const cSel = document.getElementById('fTCountry');
+            const ccy  = cSel?.options[cSel.selectedIndex]?.dataset?.currency || '';
+            if (ccy && pendingVariants.length === 0) return; // edit mode-এ override করবে না
+            pendingVariants.forEach(v => { if (!v.sys_id) v.currency_code = ccy; });
+            renderVariantList();
+        };
 
         document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
             st.status = b.dataset.tab; st.page = 1;
@@ -291,6 +298,8 @@ const MdTransport = (() => {
 
     // ── Variant row management ────────────────────────────────────────
     function addVariantRow() {
+        const cSel = document.getElementById('fTCountry');
+        const autoCcy = cSel?.options[cSel.selectedIndex]?.dataset?.currency || '';
         pendingVariants.push({
             sys_id:        '',
             variant_name:  '',
@@ -298,7 +307,7 @@ const MdTransport = (() => {
             capacity_max:  6,
             price_basis:   'per_vehicle',
             transfer_type: 'private',
-            currency_code: '',
+            currency_code: autoCcy,
             net_cost:      0,
             markup_type:   'percent',
             markup_value:  0,

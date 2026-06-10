@@ -15,7 +15,7 @@ const MdHotels = (() => {
         ['fltCountry','fHCountry'].forEach(id=>{
             const el=document.getElementById(id); if(!el)return;
             const label=id==='fltCountry'?'All Countries':'Select country';
-            el.innerHTML=`<option value="">${label}</option>`+countriesCache.map(c=>`<option value="${c.sys_id}" data-name="${c.name}">${c.name}</option>`).join('');
+            el.innerHTML=`<option value="">${label}</option>`+countriesCache.map(c=>`<option value="${c.sys_id}" data-name="${c.name}" data-currency="${c.currency_code}">${c.name}</option>`).join('');
         });
     }
 
@@ -183,7 +183,9 @@ const MdHotels = (() => {
 
     function hotelCard(h){
         const stars=h.star_rating?'⭐'.repeat(h.star_rating):'';
-        return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
+        const country = countriesCache.find(c => c.sys_id === h.country_sys_id);
+        const ccy = country?.currency_code || '';
+        return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition" data-hotel-sys="${h.sys_id}" data-hotel-ccy="${ccy}">
             <div class="h-36 bg-gradient-to-br from-[#1A2039] to-[#2d3a5c] flex items-center justify-center relative">
                 ${h.thumb?`<img src="${h.thumb}" class="w-full h-full object-cover" onerror="this.style.display='none'">`:''}
                 <i class="fa-solid fa-hotel text-4xl text-white/20 absolute"></i>
@@ -193,7 +195,7 @@ const MdHotels = (() => {
                     <div class="font-semibold text-gray-800 leading-tight">${h.name}</div>
                     <div class="text-sm flex-shrink-0">${stars}</div>
                 </div>
-                <div class="text-xs text-gray-400 mb-3">${h.address||''}${h.country_name?', '+h.country_name:''}</div>
+                <div class="text-xs text-gray-400 mb-3">${h.address?h.address:''}${h.country_name?', '+h.country_name:''}</div>
                 <div class="flex items-center gap-2">
                     <button onclick="MdHotels._detail('${h.sys_id}')" class="flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#1A2039]/10 text-[#1A2039] hover:bg-[#1A2039]/20 transition">
                         <i class="fa-solid fa-door-open mr-1"></i> Rooms
@@ -299,6 +301,7 @@ const MdHotels = (() => {
     }
     async function saveRoomType(){
         const hotel_sys_id=thVal('fRTHotelSysId');
+        const hotelName = document.getElementById('detailTitle')?.textContent || '';
         const body={sys_id:thVal('fRTSysId')||undefined,hotel_sys_id,hotel_name:'',
             room_name:thVal('fRTName'),description:thVal('fRTDesc'),bed_config:thVal('fRTBed'),
             max_adults:parseInt(thVal('fRTAdults')||2),max_children:parseInt(thVal('fRTChildren')||0),
@@ -315,12 +318,22 @@ const MdHotels = (() => {
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-type-delete.php`,'POST',{sys_id});
         thToast(res.message||'Deleted'); await loadRoomTypes(st.viewHotel);
     }
-
     function _addRate(room_type_sys_id, hotel_sys_id){
         ['fRRSysId'].forEach(id=>thSetVal(id,''));
-        thSetVal('fRRRoomTypeSysId',room_type_sys_id); thSetVal('fRRHotelSysId',hotel_sys_id);
-        thSetVal('fRRMeal','bb'); thSetVal('fRRCcy',''); thSetVal('fRRCost',''); thSetVal('fRRSell','');
-        thSetVal('fRRMkType','percent'); thSetVal('fRRMkVal','0');
+        thSetVal('fRRRoomTypeSysId',room_type_sys_id);
+        thSetVal('fRRHotelSysId',hotel_sys_id);
+        thSetVal('fRRMeal','bb');
+        thSetVal('fRRCost','');
+        thSetVal('fRRSell','');
+        thSetVal('fRRMkType','percent');
+        thSetVal('fRRMkVal','0');
+
+        // ── currency autofill:
+        const hotelEl = document.querySelector(`[data-hotel-sys="${hotel_sys_id}"]`);
+        const autoCcy = hotelEl?.dataset?.hotelCcy || '';
+        thSetVal('fRRCcy', autoCcy);
+        // ──────────────────────
+
         const today=new Date().toISOString().split('T')[0];
         const nextYear=new Date(Date.now()+365*86400000).toISOString().split('T')[0];
         thSetVal('fRRFrom',today); thSetVal('fRRTo',nextYear);
@@ -334,7 +347,7 @@ const MdHotels = (() => {
             net_cost:parseFloat(thVal('fRRCost')||0),sell_price:parseFloat(thVal('fRRSell')||0),
             markup_type:thVal('fRRMkType'),markup_value:parseFloat(thVal('fRRMkVal')||0),
             valid_from:thVal('fRRFrom'),valid_to:thVal('fRRTo'),occupancy_basis:'per_room'};
-        if (!body.currency_code||!body.net_cost) return thToast('Currency and cost required','error');
+        if (!body.currency_code || body.net_cost <= 0) return thToast('Currency and net cost (>0) required','error');
         document.getElementById('btnRRSave').disabled=true;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-rate-save.php`,'POST',body);
         document.getElementById('btnRRSave').disabled=false;

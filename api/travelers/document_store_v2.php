@@ -49,6 +49,7 @@ date_default_timezone_set('Asia/Dhaka');
 
 // ---------------- CONFIG ----------------
 $GEMINI_API_KEY = trim(@file_get_contents('../../gemini-apikey.txt'));
+$GEMINI_MODEL = trim(@file_get_contents('../../gemini-model.txt'));
 if (empty($GEMINI_API_KEY)) {
     echo json_encode(['success' => false, 'message' => 'Gemini API key not configured']);
     exit;
@@ -562,7 +563,7 @@ PROMPT;
  */
 function geminiVisionExtract(string $apiKey, array $parts): array
 {
-    $model = 'gemini-2.0-flash-lite';
+    $model = 'gemini-2.5-flash-lite';
     $payload = [
         'contents' => [['parts' => $parts]],
         'generationConfig' => [
@@ -649,7 +650,7 @@ function mergeTravelerSummary(string $apiKey, string $old, string $batch): array
 /** Text-only Gemini call (used by combine + merge). */
 function geminiTextCall(string $apiKey, string $prompt): array
 {
-    $model = 'gemini-2.0-flash-lite';
+    $model = 'gemini-2.5-flash-lite';
     $payload = [
         'contents' => [['parts' => [['text' => $prompt]]]],
         'generationConfig' => [
