@@ -92,10 +92,6 @@ if($relatedType == 'a2a' || $relatedType == 'a2p'){
     $trnxType = 'debit';
 }
 
-
-var_dump($trnxType, $relatedType, $data);
-die;
-
 /* =====================================================
    INSERT DATA
 ===================================================== */

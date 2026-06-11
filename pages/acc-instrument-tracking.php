@@ -1,7 +1,9 @@
 <?php
     $accInsTracking = $ip_port . "api/acc-instrument-tracking/all-tracking.php";
+    $updateTrack = $ip_port . "api/acc-instrument-tracking/update.php";
     $processCleared = $base_ip_path . '/api/acc-instrument-tracking/process-cleared.php';
     $getHistory = $base_ip_path . '/api/acc-instrument-tracking/get-history.php';
+    $adjustAmount = $base_ip_path . '/api/acc-instrument-tracking/adjust-amount.php';
 ?>
 <style>
 /* Previous styles remain the same */
@@ -377,8 +379,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // API
     const ACC_INS_TRACKING = "<?php echo $accInsTracking; ?>";
+    const API_UPDATE = "<?php echo $updateTrack; ?>";
     const ACC_PROCESS_CLEARED = "<?php echo $processCleared; ?>";
     const ACC_GET_HISTORY = "<?php echo $getHistory; ?>";
+    const API_ADJUST_AMOUNT = "<?php echo $adjustAmount; ?>";
     
     // DOM Elements
     const cardsContainer = document.getElementById('cardsContainer');
@@ -884,7 +888,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             // Send to server
-            const adjustmentResponse = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/adjust-amount.php', {
+            const adjustmentResponse = await fetch(API_ADJUST_AMOUNT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1096,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update status and remarks (for non-cleared status changes)
     async function updateStatusAndRemarks(sysId, status, remarks, oldItem) {
         try {
-            const updateResponse = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/update.php', {
+            const updateResponse = await fetch(API_UPDATE, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

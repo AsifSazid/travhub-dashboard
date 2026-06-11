@@ -498,10 +498,10 @@ try {
         $financialUUIDs = generateIDs('financial_entries');
         
         // Determine user type
-        $userType = 'client';
-        if ($relatedType === 'vendor' || strpos(strtolower($toAccountName), 'vendor') !== false) {
-            $userType = 'vendor';
-        }
+        // $userType = 'client';
+        // if ($relatedType === 'vendor' || strpos(strtolower($toAccountName), 'vendor') !== false) {
+        //     $userType = 'vendor';
+        // }
         
         $financialStmt = $pdo->prepare("
             INSERT INTO financial_entries (
@@ -520,9 +520,9 @@ try {
         $financialStmt->execute([
             ':uuid' => $financialUUIDs['uuid'],
             ':sys_id' => $financialUUIDs['sys_id'],
-            ':user_sys_id' => $toAccountId,
-            ':user_name' => $toAccountName,
-            ':user_type' => $userType,
+            ':user_sys_id' => $fromAccountId,
+            ':user_name' => $fromAccountName,
+            ':user_type' => $paymentTo,
             ':date' => $transactionDate,
             ':purpose' => $particular,
             ':type' => 'credit', // Received from client/vendor
