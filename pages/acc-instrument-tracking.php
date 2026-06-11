@@ -1,6 +1,7 @@
 <?php
     $accInsTracking = $ip_port . "api/acc-instrument-tracking/all-tracking.php";
     $processCleared = $base_ip_path . '/api/acc-instrument-tracking/process-cleared.php';
+    $getHistory = $base_ip_path . '/api/acc-instrument-tracking/get-history.php';
 ?>
 <style>
 /* Previous styles remain the same */
@@ -377,6 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // API
     const ACC_INS_TRACKING = "<?php echo $accInsTracking; ?>";
     const ACC_PROCESS_CLEARED = "<?php echo $processCleared; ?>";
+    const ACC_GET_HISTORY = "<?php echo $getHistory; ?>";
     
     // DOM Elements
     const cardsContainer = document.getElementById('cardsContainer');
@@ -450,8 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading(true);
             const response = await fetch(ACC_INS_TRACKING);
             const data = await response.json();
-            
-            console.log(data);
             
             if (data.success && data.tracks) {
                 allData = data.tracks.map(item => ({
@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load adjustment history
     async function loadAdjustmentHistory(sysId) {
         try {
-            const response = await fetch(`https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/get-history.php?sys_id=${sysId}`);
+            const response = await fetch(`${ACC_GET_HISTORY}?sys_id=${sysId}`);
             const data = await response.json();
             
             if (data.success && data.history) {
@@ -946,7 +946,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newStatus = document.getElementById('modalStatus').value;
         const remarks = document.getElementById('modalRemarks').value;
         
-        console.log('Status change:', { oldStatus, newStatus });
+        // console.log('Status change:', { oldStatus, newStatus });
         
         // If status is changing to "cleared", directly go to ACC_PROCESS_CLEARED
         if (oldStatus !== 'cleared' && newStatus === 'cleared') {
@@ -1032,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Process cleared status
     async function processClearedStatus(sysId, item, remarks) {
         try {
+            console.log(item.related_type);
             // Directly call ACC_PROCESS_CLEARED
             const clearedResponse = await fetch(ACC_PROCESS_CLEARED, {
                 method: 'POST',

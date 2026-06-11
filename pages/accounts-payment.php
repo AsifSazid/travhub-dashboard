@@ -876,6 +876,7 @@ $base_ip_path = trim($ip_port, "/");
                     clientName: type === 'client' ? client?.name : null,
                     vendorId: type === 'vendor' ? vendor?.sys_id : null,
                     vendorName: type === 'vendor' ? vendor?.name : null,
+                    payTo: (type === 'client' || type === 'vendor') ? type : '',
                     amount: amountInput.value,
                     particular: particularTextarea.value.trim(),
                     transactionDate: buildDateTime(transactionDate.value),

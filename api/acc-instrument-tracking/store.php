@@ -81,6 +81,7 @@ $relatedFrom = $data['related_from'] ?? '';
 $relatedTo = $data['related_to'] ?? '';
 $remarks = $data['remarks'] ?? '';
 $clearingDate = $data['clearing_date'] ?? null;
+$paymentTo = $data['payment_to'] ?? null;
 $trnxType = '';
 
 if($relatedType == 'a2a' || $relatedType == 'a2p'){
@@ -91,18 +92,22 @@ if($relatedType == 'a2a' || $relatedType == 'a2p'){
     $trnxType = 'debit';
 }
 
+
+var_dump($trnxType, $relatedType, $data);
+die;
+
 /* =====================================================
    INSERT DATA
 ===================================================== */
 try {
     $sql = "
     INSERT INTO ac_instrument_tracking (
-        uuid, sys_id, instrument_type, trnx_type, instrument_no,
+        uuid, sys_id, instrument_type, trnx_type, instrument_no, payment_to,
         account_name, bank_name, instrument_date,
         amount, related_type, related_from, related_to, status, date,
         clearing_date, remarks, meta_data
     ) VALUES (
-        :uuid, :sys_id, :instrument_type, :trnx_type, :instrument_no,
+        :uuid, :sys_id, :instrument_type, :trnx_type, :instrument_no, :payment_to,
         :account_name, :bank_name, :instrument_date,
         :amount, :related_type, :related_from, :related_to, :status, :date,
         :clearing_date, :remarks, :meta_data
@@ -116,6 +121,7 @@ try {
         ':instrument_type' => $instrumentType,
         ':trnx_type'       => $trnxType,
         ':instrument_no'   => $instrumentNo,
+        ':payment_to'      => $paymentTo,
         ':account_name'    => $accountName,
         ':bank_name'       => $bankName,
         ':instrument_date' => $instrumentDate,

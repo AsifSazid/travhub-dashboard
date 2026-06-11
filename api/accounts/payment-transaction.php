@@ -39,6 +39,7 @@ if (!$data) {
 }
 
 /* ================= INPUT ================= */
+$paymentTo = $data['payTo'] ?? '';
 $accountId = $data['accountId'] ?? '';
 $accountName = $data['accountName'] ?? '';
 $clientId = $data['clientId'] ?? null;
@@ -133,6 +134,7 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
     $instrumentPayload = [
         "instrument_type" => strtoupper($transferMethod),
         "instrument_no"   => $instrumentNo,
+        "payment_to"      => $paymentTo,
         "account_name"    => $instrumentAccountName,
         "bank_name"       => $instrumentBankName,
         "instrument_date" => $instrumentDate,
