@@ -1,5 +1,6 @@
 <?php
     $accInsTracking = $ip_port . "api/acc-instrument-tracking/all-tracking.php";
+    $processCleared = $base_ip_path . '/api/acc-instrument-tracking/process-cleared.php';
 ?>
 <style>
 /* Previous styles remain the same */
@@ -375,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // API
     const ACC_INS_TRACKING = "<?php echo $accInsTracking; ?>";
+    const ACC_PROCESS_CLEARED = "<?php echo $processCleared; ?>";
     
     // DOM Elements
     const cardsContainer = document.getElementById('cardsContainer');
@@ -946,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('Status change:', { oldStatus, newStatus });
         
-        // If status is changing to "cleared", directly go to process-cleared.php
+        // If status is changing to "cleared", directly go to ACC_PROCESS_CLEARED
         if (oldStatus !== 'cleared' && newStatus === 'cleared') {
             if (!confirm('Are you sure you want to mark this instrument as CLEARED?\n\n' +
                         'This will process financial transactions and:\n' +
@@ -1030,8 +1032,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Process cleared status
     async function processClearedStatus(sysId, item, remarks) {
         try {
-            // Directly call process-cleared.php
-            const clearedResponse = await fetch('https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/process-cleared.php', {
+            // Directly call ACC_PROCESS_CLEARED
+            const clearedResponse = await fetch(ACC_PROCESS_CLEARED, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1058,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return true;
             }
             
+            fetchData();
         } catch (error) {
             console.error('Error processing cleared status:', error);
             updateUIFailedStatus(sysId, item, remarks, error.message);
