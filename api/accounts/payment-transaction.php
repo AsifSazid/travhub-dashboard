@@ -10,6 +10,13 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+$ip_port = @file_get_contents('../../ippath.txt');
+if (empty($ip_port)) {
+    $ip_port = "http://103.104.219.3:898";
+}
+
+$base_ip_path = trim($ip_port, "/");
+
 /* ================= METHOD CHECK ================= */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -101,8 +108,8 @@ $instrumentData = null;
 
 if (in_array($transferMethod, $instrumentMethods, true)) {
     /* ================= CALL INSTRUMENT API ================= */
-    $instrumentApiUrl = "https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/store.php";
-
+    $instrumentApiUrl = $base_ip_path . '/api/acc-instrument-tracking/store.php';
+    
     /* ================= PREPARE INSTRUMENT DATA ================= */
     // Determine values based on method
     $instrumentAccountName = '';
