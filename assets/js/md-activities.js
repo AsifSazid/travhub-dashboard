@@ -1,15 +1,7 @@
 /**
- * TravHub — MdActivities  (assets/js/md-activities.js)
+ * TravHub — MdActivities (Full Version)
  * ═══════════════════════════════════════════════════════
- * Production-ready:
- *  - Full activity CRUD with all API fields
- *  - Variant panel: all variant-save.php fields covered
- *    (activity_sys_id, country_sys_id, variant_name, transport_mode,
- *     meal_*, ticket_included, guide_included, price_basis,
- *     currency_code, net_cost, markup_type, markup_value, sell_price)
- *  - net_cost > 0 validation
- *  - country_sys_id passed correctly from parent activity
- *  - Edit variants (sys_id preserved for UPDATE)
+ * Complete activity management with all API fields
  */
 
 const MdActivities = (() => {
@@ -18,6 +10,7 @@ const MdActivities = (() => {
     const TYPES        = ['tour','transfer','both'];
     const TRANSPORT_MODES = ['none','sic','sedan','suv','van','minibus','coach','boat'];
     const PRICE_BASES  = ['per_pax','per_group'];
+    const OPERATING_DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
     const PREDEFINED_TAGS = [
         'beach','family','adventure','luxury','honeymoon','cultural',
         'sightseeing','nature','water_sports','theme_park','nightlife',
@@ -30,31 +23,86 @@ const MdActivities = (() => {
     };
 
     let countriesCache = [];
-    let pendingTags    = [];   // tags being edited in the form
+    let citiesCache = [];
+    let vendorsCache = [];
+    let pendingTags = [];
 
     // ── Init ──────────────────────────────────────────────────────────
-    function init() { renderShell(); bindEvents(); loadCountries().then(() => { loadTagFilter(); load(); }); }
+    function init() { 
+        renderShell(); 
+        bindEvents(); 
+        loadCountries().then(() => { 
+            loadCities('');
+            loadTagFilter(); 
+            load(); 
+        }); 
+    }
 
     async function loadCountries() {
         const d = await thApi(`${API_BASE}api/masterdata/countries/list.php?limit=200&status=active&for_package=1`);
         countriesCache = d.data || [];
-        ['fltCountry','fACountry'].forEach(id => {
-            const el = document.getElementById(id); if (!el) return;
+        
+        ['fltCountry', 'fACountry'].forEach(id => {
+            const el = document.getElementById(id); 
+            if (!el) return;
             const lbl = id === 'fltCountry' ? 'All Countries' : 'Select country';
-            // el.innerHTML = `<option value="">${lbl}</option>` +
-            //     countriesCache.map(c =>
-            //         `<option value="${c.sys_id}" data-name="${esc(c.name)}">${esc(c.name)}</option>`
-            //     ).join('');
             el.innerHTML = `<option value="">${lbl}</option>` +
-            countriesCache.map(c =>
-                `<option value="${c.sys_id}" data-name="${esc(c.name)}" data-currency="${c.currency_code}">${esc(c.name)}</option>`
-            ).join('');
+                countriesCache.map(c =>
+                    `<option value="${c.sys_id}" 
+                        data-name="${esc(c.name)}" 
+                        data-currency="${c.currency_code}"
+                        data-cities='${JSON.stringify(c.cities || [])}'>
+                        ${esc(c.name)} (${c.cities?.length || 0} cities)
+                    </option>`
+                ).join('');
         });
+
+        // দেশ নির্বাচনের ইভেন্ট
+        const countrySelect = document.getElementById('fACountry');
+        if (countrySelect) {
+            countrySelect.onchange = (e) => {
+                const selectedCountry = countriesCache.find(c => c.sys_id === e.target.value);
+                if (selectedCountry) {
+                    loadCities(selectedCountry.sys_id);
+                    // currency ও আপডেট করা যায় চাইলে
+                    if (st.viewActivityCurrency) {
+                        st.viewActivityCurrency = selectedCountry.currency_code;
+                    }
+                } else {
+                    loadCities('');
+                }
+            };
+        }
+    }
+
+    function loadCities(countrySysId) {
+        const citySelect = document.getElementById('fACity');
+        if (!countrySysId) {
+            citySelect.innerHTML = '<option value="">Select country first</option>';
+            return;
+        }
+        
+        // দেশের তথ্য খুঁজে বের করা
+        const country = countriesCache.find(c => c.sys_id === countrySysId);
+        
+        if (!country || !country.cities || country.cities.length === 0) {
+            citySelect.innerHTML = '<option value="">No cities available</option>';
+            return;
+        }
+        
+        // শহরগুলो সিলেক্টে দেখানো
+        citySelect.innerHTML = '<option value="">Select city</option>' +
+            country.cities.map(city => 
+                `<option value="${city.sys_id || city.id || city.name}" data-name="${esc(city.name)}">
+                    ${esc(city.name)}
+                </option>`
+            ).join('');
     }
 
     async function loadTagFilter() {
         const d  = await thApi(`${API_BASE}api/masterdata/activities/tag-list.php?all=1`);
-        const el = document.getElementById('fltTag'); if (!el) return;
+        const el = document.getElementById('fltTag'); 
+        if (!el) return;
         const usedTags = (d.data || []).map(t => t.tag);
         const allTags  = [...new Set([...PREDEFINED_TAGS, ...usedTags])].sort();
         el.innerHTML   = `<option value="">All Tags</option>` +
@@ -116,9 +164,9 @@ const MdActivities = (() => {
             <div id="pgBox"></div>
         </div>
 
-        <!-- ── Activity Modal ─────────────────────────────────────────── -->
+        <!-- ── Activity Modal (Complete) ─────────────────────────────────────────── -->
         <div id="actModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div class="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
+          <div class="w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
                 <h2 id="actModalTitle" class="text-lg font-bold text-[#1A2039]">Add Activity</h2>
                 <button onclick="thCloseModal('actModal')"
@@ -129,10 +177,17 @@ const MdActivities = (() => {
             <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
                 <input type="hidden" id="fASysId">
 
-                <div class="grid grid-cols-2 gap-4">
+                <!-- Basic Info Row 1 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="th-label">Country <span class="text-red-500">*</span></label>
                         <select id="fACountry" class="th-input"></select>
+                    </div>
+                    <div>
+                        <label class="th-label">City</label>
+                        <select id="fACity" class="th-input">
+                            <option value="">Select city first</option>
+                        </select>
                     </div>
                     <div>
                         <label class="th-label">Type</label>
@@ -142,55 +197,67 @@ const MdActivities = (() => {
                     </div>
                 </div>
 
+                <!-- Activity Name -->
                 <div>
                     <label class="th-label">Activity Name <span class="text-red-500">*</span></label>
                     <input id="fAName" type="text" placeholder="e.g. Bangkok City & Temples Tour" class="th-input">
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <!-- Category & Search Terms -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="th-label">Category</label>
                         <input id="fACat" type="text" placeholder="Sightseeing, Cultural, Adventure…" class="th-input">
                     </div>
                     <div>
+                        <label class="th-label">Search Terms (comma separated)</label>
+                        <input id="fASearchTerms" type="text" placeholder="bangkok, temple, tour, private" class="th-input">
+                    </div>
+                </div>
+
+                <!-- Location & Duration -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="th-label">Location</label>
+                        <input id="fALocation" type="text" placeholder="Specific location" class="th-input">
+                    </div>
+                    <div>
                         <label class="th-label">Duration (hours)</label>
                         <input id="fADur" type="number" step="0.5" min="0" placeholder="8" class="th-input">
                     </div>
+                    <div>
+                        <label class="th-label">Duration (typical text)</label>
+                        <input id="fADurTypical" type="text" placeholder="Full day" class="th-input">
+                    </div>
                 </div>
 
-                <!-- Tags -->
+                <!-- Time Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="th-label">Start Time</label>
+                        <input id="fAStartTime" type="time" class="th-input">
+                    </div>
+                    <div>
+                        <label class="th-label">End Time</label>
+                        <input id="fAEndTime" type="time" class="th-input">
+                    </div>
+                </div>
+
+                <!-- Operating Days -->
                 <div>
-                    <label class="th-label mb-2 block">Tags</label>
-                    <div class="flex flex-wrap gap-1.5 mb-2" id="tagChips">
-                        <!-- populated by renderTagChips() -->
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <select id="tagPreset" class="th-input text-xs flex-1">
-                            <option value="">Pick predefined tag…</option>
-                            ${PREDEFINED_TAGS.map(t=>`<option class="uppercase" value="${t}">${t.replace(/_/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase())}</option>`).join('')}
-                        </select>
-                        <div class="grid grid-cols-3 col-span-2 gap-2">
-                            <input id="tagCustom" class="th-input col-span-2 text-xs w-36" placeholder="Custom tag…" maxlength="30">
-                            <button id="btnAddTag" type="button"
-                                class="px-3 py-2 rounded-xl text-xs font-semibold bg-[#50BC81] hover:bg-[#3da868] text-white transition flex-shrink-0">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
+                    <label class="th-label block mb-2">Operating Days</label>
+                    <div id="fAOperDays" class="flex flex-wrap gap-3">
+                        ${OPERATING_DAYS.map(day => `
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" value="${day}" class="oper-day-checkbox">
+                                <span class="text-sm">${day.charAt(0).toUpperCase() + day.slice(1)}</span>
+                            </label>
+                        `).join('')}
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="th-label">City / Location</label>
-                        <input id="fALoc" type="text" placeholder="Bangkok" class="th-input">
-                    </div>
-                    <div>
-                        <label class="th-label">Popularity (1–5)</label>
-                        <input id="fAPop" type="number" min="1" max="5" value="3" class="th-input">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
+                <!-- Pax & Age -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="th-label">Min Pax</label>
                         <input id="fAMinPax" type="number" min="1" placeholder="1" class="th-input">
@@ -199,17 +266,101 @@ const MdActivities = (() => {
                         <label class="th-label">Max Pax</label>
                         <input id="fAMaxPax" type="number" min="1" placeholder="50" class="th-input">
                     </div>
+                    <div>
+                        <label class="th-label">Min Age</label>
+                        <input id="fAAgeMin" type="number" min="0" placeholder="5" class="th-input">
+                    </div>
                 </div>
 
+                <!-- Languages & Meeting Point -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="th-label">Languages (comma separated)</label>
+                        <input id="fALanguages" type="text" placeholder="English, Thai, Chinese" class="th-input">
+                    </div>
+                    <div>
+                        <label class="th-label">Meeting Point</label>
+                        <input id="fAMeetingPoint" type="text" placeholder="Hotel lobby or specific location" class="th-input">
+                    </div>
+                </div>
+
+                <!-- Booking Lead & Popularity -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="th-label">Booking Lead Days</label>
+                        <input id="fABookingLead" type="number" min="0" placeholder="2" class="th-input">
+                    </div>
+                    <div>
+                        <label class="th-label">Popularity (1–5)</label>
+                        <input id="fAPop" type="number" min="1" max="5" value="3" class="th-input">
+                    </div>
+                </div>
+
+                <!-- Cancellation Policy -->
+                <div>
+                    <label class="th-label">Cancellation Policy</label>
+                    <textarea id="fACancelPolicy" rows="2" placeholder="Free cancellation up to 24 hours before" class="th-input"></textarea>
+                </div>
+
+                <!-- Pickup & Dropoff Cities -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="th-label">Pickup From Cities (comma separated)</label>
+                        <input id="fAPickupCities" type="text" placeholder="Bangkok, Nonthaburi, Pathum Thani" class="th-input">
+                    </div>
+                    <div>
+                        <label class="th-label">Dropoff Cities (comma separated)</label>
+                        <input id="fADropoffCities" type="text" placeholder="Same as pickup" class="th-input">
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <label class="th-label mb-2 block">Tags</label>
+                    <div class="flex flex-wrap gap-1.5 mb-2" id="tagChips"></div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <select id="tagPreset" class="th-input text-xs">
+                            <option value="">Pick predefined tag…</option>
+                            ${PREDEFINED_TAGS.map(t=>`<option value="${t}">${t.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>`).join('')}
+                        </select>
+                        <div class="grid grid-cols-3 col-span-2 gap-2">
+                            <input id="tagCustom" class="th-input col-span-2 text-xs" placeholder="Custom tag…" maxlength="30">
+                            <button id="btnAddTag" type="button"
+                                class="px-3 py-2 rounded-xl text-xs font-semibold bg-[#50BC81] hover:bg-[#3da868] text-white transition">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description Points (short_description + long_description combined) -->
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="th-label mb-0">Description Points</label>
+                        <label class="th-label mb-0">Description & Itinerary Points</label>
                         <button type="button" id="btnAddDescPoint"
                             class="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-[#50BC81]/10 text-[#50BC81] hover:bg-[#50BC81]/20 transition">
                             <i class="fa-solid fa-plus text-xs"></i> Add Point
                         </button>
                     </div>
                     <div id="descPointsContainer" class="space-y-2"></div>
+                </div>
+
+                <!-- Inclusions & Exclusions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="th-label">Inclusions (comma separated)</label>
+                        <textarea id="fAInclusions" rows="3" placeholder="Hotel pickup, Professional guide, Lunch, Entrance fees" class="th-input"></textarea>
+                    </div>
+                    <div>
+                        <label class="th-label">Exclusions (comma separated)</label>
+                        <textarea id="fAExclusions" rows="3" placeholder="Personal expenses, Alcoholic drinks, Tips" class="th-input"></textarea>
+                    </div>
+                </div>
+
+                <!-- Images -->
+                <div>
+                    <label class="th-label">Images (URLs, one per line)</label>
+                    <textarea id="fAImages" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg" class="th-input"></textarea>
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
@@ -239,15 +390,10 @@ const MdActivities = (() => {
                 </button>
             </div>
             <div class="flex-1 overflow-y-auto px-6 py-5">
-
-                <!-- Existing variants list -->
                 <div id="varList" class="space-y-2 mb-4"></div>
-
-                <!-- Add / Edit form -->
                 <div id="varForm" class="hidden bg-gray-50 rounded-2xl border border-gray-200 p-4 space-y-3">
                     <input type="hidden" id="fVSysId">
                     <h4 id="varFormTitle" class="text-sm font-semibold text-[#1A2039]">Add Variant</h4>
-
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="th-label">Variant Name <span class="text-red-500">*</span></label>
@@ -260,7 +406,6 @@ const MdActivities = (() => {
                             </select>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <label class="th-label">Currency <span class="text-red-500">*</span></label>
@@ -275,12 +420,11 @@ const MdActivities = (() => {
                             <input id="fVSell" type="number" step="0.01" placeholder="0.00" class="th-input">
                         </div>
                     </div>
-
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="th-label">Markup</label>
                             <div class="grid grid-cols-2 gap-2">
-                                <select id="fVMkType" class="th-input w-24 flex-shrink-0">
+                                <select id="fVMkType" class="th-input">
                                     <option value="percent">%</option>
                                     <option value="fixed">Fix</option>
                                 </select>
@@ -292,7 +436,6 @@ const MdActivities = (() => {
                             <input id="fVChild" type="number" step="0.01" placeholder="optional" class="th-input">
                         </div>
                     </div>
-
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="th-label">Transport Mode</label>
@@ -308,8 +451,6 @@ const MdActivities = (() => {
                             </div>
                         </div>
                     </div>
-
-                    <!-- Inclusions -->
                     <div>
                         <label class="th-label flex items-center gap-4">
                             Includes
@@ -321,12 +462,10 @@ const MdActivities = (() => {
                             </span>
                         </label>
                     </div>
-
                     <div>
                         <label class="th-label">Guide Language</label>
                         <input id="fVGuideLang" type="text" placeholder="English, Thai…" class="th-input">
                     </div>
-
                     <div class="flex gap-2 justify-end pt-1">
                         <button onclick="MdActivities._cancelVarForm()"
                             class="px-4 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -338,8 +477,6 @@ const MdActivities = (() => {
                         </button>
                     </div>
                 </div>
-
-                <!-- Add new button -->
                 <button id="btnAddVar"
                     class="w-full mt-3 py-2 rounded-xl text-sm font-semibold border-2 border-dashed border-[#50BC81] text-[#50BC81] hover:bg-[#50BC81]/5 transition">
                     <i class="fa-solid fa-plus mr-2"></i>Add Variant
@@ -348,7 +485,7 @@ const MdActivities = (() => {
           </div>
         </div>`;
 
-        // Load Quill if not already present
+        // Load Quill
         if (!document.getElementById('quill-css')) {
             const ql = document.createElement('link');
             ql.id = 'quill-css'; ql.rel = 'stylesheet';
@@ -402,7 +539,7 @@ const MdActivities = (() => {
         });
     }
 
-    // ── Load ──────────────────────────────────────────────────────────
+    // ── Load Activities ──────────────────────────────────────────────────────────
     async function load() {
         document.getElementById('tLoading').classList.remove('hidden');
         document.getElementById('tEmpty').classList.add('hidden');
@@ -426,6 +563,7 @@ const MdActivities = (() => {
         document.getElementById('actGrid').innerHTML = data.data.map(actCard).join('');
         thPagination('pgBox', data.pagination, 'MdActivities._page');
     }
+    
     function _page(p) { st.page = p; load(); }
 
     // ── Activity Card ─────────────────────────────────────────────────
@@ -481,8 +619,22 @@ const MdActivities = (() => {
 
     // ── Activity CRUD ─────────────────────────────────────────────────
     async function openActForm(sys_id = null) {
-        ['fASysId','fAName','fACat','fALoc','fAMinPax','fAMaxPax'].forEach(id => thSetVal(id,''));
-        thSetVal('fAType', 'tour'); thSetVal('fADur', '0'); thSetVal('fAPop', '3'); thSetVal('fACountry', '');
+        // Clear all fields
+        ['fASysId','fAName','fACat','fALocation','fAMinPax','fAMaxPax','fAAgeMin',
+         'fASearchTerms','fADurTypical','fAStartTime','fAEndTime','fALanguages',
+         'fAMeetingPoint','fABookingLead','fACancelPolicy','fAPickupCities',
+         'fADropoffCities','fAInclusions','fAExclusions','fAImages'].forEach(id => thSetVal(id,''));
+        
+        thSetVal('fAType', 'tour');
+        thSetVal('fADur', '0');
+        thSetVal('fAPop', '3');
+        thSetVal('fACountry', '');
+        thSetVal('fACity', '');
+        thSetVal('fAVendor', '');
+        
+        // Clear operating days checkboxes
+        document.querySelectorAll('.oper-day-checkbox').forEach(cb => cb.checked = false);
+        
         renderDescPoints([]);
         pendingTags = [];
         renderTagChips();
@@ -496,28 +648,94 @@ const MdActivities = (() => {
             ]);
             if (!d.success) return thToast('Failed to load', 'error');
             const a = d.data;
+            
             thSetVal('fACountry', a.country_sys_id);
-            thSetVal('fAType',    a.type);
-            thSetVal('fAName',    a.name);
-            thSetVal('fACat',     a.category       || '');
-            thSetVal('fALoc',     a.location       || a.city_name || '');
-            thSetVal('fADur',     a.duration_hours || 0);
-            thSetVal('fAPop',     a.popularity     || 3);
-            thSetVal('fAMinPax',  a.min_pax || '');
-            thSetVal('fAMaxPax',  a.max_pax || '');
-            // Load existing tags
+            await loadCities(a.country_sys_id);
+            thSetVal('fACity', a.city_sys_id || '');
+            thSetVal('fAVendor', a.vendor_sys_id || '');
+            thSetVal('fAType', a.type);
+            thSetVal('fAName', a.name);
+            thSetVal('fACat', a.category || '');
+            thSetVal('fALocation', a.location || '');
+            thSetVal('fADur', a.duration_hours || 0);
+            thSetVal('fADurTypical', a.duration_typical || '');
+            thSetVal('fAStartTime', a.start_time || '');
+            thSetVal('fAEndTime', a.end_time || '');
+            thSetVal('fAMinPax', a.min_pax || '');
+            thSetVal('fAMaxPax', a.max_pax || '');
+            thSetVal('fAAgeMin', a.age_min || '');
+            thSetVal('fALanguages', a.languages || '');
+            thSetVal('fAMeetingPoint', a.meeting_point || '');
+            thSetVal('fABookingLead', a.booking_lead_days || '');
+            thSetVal('fAPop', a.popularity || 3);
+            thSetVal('fACancelPolicy', a.cancellation_policy || '');
+            thSetVal('fASearchTerms', a.search_terms || '');
+            
+            // Operating days
+            if (a.operating_days) {
+                const days = a.operating_days.split(',');
+                document.querySelectorAll('.oper-day-checkbox').forEach(cb => {
+                    cb.checked = days.includes(cb.value);
+                });
+            }
+            
+            // Pickup/Dropoff cities
+            if (a.pickup_from_city) {
+                const pickup = typeof a.pickup_from_city === 'string' ? JSON.parse(a.pickup_from_city) : a.pickup_from_city;
+                thSetVal('fAPickupCities', Array.isArray(pickup) ? pickup.join(', ') : '');
+            }
+            if (a.dropoff_city) {
+                const dropoff = typeof a.dropoff_city === 'string' ? JSON.parse(a.dropoff_city) : a.dropoff_city;
+                thSetVal('fADropoffCities', Array.isArray(dropoff) ? dropoff.join(', ') : '');
+            }
+            
+            // Inclusions/Exclusions
+            if (a.inclusions) {
+                const inclusions = typeof a.inclusions === 'string' ? JSON.parse(a.inclusions) : a.inclusions;
+                thSetVal('fAInclusions', Array.isArray(inclusions) ? inclusions.join('\n') : '');
+            }
+            if (a.exclusions) {
+                const exclusions = typeof a.exclusions === 'string' ? JSON.parse(a.exclusions) : a.exclusions;
+                thSetVal('fAExclusions', Array.isArray(exclusions) ? exclusions.join('\n') : '');
+            }
+            
+            // Images
+            if (a.images) {
+                const images = typeof a.images === 'string' ? JSON.parse(a.images) : a.images;
+                thSetVal('fAImages', Array.isArray(images) ? images.map(img => img.url).join('\n') : '');
+            }
+            
+            // Tags
             pendingTags = td.tags || [];
             renderTagChips();
-            // Parse short_description as JSON array of points
+            
+            // Description points
             let points = [];
-            try { points = JSON.parse(a.short_description || '[]'); if (!Array.isArray(points)) points = []; }
-            catch(e) {
-                if (a.short_description) points = [{ time: '', description: a.short_description }];
+            try { 
+                points = JSON.parse(a.short_description || '[]'); 
+                if (!Array.isArray(points)) points = [];
+                // পুরনো ডাটার জন্য backward compatibility
+                if (points.length === 0 && a.short_description && typeof a.short_description === 'string') {
+                    // চেক করুন এটা পুরনো format কিনা (plain text)
+                    if (!a.short_description.startsWith('[') && !a.short_description.startsWith('{')) {
+                        points = [{ time: '', duration: '', description: a.short_description }];
+                    }
+                }
+                // নিশ্চিত করুন প্রতিটি পয়েন্টে duration field আছে
+                points = points.map(p => ({ 
+                    time: p.time || '', 
+                    duration: p.duration || '', 
+                    description: p.description || '' 
+                }));
+            } catch(e) {
+                if (a.short_description) {
+                    points = [{ time: '', duration: '', description: a.short_description }];
+                }
             }
             renderDescPoints(points);
         }
 
-        // Bind tag events (re-bind each open to avoid stale closures)
+        // Bind tag events
         const btnAddTag = document.getElementById('btnAddTag');
         btnAddTag.onclick = () => {
             const preset = thVal('tagPreset');
@@ -535,7 +753,8 @@ const MdActivities = (() => {
     }
 
     function renderTagChips() {
-        const el = document.getElementById('tagChips'); if (!el) return;
+        const el = document.getElementById('tagChips'); 
+        if (!el) return;
         el.innerHTML = pendingTags.length
             ? pendingTags.map((t,i) => `
                 <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#50BC81]/15 text-[#2e9460] border border-[#50BC81]/30">
@@ -545,40 +764,97 @@ const MdActivities = (() => {
                 </span>`).join('')
             : '<span class="text-xs text-gray-300 italic">No tags yet</span>';
     }
+    
     async function _edit(sys_id) { await openActForm(sys_id); }
 
     async function saveActivity() {
         const cSel  = document.getElementById('fACountry');
         const cName = cSel.options[cSel.selectedIndex]?.dataset?.name || '';
-        const body  = {
+        const citySel = document.getElementById('fACity');
+        const cityName = citySel.options[citySel.selectedIndex]?.dataset?.name || '';
+        
+        // Get operating days
+        const operatingDays = Array.from(document.querySelectorAll('.oper-day-checkbox:checked'))
+            .map(cb => cb.value).join(',');
+        
+        // Get description points
+        const descPoints = getDescPoints();
+        const shortDesc = JSON.stringify(descPoints);
+        
+        // Build long description from points
+        const longDesc = descPoints.map(p => {
+            let header = [];
+            if (p.time) header.push(`🕐 ${p.time}`);
+            if (p.duration) header.push(`⏱️ ${p.duration}`);
+            const headerText = header.length ? `**${header.join(' | ')}**` : '';
+            return headerText ? `${headerText}\n${p.description}` : p.description;
+        }).join('\n\n---\n\n');
+        
+        // Highlights from points with 'highlight' in time or first 3 points
+        const highlights = descPoints.filter(p => 
+            p.time.toLowerCase().includes('highlight') || 
+            p.duration.toLowerCase().includes('highlight') ||
+            p.description.toLowerCase().includes('highlight')
+        ).slice(0, 3).map(p => p.description.replace(/<[^>]*>/g, '').substring(0, 100)).join(', ');
+        
+        const body = {
             sys_id:            thVal('fASysId') || undefined,
             country_sys_id:    thVal('fACountry'),
             country_name:      cName,
-            type:              thVal('fAType'),
+            city_sys_id:       thVal('fACity') || undefined,
+            city_name:         cityName || thVal('fALocation'),
+            vendor_sys_id:     thVal('fAVendor') || undefined,
             name:              thVal('fAName'),
-            category:          thVal('fACat'),
-            location:          thVal('fALoc'),
+            search_terms:      thVal('fASearchTerms') || thVal('fAName'),
+            type:              thVal('fAType'),
+            category:          thVal('fACat') || undefined,
+            location:          thVal('fALocation') || undefined,
+            short_description: shortDesc,
+            long_description:  longDesc || undefined,
+            highlights:        highlights || undefined,
+            start_time:        thVal('fAStartTime') || undefined,
+            end_time:          thVal('fAEndTime') || undefined,
             duration_hours:    parseFloat(thVal('fADur') || 0),
+            duration_typical:  thVal('fADurTypical') || undefined,
+            operating_days:    operatingDays || undefined,
+            min_pax:           thVal('fAMinPax') ? parseInt(thVal('fAMinPax')) : null,
+            max_pax:           thVal('fAMaxPax') ? parseInt(thVal('fAMaxPax')) : null,
+            age_min:           thVal('fAAgeMin') ? parseInt(thVal('fAAgeMin')) : null,
+            languages:         thVal('fALanguages') || undefined,
+            meeting_point:     thVal('fAMeetingPoint') || undefined,
+            booking_lead_days: thVal('fABookingLead') ? parseInt(thVal('fABookingLead')) : null,
+            cancellation_policy: thVal('fACancelPolicy') || undefined,
             popularity:        parseInt(thVal('fAPop') || 3),
-            short_description: JSON.stringify(getDescPoints()),
-            min_pax:           thVal('fAMinPax') || undefined,
-            max_pax:           thVal('fAMaxPax') || undefined,
+            pickup_from_city:  thVal('fAPickupCities') ? thVal('fAPickupCities').split(',').map(s => s.trim()).filter(Boolean) : [],
+            dropoff_city:      thVal('fADropoffCities') ? thVal('fADropoffCities').split(',').map(s => s.trim()).filter(Boolean) : [],
+            itineraries:       [], // Can be extended if needed
+            inclusions:        thVal('fAInclusions') ? thVal('fAInclusions').split('\n').map(s => s.trim()).filter(Boolean) : [],
+            exclusions:        thVal('fAExclusions') ? thVal('fAExclusions').split('\n').map(s => s.trim()).filter(Boolean) : [],
+            images:            thVal('fAImages') ? thVal('fAImages').split('\n').map((url, idx) => ({
+                url: url.trim(),
+                caption: '',
+                sort_order: idx,
+                is_primary: idx === 0
+            })).filter(img => img.url) : [],
         };
+        
         if (!body.name)           return thToast('Activity name required', 'error');
         if (!body.country_sys_id) return thToast('Country required', 'error');
 
         document.getElementById('btnASave').disabled = true;
         const res = await thApi(`${API_BASE}api/masterdata/activities/save.php`, 'POST', body);
         document.getElementById('btnASave').disabled = false;
+        
         if (!res.success) return thToast(res.message || 'Error', 'error');
 
-        // Save tags (fire-and-forget — non-blocking)
+        // Save tags
         const actSysId = res.sys_id || thVal('fASysId');
-        if (actSysId) {
-            thApi(`${API_BASE}api/masterdata/activities/tag-save.php`, 'POST', {
+        if (actSysId && pendingTags.length) {
+            await thApi(`${API_BASE}api/masterdata/activities/tag-save.php`, 'POST', {
                 activity_sys_id: actSysId,
                 tags: pendingTags,
-            }).then(() => loadTagFilter());  // refresh tag filter dropdown
+            });
+            loadTagFilter();
         }
 
         thToast(res.message || 'Saved!');
@@ -597,12 +873,8 @@ const MdActivities = (() => {
     async function _variants(sys_id, name, country_sys_id) {
         st.viewActivity        = sys_id;
         st.viewActivityCountry = country_sys_id;
-
-        // ── এই line যোগ করো:
         const country = countriesCache.find(c => c.sys_id === country_sys_id);
         st.viewActivityCurrency = country?.currency_code || '';
-        // ──────────────────────
-
         document.getElementById('varPanelTitle').textContent = name;
         document.getElementById('varForm').classList.add('hidden');
         thOpenModal('varPanel');
@@ -612,15 +884,12 @@ const MdActivities = (() => {
     async function loadVariants(activity_sys_id) {
         const el = document.getElementById('varList');
         el.innerHTML = '<div class="text-center py-6 text-gray-300"><i class="fa-solid fa-spinner fa-spin"></i></div>';
-
         const d = await thApi(`${API_BASE}api/masterdata/activities/variant-list.php?activity_sys_id=${activity_sys_id}&status=active`);
         const variants = d.data || [];
-
         if (!variants.length) {
             el.innerHTML = '<p class="text-sm text-gray-400 italic py-2">No variants yet. Add one below.</p>';
             return;
         }
-
         el.innerHTML = variants.map(v => `
             <div class="bg-white rounded-xl border border-gray-200 px-4 py-3">
                 <div class="flex items-start justify-between gap-4 mb-2">
@@ -643,7 +912,6 @@ const MdActivities = (() => {
                     ${v.meal_dinner    ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Dinner</span>' : ''}
                     ${v.ticket_included? '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ticket</span>' : ''}
                     ${v.guide_included ? `<span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Guide${v.guide_language?' ('+esc(v.guide_language)+')':''}</span>` : ''}
-                    ${v.markup_value > 0 ? `<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">+${v.markup_value}${v.markup_type==='percent'?'%':' flat'}</span>` : ''}
                 </div>
                 <div class="flex gap-2">
                     <button onclick="MdActivities._editVariant('${v.sys_id}')"
@@ -658,9 +926,7 @@ const MdActivities = (() => {
             </div>`).join('');
     }
 
-    // ── Variant Form ──────────────────────────────────────────────────
     function openVarForm(v = null) {
-        // Clear form
         ['fVSysId','fVName','fVCcy','fVCost','fVSell','fVChild','fVGuideLang','fVCapMin','fVCapMax'].forEach(id => thSetVal(id,''));
         thSetVal('fVBasis', 'per_pax');
         thSetVal('fVMkType', 'percent');
@@ -670,7 +936,6 @@ const MdActivities = (() => {
             const el = document.getElementById(id); if (el) el.checked = false;
         });
         document.getElementById('varFormTitle').textContent = v ? 'Edit Variant' : 'Add Variant';
-
         if (v) {
             thSetVal('fVSysId',     v.sys_id);
             thSetVal('fVName',      v.variant_name);
@@ -685,21 +950,15 @@ const MdActivities = (() => {
             thSetVal('fVCapMin',    v.capacity_min   || '');
             thSetVal('fVCapMax',    v.capacity_max   || '');
             thSetVal('fVGuideLang', v.guide_language || '');
-            const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
-            setCheck('fVMealB', v.meal_breakfast);
-            setCheck('fVMealL', v.meal_lunch);
-            setCheck('fVMealD', v.meal_dinner);
-            setCheck('fVTicket', v.ticket_included);
-            setCheck('fVGuide',  v.guide_included);
+            document.getElementById('fVMealB').checked = !!v.meal_breakfast;
+            document.getElementById('fVMealL').checked = !!v.meal_lunch;
+            document.getElementById('fVMealD').checked = !!v.meal_dinner;
+            document.getElementById('fVTicket').checked = !!v.ticket_included;
+            document.getElementById('fVGuide').checked = !!v.guide_included;
         }
-
         if (!v) {
-            // নতুন variant — country থেকে auto-fill
-            const cSel = document.getElementById('fACountry');
-            const autoCcy = cSel?.options[cSel.selectedIndex]?.dataset?.currency || '';
             thSetVal('fVCcy', st.viewActivityCurrency || '');
         }
-
         document.getElementById('varForm').classList.remove('hidden');
         document.getElementById('varForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -710,7 +969,6 @@ const MdActivities = (() => {
     }
 
     async function _editVariant(sys_id) {
-        // Load variant data then open form
         const d = await thApi(`${API_BASE}api/masterdata/activities/variant-list.php?activity_sys_id=${st.viewActivity}&status=active`);
         const v = (d.data || []).find(x => x.sys_id === sys_id);
         if (!v) return thToast('Variant not found', 'error');
@@ -722,13 +980,10 @@ const MdActivities = (() => {
         const currencyCode = thVal('fVCcy').toUpperCase();
         const netCost  = parseFloat(thVal('fVCost') || 0);
         const sellPrice = parseFloat(thVal('fVSell') || 0);
-
-        // Validations matching variant-save.php requirements
         if (!variantName)   return thToast('Variant name required', 'error');
         if (!currencyCode)  return thToast('Currency code required', 'error');
         if (netCost <= 0)   return thToast('Net cost must be greater than 0', 'error');
         if (!sellPrice)     return thToast('Sell price required', 'error');
-
         const body = {
             sys_id:           thVal('fVSysId') || undefined,
             activity_sys_id:  st.viewActivity,
@@ -745,20 +1000,17 @@ const MdActivities = (() => {
             capacity_min:     thVal('fVCapMin') ? parseInt(thVal('fVCapMin')) : undefined,
             capacity_max:     thVal('fVCapMax') ? parseInt(thVal('fVCapMax')) : undefined,
             guide_language:   thVal('fVGuideLang') || undefined,
-            // checkbox fields
             meal_breakfast:   document.getElementById('fVMealB')?.checked ? 1 : 0,
             meal_lunch:       document.getElementById('fVMealL')?.checked ? 1 : 0,
             meal_dinner:      document.getElementById('fVMealD')?.checked ? 1 : 0,
             ticket_included:  document.getElementById('fVTicket')?.checked ? 1 : 0,
             guide_included:   document.getElementById('fVGuide')?.checked  ? 1 : 0,
         };
-
         document.getElementById('btnVSave').disabled = true;
         document.getElementById('btnVSave').textContent = 'Saving…';
         const res = await thApi(`${API_BASE}api/masterdata/activities/variant-save.php`, 'POST', body);
         document.getElementById('btnVSave').disabled = false;
         document.getElementById('btnVSave').textContent = 'Save Variant';
-
         if (!res.success) return thToast(res.message || 'Error saving variant', 'error');
         thToast(res.action === 'created' ? 'Variant added!' : 'Variant updated!');
         _cancelVarForm();
@@ -777,39 +1029,58 @@ const MdActivities = (() => {
         const container = document.getElementById('descPointsContainer');
         container.innerHTML = '';
         if (!points.length) {
-            addDescPoint(); // always start with at least one row
+            addDescPoint();
             return;
         }
-        points.forEach(p => addDescPoint(p.time || '', p.description || ''));
+        points.forEach(p => addDescPoint(p.time || '', p.description || '', p.duration || ''));
     }
 
-    function addDescPoint(time = '', description = '') {
+    function addDescPoint(time = '', description = '', duration = '') {
         const container = document.getElementById('descPointsContainer');
         const row = document.createElement('div');
-        row.className = 'desc-point-row flex gap-2 items-start';
+        row.className = 'desc-point-row flex gap-2 items-start mb-3';
         row.innerHTML = `
-            <input type="text" placeholder="Time (optional)"
-                class="th-input desc-point-time flex-shrink-0"
-                style="width:130px" value="${esc(time)}">
-            <div class="quill-wrap flex-1">
-                <div class="desc-point-quill"></div>
+            <div class="flex items-start gap-4 w-full">
+                
+                <!-- বাম পাশের অংশ: Time এবং Duration (একটির নিচে আরেকটি) -->
+                <div class="flex-shrink-0 flex flex-col gap-2" style="width: 200px;">
+                    <input type="text" placeholder="Time (e.g., 09:00 AM)"
+                        class="th-input desc-point-time text-sm w-full" 
+                        value="${esc(time)}">
+                        
+                    <input type="text" placeholder="Duration (e.g., 2 hours)"
+                        class="th-input desc-point-duration text-sm w-full" 
+                        value="${esc(duration)}">
+                </div>
+
+                <!-- ডান পাশের অংশ: Text Editor (বাকি পুরো জায়গা নিবে) -->
+                <div class="quill-wrap flex-1">
+                    <div class="desc-point-quill" style="min-height: 86px;"></div>
+                </div>
+
             </div>
             <button type="button" onclick="this.closest('.desc-point-row').remove()"
                 class="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-50 transition">
                 <i class="fa-solid fa-xmark text-xs"></i>
             </button>`;
         container.appendChild(row);
-
-        // Init Quill — wait for library if still loading
+        
         const initQuill = () => {
             const q = new Quill(row.querySelector('.desc-point-quill'), {
                 theme: 'snow',
                 placeholder: 'Description…',
-                modules: { toolbar: [['bold','italic','underline'],['bullet']] }
+                modules: { 
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                    ] 
+                }
             });
             if (description) q.clipboard.dangerouslyPasteHTML(description);
             row._quill = q;
         };
+        
         if (typeof Quill !== 'undefined') {
             initQuill();
         } else {
@@ -820,19 +1091,33 @@ const MdActivities = (() => {
     function getDescPoints() {
         return [...document.querySelectorAll('.desc-point-row')].map(row => {
             const time = row.querySelector('.desc-point-time').value.trim();
+            const duration = row.querySelector('.desc-point-duration').value.trim();
             const description = row._quill ? row._quill.root.innerHTML.trim() : '';
-            // Treat empty editor (<p><br></p>) as blank
             const isEmpty = !description || description === '<p><br></p>';
-            return { time, description: isEmpty ? '' : description };
+            return { 
+                time, 
+                duration,
+                description: isEmpty ? '' : description 
+            };
         }).filter(p => p.description);
     }
 
-    // ── Escape HTML ───────────────────────────────────────────────────
+    // ── Utilities ───────────────────────────────────────────────────
     function esc(s) {
         return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function _rmTag(i) { pendingTags.splice(i, 1); renderTagChips(); }
 
-    return { init, _page, _edit, _del, _variants, _editVariant, _delVariant, _cancelVarForm, _rmTag };
+    return { 
+        init, _page, _edit, _del, _variants, _editVariant, 
+        _delVariant, _cancelVarForm, _rmTag 
+    };
 })();
+
+// Initialize when DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => MdActivities.init());
+} else {
+    MdActivities.init();
+}
