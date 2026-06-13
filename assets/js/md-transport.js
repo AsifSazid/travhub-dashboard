@@ -301,17 +301,20 @@ const MdTransport = (() => {
         const cSel = document.getElementById('fTCountry');
         const autoCcy = cSel?.options[cSel.selectedIndex]?.dataset?.currency || '';
         pendingVariants.push({
-            sys_id:        '',
-            variant_name:  '',
-            vehicle_class: 'van',
-            capacity_max:  6,
-            price_basis:   'per_vehicle',
-            transfer_type: 'private',
-            currency_code: autoCcy,
-            net_cost:      0,
-            markup_type:   'percent',
-            markup_value:  0,
-            sell_price:    0,
+            sys_id:           '',
+            variant_name:     '',
+            vehicle_class:    'van',
+            capacity_max:     6,
+            seat_count:       null,
+            max_luggage_kg:   null,
+            max_luggage_bags: null,
+            price_basis:      'per_vehicle',
+            transfer_type:    'private',
+            currency_code:    autoCcy,
+            net_cost:         0,
+            markup_type:      'percent',
+            markup_value:     0,
+            sell_price:       0,
         });
         renderVariantList();
     }
@@ -324,7 +327,7 @@ const MdTransport = (() => {
         }
         el.innerHTML = pendingVariants.map((v, i) => `
             <div class="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
-                <!-- Row 1: name, class, pax, currency -->
+                <!-- Row 1: name, class, pax, seats -->
                 <div class="grid grid-cols-4 gap-2">
                     <div>
                         <div class="text-xs text-gray-400 mb-1">Variant Name <span class="text-red-400">*</span></div>
@@ -343,6 +346,27 @@ const MdTransport = (() => {
                         <input class="th-input text-xs" type="number" min="1" placeholder="6"
                             value="${v.capacity_max}"
                             oninput="MdTransport._vSet(${i},'capacity_max',parseInt(this.value)||1)">
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 mb-1">Seat Count</div>
+                        <input class="th-input text-xs" type="number" min="1" placeholder="e.g. 7"
+                            value="${v.seat_count||''}"
+                            oninput="MdTransport._vSet(${i},'seat_count',parseInt(this.value)||null)">
+                    </div>
+                </div>
+                <!-- Row 1b: luggage + currency -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <div class="text-xs text-gray-400 mb-1">Max Luggage (KG)</div>
+                        <input class="th-input text-xs" type="number" min="0" placeholder="e.g. 20"
+                            value="${v.max_luggage_kg||''}"
+                            oninput="MdTransport._vSet(${i},'max_luggage_kg',parseInt(this.value)||null)">
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 mb-1">Max Luggage (Bags)</div>
+                        <input class="th-input text-xs" type="number" min="0" placeholder="e.g. 2"
+                            value="${v.max_luggage_bags||''}"
+                            oninput="MdTransport._vSet(${i},'max_luggage_bags',parseInt(this.value)||null)">
                     </div>
                     <div>
                         <div class="text-xs text-gray-400 mb-1">Currency <span class="text-red-400">*</span></div>
@@ -443,19 +467,22 @@ const MdTransport = (() => {
             // Load existing variants
             const vd = await thApi(`${API_BASE}api/masterdata/transport/variant-list.php?service_sys_id=${sys_id}&status=active`);
             pendingVariants = (vd.data || []).map(v => ({
-                sys_id:        v.sys_id        || '',
-                service_sys_id:v.service_sys_id|| sys_id,
-                country_sys_id:v.country_sys_id|| s.country_sys_id,
-                variant_name:  v.variant_name  || '',
-                vehicle_class: v.vehicle_class || 'van',
-                capacity_max:  v.capacity_max  || 1,
-                price_basis:   v.price_basis   || 'per_vehicle',
-                transfer_type: v.transfer_type || 'private',
-                currency_code: v.currency_code || '',
-                net_cost:      parseFloat(v.net_cost     || 0),
-                markup_type:   v.markup_type   || 'percent',
-                markup_value:  parseFloat(v.markup_value || 0),
-                sell_price:    parseFloat(v.sell_price   || 0),
+                sys_id:           v.sys_id         || '',
+                service_sys_id:   v.service_sys_id || sys_id,
+                country_sys_id:   v.country_sys_id || s.country_sys_id,
+                variant_name:     v.variant_name   || '',
+                vehicle_class:    v.vehicle_class  || 'van',
+                capacity_max:     v.capacity_max   || 1,
+                seat_count:       v.seat_count      != null ? parseInt(v.seat_count)      : null,
+                max_luggage_kg:   v.max_luggage_kg  != null ? parseInt(v.max_luggage_kg)  : null,
+                max_luggage_bags: v.max_luggage_bags!= null ? parseInt(v.max_luggage_bags): null,
+                price_basis:      v.price_basis     || 'per_vehicle',
+                transfer_type:    v.transfer_type   || 'private',
+                currency_code:    v.currency_code   || '',
+                net_cost:         parseFloat(v.net_cost     || 0),
+                markup_type:      v.markup_type     || 'percent',
+                markup_value:     parseFloat(v.markup_value || 0),
+                sell_price:       parseFloat(v.sell_price   || 0),
             }));
         }
 
@@ -522,19 +549,22 @@ const MdTransport = (() => {
                 }
 
                 const vBody = {
-                    sys_id:         v.sys_id         || undefined,
-                    service_sys_id: v.service_sys_id || serviceSysId,
-                    country_sys_id: v.country_sys_id || countrySysId,
-                    variant_name:   v.variant_name,
-                    vehicle_class:  v.vehicle_class,
-                    capacity_max:   v.capacity_max,
-                    price_basis:    v.price_basis,
-                    transfer_type:  v.transfer_type,
-                    currency_code:  v.currency_code,
-                    net_cost:       v.net_cost,
-                    markup_type:    v.markup_type,
-                    markup_value:   v.markup_value,
-                    sell_price:     v.sell_price,
+                    sys_id:           v.sys_id         || undefined,
+                    service_sys_id:   v.service_sys_id || serviceSysId,
+                    country_sys_id:   v.country_sys_id || countrySysId,
+                    variant_name:     v.variant_name,
+                    vehicle_class:    v.vehicle_class,
+                    capacity_max:     v.capacity_max,
+                    seat_count:       v.seat_count       ?? undefined,
+                    max_luggage_kg:   v.max_luggage_kg   ?? undefined,
+                    max_luggage_bags: v.max_luggage_bags ?? undefined,
+                    price_basis:      v.price_basis,
+                    transfer_type:    v.transfer_type,
+                    currency_code:    v.currency_code,
+                    net_cost:         v.net_cost,
+                    markup_type:      v.markup_type,
+                    markup_value:     v.markup_value,
+                    sell_price:       v.sell_price,
                 };
 
                 const vRes = await thApi(`${API_BASE}api/masterdata/transport/variant-save.php`, 'POST', vBody);

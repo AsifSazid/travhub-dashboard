@@ -1,4 +1,5 @@
 <?php
+// api/masterdata/activities/variant-save.php (Gen-3)
 // POST { sys_id?, activity_sys_id, country_sys_id,
 //         variant_name, transport_mode, meal_breakfast, meal_lunch, meal_dinner,
 //         ticket_included, guide_included, guide_language?,

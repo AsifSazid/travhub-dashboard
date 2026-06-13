@@ -18,16 +18,22 @@ const MdActivities = (() => {
     const TYPES        = ['tour','transfer','both'];
     const TRANSPORT_MODES = ['none','sic','sedan','suv','van','minibus','coach','boat'];
     const PRICE_BASES  = ['per_pax','per_group'];
+    const PREDEFINED_TAGS = [
+        'beach','family','adventure','luxury','honeymoon','cultural',
+        'sightseeing','nature','water_sports','theme_park','nightlife',
+        'shopping','religious','wildlife','city_tour',
+    ];
 
     const st = {
-        page: 1, limit: 12, search: '', country: '', type: '', status: 'active',
+        page: 1, limit: 12, search: '', country: '', type: '', tag: '', status: 'active',
         timer: null, viewActivity: null, viewActivityCountry: null, viewActivityCurrency: ''
     };
 
     let countriesCache = [];
+    let pendingTags    = [];   // tags being edited in the form
 
     // ── Init ──────────────────────────────────────────────────────────
-    function init() { renderShell(); bindEvents(); loadCountries().then(load); }
+    function init() { renderShell(); bindEvents(); loadCountries().then(() => { loadTagFilter(); load(); }); }
 
     async function loadCountries() {
         const d = await thApi(`${API_BASE}api/masterdata/countries/list.php?limit=200&status=active&for_package=1`);
@@ -44,6 +50,15 @@ const MdActivities = (() => {
                 `<option value="${c.sys_id}" data-name="${esc(c.name)}" data-currency="${c.currency_code}">${esc(c.name)}</option>`
             ).join('');
         });
+    }
+
+    async function loadTagFilter() {
+        const d  = await thApi(`${API_BASE}api/masterdata/activities/tag-list.php?all=1`);
+        const el = document.getElementById('fltTag'); if (!el) return;
+        const usedTags = (d.data || []).map(t => t.tag);
+        const allTags  = [...new Set([...PREDEFINED_TAGS, ...usedTags])].sort();
+        el.innerHTML   = `<option value="">All Tags</option>` +
+            allTags.map(t => `<option value="${t}">${t.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>`).join('');
     }
 
     // ── Shell ─────────────────────────────────────────────────────────
@@ -75,6 +90,10 @@ const MdActivities = (() => {
                     class="text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#50BC81] bg-white">
                     <option value="">All Types</option>
                     ${TYPES.map(t => `<option value="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+                </select>
+                <select id="fltTag"
+                    class="text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#50BC81] bg-white">
+                    <option value="">All Tags</option>
                 </select>
                 <div class="flex gap-2">
                     ${['active','trash'].map(t => `
@@ -139,6 +158,27 @@ const MdActivities = (() => {
                     </div>
                 </div>
 
+                <!-- Tags -->
+                <div>
+                    <label class="th-label mb-2 block">Tags</label>
+                    <div class="flex flex-wrap gap-1.5 mb-2" id="tagChips">
+                        <!-- populated by renderTagChips() -->
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <select id="tagPreset" class="th-input text-xs flex-1">
+                            <option value="">Pick predefined tag…</option>
+                            ${PREDEFINED_TAGS.map(t=>`<option class="uppercase" value="${t}">${t.replace(/_/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase())}</option>`).join('')}
+                        </select>
+                        <div class="grid grid-cols-3 col-span-2 gap-2">
+                            <input id="tagCustom" class="th-input col-span-2 text-xs w-36" placeholder="Custom tag…" maxlength="30">
+                            <button id="btnAddTag" type="button"
+                                class="px-3 py-2 rounded-xl text-xs font-semibold bg-[#50BC81] hover:bg-[#3da868] text-white transition flex-shrink-0">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="th-label">City / Location</label>
@@ -162,9 +202,14 @@ const MdActivities = (() => {
                 </div>
 
                 <div>
-                    <label class="th-label">Short Description</label>
-                    <textarea id="fADesc" rows="2" class="th-input resize-none"
-                        placeholder="Brief description for catalog listing…"></textarea>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="th-label mb-0">Description Points</label>
+                        <button type="button" id="btnAddDescPoint"
+                            class="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-[#50BC81]/10 text-[#50BC81] hover:bg-[#50BC81]/20 transition">
+                            <i class="fa-solid fa-plus text-xs"></i> Add Point
+                        </button>
+                    </div>
+                    <div id="descPointsContainer" class="space-y-2"></div>
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
@@ -303,10 +348,30 @@ const MdActivities = (() => {
           </div>
         </div>`;
 
+        // Load Quill if not already present
+        if (!document.getElementById('quill-css')) {
+            const ql = document.createElement('link');
+            ql.id = 'quill-css'; ql.rel = 'stylesheet';
+            ql.href = 'https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css';
+            document.head.appendChild(ql);
+        }
+        if (!document.getElementById('quill-js')) {
+            const qs = document.createElement('script');
+            qs.id = 'quill-js';
+            qs.src = 'https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js';
+            document.head.appendChild(qs);
+        }
+
         document.head.insertAdjacentHTML('beforeend', `<style>
             .th-label{display:block;font-size:.75rem;font-weight:600;color:#4b5563;margin-bottom:.375rem}
             .th-input{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.75rem;font-size:.875rem;outline:none;background:#fff}
             .th-input:focus{border-color:#50BC81;box-shadow:0 0 0 2px rgba(80,188,129,.25)}
+            .desc-point-row .ql-toolbar.ql-snow{border:none;border-bottom:1px solid #e5e7eb;padding:4px 6px;border-radius:.75rem .75rem 0 0;background:#f9fafb;}
+            .desc-point-row .ql-container.ql-snow{border:none;font-size:.875rem;border-radius:0 0 .75rem .75rem;min-height:60px;}
+            .desc-point-row .ql-editor{min-height:60px;padding:.5rem .75rem;}
+            .desc-point-row .ql-editor.ql-blank::before{color:#9ca3af;font-style:normal;}
+            .desc-point-row .quill-wrap{border:1px solid #e5e7eb;border-radius:.75rem;overflow:hidden;flex:1;background:#fff;transition:border-color .15s,box-shadow .15s;}
+            .desc-point-row .quill-wrap:focus-within{border-color:#50BC81;box-shadow:0 0 0 2px rgba(80,188,129,.25);}
         </style>`);
     }
 
@@ -316,6 +381,7 @@ const MdActivities = (() => {
         document.getElementById('btnASave').onclick       = saveActivity;
         document.getElementById('btnVSave').onclick       = saveVariant;
         document.getElementById('btnAddVar').onclick      = () => openVarForm();
+        document.getElementById('btnAddDescPoint').onclick = () => addDescPoint();
 
         document.getElementById('srch').oninput = e => {
             clearTimeout(st.timer);
@@ -323,6 +389,7 @@ const MdActivities = (() => {
         };
         document.getElementById('fltCountry').onchange = e => { st.country = e.target.value; st.page = 1; load(); };
         document.getElementById('fltType').onchange    = e => { st.page = 1; load(); };
+        document.getElementById('fltTag').onchange     = e => { st.tag = e.target.value; st.page = 1; load(); };
 
         document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
             st.status = b.dataset.tab; st.page = 1;
@@ -346,7 +413,8 @@ const MdActivities = (() => {
             page: st.page, limit: st.limit, search: st.search,
             country_sys_id: st.country, status: st.status,
         });
-        if (type) p.append('type', type);
+        if (type)   p.append('type', type);
+        if (st.tag) p.append('tag',  st.tag);
 
         const data = await thApi(`${API_BASE}api/masterdata/activities/list.php?${p}`);
         document.getElementById('tLoading').classList.add('hidden');
@@ -383,7 +451,11 @@ const MdActivities = (() => {
                     ${esc(a.city_name||a.country_name||'')}
                     ${a.duration_hours ? ' · ' + a.duration_hours + 'h' : ''}
                 </div>
-                <div class="text-xs text-yellow-500 mb-3">${stars}</div>
+                <div class="text-xs text-yellow-500 mb-2">${stars}</div>
+                ${a.tags?.length ? `<div class="flex flex-wrap gap-1 mb-3">
+                    ${a.tags.slice(0,4).map(t=>`<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#50BC81]/15 text-[#2e9460]">${t.replace(/_/g,' ')}</span>`).join('')}
+                    ${a.tags.length>4?`<span class="px-2 py-0.5 rounded-full text-[10px] text-gray-400">+${a.tags.length-4}</span>`:''}
+                </div>` : '<div class="mb-3"></div>'}
                 <div class="flex items-center gap-2">
                     <button onclick="MdActivities._variants('${a.sys_id}','${esc(a.name)}','${a.country_sys_id}')"
                         class="flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#1A2039]/10 text-[#1A2039] hover:bg-[#1A2039]/20 transition">
@@ -409,13 +481,19 @@ const MdActivities = (() => {
 
     // ── Activity CRUD ─────────────────────────────────────────────────
     async function openActForm(sys_id = null) {
-        ['fASysId','fAName','fACat','fALoc','fADesc','fAMinPax','fAMaxPax'].forEach(id => thSetVal(id,''));
+        ['fASysId','fAName','fACat','fALoc','fAMinPax','fAMaxPax'].forEach(id => thSetVal(id,''));
         thSetVal('fAType', 'tour'); thSetVal('fADur', '0'); thSetVal('fAPop', '3'); thSetVal('fACountry', '');
+        renderDescPoints([]);
+        pendingTags = [];
+        renderTagChips();
         document.getElementById('actModalTitle').textContent = sys_id ? 'Edit Activity' : 'Add Activity';
 
         if (sys_id) {
             thSetVal('fASysId', sys_id);
-            const d = await thApi(`${API_BASE}api/masterdata/activities/get.php?sys_id=${sys_id}`);
+            const [d, td] = await Promise.all([
+                thApi(`${API_BASE}api/masterdata/activities/get.php?sys_id=${sys_id}`),
+                thApi(`${API_BASE}api/masterdata/activities/tag-list.php?activity_sys_id=${sys_id}`),
+            ]);
             if (!d.success) return thToast('Failed to load', 'error');
             const a = d.data;
             thSetVal('fACountry', a.country_sys_id);
@@ -425,11 +503,47 @@ const MdActivities = (() => {
             thSetVal('fALoc',     a.location       || a.city_name || '');
             thSetVal('fADur',     a.duration_hours || 0);
             thSetVal('fAPop',     a.popularity     || 3);
-            thSetVal('fADesc',    a.short_description || '');
             thSetVal('fAMinPax',  a.min_pax || '');
             thSetVal('fAMaxPax',  a.max_pax || '');
+            // Load existing tags
+            pendingTags = td.tags || [];
+            renderTagChips();
+            // Parse short_description as JSON array of points
+            let points = [];
+            try { points = JSON.parse(a.short_description || '[]'); if (!Array.isArray(points)) points = []; }
+            catch(e) {
+                if (a.short_description) points = [{ time: '', description: a.short_description }];
+            }
+            renderDescPoints(points);
         }
+
+        // Bind tag events (re-bind each open to avoid stale closures)
+        const btnAddTag = document.getElementById('btnAddTag');
+        btnAddTag.onclick = () => {
+            const preset = thVal('tagPreset');
+            const custom = thVal('tagCustom').toLowerCase().replace(/[^a-z0-9_]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+            const tag    = preset || custom;
+            if (!tag) { thToast('Pick or type a tag', 'warning'); return; }
+            if (pendingTags.includes(tag)) { thToast('Tag already added', 'warning'); return; }
+            pendingTags.push(tag);
+            renderTagChips();
+            thSetVal('tagPreset', '');
+            thSetVal('tagCustom', '');
+        };
+
         thOpenModal('actModal');
+    }
+
+    function renderTagChips() {
+        const el = document.getElementById('tagChips'); if (!el) return;
+        el.innerHTML = pendingTags.length
+            ? pendingTags.map((t,i) => `
+                <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#50BC81]/15 text-[#2e9460] border border-[#50BC81]/30">
+                    ${t.replace(/_/g,' ')}
+                    <button type="button" onclick="MdActivities._rmTag(${i})"
+                        class="ml-0.5 hover:text-red-500 transition leading-none">×</button>
+                </span>`).join('')
+            : '<span class="text-xs text-gray-300 italic">No tags yet</span>';
     }
     async function _edit(sys_id) { await openActForm(sys_id); }
 
@@ -446,7 +560,7 @@ const MdActivities = (() => {
             location:          thVal('fALoc'),
             duration_hours:    parseFloat(thVal('fADur') || 0),
             popularity:        parseInt(thVal('fAPop') || 3),
-            short_description: thVal('fADesc'),
+            short_description: JSON.stringify(getDescPoints()),
             min_pax:           thVal('fAMinPax') || undefined,
             max_pax:           thVal('fAMaxPax') || undefined,
         };
@@ -457,6 +571,16 @@ const MdActivities = (() => {
         const res = await thApi(`${API_BASE}api/masterdata/activities/save.php`, 'POST', body);
         document.getElementById('btnASave').disabled = false;
         if (!res.success) return thToast(res.message || 'Error', 'error');
+
+        // Save tags (fire-and-forget — non-blocking)
+        const actSysId = res.sys_id || thVal('fASysId');
+        if (actSysId) {
+            thApi(`${API_BASE}api/masterdata/activities/tag-save.php`, 'POST', {
+                activity_sys_id: actSysId,
+                tags: pendingTags,
+            }).then(() => loadTagFilter());  // refresh tag filter dropdown
+        }
+
         thToast(res.message || 'Saved!');
         thCloseModal('actModal');
         load();
@@ -648,10 +772,67 @@ const MdActivities = (() => {
         await loadVariants(st.viewActivity);
     }
 
+    // ── Description Points ────────────────────────────────────────────
+    function renderDescPoints(points = []) {
+        const container = document.getElementById('descPointsContainer');
+        container.innerHTML = '';
+        if (!points.length) {
+            addDescPoint(); // always start with at least one row
+            return;
+        }
+        points.forEach(p => addDescPoint(p.time || '', p.description || ''));
+    }
+
+    function addDescPoint(time = '', description = '') {
+        const container = document.getElementById('descPointsContainer');
+        const row = document.createElement('div');
+        row.className = 'desc-point-row flex gap-2 items-start';
+        row.innerHTML = `
+            <input type="text" placeholder="Time (optional)"
+                class="th-input desc-point-time flex-shrink-0"
+                style="width:130px" value="${esc(time)}">
+            <div class="quill-wrap flex-1">
+                <div class="desc-point-quill"></div>
+            </div>
+            <button type="button" onclick="this.closest('.desc-point-row').remove()"
+                class="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-50 transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>`;
+        container.appendChild(row);
+
+        // Init Quill — wait for library if still loading
+        const initQuill = () => {
+            const q = new Quill(row.querySelector('.desc-point-quill'), {
+                theme: 'snow',
+                placeholder: 'Description…',
+                modules: { toolbar: [['bold','italic','underline'],['bullet']] }
+            });
+            if (description) q.clipboard.dangerouslyPasteHTML(description);
+            row._quill = q;
+        };
+        if (typeof Quill !== 'undefined') {
+            initQuill();
+        } else {
+            document.getElementById('quill-js').addEventListener('load', initQuill, { once: true });
+        }
+    }
+
+    function getDescPoints() {
+        return [...document.querySelectorAll('.desc-point-row')].map(row => {
+            const time = row.querySelector('.desc-point-time').value.trim();
+            const description = row._quill ? row._quill.root.innerHTML.trim() : '';
+            // Treat empty editor (<p><br></p>) as blank
+            const isEmpty = !description || description === '<p><br></p>';
+            return { time, description: isEmpty ? '' : description };
+        }).filter(p => p.description);
+    }
+
     // ── Escape HTML ───────────────────────────────────────────────────
     function esc(s) {
         return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    return { init, _page, _edit, _del, _variants, _editVariant, _delVariant, _cancelVarForm };
+    function _rmTag(i) { pendingTags.splice(i, 1); renderTagChips(); }
+
+    return { init, _page, _edit, _del, _variants, _editVariant, _delVariant, _cancelVarForm, _rmTag };
 })();

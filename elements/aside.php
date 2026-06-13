@@ -301,12 +301,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-person-hiking mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Activities</span>
                     </a>
-                    <a href="masterdata-cars.php"
-                        class="flex items-center p-3 rounded-lg
-                       <?= $currentPage == 'masterdata-cars.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                        <i class="fas fa-car mr-3"></i>
-                        <span class="sidebar-text transition-all duration-300">Cars</span>
-                    </a>
                     <a href="masterdata-components.php"
                         class="flex items-center p-3 rounded-lg
                        <?= $currentPage == 'masterdata-components.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
@@ -324,12 +318,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                        <?= $currentPage == 'masterdata-hotels.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-hotel mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Hotels</span>
-                    </a>
-                    <a href="masterdata-suppliers.php"
-                        class="flex items-center p-3 rounded-lg
-                       <?= $currentPage == 'masterdata-suppliers.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                        <i class="fa-solid fa-building mr-3"></i>
-                        <span class="sidebar-text transition-all duration-300">Suppliers</span>
                     </a>
                     <a href="masterdata-transport.php"
                         class="flex items-center p-3 rounded-lg
