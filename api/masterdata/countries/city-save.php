@@ -4,7 +4,7 @@ require_once '../../../server/api_bootstrap.php';
 require_once '../../../server/db_connection.php';
 require_once '../../../server/id_generator.php';
 require_once '../../../server/generate_meta_data.php';
-require_once '../../../server/json_sync.php';
+require_once '../../../server/json-sync-helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success'=>false,'message'=>'POST only']); exit;

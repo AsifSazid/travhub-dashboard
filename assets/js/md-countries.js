@@ -532,11 +532,20 @@ const MdCountries = (() => {
         document.getElementById('btnSave').disabled = false;
         if (!res.success) return toast('error', res.message || 'Error');
 
-        // Save cities for new country
-        if (res.action === 'created' && pendingCities.length) {
-            for (const city of pendingCities) {
+        // Save cities — both on create and edit
+        const targetSysId = res.sys_id || sys_id;
+        if (targetSysId && pendingCities.length) {
+            const citiesToSave = res.action === 'created'
+                ? pendingCities
+                : pendingCities.filter(c => !c.sys_id);
+            for (const city of citiesToSave) {
                 await thApi(`${API_BASE}api/masterdata/countries/city-save.php`, 'POST', {
-                    country_sys_id: res.sys_id, ...city,
+                    country_sys_id: targetSysId,
+                    name:           city.name,
+                    type:           city.type       || ['tourism'],
+                    popularity:     city.popularity || 3,
+                    cost_level:     city.cost_level || 'medium',
+                    visa_ease:      city.visa_ease  || 'medium',
                 });
             }
         }
