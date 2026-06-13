@@ -3,7 +3,7 @@ session_start();
 require_once '../../../server/api_bootstrap.php';
 require_once '../../../server/db_connection.php';
 require_once '../../../server/generate_meta_data.php';
-require_once '../../../server/json_sync.php';
+require_once '../../../server/json-sync-helper.php';
 
 $in      = json_decode(file_get_contents('php://input'), true) ?: [];
 $sys_id  = trim($in['sys_id'] ?? '');
