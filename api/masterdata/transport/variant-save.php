@@ -1,7 +1,7 @@
 <?php
 /**
  * api/masterdata/transport/variant-save.php (Gen-3)
- * POST { sys_id?, service_sys_id, country_sys_id, car_sys_id?,
+ * POST { sys_id?, service_sys_id, country_sys_id,
  *        variant_name, vehicle_class, capacity_max,
  *        seat_count?, max_luggage_kg?, max_luggage_bags?,
  *        price_basis, transfer_type, meet_and_greet,
@@ -23,7 +23,6 @@ $in = json_decode(file_get_contents('php://input'), true) ?: [];
 $sys_id          = trim($in['sys_id']          ?? '');
 $service_sys_id  = trim($in['service_sys_id']  ?? '');
 $country_sys_id  = trim($in['country_sys_id']  ?? '');
-$car_sys_id      = trim($in['car_sys_id']      ?? '');
 $vendor_sys_id   = trim($in['vendor_sys_id']   ?? '');
 $variant_name    = trim($in['variant_name']    ?? '');
 $vehicle_class   = trim($in['vehicle_class']   ?? 'van');
@@ -63,35 +62,34 @@ try {
 
         $pdo->prepare("
             INSERT INTO transport_variants
-                (uuid, sys_id, service_sys_id, country_sys_id, car_sys_id, vendor_sys_id,
+                (uuid, sys_id, service_sys_id, country_sys_id, vendor_sys_id,
                  variant_name, vehicle_class, capacity_max,
                  seat_count, max_luggage_kg, max_luggage_bags,
                  price_basis, transfer_type, meet_and_greet,
                  currency_code, net_cost, markup_type, markup_value, sell_price,
                  child_price, extra_charges, status, meta_data)
             VALUES
-                (:uuid,:sid,:ssid,:csid,:carsid,:vsid,
-                 :vname,:vc,:cmax,
-                 :sc,:mlkg,:mlbags,
-                 :pb,:tt,:mg,
-                 :cc,:nc,:mt,:mv,:sp,
-                 :cp,:ec,'active',:meta)
+                (:uuid, :sid, :ssid, :csid, :vsid,
+                 :vname, :vc, :cmax,
+                 :sc, :mlkg, :mlbags,
+                 :pb, :tt, :mg,
+                 :cc, :nc, :mt, :mv, :sp,
+                 :cp, :ec, 'active', :meta)
         ")->execute([
-            ':uuid'   => $uuid,       ':sid'    => $sys_id,
-            ':ssid'   => $service_sys_id,        ':csid'   => $country_sys_id,
-            ':carsid' => $car_sys_id ?: null,    ':vsid'   => $vendor_sys_id ?: null,
-            ':vname'  => $variant_name,           ':vc'     => $vehicle_class,
-            ':cmax'   => $capacity_max,
-            ':sc'     => $seat_count,             ':mlkg'   => $max_luggage_kg,
-            ':mlbags' => $max_luggage_bags,
-            ':pb'     => $price_basis,            ':tt'     => $transfer_type,
-            ':mg'     => $meet_and_greet,
-            ':cc'     => $currency_code,          ':nc'     => $net_cost,
-            ':mt'     => $markup_type,            ':mv'     => $markup_value,
-            ':sp'     => $sell_price,
-            ':cp'     => $child_price,
-            ':ec'     => json_encode($extra_charges, JSON_UNESCAPED_UNICODE),
-            ':meta'   => $meta,
+            ':uuid'    => $uuid,           ':sid'    => $sys_id,
+            ':ssid'    => $service_sys_id, ':csid'   => $country_sys_id, ':vsid'   => $vendor_sys_id,
+            ':vname'   => $variant_name,   ':vc'     => $vehicle_class,
+            ':cmax'    => $capacity_max,
+            ':sc'      => $seat_count,     ':mlkg'   => $max_luggage_kg,
+            ':mlbags'  => $max_luggage_bags,
+            ':pb'      => $price_basis,    ':tt'     => $transfer_type,
+            ':mg'      => $meet_and_greet,
+            ':cc'      => $currency_code,  ':nc'     => $net_cost,
+            ':mt'      => $markup_type,    ':mv'     => $markup_value,
+            ':sp'      => $sell_price,
+            ':cp'      => $child_price,
+            ':ec'      => json_encode($extra_charges, JSON_UNESCAPED_UNICODE),
+            ':meta'    => $meta,
         ]);
 
         echo json_encode(['success' => true, 'action' => 'created', 'sys_id' => $sys_id,
@@ -107,7 +105,6 @@ try {
 
         $pdo->prepare("
             UPDATE transport_variants SET
-                car_sys_id      = :carsid,
                 vendor_sys_id   = :vsid,
                 variant_name    = :vname,
                 vehicle_class   = :vc,
@@ -128,19 +125,19 @@ try {
                 meta_data       = :meta
             WHERE sys_id = :sid
         ")->execute([
-            ':carsid' => $car_sys_id ?: null,    ':vsid'   => $vendor_sys_id ?: null,
-            ':vname'  => $variant_name,           ':vc'     => $vehicle_class,
-            ':cmax'   => $capacity_max,
-            ':sc'     => $seat_count,             ':mlkg'   => $max_luggage_kg,
-            ':mlbags' => $max_luggage_bags,
-            ':pb'     => $price_basis,            ':tt'     => $transfer_type,
-            ':mg'     => $meet_and_greet,
-            ':cc'     => $currency_code,          ':nc'     => $net_cost,
-            ':mt'     => $markup_type,            ':mv'     => $markup_value,
-            ':sp'     => $sell_price,
-            ':cp'     => $child_price,
-            ':ec'     => json_encode($extra_charges, JSON_UNESCAPED_UNICODE),
-            ':meta'   => $meta,                   ':sid'    => $sys_id,
+            ':vsid'    => $vendor_sys_id,
+            ':vname'   => $variant_name,   ':vc'     => $vehicle_class,
+            ':cmax'    => $capacity_max,
+            ':sc'      => $seat_count,     ':mlkg'   => $max_luggage_kg,
+            ':mlbags'  => $max_luggage_bags,
+            ':pb'      => $price_basis,    ':tt'     => $transfer_type,
+            ':mg'      => $meet_and_greet,
+            ':cc'      => $currency_code,  ':nc'     => $net_cost,
+            ':mt'     => $markup_type,    ':mv'     => $markup_value,
+            ':sp'      => $sell_price,
+            ':cp'      => $child_price,
+            ':ec'      => json_encode($extra_charges, JSON_UNESCAPED_UNICODE),
+            ':meta'    => $meta,           ':sid'    => $sys_id,
         ]);
 
         echo json_encode(['success' => true, 'action' => 'updated', 'sys_id' => $sys_id,

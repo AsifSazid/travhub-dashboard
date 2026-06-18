@@ -11,12 +11,33 @@ const MdHotels = (() => {
         countriesCache=d.data||[];
         refreshCountrySelects();
     }
+    
     function refreshCountrySelects(){
         ['fltCountry','fHCountry'].forEach(id=>{
             const el=document.getElementById(id); if(!el)return;
             const label=id==='fltCountry'?'All Countries':'Select country';
             el.innerHTML=`<option value="">${label}</option>`+countriesCache.map(c=>`<option value="${c.sys_id}" data-name="${c.name}" data-currency="${c.currency_code}">${c.name}</option>`).join('');
         });
+    }
+
+    async function _loadCities(country_sys_id) {
+        const sel = document.getElementById('fHCity');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Loading...</option>';
+        if (!country_sys_id) {
+            sel.innerHTML = '<option value="">Select city</option>';
+            return;
+        }
+        // First try from countriesCache
+        const country = countriesCache.find(c => c.sys_id === country_sys_id);
+        let cities = country?.cities || [];
+        if (!cities.length) {
+            // Fallback: fetch from API
+            const d = await thApi(`${API_BASE}api/masterdata/countries/get.php?sys_id=${country_sys_id}`);
+            cities = d.data?.cities || [];
+        }
+        sel.innerHTML = '<option value="">Select city</option>' +
+            cities.map(c => `<option value="${c.sys_id}">${c.name}</option>`).join('');
     }
 
     function renderShell(){
@@ -50,10 +71,14 @@ const MdHotels = (() => {
             <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
                 <input type="hidden" id="fHSysId">
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="th-label">Country <span class="text-red-500">*</span></label><select id="fHCountry" class="th-input"></select></div>
+                    <div><label class="th-label">Country <span class="text-red-500">*</span></label><select id="fHCountry" class="th-input" onchange="MdHotels._loadCities(this.value)"></select></div>
                     <div><label class="th-label">Star Rating</label>
                         <select id="fHStars" class="th-input"><option value="">Unrated</option>${[1,2,3,4,5].map(s=>`<option value="${s}">${'⭐'.repeat(s)} ${s}-star</option>`).join('')}</select>
                     </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="th-label">City</label><select id="fHCity" class="th-input"><option value="">Select city</option></select></div>
+                    <div><!-- placeholder --></div>
                 </div>
                 <div><label class="th-label">Hotel Name <span class="text-red-500">*</span></label><input id="fHName" type="text" placeholder="Hotel name" class="th-input"></div>
                 <div class="grid grid-cols-2 gap-4">
@@ -210,34 +235,69 @@ const MdHotels = (() => {
     // Hotel CRUD
     async function openHotelForm(sys_id=null){
         ['fHSysId','fHName','fHAddr','fHPhone','fHEmail','fHDesc','fHStars','fHCi','fHCo'].forEach(id=>thSetVal(id,''));
-        thSetVal('fHCountry',''); document.getElementById('hotelModalTitle').textContent=sys_id?'Edit Hotel':'Add Hotel';
+        thSetVal('fHCountry','');
+        thSetVal('fHCity','');
+        document.getElementById('fHCity').innerHTML = '<option value="">Select city</option>';
+        document.getElementById('hotelModalTitle').textContent=sys_id?'Edit Hotel':'Add Hotel';
         if (sys_id){
             thSetVal('fHSysId',sys_id);
             const d=await thApi(`${API_BASE}api/masterdata/hotels/get.php?sys_id=${sys_id}`);
             const h=d.data;
-            thSetVal('fHCountry',h.country_sys_id); thSetVal('fHStars',h.star_rating||'');
-            thSetVal('fHName',h.name); thSetVal('fHAddr',h.address); thSetVal('fHPhone',h.phone);
-            thSetVal('fHEmail',h.email); thSetVal('fHDesc',h.description);
-            thSetVal('fHCi',h.check_in_time||''); thSetVal('fHCo',h.check_out_time||'');
+            thSetVal('fHCountry',h.country_sys_id); 
+            thSetVal('fHStars',h.star_rating||'');
+            thSetVal('fHName',h.name); 
+            thSetVal('fHAddr',h.address||''); 
+            thSetVal('fHPhone',h.phone||'');
+            thSetVal('fHEmail',h.email||''); 
+            thSetVal('fHDesc',h.description||'');
+            thSetVal('fHCi',h.check_in_time||''); 
+            thSetVal('fHCo',h.check_out_time||'');
+            
+            // Load cities and select saved city
+            if (h.country_sys_id) {
+                await _loadCities(h.country_sys_id);
+                if (h.city_sys_id) thSetVal('fHCity', h.city_sys_id);
+            }
         }
         thOpenModal('hotelModal');
     }
+    
     async function _edit(sys_id){await openHotelForm(sys_id);}
 
     async function saveHotel(){
         const cSel=document.getElementById('fHCountry');
         const cName=cSel.options[cSel.selectedIndex]?.dataset.name||'';
-        const body={sys_id:thVal('fHSysId')||undefined,country_sys_id:thVal('fHCountry'),country_name:cName,
-            name:thVal('fHName'),star_rating:thVal('fHStars')||undefined,
-            address:thVal('fHAddr'),phone:thVal('fHPhone'),email:thVal('fHEmail'),
-            description:thVal('fHDesc'),check_in_time:thVal('fHCi'),check_out_time:thVal('fHCo'),amenities:[],images:[]};
+        const ciSel=document.getElementById('fHCity');
+        const cityName=ciSel?.options[ciSel.selectedIndex]?.text||'';
+        const citySysId=thVal('fHCity')||'';
+        
+        const body={sys_id:thVal('fHSysId')||undefined,
+            country_sys_id:thVal('fHCountry'),
+            country_name:cName,
+            city_sys_id:citySysId || undefined,
+            city_name:(cityName && cityName!=='Select city' && cityName!=='Loading...') ? cityName : undefined,
+            name:thVal('fHName'),
+            star_rating:thVal('fHStars')||undefined,
+            address:thVal('fHAddr'),
+            phone:thVal('fHPhone'),
+            email:thVal('fHEmail'),
+            description:thVal('fHDesc'),
+            check_in_time:thVal('fHCi'),
+            check_out_time:thVal('fHCo'),
+            amenities:[],
+            images:[]};
         if (!body.name) return thToast('Hotel name required','error');
+        if (!body.country_sys_id) return thToast('Country required','error');
+        
         document.getElementById('btnHSave').disabled=true;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/save.php`,'POST',body);
         document.getElementById('btnHSave').disabled=false;
         if (!res.success) return thToast(res.message||'Error','error');
-        thToast(res.message||'Saved!'); thCloseModal('hotelModal'); load();
+        thToast(res.message||'Saved!'); 
+        thCloseModal('hotelModal'); 
+        load();
     }
+    
     async function _del(sys_id){
         if (!thConfirm('Delete this hotel?')) return;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/delete.php`,'POST',{sys_id});
@@ -299,6 +359,7 @@ const MdHotels = (() => {
         if (sys_id) thSetVal('fRTSysId',sys_id);
         thOpenModal('rtModal');
     }
+    
     async function saveRoomType(){
         const hotel_sys_id=thVal('fRTHotelSysId');
         const hotelName = document.getElementById('detailTitle')?.textContent || '';
@@ -313,11 +374,13 @@ const MdHotels = (() => {
         if (!res.success) return thToast(res.message||'Error','error');
         thToast(res.message||'Saved!'); thCloseModal('rtModal'); await loadRoomTypes(hotel_sys_id);
     }
+    
     async function _delRoomType(sys_id){
         if (!thConfirm('Delete this room type?')) return;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-type-delete.php`,'POST',{sys_id});
         thToast(res.message||'Deleted'); await loadRoomTypes(st.viewHotel);
     }
+    
     function _addRate(room_type_sys_id, hotel_sys_id){
         ['fRRSysId'].forEach(id=>thSetVal(id,''));
         thSetVal('fRRRoomTypeSysId',room_type_sys_id);
@@ -340,6 +403,7 @@ const MdHotels = (() => {
         document.getElementById('rrModalTitle').textContent='Add Room Rate';
         thOpenModal('rrModal');
     }
+    
     async function saveRoomRate(){
         const body={sys_id:thVal('fRRSysId')||undefined,
             room_type_sys_id:thVal('fRRRoomTypeSysId'),hotel_sys_id:thVal('fRRHotelSysId'),
@@ -354,11 +418,12 @@ const MdHotels = (() => {
         if (!res.success) return thToast(res.message||'Error','error');
         thToast(res.message||'Rate saved!'); thCloseModal('rrModal'); await loadRates(body.room_type_sys_id);
     }
+    
     async function _delRate(sys_id, room_type_sys_id){
         if (!thConfirm('Delete this rate?')) return;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-rate-delete.php`,'POST',{sys_id});
         thToast(res.message||'Deleted'); await loadRates(room_type_sys_id);
     }
 
-    return {init,_page,_edit,_del,_detail,_addRate,_delRoomType,_delRate};
+    return {init,_page,_edit,_del,_detail,_addRate,_delRoomType,_delRate,_loadCities};
 })();

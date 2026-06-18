@@ -1,5 +1,5 @@
 <?php
-/** server/ai.php — Claude API wrapper */
+/** server/ai-claude.php — Claude API wrapper */
 function _claudeApiKey(): string {
     static $key = null;
     if ($key !== null) return $key;

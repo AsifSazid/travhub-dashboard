@@ -1,0 +1,16 @@
+{
+    "hotels": [
+        {
+            "sys_id": "THR-HTL-26-00K001",
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
+            "city_sys_id": "THR-26-CNT-1R-CTS-01",
+            "city_name": "Seoul",
+            "name": "Ibis Hotel",
+            "star_rating": 3,
+            "check_in_time": "14:00:00",
+            "check_out_time": "11:00:00",
+            "thumb": null
+        }
+    ]
+}

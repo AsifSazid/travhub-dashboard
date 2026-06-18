@@ -218,6 +218,7 @@ function processFilesWithGemini($files, $category)
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
+            CURLOPT_TIMEOUT => 120,
             CURLOPT_POSTFIELDS => json_encode($requestData),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json']
         ]);

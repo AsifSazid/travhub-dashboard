@@ -1,5 +1,5 @@
 <?php
-// POST { sys_id?, component_sys_id, supplier_sys_id?,
+// POST { sys_id?, component_sys_id,
 //         variant_name, unit_basis, currency_code,
 //         net_cost, markup_type, markup_value, sell_price, attributes? }
 session_start();
@@ -12,7 +12,6 @@ if ($_SERVER['REQUEST_METHOD']!=='POST'){echo json_encode(['success'=>false,'mes
 $in=json_decode(file_get_contents('php://input'),true)?:[];
 $sys_id           =trim($in['sys_id']           ??'');
 $component_sys_id =trim($in['component_sys_id'] ??'');
-$supplier_sys_id  =trim($in['supplier_sys_id']  ??'');
 $variant_name     =trim($in['variant_name']      ??'');
 $unit_basis       =trim($in['unit_basis']         ??'per_pax');
 $currency_code    =strtoupper(trim($in['currency_code']??'BDT'));
@@ -33,10 +32,10 @@ try {
         $ids=generateChildIDs($pdo,'component_variants',$component_sys_id);
         $sys_id=$ids['sys_id']; $uuid=$ids['uuid'];
         $meta=buildMetaData(null,$_SESSION['user_name']??'system');
-        $pdo->prepare("INSERT INTO component_variants (uuid,sys_id,component_sys_id,supplier_sys_id,variant_name,unit_basis,currency_code,net_cost,markup_type,markup_value,sell_price,attributes,status,meta_data)
-            VALUES(:uuid,:sid,:csid,:ssid,:vname,:ub,:cc,:nc,:mt,:mv,:sp,:attr,'active',:meta)")
+        $pdo->prepare("INSERT INTO component_variants (uuid,sys_id,component_sys_id,variant_name,unit_basis,currency_code,net_cost,markup_type,markup_value,sell_price,attributes,status,meta_data)
+            VALUES(:uuid,:sid,:csid,:vname,:ub,:cc,:nc,:mt,:mv,:sp,:attr,'active',:meta)")
         ->execute([':uuid'=>$uuid,':sid'=>$sys_id,':csid'=>$component_sys_id,
-            ':ssid'=>$supplier_sys_id?:null,':vname'=>$variant_name,':ub'=>$unit_basis,
+            ':vname'=>$variant_name,':ub'=>$unit_basis,
             ':cc'=>$currency_code,':nc'=>$net_cost,':mt'=>$markup_type,
             ':mv'=>$markup_value,':sp'=>$sell_price,
             ':attr'=>json_encode($attributes,JSON_UNESCAPED_UNICODE),':meta'=>$meta]);
@@ -46,8 +45,8 @@ try {
         $row->execute([$sys_id]); $existing=$row->fetch();
         if (!$existing){echo json_encode(['success'=>false,'message'=>'Not found']);exit;}
         $meta=buildMetaData($existing['meta_data'],$_SESSION['user_name']??'system');
-        $pdo->prepare("UPDATE component_variants SET supplier_sys_id=:ssid,variant_name=:vname,unit_basis=:ub,currency_code=:cc,net_cost=:nc,markup_type=:mt,markup_value=:mv,sell_price=:sp,attributes=:attr,meta_data=:meta WHERE sys_id=:sid")
-        ->execute([':ssid'=>$supplier_sys_id?:null,':vname'=>$variant_name,':ub'=>$unit_basis,
+        $pdo->prepare("UPDATE component_variants SET variant_name=:vname,unit_basis=:ub,currency_code=:cc,net_cost=:nc,markup_type=:mt,markup_value=:mv,sell_price=:sp,attributes=:attr,meta_data=:meta WHERE sys_id=:sid")
+        ->execute([':vname'=>$variant_name,':ub'=>$unit_basis,
             ':cc'=>$currency_code,':nc'=>$net_cost,':mt'=>$markup_type,
             ':mv'=>$markup_value,':sp'=>$sell_price,
             ':attr'=>json_encode($attributes,JSON_UNESCAPED_UNICODE),':meta'=>$meta,':sid'=>$sys_id]);

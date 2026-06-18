@@ -7,52 +7,28 @@ if (empty($ip_port)) {
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tour Packages</title>
-    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packages — TravHub</title>
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png">
     <script src="../assets/tailwind/script.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
-
 <body class="bg-gray-50 font-sans">
-    <!-- Top Navigation -->
     <?php include '../elements/header.php'; ?>
-
-    <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
-
-    <!-- Preview Modal -->
     <?php include '../elements/preview-model.php'; ?>
-
-    <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300">
-        <!-- PackagesList.init() will inject content here -->
-    </main>
-
-    <!-- Floating Quick Access Tab -->
+    <main id="mainContent" class="pt-16 pb-16 pl-64 md:pb-0 md:pl-16 lg:pl-64 transition-all duration-300"></main>
     <?php include '../elements/floating-menus.php'; ?>
-
-    <!-- Custom JavaScript Library -->
     <script>
-        const time = Date.now();
+        const API_BASE = "<?php echo $ip_port; ?>";
     </script>
-
-    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
-    <script src="../assets/js/pdf-generator.js?time=<?php echo time(); ?>"></script>
-    <script src="../assets/js/packages-list.js?time=<?php echo time(); ?>"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            PackagesList.init();
-        });
-    </script>
+    <script src="../assets/js/script.js?t=<?php echo time(); ?>"></script>
+    <script src="../assets/js/th-utils.js?t=<?php echo time(); ?>"></script>
+    <script src="../assets/js/pkg-list.js?t=<?php echo time(); ?>"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => PkgList.init());</script>
 </body>
-
 </html>

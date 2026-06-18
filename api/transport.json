@@ -1,0 +1,15 @@
+{
+    "transport": [
+        {
+            "sys_id": "THR-26-CNT-1R-TRS-01",
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
+            "name": "Airport To Hotel",
+            "type": "airport_transfer",
+            "from_city_name": "Seoul",
+            "to_city_name": "Seoul",
+            "direction": "one_way",
+            "duration_typical": "1"
+        }
+    ]
+}

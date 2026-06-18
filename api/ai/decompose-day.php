@@ -6,9 +6,9 @@
  * Returns structured JSON per §7.2 contract.
  */
 session_start();
-require_once '../../../server/api_bootstrap.php';
-require_once '../../../server/db_connection.php';
-require_once '../../../server/ai-gemini.php';
+require_once '../../server/api_bootstrap.php';
+require_once '../../server/db_connection.php';
+require_once '../../server/ai-gemini.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success'=>false,'message'=>'POST only']); exit;

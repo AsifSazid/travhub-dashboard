@@ -350,12 +350,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-table-list mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Lists</span>
                     </a>
-                    <a href="package-calculation.php"
-                        class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'package-calculation.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                        <i class="fa-solid fa-calculator mr-3"></i>
-                        <span class="sidebar-text transition-all duration-300">Calculation</span>
-                    </a>
                 </div>
             </div>
             

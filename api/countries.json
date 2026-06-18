@@ -3427,6 +3427,18 @@
         },
         {
             "id": 209,
+            "sys_id": "THR-26-CNT-1X-CTS-05",
+            "name": "Pattaya",
+            "country_id": 69,
+            "type": [
+                "tourism"
+            ],
+            "popularity": 3,
+            "cost_level": "medium",
+            "visa_ease": "medium"
+        },
+        {
+            "id": 210,
             "sys_id": "THR-26-CNT-1Y-CTS-01",
             "name": "Istanbul",
             "country_id": 70,
@@ -3440,7 +3452,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 210,
+            "id": 211,
             "sys_id": "THR-26-CNT-1Y-CTS-02",
             "name": "Ankara",
             "country_id": 70,
@@ -3453,7 +3465,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 211,
+            "id": 212,
             "sys_id": "THR-26-CNT-1Y-CTS-03",
             "name": "Antalya",
             "country_id": 70,
@@ -3465,7 +3477,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 212,
+            "id": 213,
             "sys_id": "THR-26-CNT-1Z-CTS-01",
             "name": "Dubai",
             "country_id": 71,
@@ -3479,7 +3491,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 213,
+            "id": 214,
             "sys_id": "THR-26-CNT-1Z-CTS-02",
             "name": "Abu Dhabi",
             "country_id": 71,
@@ -3493,7 +3505,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 214,
+            "id": 215,
             "sys_id": "THR-26-CNT-1Z-CTS-03",
             "name": "Sharjah",
             "country_id": 71,
@@ -3506,7 +3518,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 215,
+            "id": 216,
             "sys_id": "THR-26-CNT-20-CTS-01",
             "name": "London",
             "country_id": 72,
@@ -3520,7 +3532,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 216,
+            "id": 217,
             "sys_id": "THR-26-CNT-20-CTS-02",
             "name": "Manchester",
             "country_id": 72,
@@ -3533,7 +3545,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 217,
+            "id": 218,
             "sys_id": "THR-26-CNT-20-CTS-03",
             "name": "Edinburgh",
             "country_id": 72,
@@ -3546,7 +3558,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 218,
+            "id": 219,
             "sys_id": "THR-26-CNT-21-CTS-01",
             "name": "New York",
             "country_id": 73,
@@ -3560,7 +3572,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 219,
+            "id": 220,
             "sys_id": "THR-26-CNT-21-CTS-02",
             "name": "Los Angeles",
             "country_id": 73,
@@ -3573,7 +3585,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 220,
+            "id": 221,
             "sys_id": "THR-26-CNT-21-CTS-03",
             "name": "Chicago",
             "country_id": 73,
@@ -3586,7 +3598,7 @@
             "visa_ease": "hard"
         },
         {
-            "id": 221,
+            "id": 222,
             "sys_id": "THR-26-CNT-22-CTS-01",
             "name": "Vatican City",
             "country_id": 74,
@@ -3599,7 +3611,7 @@
             "visa_ease": "medium"
         },
         {
-            "id": 222,
+            "id": 223,
             "sys_id": "THR-26-CNT-22-CTS-02",
             "name": "St. Peter's Square",
             "country_id": 74,
@@ -3611,7 +3623,7 @@
             "visa_ease": "medium"
         },
         {
-            "id": 223,
+            "id": 224,
             "sys_id": "THR-26-CNT-22-CTS-03",
             "name": "Vatican Museums",
             "country_id": 74,
@@ -3623,7 +3635,7 @@
             "visa_ease": "medium"
         },
         {
-            "id": 224,
+            "id": 225,
             "sys_id": "THR-26-CNT-23-CTS-01",
             "name": "Ho Chi Minh City",
             "country_id": 75,
@@ -3636,7 +3648,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 225,
+            "id": 226,
             "sys_id": "THR-26-CNT-23-CTS-02",
             "name": "Hanoi",
             "country_id": 75,
@@ -3649,7 +3661,7 @@
             "visa_ease": "easy"
         },
         {
-            "id": 226,
+            "id": 227,
             "sys_id": "THR-26-CNT-23-CTS-03",
             "name": "Da Nang",
             "country_id": 75,

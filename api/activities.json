@@ -1,15 +1,54 @@
 {
     "activities": [
         {
+            "sys_id": "THR-26-CNT-1R-ACT-03",
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
+            "city_sys_id": "THR-26-CNT-1R-CTS-03",
+            "city_name": "Jeju",
+            "name": "Jeju Island Highlights Tour",
+            "type": "tour",
+            "category": "Sightseeing",
+            "duration_hours": 7.5,
+            "popularity": 3,
+            "thumb": null
+        },
+        {
+            "sys_id": "THR-26-CNT-1R-ACT-01",
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
+            "city_sys_id": "THR-26-CNT-1R-CTS-01",
+            "city_name": "Seoul",
+            "name": "Nami Island Tour",
+            "type": "tour",
+            "category": "nature,beach,adventure,sightseeing",
+            "duration_hours": 8,
+            "popularity": 5,
+            "thumb": "https:\/\/dynamic-media.tacdn.com\/media\/photo-o\/2f\/ab\/a4\/2a\/caption.jpg?w=700&h=500&s=1"
+        },
+        {
+            "sys_id": "THR-26-CNT-1R-ACT-02",
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
+            "city_sys_id": "THR-26-CNT-1R-CTS-03",
+            "city_name": "Jeju",
+            "name": "Sea Walking",
+            "type": "tour",
+            "category": "water_sports",
+            "duration_hours": 0,
+            "popularity": 3,
+            "thumb": null
+        },
+        {
             "sys_id": "THR-26-CNT-1X-ACT-01",
             "country_sys_id": "THR-26-CNT-1X",
             "country_name": "Thailand",
-            "city_sys_id": null,
-            "city_name": null,
-            "name": "City Tour",
+            "city_sys_id": "THR-26-CNT-1X-CTS-02",
+            "city_name": "Phuket",
+            "name": "Phi Phi Islands Exploration Tour",
             "type": "tour",
-            "category": "Tour",
-            "duration_hours": 8,
+            "category": "nature,beach,adventure,sightseeing,wildlife",
+            "duration_hours": 0,
             "popularity": 3,
             "thumb": null
         }

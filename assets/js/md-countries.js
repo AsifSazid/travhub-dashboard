@@ -532,7 +532,7 @@ const MdCountries = (() => {
         document.getElementById('btnSave').disabled = false;
         if (!res.success) return toast('error', res.message || 'Error');
 
-        // Save cities — both on create and edit
+        // Save cities for new country
         const targetSysId = res.sys_id || sys_id;
         if (targetSysId && pendingCities.length) {
             const citiesToSave = res.action === 'created'

@@ -25,7 +25,8 @@ const MdActivities = (() => {
     let countriesCache = [];
     let citiesCache = [];
     let vendorsCache = [];
-    let pendingTags = [];
+    let pendingTags     = [];
+    let pendingVariants = []; // AI-extracted variants queued for auto-save after activity save
 
     // ── Init ──────────────────────────────────────────────────────────
     function init() { 
@@ -207,20 +208,16 @@ const MdActivities = (() => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="th-label">Category</label>
-                        <input id="fACat" type="text" placeholder="Sightseeing, Cultural, Adventure…" class="th-input">
+                        <input id="fACat" type="text" placeholder="e.g. sightseeing, cultural, adventure" class="th-input">
                     </div>
                     <div>
-                        <label class="th-label">Search Terms (comma separated)</label>
-                        <input id="fASearchTerms" type="text" placeholder="bangkok, temple, tour, private" class="th-input">
+                        <label class="th-label">Search Terms</label>
+                        <input id="fASearchTerms" type="text" placeholder="Extra keywords for search" class="th-input">
                     </div>
                 </div>
 
-                <!-- Location & Duration -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="th-label">Location</label>
-                        <input id="fALocation" type="text" placeholder="Specific location" class="th-input">
-                    </div>
+                <!-- Duration -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="th-label">Duration (hours)</label>
                         <input id="fADur" type="number" step="0.5" min="0" placeholder="8" class="th-input">
@@ -229,6 +226,12 @@ const MdActivities = (() => {
                         <label class="th-label">Duration (typical text)</label>
                         <input id="fADurTypical" type="text" placeholder="Full day" class="th-input">
                     </div>
+                </div>
+
+                <!-- Short Description -->
+                <div>
+                    <label class="th-label">Short Description</label>
+                    <textarea id="fAShortDesc" rows="2" placeholder="Brief summary of the activity (shown in listings)..." class="th-input" style="resize:vertical;"></textarea>
                 </div>
 
                 <!-- Time Fields -->
@@ -256,34 +259,6 @@ const MdActivities = (() => {
                     </div>
                 </div>
 
-                <!-- Pax & Age -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="th-label">Min Pax</label>
-                        <input id="fAMinPax" type="number" min="1" placeholder="1" class="th-input">
-                    </div>
-                    <div>
-                        <label class="th-label">Max Pax</label>
-                        <input id="fAMaxPax" type="number" min="1" placeholder="50" class="th-input">
-                    </div>
-                    <div>
-                        <label class="th-label">Min Age</label>
-                        <input id="fAAgeMin" type="number" min="0" placeholder="5" class="th-input">
-                    </div>
-                </div>
-
-                <!-- Languages & Meeting Point -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="th-label">Languages (comma separated)</label>
-                        <input id="fALanguages" type="text" placeholder="English, Thai, Chinese" class="th-input">
-                    </div>
-                    <div>
-                        <label class="th-label">Meeting Point</label>
-                        <input id="fAMeetingPoint" type="text" placeholder="Hotel lobby or specific location" class="th-input">
-                    </div>
-                </div>
-
                 <!-- Booking Lead & Popularity -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -294,12 +269,6 @@ const MdActivities = (() => {
                         <label class="th-label">Popularity (1–5)</label>
                         <input id="fAPop" type="number" min="1" max="5" value="3" class="th-input">
                     </div>
-                </div>
-
-                <!-- Cancellation Policy -->
-                <div>
-                    <label class="th-label">Cancellation Policy</label>
-                    <textarea id="fACancelPolicy" rows="2" placeholder="Free cancellation up to 24 hours before" class="th-input"></textarea>
                 </div>
 
                 <!-- Pickup & Dropoff Cities -->
@@ -345,18 +314,6 @@ const MdActivities = (() => {
                     <div id="descPointsContainer" class="space-y-2"></div>
                 </div>
 
-                <!-- Inclusions & Exclusions -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="th-label">Inclusions (comma separated)</label>
-                        <textarea id="fAInclusions" rows="3" placeholder="Hotel pickup, Professional guide, Lunch, Entrance fees" class="th-input"></textarea>
-                    </div>
-                    <div>
-                        <label class="th-label">Exclusions (comma separated)</label>
-                        <textarea id="fAExclusions" rows="3" placeholder="Personal expenses, Alcoholic drinks, Tips" class="th-input"></textarea>
-                    </div>
-                </div>
-
                 <!-- Images -->
                 <div>
                     <label class="th-label">Images (URLs, one per line)</label>
@@ -400,10 +357,8 @@ const MdActivities = (() => {
                             <input id="fVName" type="text" placeholder="e.g. SIC with Lunch" class="th-input">
                         </div>
                         <div>
-                            <label class="th-label">Price Basis</label>
-                            <select id="fVBasis" class="th-input">
-                                ${PRICE_BASES.map(p => `<option value="${p}">${p.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>`).join('')}
-                            </select>
+                            <label class="th-label">Vendor (optional)</label>
+                            <input id="fVVendor" type="text" placeholder="Vendor sys_id" class="th-input">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
@@ -444,11 +399,10 @@ const MdActivities = (() => {
                             </select>
                         </div>
                         <div>
-                            <label class="th-label">Capacity</label>
-                            <div class="flex gap-2">
-                                <input id="fVCapMin" type="number" min="1" placeholder="Min" class="th-input">
-                                <input id="fVCapMax" type="number" min="1" placeholder="Max" class="th-input">
-                            </div>
+                            <label class="th-label">Price Basis</label>
+                            <select id="fVBasis" class="th-input">
+                                ${PRICE_BASES.map(p => `<option value="${p}">${p.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>`).join('')}
+                            </select>
                         </div>
                     </div>
                     <div>
@@ -465,6 +419,69 @@ const MdActivities = (() => {
                     <div>
                         <label class="th-label">Guide Language</label>
                         <input id="fVGuideLang" type="text" placeholder="English, Thai…" class="th-input">
+                    </div>
+                    <!-- Pax, Age & Capacity -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="th-label">Min Pax</label>
+                            <input id="fVMinPax" type="number" min="1" placeholder="1" class="th-input">
+                        </div>
+                        <div>
+                            <label class="th-label">Max Pax</label>
+                            <input id="fVMaxPax" type="number" min="1" placeholder="50" class="th-input">
+                        </div>
+                        <div>
+                            <label class="th-label">Min Age</label>
+                            <input id="fVAgeMin" type="number" min="0" placeholder="5" class="th-input">
+                        </div>
+                        <div>
+                            <label class="th-label">Capacity (Min–Max)</label>
+                            <div class="flex gap-1">
+                                <input id="fVCapMin" type="number" min="1" placeholder="Min" class="th-input">
+                                <input id="fVCapMax" type="number" min="1" placeholder="Max" class="th-input">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Location & Meeting Point -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="th-label">Location / Venue</label>
+                            <input id="fVLocation" type="text" placeholder="e.g. Grand Palace, Bangkok" class="th-input">
+                        </div>
+                        <div>
+                            <label class="th-label">Meeting Point</label>
+                            <input id="fVMeetingPoint" type="text" placeholder="e.g. Hotel lobby" class="th-input">
+                        </div>
+                    </div>
+                    <!-- Languages & Season -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="th-label">Languages</label>
+                            <input id="fVLanguages" type="text" placeholder="English, Thai, Arabic…" class="th-input">
+                        </div>
+                        <div>
+                            <label class="th-label">Season</label>
+                            <div class="flex gap-2">
+                                <input id="fVSeasonFrom" type="date" class="th-input" title="Season From">
+                                <input id="fVSeasonTo"   type="date" class="th-input" title="Season To">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Inclusions & Exclusions -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="th-label">Inclusions (one per line)</label>
+                            <textarea id="fVInclusions" rows="3" placeholder="Hotel pickup&#10;Professional guide&#10;Lunch&#10;Entrance fees" class="th-input"></textarea>
+                        </div>
+                        <div>
+                            <label class="th-label">Exclusions (one per line)</label>
+                            <textarea id="fVExclusions" rows="3" placeholder="Personal expenses&#10;Alcoholic drinks&#10;Tips" class="th-input"></textarea>
+                        </div>
+                    </div>
+                    <!-- Cancellation Policy -->
+                    <div>
+                        <label class="th-label">Cancellation Policy</label>
+                        <textarea id="fVCancelPolicy" rows="2" placeholder="Free cancellation up to 24 hours before" class="th-input"></textarea>
                     </div>
                     <div class="flex gap-2 justify-end pt-1">
                         <button onclick="MdActivities._cancelVarForm()"
@@ -483,9 +500,161 @@ const MdActivities = (() => {
                 </button>
             </div>
           </div>
-        </div>`;
+        </div>
 
-        // Load Quill
+        <!-- ── Choice Modal ───────────────────────────────────────────── -->
+        <div id="choiceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6">
+            <h2 class="text-lg font-bold text-[#1A2039] mb-1">Add Activity</h2>
+            <p class="text-xs text-gray-400 mb-5">Choose how you want to add the activity</p>
+            <div class="space-y-3">
+              <button id="choiceManual"
+                class="w-full flex items-center gap-4 px-4 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1A2039] hover:bg-gray-50 transition text-left group">
+                <span class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#1A2039]/10 group-hover:bg-[#1A2039]/20 flex-shrink-0">
+                  <i class="fa-solid fa-pen text-[#1A2039]"></i>
+                </span>
+                <div>
+                  <div class="font-semibold text-gray-800 text-sm">Manual Entry</div>
+                  <div class="text-xs text-gray-400 mt-0.5">Fill the form yourself</div>
+                </div>
+              </button>
+              <button id="choiceAI"
+                class="w-full flex items-center gap-4 px-4 py-4 rounded-xl border-2 border-[#50BC81]/40 hover:border-[#50BC81] hover:bg-[#50BC81]/5 transition text-left group">
+                <span class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#50BC81]/15 group-hover:bg-[#50BC81]/25 flex-shrink-0">
+                  <i class="fa-solid fa-wand-magic-sparkles text-[#50BC81]"></i>
+                </span>
+                <div>
+                  <div class="font-semibold text-gray-800 text-sm">AI Extraction <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#50BC81] text-white">NEW</span></div>
+                  <div class="text-xs text-gray-400 mt-0.5">Paste text, upload image, PDF or YouTube link</div>
+                </div>
+              </button>
+            </div>
+            <button onclick="thCloseModal('choiceModal')"
+              class="mt-4 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition">Cancel</button>
+          </div>
+        </div>
+
+        <!-- ── AI Input Modal ─────────────────────────────────────────── -->
+        <div id="aiInputModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div class="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+              <div>
+                <h2 class="text-lg font-bold text-[#1A2039]">AI Activity Extractor</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Paste text, upload an image, PDF, or provide a YouTube link</p>
+              </div>
+              <button onclick="thCloseModal('aiInputModal')"
+                class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+              <!-- Tabs -->
+              <div class="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                ${[['aiTabText','fa-align-left','Text'],['aiTabImage','fa-image','Image'],['aiTabPdf','fa-file-pdf','PDF'],['aiTabYoutube','fa-brands fa-youtube','YouTube']].map(([id,icon,lbl],i) => `
+                <button id="${id}" data-panel="aiPanel${['Text','Image','Pdf','Youtube'][i]}"
+                  class="ai-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition
+                    ${i===0?'bg-white text-[#1A2039] shadow-sm':'text-gray-500 hover:text-gray-700'}">
+                  <i class="fa-solid ${icon} text-xs"></i> ${lbl}
+                </button>`).join('')}
+              </div>
+
+              <!-- Text Panel -->
+              <div id="aiPanelText" class="ai-panel">
+                <label class="th-label">Activity Description / Brochure Text</label>
+                <textarea id="aiInputText" rows="10"
+                  placeholder="Paste any activity description, brochure content, tour details, pricing info, itinerary...&#10;&#10;Example:&#10;Bangkok City & Temples Tour — Full Day&#10;Price: THB 1,200/pax (SIC) | THB 3,500 (Private)&#10;Includes: Hotel pickup, Lunch, Guide&#10;08:00 AM – Hotel pickup&#10;09:00 AM – Grand Palace visit (2 hours)..."
+                  class="th-input" style="resize:vertical;"></textarea>
+              </div>
+
+              <!-- Image Panel -->
+              <div id="aiPanelImage" class="ai-panel hidden space-y-3">
+                <div>
+                  <label class="th-label">Upload Image</label>
+                  <input type="file" id="aiImageFile" accept="image/*"
+                    class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#1A2039] file:text-white hover:file:bg-[#252d4a] cursor-pointer">
+                  <p class="text-xs text-gray-400 mt-1">JPG, PNG, WebP — max 10MB</p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 h-px bg-gray-200"></div>
+                  <span class="text-xs text-gray-400">or</span>
+                  <div class="flex-1 h-px bg-gray-200"></div>
+                </div>
+                <div>
+                  <label class="th-label">Image URL</label>
+                  <input id="aiImageUrl" type="url" placeholder="https://example.com/activity-brochure.jpg" class="th-input">
+                </div>
+                <div>
+                  <label class="th-label">Additional Context (optional)</label>
+                  <input id="aiImageContext" type="text" placeholder="Any extra details about this activity..." class="th-input">
+                </div>
+              </div>
+
+              <!-- PDF Panel -->
+              <div id="aiPanelPdf" class="ai-panel hidden">
+                <label class="th-label">Upload PDF Brochure / Document</label>
+                <input type="file" id="aiPdfFile" accept="application/pdf"
+                  class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#1A2039] file:text-white hover:file:bg-[#252d4a] cursor-pointer">
+                <p class="text-xs text-gray-400 mt-1">PDF only — max 20MB</p>
+                <div class="mt-3">
+                  <label class="th-label">Additional Context (optional)</label>
+                  <input id="aiPdfContext" type="text" placeholder="Any extra details..." class="th-input">
+                </div>
+              </div>
+
+              <!-- YouTube Panel -->
+              <div id="aiPanelYoutube" class="ai-panel hidden space-y-3">
+                <div>
+                  <label class="th-label">YouTube Video URL</label>
+                  <input id="aiYoutubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." class="th-input">
+                  <p class="text-xs text-gray-400 mt-1">Gemini will analyze the video content directly</p>
+                </div>
+                <div>
+                  <label class="th-label">Additional Context (optional)</label>
+                  <input id="aiYoutubeContext" type="text" placeholder="e.g. Focus on pricing and inclusions" class="th-input">
+                </div>
+              </div>
+
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
+              <button onclick="thCloseModal('aiInputModal')"
+                class="px-5 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button id="btnAiExtract"
+                class="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold bg-[#50BC81] hover:bg-[#3da868] text-white transition shadow-sm">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Extract with AI
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── AI Preview Modal ───────────────────────────────────────── -->
+        <div id="aiPreviewModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div class="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+              <div>
+                <h2 class="text-lg font-bold text-[#1A2039]">AI Extraction Result</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Review what was extracted, then confirm to populate the form</p>
+              </div>
+              <button onclick="thCloseModal('aiPreviewModal')"
+                class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+            <div id="aiPreviewBody" class="flex-1 overflow-y-auto px-6 py-5 space-y-4"></div>
+            <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
+              <button onclick="thCloseModal('aiPreviewModal')"
+                class="px-5 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                Re-extract
+              </button>
+              <button id="btnAiConfirm"
+                class="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold bg-[#1A2039] hover:bg-[#252d4a] text-white transition shadow-sm">
+                <i class="fa-solid fa-check"></i> Confirm & Fill Form
+              </button>
+            </div>
+          </div>
+        </div>`;
         if (!document.getElementById('quill-css')) {
             const ql = document.createElement('link');
             ql.id = 'quill-css'; ql.rel = 'stylesheet';
@@ -514,7 +683,11 @@ const MdActivities = (() => {
 
     // ── Events ────────────────────────────────────────────────────────
     function bindEvents() {
-        document.getElementById('btnAdd').onclick         = () => openActForm();
+        document.getElementById('actGrid').addEventListener('click', e => {
+            const btn = e.target.closest('.act-var-btn');
+            if (btn) _variants(btn.dataset.actSys, btn.dataset.actName, btn.dataset.actCountry);
+        });
+        document.getElementById('btnAdd').onclick         = () => openChoiceModal();
         document.getElementById('btnASave').onclick       = saveActivity;
         document.getElementById('btnVSave').onclick       = saveVariant;
         document.getElementById('btnAddVar').onclick      = () => openVarForm();
@@ -537,6 +710,30 @@ const MdActivities = (() => {
             });
             load();
         });
+
+        // AI modal tab switching
+        document.querySelectorAll('.ai-tab-btn').forEach(b => b.onclick = () => {
+            document.querySelectorAll('.ai-tab-btn').forEach(x => {
+                const on = x === b;
+                x.className = x.className.replace(/bg-white text-\[#1A2039\] shadow-sm|text-gray-500 hover:text-gray-700/g, '');
+                x.classList.add(...(on ? ['bg-white','text-[#1A2039]','shadow-sm'] : ['text-gray-500','hover:text-gray-700']));
+            });
+            document.querySelectorAll('.ai-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById(b.dataset.panel)?.classList.remove('hidden');
+        });
+
+        // Choice modal buttons
+        document.getElementById('choiceManual').onclick = () => { thCloseModal('choiceModal'); openActForm(); };
+        document.getElementById('choiceAI').onclick     = () => { thCloseModal('choiceModal'); thOpenModal('aiInputModal'); };
+
+        // AI Extract button
+        document.getElementById('btnAiExtract').onclick = runAiExtract;
+
+        // AI Confirm button
+        document.getElementById('btnAiConfirm').onclick = () => {
+            thCloseModal('aiPreviewModal');
+            openActForm(null, _aiExtractedData);
+        };
     }
 
     // ── Load Activities ──────────────────────────────────────────────────────────
@@ -595,8 +792,8 @@ const MdActivities = (() => {
                     ${a.tags.length>4?`<span class="px-2 py-0.5 rounded-full text-[10px] text-gray-400">+${a.tags.length-4}</span>`:''}
                 </div>` : '<div class="mb-3"></div>'}
                 <div class="flex items-center gap-2">
-                    <button onclick="MdActivities._variants('${a.sys_id}','${esc(a.name)}','${a.country_sys_id}')"
-                        class="flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#1A2039]/10 text-[#1A2039] hover:bg-[#1A2039]/20 transition">
+                    <button data-act-sys="${a.sys_id}" data-act-country="${a.country_sys_id}" data-act-name="${esc(a.name)}"
+                        class="act-var-btn flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#1A2039]/10 text-[#1A2039] hover:bg-[#1A2039]/20 transition">
                         <i class="fa-solid fa-list mr-1"></i> Variants
                     </button>
                     ${!isTrashed ? `
@@ -618,12 +815,11 @@ const MdActivities = (() => {
     }
 
     // ── Activity CRUD ─────────────────────────────────────────────────
-    async function openActForm(sys_id = null) {
+    async function openActForm(sys_id = null, extracted = null) {
         // Clear all fields
-        ['fASysId','fAName','fACat','fALocation','fAMinPax','fAMaxPax','fAAgeMin',
-         'fASearchTerms','fADurTypical','fAStartTime','fAEndTime','fALanguages',
-         'fAMeetingPoint','fABookingLead','fACancelPolicy','fAPickupCities',
-         'fADropoffCities','fAInclusions','fAExclusions','fAImages'].forEach(id => thSetVal(id,''));
+        ['fASysId','fAName','fACat','fASearchTerms','fAShortDesc',
+         'fADur','fADurTypical','fAStartTime','fAEndTime',
+         'fABookingLead','fAPickupCities','fADropoffCities','fAImages'].forEach(id => thSetVal(id,''));
         
         thSetVal('fAType', 'tour');
         thSetVal('fADur', '0');
@@ -636,40 +832,35 @@ const MdActivities = (() => {
         document.querySelectorAll('.oper-day-checkbox').forEach(cb => cb.checked = false);
         
         renderDescPoints([]);
-        pendingTags = [];
+        pendingTags      = [];
+        pendingVariants  = [];
+        _pendingUnstructured = null;
         renderTagChips();
         document.getElementById('actModalTitle').textContent = sys_id ? 'Edit Activity' : 'Add Activity';
 
         if (sys_id) {
             thSetVal('fASysId', sys_id);
-            const [d, td] = await Promise.all([
+            const [d] = await Promise.all([
                 thApi(`${API_BASE}api/masterdata/activities/get.php?sys_id=${sys_id}`),
-                thApi(`${API_BASE}api/masterdata/activities/tag-list.php?activity_sys_id=${sys_id}`),
             ]);
             if (!d.success) return thToast('Failed to load', 'error');
             const a = d.data;
             
             thSetVal('fACountry', a.country_sys_id);
             await loadCities(a.country_sys_id);
-            thSetVal('fACity', a.city_sys_id || '');
-            thSetVal('fAVendor', a.vendor_sys_id || '');
-            thSetVal('fAType', a.type);
-            thSetVal('fAName', a.name);
-            thSetVal('fACat', a.category || '');
-            thSetVal('fALocation', a.location || '');
-            thSetVal('fADur', a.duration_hours || 0);
-            thSetVal('fADurTypical', a.duration_typical || '');
-            thSetVal('fAStartTime', a.start_time || '');
-            thSetVal('fAEndTime', a.end_time || '');
-            thSetVal('fAMinPax', a.min_pax || '');
-            thSetVal('fAMaxPax', a.max_pax || '');
-            thSetVal('fAAgeMin', a.age_min || '');
-            thSetVal('fALanguages', a.languages || '');
-            thSetVal('fAMeetingPoint', a.meeting_point || '');
+            thSetVal('fACity',        a.city_sys_id      || '');
+            thSetVal('fAVendor',      a.vendor_sys_id    || '');
+            thSetVal('fAType',        a.type);
+            thSetVal('fAName',        a.name);
+            thSetVal('fACat',         a.category         || '');
+            thSetVal('fASearchTerms', a.search_terms      || '');
+            thSetVal('fAShortDesc',   a.highlights || '');
+            thSetVal('fADur',         a.duration_hours   || 0);
+            thSetVal('fADurTypical',  a.duration_typical || '');
+            thSetVal('fAStartTime',   a.start_time       || '');
+            thSetVal('fAEndTime',     a.end_time         || '');
             thSetVal('fABookingLead', a.booking_lead_days || '');
-            thSetVal('fAPop', a.popularity || 3);
-            thSetVal('fACancelPolicy', a.cancellation_policy || '');
-            thSetVal('fASearchTerms', a.search_terms || '');
+            thSetVal('fAPop',         a.popularity       || 3);
             
             // Operating days
             if (a.operating_days) {
@@ -689,44 +880,29 @@ const MdActivities = (() => {
                 thSetVal('fADropoffCities', Array.isArray(dropoff) ? dropoff.join(', ') : '');
             }
             
-            // Inclusions/Exclusions
-            if (a.inclusions) {
-                const inclusions = typeof a.inclusions === 'string' ? JSON.parse(a.inclusions) : a.inclusions;
-                thSetVal('fAInclusions', Array.isArray(inclusions) ? inclusions.join('\n') : '');
-            }
-            if (a.exclusions) {
-                const exclusions = typeof a.exclusions === 'string' ? JSON.parse(a.exclusions) : a.exclusions;
-                thSetVal('fAExclusions', Array.isArray(exclusions) ? exclusions.join('\n') : '');
-            }
-            
             // Images
             if (a.images) {
                 const images = typeof a.images === 'string' ? JSON.parse(a.images) : a.images;
                 thSetVal('fAImages', Array.isArray(images) ? images.map(img => img.url).join('\n') : '');
             }
             
-            // Tags
-            pendingTags = td.tags || [];
+            // Tags — from activities.tags JSON column
+            const rawTags = a.tags ? (typeof a.tags === 'string' ? JSON.parse(a.tags) : a.tags) : [];
+            pendingTags = Array.isArray(rawTags) ? rawTags : [];
             renderTagChips();
             
-            // Description points
+            // Description points — stored as JSON array in short_description column
             let points = [];
-            try { 
-                points = JSON.parse(a.short_description || '[]'); 
-                if (!Array.isArray(points)) points = [];
-                // পুরনো ডাটার জন্য backward compatibility
-                if (points.length === 0 && a.short_description && typeof a.short_description === 'string') {
-                    // চেক করুন এটা পুরনো format কিনা (plain text)
-                    if (!a.short_description.startsWith('[') && !a.short_description.startsWith('{')) {
-                        points = [{ time: '', duration: '', description: a.short_description }];
-                    }
+            try {
+                const raw = a.short_description || '[]';
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    points = parsed.map(p => ({
+                        time:        p.time        || '',
+                        duration:    p.duration    || '',
+                        description: p.description || '',
+                    })).filter(p => p.description);
                 }
-                // নিশ্চিত করুন প্রতিটি পয়েন্টে duration field আছে
-                points = points.map(p => ({ 
-                    time: p.time || '', 
-                    duration: p.duration || '', 
-                    description: p.description || '' 
-                }));
             } catch(e) {
                 if (a.short_description) {
                     points = [{ time: '', duration: '', description: a.short_description }];
@@ -750,6 +926,9 @@ const MdActivities = (() => {
         };
 
         thOpenModal('actModal');
+
+        // If opened from AI extraction, populate fields
+        if (extracted) _populateFromExtracted(extracted);
     }
 
     function renderTagChips() {
@@ -777,65 +956,50 @@ const MdActivities = (() => {
         const operatingDays = Array.from(document.querySelectorAll('.oper-day-checkbox:checked'))
             .map(cb => cb.value).join(',');
         
-        // Get description points
+        // Get description points — stored as JSON in short_description column
         const descPoints = getDescPoints();
-        const shortDesc = JSON.stringify(descPoints);
-        
-        // Build long description from points
-        const longDesc = descPoints.map(p => {
+        const descPointsJson = descPoints.length ? JSON.stringify(descPoints) : undefined;
+
+        // Build long_description from points (human-readable markdown)
+        const longDesc = descPoints.length ? descPoints.map(p => {
             let header = [];
-            if (p.time) header.push(`🕐 ${p.time}`);
+            if (p.time)     header.push(`🕐 ${p.time}`);
             if (p.duration) header.push(`⏱️ ${p.duration}`);
             const headerText = header.length ? `**${header.join(' | ')}**` : '';
             return headerText ? `${headerText}\n${p.description}` : p.description;
-        }).join('\n\n---\n\n');
-        
-        // Highlights from points with 'highlight' in time or first 3 points
-        const highlights = descPoints.filter(p => 
-            p.time.toLowerCase().includes('highlight') || 
-            p.duration.toLowerCase().includes('highlight') ||
-            p.description.toLowerCase().includes('highlight')
-        ).slice(0, 3).map(p => p.description.replace(/<[^>]*>/g, '').substring(0, 100)).join(', ');
+        }).join('\n\n---\n\n') : undefined;
+
+        // highlights — user-typed short desc field
+        const userShortDesc = thVal('fAShortDesc') || undefined;
         
         const body = {
             sys_id:            thVal('fASysId') || undefined,
             country_sys_id:    thVal('fACountry'),
             country_name:      cName,
             city_sys_id:       thVal('fACity') || undefined,
-            city_name:         cityName || thVal('fALocation'),
+            city_name:         cityName || undefined,
             vendor_sys_id:     thVal('fAVendor') || undefined,
             name:              thVal('fAName'),
-            search_terms:      thVal('fASearchTerms') || thVal('fAName'),
+            search_terms:      thVal('fASearchTerms') || undefined,
             type:              thVal('fAType'),
             category:          thVal('fACat') || undefined,
-            location:          thVal('fALocation') || undefined,
-            short_description: shortDesc,
-            long_description:  longDesc || undefined,
-            highlights:        highlights || undefined,
+            short_description: descPointsJson,
+            long_description:  longDesc,
+            highlights:        userShortDesc,
             start_time:        thVal('fAStartTime') || undefined,
             end_time:          thVal('fAEndTime') || undefined,
             duration_hours:    parseFloat(thVal('fADur') || 0),
             duration_typical:  thVal('fADurTypical') || undefined,
             operating_days:    operatingDays || undefined,
-            min_pax:           thVal('fAMinPax') ? parseInt(thVal('fAMinPax')) : null,
-            max_pax:           thVal('fAMaxPax') ? parseInt(thVal('fAMaxPax')) : null,
-            age_min:           thVal('fAAgeMin') ? parseInt(thVal('fAAgeMin')) : null,
-            languages:         thVal('fALanguages') || undefined,
-            meeting_point:     thVal('fAMeetingPoint') || undefined,
             booking_lead_days: thVal('fABookingLead') ? parseInt(thVal('fABookingLead')) : null,
-            cancellation_policy: thVal('fACancelPolicy') || undefined,
             popularity:        parseInt(thVal('fAPop') || 3),
             pickup_from_city:  thVal('fAPickupCities') ? thVal('fAPickupCities').split(',').map(s => s.trim()).filter(Boolean) : [],
             dropoff_city:      thVal('fADropoffCities') ? thVal('fADropoffCities').split(',').map(s => s.trim()).filter(Boolean) : [],
-            itineraries:       [], // Can be extended if needed
-            inclusions:        thVal('fAInclusions') ? thVal('fAInclusions').split('\n').map(s => s.trim()).filter(Boolean) : [],
-            exclusions:        thVal('fAExclusions') ? thVal('fAExclusions').split('\n').map(s => s.trim()).filter(Boolean) : [],
             images:            thVal('fAImages') ? thVal('fAImages').split('\n').map((url, idx) => ({
-                url: url.trim(),
-                caption: '',
-                sort_order: idx,
-                is_primary: idx === 0
+                url: url.trim(), caption: '', sort_order: idx, is_primary: idx === 0
             })).filter(img => img.url) : [],
+            unstructured_data: _pendingUnstructured || undefined,
+            tags:              pendingTags,
         };
         
         if (!body.name)           return thToast('Activity name required', 'error');
@@ -847,19 +1011,292 @@ const MdActivities = (() => {
         
         if (!res.success) return thToast(res.message || 'Error', 'error');
 
-        // Save tags
+        // Tags now saved directly via save.php body (activities.tags column)
         const actSysId = res.sys_id || thVal('fASysId');
-        if (actSysId && pendingTags.length) {
-            await thApi(`${API_BASE}api/masterdata/activities/tag-save.php`, 'POST', {
-                activity_sys_id: actSysId,
-                tags: pendingTags,
-            });
-            loadTagFilter();
-        }
 
         thToast(res.message || 'Saved!');
         thCloseModal('actModal');
+
+        // Auto-save AI-extracted variants if any
+        if (actSysId && pendingVariants.length) {
+            const cSel = document.getElementById('fACountry');
+            const countrySysId = cSel?.value || '';
+            let savedCount = 0;
+            for (const v of pendingVariants) {
+                const vRes = await thApi(`${API_BASE}api/masterdata/activities/variant-save.php`, 'POST', {
+                    activity_sys_id:     actSysId,
+                    country_sys_id:      countrySysId,
+                    variant_name:        v.variant_name        || 'Standard',
+                    price_basis:         v.price_basis         || 'per_pax',
+                    currency_code:       v.currency_code       || '',
+                    net_cost:            v.net_cost            || 0,
+                    markup_type:         v.markup_type         || 'percent',
+                    markup_value:        v.markup_value        || 0,
+                    sell_price:          v.sell_price          || 0,
+                    child_price:         v.child_price         || undefined,
+                    transport_mode:      v.transport_mode      || 'none',
+                    capacity_min:        v.capacity_min        || undefined,
+                    capacity_max:        v.capacity_max        || undefined,
+                    meal_breakfast:      v.meal_breakfast      ? 1 : 0,
+                    meal_lunch:          v.meal_lunch          ? 1 : 0,
+                    meal_dinner:         v.meal_dinner         ? 1 : 0,
+                    ticket_included:     v.ticket_included     ? 1 : 0,
+                    guide_included:      v.guide_included      ? 1 : 0,
+                    guide_language:      v.guide_language      || undefined,
+                    min_pax:             v.min_pax             || undefined,
+                    max_pax:             v.max_pax             || undefined,
+                    age_min:             v.age_min             || undefined,
+                    location:            v.location            || undefined,
+                    meeting_point:       v.meeting_point       || undefined,
+                    languages:           v.languages           || undefined,
+                    season_from:         v.season_from         || undefined,
+                    season_to:           v.season_to           || undefined,
+                    cancellation_policy: v.cancellation_policy || undefined,
+                    inclusions:          v.inclusions          || [],
+                    exclusions:          v.exclusions          || [],
+                    unstructured_data:   v.unstructured_data   || undefined,
+                });
+                if (vRes.success) savedCount++;
+            }
+            if (savedCount > 0) thToast(`${savedCount} variant(s) saved automatically!`);
+            pendingVariants = [];
+            _pendingUnstructured = null;
+        }
         load();
+    }
+
+    // ── AI Extraction ─────────────────────────────────────────────────
+    let _aiExtractedData    = null;
+    let _pendingUnstructured = null;
+
+    function openChoiceModal() {
+        thOpenModal('choiceModal');
+    }
+
+    async function runAiExtract() {
+        const btn = document.getElementById('btnAiExtract');
+        const activePanel = document.querySelector('.ai-panel:not(.hidden)');
+        const panelId = activePanel?.id || 'aiPanelText';
+
+        // Build payload
+        const payload = {};
+
+        if (panelId === 'aiPanelText') {
+            const txt = document.getElementById('aiInputText').value.trim();
+            if (!txt) return thToast('Please paste some text first', 'error');
+            payload.text = txt;
+
+        } else if (panelId === 'aiPanelImage') {
+            const file = document.getElementById('aiImageFile').files[0];
+            const url  = document.getElementById('aiImageUrl').value.trim();
+            const ctx  = document.getElementById('aiImageContext').value.trim();
+            if (!file && !url) return thToast('Upload an image or enter an image URL', 'error');
+            if (file) {
+                const b64 = await _fileToBase64(file);
+                payload.image_base64 = b64;
+                payload.image_mime   = file.type || 'image/jpeg';
+            } else {
+                payload.image_url = url;
+            }
+            if (ctx) payload.text = ctx;
+
+        } else if (panelId === 'aiPanelPdf') {
+            const file = document.getElementById('aiPdfFile').files[0];
+            const ctx  = document.getElementById('aiPdfContext').value.trim();
+            if (!file) return thToast('Please upload a PDF file', 'error');
+            payload.pdf_base64 = await _fileToBase64(file);
+            if (ctx) payload.text = ctx;
+
+        } else if (panelId === 'aiPanelYoutube') {
+            const url = document.getElementById('aiYoutubeUrl').value.trim();
+            const ctx = document.getElementById('aiYoutubeContext').value.trim();
+            if (!url) return thToast('Please enter a YouTube URL', 'error');
+            payload.youtube_url = url;
+            if (ctx) payload.text = ctx;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Extracting…';
+
+        const res = await thApi(`${API_BASE}api/masterdata/activities/ai-extract.php`, 'POST', payload);
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Extract with AI';
+
+        if (!res.success) return thToast(res.message || 'Extraction failed', 'error');
+
+        _aiExtractedData = res;
+        thCloseModal('aiInputModal');
+        showAiPreview(res);
+    }
+
+    function showAiPreview(res) {
+        const a = res.activity || {};
+        const variants = res.variants || [];
+
+        const previewRow = (label, value) => value
+            ? `<div class="flex gap-2 text-sm"><span class="text-gray-400 w-36 flex-shrink-0">${label}</span><span class="text-gray-800 font-medium">${esc(String(value))}</span></div>`
+            : '';
+
+        const chipList = (arr) => arr?.length
+            ? arr.map(t => `<span class="px-2 py-0.5 rounded-full text-xs bg-[#50BC81]/15 text-[#2e9460]">${esc(t)}</span>`).join('')
+            : '<span class="text-xs text-gray-300 italic">None</span>';
+
+        const variantCards = variants.map((v, i) => `
+            <div class="bg-white rounded-xl border border-gray-200 px-4 py-3 space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <div class="font-semibold text-sm text-[#1A2039]">${esc(v.variant_name || 'Variant ' + (i+1))}</div>
+                    <div class="text-xs text-gray-400">${esc(v.price_basis || 'per_pax')}</div>
+                </div>
+                <div class="flex flex-wrap gap-3 text-xs text-gray-600">
+                    ${v.currency_code ? `<span><b>Currency:</b> ${esc(v.currency_code)}</span>` : ''}
+                    ${v.sell_price    ? `<span><b>Sell:</b> ${Number(v.sell_price).toLocaleString()}</span>` : '<span class="text-gray-300">No price extracted</span>'}
+                    ${v.net_cost      ? `<span><b>Net:</b> ${Number(v.net_cost).toLocaleString()}</span>` : ''}
+                    ${v.transport_mode && v.transport_mode !== 'none' ? `<span><b>Transport:</b> ${esc(v.transport_mode)}</span>` : ''}
+                </div>
+                <div class="flex flex-wrap gap-1 text-xs">
+                    ${v.meal_breakfast  ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Breakfast</span>' : ''}
+                    ${v.meal_lunch      ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Lunch</span>' : ''}
+                    ${v.meal_dinner     ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Dinner</span>' : ''}
+                    ${v.ticket_included ? '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ticket</span>' : ''}
+                    ${v.guide_included  ? '<span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Guide</span>' : ''}
+                </div>
+                ${Object.keys(v.unstructured_data || {}).length ? `
+                <div class="text-xs text-gray-400 pt-1 border-t border-gray-100">
+                    <span class="font-medium text-gray-500">Extra: </span>
+                    ${Object.entries(v.unstructured_data).map(([k,val]) => `<span class="mr-2">${esc(k)}: ${esc(String(val))}</span>`).join('')}
+                </div>` : ''}
+            </div>`).join('');
+
+        document.getElementById('aiPreviewBody').innerHTML = `
+            <!-- Activity Summary -->
+            <div class="bg-[#1A2039]/5 rounded-xl p-4 space-y-2">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-person-hiking text-[#1A2039]"></i>
+                    <span class="font-bold text-[#1A2039] text-sm">Activity</span>
+                    <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <i class="fa-solid fa-check mr-1"></i>Extracted
+                    </span>
+                </div>
+                ${previewRow('Name', a.name)}
+                ${previewRow('Type', a.type)}
+                ${previewRow('Category', a.category)}
+                ${previewRow('Duration', a.duration_hours ? a.duration_hours + 'h' + (a.duration_typical ? ' (' + a.duration_typical + ')' : '') : '')}
+                ${previewRow('Start / End', a.start_time ? a.start_time + (a.end_time ? ' – ' + a.end_time : '') : '')}
+                ${previewRow('Operating Days', a.operating_days)}
+                ${previewRow('Meeting Point', a.meeting_point)}
+                ${previewRow('Min / Max Pax', a.min_pax ? a.min_pax + (a.max_pax ? ' – ' + a.max_pax : '') : '')}
+                ${previewRow('Cancellation', a.cancellation_policy)}
+                ${(a.tags?.length) ? `
+                <div class="flex gap-2 text-sm items-start">
+                    <span class="text-gray-400 w-36 flex-shrink-0">Tags</span>
+                    <div class="flex flex-wrap gap-1">${chipList(a.tags)}</div>
+                </div>` : ''}
+                ${(a.inclusions?.length) ? `
+                <div class="flex gap-2 text-sm items-start">
+                    <span class="text-gray-400 w-36 flex-shrink-0">Inclusions</span>
+                    <span class="text-gray-800">${a.inclusions.map(s => esc(s)).join(', ')}</span>
+                </div>` : ''}
+                ${(a.exclusions?.length) ? `
+                <div class="flex gap-2 text-sm items-start">
+                    <span class="text-gray-400 w-36 flex-shrink-0">Exclusions</span>
+                    <span class="text-gray-800">${a.exclusions.map(s => esc(s)).join(', ')}</span>
+                </div>` : ''}
+                ${(a.description_points?.length) ? `
+                <div class="flex gap-2 text-sm items-start">
+                    <span class="text-gray-400 w-36 flex-shrink-0">Desc. Points</span>
+                    <span class="text-gray-800">${a.description_points.length} point(s) extracted</span>
+                </div>` : ''}
+                ${Object.keys(a.unstructured_data || {}).length ? `
+                <div class="mt-2 pt-2 border-t border-[#1A2039]/10">
+                    <div class="text-xs font-semibold text-gray-500 mb-1">Extra data (unstructured)</div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                        ${Object.entries(a.unstructured_data).map(([k,val]) => `<span><b>${esc(k)}:</b> ${esc(String(val))}</span>`).join('')}
+                    </div>
+                </div>` : ''}
+            </div>
+
+            <!-- Variants -->
+            ${variants.length ? `
+            <div>
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-list text-gray-500 text-sm"></i>
+                    <span class="font-bold text-[#1A2039] text-sm">${variants.length} Variant(s) — will be auto-saved</span>
+                </div>
+                <div class="space-y-2">${variantCards}</div>
+            </div>` : `
+            <div class="text-sm text-gray-400 italic text-center py-2">
+                No pricing variants were detected in the input.
+            </div>`}`;
+
+        thOpenModal('aiPreviewModal');
+    }
+
+    function _populateFromExtracted(res) {
+        const a = res.activity || {};
+
+        // Simple text fields
+        // Activity-level fields only
+        if (a.name)             thSetVal('fAName', a.name);
+        if (a.type)             thSetVal('fAType', a.type);
+        if (a.category)         thSetVal('fACat', a.category);
+        if (a.search_terms)     thSetVal('fASearchTerms', a.search_terms);
+        if (a.highlights)       thSetVal('fAShortDesc', a.highlights);
+        if (a.duration_hours)   thSetVal('fADur', a.duration_hours);
+        if (a.duration_typical) thSetVal('fADurTypical', a.duration_typical);
+        if (a.start_time)       thSetVal('fAStartTime', a.start_time);
+        if (a.end_time)         thSetVal('fAEndTime', a.end_time);
+        if (a.booking_lead_days !== null && a.booking_lead_days !== undefined)
+                                thSetVal('fABookingLead', a.booking_lead_days);
+        if (a.popularity)       thSetVal('fAPop', a.popularity);
+
+        // Operating days checkboxes
+        if (a.operating_days) {
+            const days = a.operating_days.split(',').map(d => d.trim());
+            document.querySelectorAll('.oper-day-checkbox').forEach(cb => {
+                cb.checked = days.includes(cb.value);
+            });
+        }
+
+        // Pickup / dropoff
+        if (a.pickup_from_city?.length)  thSetVal('fAPickupCities', a.pickup_from_city.join(', '));
+        if (a.dropoff_city?.length)      thSetVal('fADropoffCities', a.dropoff_city.join(', '));
+
+        // Note: inclusions/exclusions belong to variants, not activity form
+        // They will be passed via pendingVariants to variant-save after activity is created
+
+        // Tags
+        if (a.tags?.length) {
+            pendingTags = [...new Set([...pendingTags, ...a.tags])];
+            renderTagChips();
+        }
+
+        // Description points
+        if (a.description_points?.length) {
+            renderDescPoints(a.description_points);
+        }
+
+        // Images
+        if (a.images?.length) {
+            const urls = a.images.map(img => typeof img === 'string' ? img : (img.url || '')).filter(Boolean);
+            if (urls.length) thSetVal('fAImages', urls.join('\n'));
+        }
+
+        // Store unstructured data and pending variants for save
+        _pendingUnstructured = Object.keys(a.unstructured_data || {}).length ? a.unstructured_data : null;
+        pendingVariants      = res.variants || [];
+
+        // Show a note in the modal title
+        document.getElementById('actModalTitle').textContent = 'Add Activity (AI Prefilled)';
+    }
+
+    function _fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload  = () => resolve(r.result.split(',')[1]);
+            r.onerror = () => reject(new Error('File read failed'));
+            r.readAsDataURL(file);
+        });
     }
 
     async function _del(sys_id, restore) {
@@ -927,7 +1364,10 @@ const MdActivities = (() => {
     }
 
     function openVarForm(v = null) {
-        ['fVSysId','fVName','fVCcy','fVCost','fVSell','fVChild','fVGuideLang','fVCapMin','fVCapMax'].forEach(id => thSetVal(id,''));
+        ['fVSysId','fVName','fVVendor','fVCcy','fVCost','fVSell','fVChild','fVGuideLang',
+         'fVCapMin','fVCapMax','fVMinPax','fVMaxPax','fVAgeMin',
+         'fVLocation','fVMeetingPoint','fVLanguages','fVSeasonFrom','fVSeasonTo',
+         'fVInclusions','fVExclusions','fVCancelPolicy'].forEach(id => thSetVal(id,''));
         thSetVal('fVBasis', 'per_pax');
         thSetVal('fVMkType', 'percent');
         thSetVal('fVMkVal', '0');
@@ -937,24 +1377,39 @@ const MdActivities = (() => {
         });
         document.getElementById('varFormTitle').textContent = v ? 'Edit Variant' : 'Add Variant';
         if (v) {
-            thSetVal('fVSysId',     v.sys_id);
-            thSetVal('fVName',      v.variant_name);
-            thSetVal('fVBasis',     v.price_basis    || 'per_pax');
-            thSetVal('fVCcy',       v.currency_code  || '');
-            thSetVal('fVCost',      v.net_cost       || '');
-            thSetVal('fVSell',      v.sell_price     || '');
-            thSetVal('fVChild',     v.child_price    || '');
-            thSetVal('fVMkType',    v.markup_type    || 'percent');
-            thSetVal('fVMkVal',     v.markup_value   || 0);
-            thSetVal('fVTransport', v.transport_mode || 'none');
-            thSetVal('fVCapMin',    v.capacity_min   || '');
-            thSetVal('fVCapMax',    v.capacity_max   || '');
-            thSetVal('fVGuideLang', v.guide_language || '');
-            document.getElementById('fVMealB').checked = !!v.meal_breakfast;
-            document.getElementById('fVMealL').checked = !!v.meal_lunch;
-            document.getElementById('fVMealD').checked = !!v.meal_dinner;
+            thSetVal('fVSysId',        v.sys_id);
+            thSetVal('fVName',         v.variant_name);
+            thSetVal('fVVendor',       v.vendor_sys_id  || '');
+            thSetVal('fVBasis',        v.price_basis    || 'per_pax');
+            thSetVal('fVCcy',          v.currency_code  || '');
+            thSetVal('fVCost',         v.net_cost       || '');
+            thSetVal('fVSell',         v.sell_price     || '');
+            thSetVal('fVChild',        v.child_price    || '');
+            thSetVal('fVMkType',       v.markup_type    || 'percent');
+            thSetVal('fVMkVal',        v.markup_value   || 0);
+            thSetVal('fVTransport',    v.transport_mode || 'none');
+            thSetVal('fVCapMin',       v.capacity_min   || '');
+            thSetVal('fVCapMax',       v.capacity_max   || '');
+            thSetVal('fVGuideLang',    v.guide_language || '');
+            thSetVal('fVMinPax',       v.min_pax        || '');
+            thSetVal('fVMaxPax',       v.max_pax        || '');
+            thSetVal('fVAgeMin',       v.age_min        || '');
+            thSetVal('fVLocation',     v.location       || '');
+            thSetVal('fVMeetingPoint', v.meeting_point  || '');
+            thSetVal('fVLanguages',    v.languages      || '');
+            thSetVal('fVSeasonFrom',   v.season_from    || '');
+            thSetVal('fVSeasonTo',     v.season_to      || '');
+            thSetVal('fVCancelPolicy', v.cancellation_policy || '');
+            // inclusions/exclusions — stored as JSON array in DB
+            const inc = Array.isArray(v.inclusions) ? v.inclusions : (v.inclusions ? JSON.parse(v.inclusions) : []);
+            const exc = Array.isArray(v.exclusions) ? v.exclusions : (v.exclusions ? JSON.parse(v.exclusions) : []);
+            thSetVal('fVInclusions', inc.join('\n'));
+            thSetVal('fVExclusions', exc.join('\n'));
+            document.getElementById('fVMealB').checked  = !!v.meal_breakfast;
+            document.getElementById('fVMealL').checked  = !!v.meal_lunch;
+            document.getElementById('fVMealD').checked  = !!v.meal_dinner;
             document.getElementById('fVTicket').checked = !!v.ticket_included;
-            document.getElementById('fVGuide').checked = !!v.guide_included;
+            document.getElementById('fVGuide').checked  = !!v.guide_included;
         }
         if (!v) {
             thSetVal('fVCcy', st.viewActivityCurrency || '');
@@ -985,26 +1440,38 @@ const MdActivities = (() => {
         if (netCost <= 0)   return thToast('Net cost must be greater than 0', 'error');
         if (!sellPrice)     return thToast('Sell price required', 'error');
         const body = {
-            sys_id:           thVal('fVSysId') || undefined,
-            activity_sys_id:  st.viewActivity,
-            country_sys_id:   st.viewActivityCountry || '',
-            variant_name:     variantName,
-            price_basis:      thVal('fVBasis'),
-            currency_code:    currencyCode,
-            net_cost:         netCost,
-            markup_type:      thVal('fVMkType'),
-            markup_value:     parseFloat(thVal('fVMkVal') || 0),
-            sell_price:       sellPrice,
-            child_price:      thVal('fVChild') ? parseFloat(thVal('fVChild')) : undefined,
-            transport_mode:   thVal('fVTransport') || 'none',
-            capacity_min:     thVal('fVCapMin') ? parseInt(thVal('fVCapMin')) : undefined,
-            capacity_max:     thVal('fVCapMax') ? parseInt(thVal('fVCapMax')) : undefined,
-            guide_language:   thVal('fVGuideLang') || undefined,
-            meal_breakfast:   document.getElementById('fVMealB')?.checked ? 1 : 0,
-            meal_lunch:       document.getElementById('fVMealL')?.checked ? 1 : 0,
-            meal_dinner:      document.getElementById('fVMealD')?.checked ? 1 : 0,
-            ticket_included:  document.getElementById('fVTicket')?.checked ? 1 : 0,
-            guide_included:   document.getElementById('fVGuide')?.checked  ? 1 : 0,
+            sys_id:              thVal('fVSysId') || undefined,
+            activity_sys_id:     st.viewActivity,
+            country_sys_id:      st.viewActivityCountry || '',
+            vendor_sys_id:       thVal('fVVendor') || undefined,
+            variant_name:        variantName,
+            price_basis:         thVal('fVBasis'),
+            currency_code:       currencyCode,
+            net_cost:            netCost,
+            markup_type:         thVal('fVMkType'),
+            markup_value:        parseFloat(thVal('fVMkVal') || 0),
+            sell_price:          sellPrice,
+            child_price:         thVal('fVChild') ? parseFloat(thVal('fVChild')) : undefined,
+            transport_mode:      thVal('fVTransport') || 'none',
+            capacity_min:        thVal('fVCapMin') ? parseInt(thVal('fVCapMin')) : undefined,
+            capacity_max:        thVal('fVCapMax') ? parseInt(thVal('fVCapMax')) : undefined,
+            guide_language:      thVal('fVGuideLang') || undefined,
+            meal_breakfast:      document.getElementById('fVMealB')?.checked ? 1 : 0,
+            meal_lunch:          document.getElementById('fVMealL')?.checked ? 1 : 0,
+            meal_dinner:         document.getElementById('fVMealD')?.checked ? 1 : 0,
+            ticket_included:     document.getElementById('fVTicket')?.checked ? 1 : 0,
+            guide_included:      document.getElementById('fVGuide')?.checked  ? 1 : 0,
+            min_pax:             thVal('fVMinPax') ? parseInt(thVal('fVMinPax')) : undefined,
+            max_pax:             thVal('fVMaxPax') ? parseInt(thVal('fVMaxPax')) : undefined,
+            age_min:             thVal('fVAgeMin') ? parseInt(thVal('fVAgeMin')) : undefined,
+            location:            thVal('fVLocation')     || undefined,
+            meeting_point:       thVal('fVMeetingPoint') || undefined,
+            languages:           thVal('fVLanguages')    || undefined,
+            season_from:         thVal('fVSeasonFrom')   || undefined,
+            season_to:           thVal('fVSeasonTo')     || undefined,
+            cancellation_policy: thVal('fVCancelPolicy') || undefined,
+            inclusions:          thVal('fVInclusions') ? thVal('fVInclusions').split('\n').map(s => s.trim()).filter(Boolean) : [],
+            exclusions:          thVal('fVExclusions') ? thVal('fVExclusions').split('\n').map(s => s.trim()).filter(Boolean) : [],
         };
         document.getElementById('btnVSave').disabled = true;
         document.getElementById('btnVSave').textContent = 'Saving…';
@@ -1111,7 +1578,8 @@ const MdActivities = (() => {
 
     return { 
         init, _page, _edit, _del, _variants, _editVariant, 
-        _delVariant, _cancelVarForm, _rmTag 
+        _delVariant, _cancelVarForm, _rmTag,
+        openChoiceModal, runAiExtract
     };
 })();
 
