@@ -7,7 +7,7 @@ header('Content-Type: application/json'); // Tell the client this is JSON
 try {
     $stmt = $pdo->prepare("
         SELECT * FROM travelers
-        ORDER BY id ASC
+        ORDER BY id DESC
     ");
     $stmt->execute();
     $travelers = $stmt->fetchAll(PDO::FETCH_ASSOC);

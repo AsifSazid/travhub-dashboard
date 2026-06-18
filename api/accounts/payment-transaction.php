@@ -254,9 +254,10 @@ try {
         $newBalance = $currentBalance;
     } else {
         // Check sufficient balance for non-historical
-        if ($currentBalance < $amount) {
-            throw new Exception('Insufficient balance in account');
-        }
+        // THAT SHOULD BE REMOVED COMMENT TO UNCOMMENT
+        // if ($currentBalance < $amount) {
+        //     throw new Exception('Insufficient balance in account');
+        // }
         $newBalance = $currentBalance - $amount;
     }
 
