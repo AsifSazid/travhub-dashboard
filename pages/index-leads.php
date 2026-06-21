@@ -15,7 +15,7 @@ $moveToWorkApi    = $ip_port . "api/leads/move-to-work.php";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lead List</title>
+    <title>Lead List - TRAVHUB</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -483,7 +483,7 @@ function renderTable() {
         }).join(' ');
 
         const statusBadge = badgeHtml(l.lead_status);
-        const createdAt   = formatDate(l.created_at);
+        const createdAt   = formatDate(l.extracted_date);
 
         return `
         <tr class="hover:bg-gray-50 transition-colors">
@@ -618,7 +618,7 @@ function showLead(sysId) {
         <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Service Details</h4>
         ${serviceHtml}
         <div class="mt-4 flex justify-between items-center text-xs text-gray-400">
-            <span>Created: ${formatDate(lead.created_at)}</span>
+            <span>Created: ${formatDate(lead.extracted_date)}</span>
             <div class="flex gap-2">
                 <a href="edit-lead.php?id=${lead.sys_id}" class="px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium transition">
                     <i class="fas fa-pencil mr-1"></i>Edit

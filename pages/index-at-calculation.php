@@ -255,7 +255,7 @@ function renderGrid(data) {
         <p class="text-lg font-semibold text-slate-600">No calculations found</p>
         <p class="text-sm mt-1 text-slate-400">
           Try a different search or
-          <a href="air-ticket-calculation.php" class="text-blue-600 underline">create one</a>
+          <a href="air-ticket-price-calculation.php" class="text-blue-600 underline">create one</a>
         </p>
       </div>
     `;
@@ -266,7 +266,7 @@ function renderGrid(data) {
     const card = document.createElement('div');
     card.className = 'index-card';
     card.onclick = () => {
-      window.location.href = `air-ticket-calculation.php?uuid=${encodeURIComponent(q.uuid)}`;
+      window.location.href = `air-ticket-price-calculation.php?id=${encodeURIComponent(q.uuid)}`;
     };
 
     const date = q.created_at

@@ -3,7 +3,15 @@
 include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) { $ip_port = "http://103.104.219.3:898"; }
-$leadStore       = $ip_port . "api/leads/store.php";
+
+// Check if we're in edit mode
+$lead_id = isset($_GET['id']) ? $_GET['id'] : '';
+$isEditMode = !empty($lead_id);
+$pageTitle = $isEditMode ? 'Lead Edit' : 'Lead Generate';
+
+// API endpoints
+$leadStoreApi = $isEditMode ? $ip_port . "api/leads/update.php?lead=$lead_id" : $ip_port . "api/leads/store.php";
+$getLeadApi = $isEditMode ? $ip_port . "api/leads/edit.php?lead=$lead_id" : '';
 $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 ?>
 <!DOCTYPE html>
@@ -11,7 +19,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generate Lead</title>
+    <title><?php echo $pageTitle; ?></title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -52,6 +60,36 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 
         .step-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; transition:all .3s; }
         .progress-fill { transition: width .4s ease; }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-overlay.hidden { display: none; }
+
+        /* Meta info styling */
+        .meta-info {
+            background: #f8f7ff;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.7rem;
+            color: #6b7280;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .meta-info .label { font-weight: 500; color: #4b5563; }
+        .meta-info .value { color: #1f2937; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -59,15 +97,29 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 <?php include '../elements/header.php'; ?>
 <?php include '../elements/aside.php'; ?>
 
-<!-- pl-16 because sidebar starts collapsed per script.js (sidebarCollapsed = true) -->
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay <?php echo $isEditMode ? '' : 'hidden'; ?>">
+    <div class="text-center">
+        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-3 text-gray-600 text-sm">Loading lead data...</p>
+    </div>
+</div>
+
 <main id="mainContent" class="pt-16 pl-16 mt-16 transition-all duration-300">
 <div class="p-6 max-w-4xl mx-auto">
 
     <!-- Page Header -->
     <div class="mb-5 flex items-center justify-between">
         <div>
-            <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-plus-circle mr-2 text-indigo-500"></i>Generate Lead</h1>
-            <p class="text-gray-400 text-xs mt-0.5">Answer questions step by step to create a lead</p>
+            <h1 class="text-xl font-bold text-gray-800">
+                <i class="fas <?php echo $isEditMode ? 'fa-edit' : 'fa-plus-circle'; ?> mr-2 text-indigo-500"></i>
+                <?php echo $pageTitle; ?>
+            </h1>
+            <p class="text-gray-400 text-xs mt-0.5">
+                <?php echo $isEditMode ? 'Update lead information' : 'Answer questions step by step to create a lead'; ?>
+            </p>
+            <!-- Meta info will be inserted here by JS in edit mode -->
+            <div id="metaInfoContainer"></div>
         </div>
         <a href="index-leads.php" class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm transition">
             <i class="fas fa-arrow-left"></i> Back
@@ -221,7 +273,7 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
             <div class="mt-6 flex justify-between">
                 <button onclick="goToStep(2)" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm font-medium transition flex items-center gap-2"><i class="fas fa-arrow-left"></i> Back</button>
                 <button onclick="submitLeads()" id="submitBtn" class="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                    <i class="fas fa-save"></i> Save Lead(s)
+                    <i class="fas <?php echo $isEditMode ? 'fa-sync' : 'fa-save'; ?>"></i> <?php echo $isEditMode ? 'Update Lead' : 'Save Lead(s)'; ?>
                 </button>
             </div>
         </div>
@@ -241,8 +293,10 @@ $getAllClientsApi = $ip_port . "api/clients/all-clients.php";
 <?php include '../elements/floating-menus.php'; ?>
 <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 <script>
-const LEAD_STORE_API  = "<?php echo $leadStore; ?>";
+const IS_EDIT_MODE = <?php echo json_encode($isEditMode); ?>;
+const LEAD_STORE_API = "<?php echo $leadStoreApi; ?>";
 const GET_CLIENTS_API = "<?php echo $getAllClientsApi; ?>";
+const GET_LEAD_API = "<?php echo $getLeadApi; ?>";
 
 // ─── Q&A definitions per service ─────────────────────
 const SQ = {
@@ -351,6 +405,7 @@ let selectedServices  = new Set();
 let qaAnswers         = {};
 let selectedClientObj = null;
 let clientsData       = [];
+let leadData          = null;
 
 // ─── Client Search ────────────────────────────────────
 const clientInput    = document.getElementById('clientInput');
@@ -405,6 +460,91 @@ function clearClient() {
     document.getElementById('selectedClientBadge').classList.add('hidden');
 }
 loadClients();
+
+// ─── Load Lead Data (Edit Mode) ─────────────────────
+if (IS_EDIT_MODE) {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    
+    fetch(GET_LEAD_API)
+        .then(res => res.json())
+        .then(response => {
+            if (response.status === 'success') {
+                leadData = response.data;
+                populateLeadData(leadData);
+            } else {
+                showToast('error', 'Failed to load lead data: ' + response.message);
+            }
+        })
+        .catch(err => {
+            showToast('error', 'Error loading lead data');
+            console.error(err);
+        })
+        .finally(() => {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        });
+}
+
+function populateLeadData(data) {
+    // Populate client info
+    const clientInfo = data.client_info || {};
+    document.getElementById('clientName').value = clientInfo.name || '';
+    document.getElementById('clientPhone').value = clientInfo.phone || '';
+    document.getElementById('clientEmail').value = clientInfo.email || '';
+    
+    // Populate lead info
+    const leadInfo = data.lead_info || {};
+    document.getElementById('leadSource').value = leadInfo.source || '';
+    document.getElementById('leadNotes').value = leadInfo.notes || '';
+    
+    // If client has sys_id, show badge
+    if (clientInfo.sys_id) {
+        selectedClientObj = {
+            sys_id: clientInfo.sys_id,
+            name: clientInfo.name,
+            phone: clientInfo.phone,
+            email: clientInfo.email
+        };
+        clientInput.value = `${clientInfo.sys_id} | ${clientInfo.name}`;
+        document.getElementById('selectedClientBadge').classList.remove('hidden');
+        document.getElementById('selAvatar').textContent = clientInfo.name?.[0]?.toUpperCase() || 'C';
+        document.getElementById('selName').textContent = clientInfo.name;
+        document.getElementById('selMeta').textContent = `ID: ${clientInfo.sys_id}${clientInfo.phone ? ' · '+clientInfo.phone : ''}`;
+    }
+    
+    // Populate services
+    const serviceTypes = data.service_type || [];
+    serviceTypes.forEach(svc => {
+        toggleService(svc);
+    });
+    
+    // Populate service data
+    const serviceData = data.service_data || {};
+    Object.keys(serviceData).forEach(svc => {
+        qaAnswers[svc] = serviceData[svc] || {};
+    });
+    
+    // Show meta data info
+    const metaData = data.meta_data || {};
+    let metaHtml = '';
+    if (metaData.created_by_date) {
+        metaHtml += `<span class="label">Created:</span> <span class="value">${metaData.created_by_date.date} by ${metaData.created_by_date.user}</span>`;
+    }
+    if (metaData.updated_by_date && metaData.updated_by_date.length > 0) {
+        const lastUpdate = metaData.updated_by_date[metaData.updated_by_date.length - 1];
+        metaHtml += ` | <span class="label">Last Updated:</span> <span class="value">${lastUpdate.date} by ${lastUpdate.user}</span>`;
+        if (metaData.updated_by_date.length > 1) {
+            metaHtml += ` | <span class="label">Total Updates:</span> <span class="value">${metaData.updated_by_date.length}</span>`;
+        }
+    }
+    
+    if (metaHtml) {
+        const container = document.getElementById('metaInfoContainer');
+        container.innerHTML = `<div class="meta-info">${metaHtml}</div>`;
+    }
+    
+    // Update step indicator
+    goToStep(2);
+}
 
 // ─── Steps ────────────────────────────────────────────
 function updateProgress(step) {
@@ -538,8 +678,6 @@ function setAns(svc, qId, value) {
     qaAnswers[svc] = qaAnswers[svc]||{};
     qaAnswers[svc][qId] = value;
     // deselect cards when typing in "other"
-    const cont = document.getElementById(`qa_${svc}`);
-    // find the question block that has this other input
     const otherEl = document.getElementById(`other_${svc}_${qId}`);
     if (otherEl && document.activeElement === otherEl) {
         const wrapper = otherEl.closest('.pl-9');
@@ -547,14 +685,15 @@ function setAns(svc, qId, value) {
     }
 }
 
-// ─── Submit — separate row per service ───────────────
+// ─── Submit ────────────────────────────────────────────
 async function submitLeads() {
     const name = document.getElementById('clientName').value.trim();
     if (!name) { showToast('error','Client name is required.'); return; }
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    const loadingText = IS_EDIT_MODE ? 'Updating...' : 'Saving...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${loadingText}`;
 
     const clientInfo = {
         sys_id: selectedClientObj?.sys_id ?? null,
@@ -570,31 +709,67 @@ async function submitLeads() {
     const svcs = [...selectedServices];
     let ok = 0, fail = 0;
 
-    for (const svc of svcs) {
+    if (IS_EDIT_MODE) {
+        // Edit mode - update all services at once
         const payload = {
-            serviceCount: 1,
-            serviceType:  [svc],
+            serviceCount: svcs.length,
+            serviceType: svcs,
             clientInfo,
-            serviceData:  { [svc]: qaAnswers[svc] ?? {} },
+            serviceData: qaAnswers,
             leadInfo,
+            leadStatus: leadData?.lead_status || 'pending'
         };
+        
         try {
-            const res  = await fetch(LEAD_STORE_API, {
-                method:'POST', headers:{'Content-Type':'application/json'},
+            const res = await fetch(LEAD_STORE_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
             const json = await res.json();
-            if (json.status==='success') ok++; else fail++;
-        } catch { fail++; }
-    }
-
-    if (fail===0) {
-        showToast('success', `${ok} lead${ok>1?'s':''} saved successfully!`);
-        setTimeout(()=>{ window.location.href='index-leads.php'; }, 1300);
+            if (json.status === 'success') {
+                showToast('success', 'Lead updated successfully!');
+                setTimeout(() => { window.location.href = 'index-leads.php'; }, 1300);
+            } else {
+                showToast('error', 'Update failed: ' + json.message);
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-sync"></i> Update Lead`;
+            }
+        } catch (err) {
+            showToast('error', 'Error updating lead');
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-sync"></i> Update Lead`;
+        }
     } else {
-        showToast('error', `${ok} saved, ${fail} failed. Please retry.`);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> Save Lead(s)';
+        // Create mode - create separate lead per service
+        for (const svc of svcs) {
+            const payload = {
+                serviceCount: 1,
+                serviceType: [svc],
+                clientInfo,
+                serviceData: { [svc]: qaAnswers[svc] ?? {} },
+                leadInfo,
+            };
+            try {
+                const res = await fetch(LEAD_STORE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const json = await res.json();
+                if (json.status === 'success') ok++;
+                else fail++;
+            } catch { fail++; }
+        }
+
+        if (fail === 0) {
+            showToast('success', `${ok} lead${ok > 1 ? 's' : ''} saved successfully!`);
+            setTimeout(() => { window.location.href = 'index-leads.php'; }, 1300);
+        } else {
+            showToast('error', `${ok} saved, ${fail} failed. Please retry.`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Lead(s)';
+        }
     }
 }
 

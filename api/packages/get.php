@@ -28,22 +28,22 @@ try {
     }
 
     // Load days
-    $dStmt = $pdo->prepare("
-        SELECT * FROM package_days
-        WHERE package_sys_id = ? AND status != 'deleted'
-        ORDER BY day_number ASC
-    ");
-    $dStmt->execute([$sys_id]);
-    $days = $dStmt->fetchAll();
+    // $dStmt = $pdo->prepare("
+    //     SELECT * FROM package_days
+    //     WHERE package_sys_id = ? AND status != 'deleted'
+    //     ORDER BY day_number ASC
+    // ");
+    // $dStmt->execute([$sys_id]);
+    // $days = $dStmt->fetchAll();
 
     // Load all items for this package (one query, group by day)
-    $iStmt = $pdo->prepare("
-        SELECT * FROM package_items
-        WHERE package_sys_id = ? AND status != 'deleted'
-        ORDER BY day_sys_id ASC, sequence ASC
-    ");
-    $iStmt->execute([$sys_id]);
-    $allItems = $iStmt->fetchAll();
+    // $iStmt = $pdo->prepare("
+    //     SELECT * FROM package_items
+    //     WHERE package_sys_id = ? AND status != 'deleted'
+    //     ORDER BY day_sys_id ASC, sequence ASC
+    // ");
+    // $iStmt->execute([$sys_id]);
+    // $allItems = $iStmt->fetchAll();
 
     // Group items by day_sys_id
     $itemsByDay = [];

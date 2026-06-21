@@ -24,19 +24,12 @@ if (
 }
 
 try {
-    $ids = generateIDs('air_ticket_calculations');
-
-    $uuid = $ids['uuid'];
-    $sysId = $ids['sys_id'];
-
-    $meta = buildMetaData(
-        null,
-        $_SESSION['user_name'] ?? 'system'
-    );
-
     $segments = $data["segments"];
     $fares = $data["fares"];
-
+    $uuid = $data["uuid"] ?? null;
+    $mode = $data["mode"] ?? 'create';
+    
+    // Calculate totals
     $totalPax = 0;
     $totalBaseFare = 0;
     $totalTaxes = 0;
@@ -95,80 +88,158 @@ try {
         $totalPayable += $payable * $pax;
     }
     
-    // var_dump($data, $totalPax, $segments, $fares, $totalGrossFare, $totalBaseFare, $totalTaxes, $totalCommissionA, $totalGovtTaxB, $totalIataCharge, $totalNetFare, $totalPayable);
-    // die;
-
-    $stmt = $pdo->prepare("
-        INSERT INTO air_ticket_calculations (
-            uuid,
-            sys_id,
-            airline,
-            pax,
-            raw_gds,
-            segments_json,
-            pricing_json,
-            copy_text,
-            gross_fare,
-            base_fare,
-            taxes,
-            commission_a,
-            govt_tax_b,
-            iata_charge,
-            net_fare,
-            payable,
-            total_payable,
-            meta_data
-        ) VALUES (
-            :uuid,
-            :sys_id,
-            :airline,
-            :pax,
-            :raw_gds,
-            :segments_json,
-            :pricing_json,
-            :copy_text,
-            :gross_fare,
-            :base_fare,
-            :taxes,
-            :commission_a,
-            :govt_tax_b,
-            :iata_charge,
-            :net_fare,
-            :payable,
-            :total_payable,
-            :meta_data
-        )
-    ");
-
-    $stmt->execute([
-        "uuid" => $uuid,
-        "sys_id" => $sysId,
-        "airline" => $data["airline"],
-        "pax" => json_encode($paxSummary, JSON_UNESCAPED_UNICODE),
-        "raw_gds" => $data["raw_gds"] ?? "",
-        "segments_json" => json_encode($segments, JSON_UNESCAPED_UNICODE),
-        "pricing_json" => json_encode($fares, JSON_UNESCAPED_UNICODE),
-        "copy_text" => $data["copy_text"] ?? "",
-
-        "gross_fare" => $totalGrossFare,
-        "base_fare" => $totalBaseFare,
-        "taxes" => $totalTaxes,
-        "commission_a" => $totalCommissionA,
-        "govt_tax_b" => $totalGovtTaxB,
-        "iata_charge" => $totalIataCharge,
-        "net_fare" => $totalNetFare,
-        "payable" => $totalPayable,
-        "total_payable" => $totalPayable,
-        "meta_data" => $meta
-    ]);
-
-    echo json_encode([
-        "success" => true,
-        "message" => "Calculation saved successfully",
-        "uuid" => $uuid,
-        "sys_id" => $sysId
-    ]);
-
+    if ($mode === 'update' && !empty($uuid)) {
+        $checkSql = "SELECT meta_data, sys_id FROM leads WHERE sys_id = ? OR uuid = ?";
+        $checkStmt = $pdo->prepare($checkSql);
+        $checkStmt->execute([$leadId, $leadId]);
+        $existingAirTicketCalculation = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$existingAirTicketCalculation) {
+            ob_clean();
+            echo json_encode(["status" => "error", "message" => "Lead not found"]);
+            exit;
+        }
+    
+        // Build meta_data using your existing function
+        $userName = $_SESSION['user_name'] ?? 'system';
+        $metaDataJson = buildMetaData(
+            $existingAirTicketCalculation['meta_data'],  // Pass existing meta_data
+            $userName,                    // Current user
+            20                            // Max updates (optional)
+        );
+        
+        // Update existing record
+        $stmt = $pdo->prepare("
+            UPDATE air_ticket_calculations
+            SET
+                airline = :airline,
+                pax = :pax,
+                raw_gds = :raw_gds,
+                segments_json = :segments_json,
+                pricing_json = :pricing_json,
+                copy_text = :copy_text,
+                gross_fare = :gross_fare,
+                base_fare = :base_fare,
+                taxes = :taxes,
+                commission_a = :commission_a,
+                govt_tax_b = :govt_tax_b,
+                iata_charge = :iata_charge,
+                net_fare = :net_fare,
+                payable = :payable,
+                total_payable = :total_payable,
+                meta_data = :meta_data,
+                updated_at = NOW()
+            WHERE uuid = :uuid
+        ");
+        
+        $stmt->execute([
+            "uuid" => $uuid,
+            "airline" => $data["airline"],
+            "pax" => json_encode($paxSummary, JSON_UNESCAPED_UNICODE),
+            "raw_gds" => $data["raw_gds"] ?? "",
+            "segments_json" => json_encode($segments, JSON_UNESCAPED_UNICODE),
+            "pricing_json" => json_encode($fares, JSON_UNESCAPED_UNICODE),
+            "copy_text" => $data["copy_text"] ?? "",
+            "gross_fare" => $totalGrossFare,
+            "base_fare" => $totalBaseFare,
+            "taxes" => $totalTaxes,
+            "commission_a" => $totalCommissionA,
+            "govt_tax_b" => $totalGovtTaxB,
+            "iata_charge" => $totalIataCharge,
+            "net_fare" => $totalNetFare,
+            "payable" => $totalPayable,
+            "total_payable" => $totalPayable,
+            "meta_data" => $metaDataJson
+        ]);
+        
+        echo json_encode([
+            "success" => true,
+            "message" => "Calculation updated successfully",
+            "uuid" => $uuid
+        ]);
+        
+    } else {
+        // Create new record
+        $ids = generateIDs('air_ticket_calculations');
+        $uuid = $ids['uuid'];
+        $sysId = $ids['sys_id'];
+        
+        $meta = buildMetaData(
+            null,
+            $_SESSION['user_name'] ?? 'system'
+        );
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO air_ticket_calculations (
+                uuid,
+                sys_id,
+                airline,
+                pax,
+                raw_gds,
+                segments_json,
+                pricing_json,
+                copy_text,
+                gross_fare,
+                base_fare,
+                taxes,
+                commission_a,
+                govt_tax_b,
+                iata_charge,
+                net_fare,
+                payable,
+                total_payable,
+                meta_data
+            ) VALUES (
+                :uuid,
+                :sys_id,
+                :airline,
+                :pax,
+                :raw_gds,
+                :segments_json,
+                :pricing_json,
+                :copy_text,
+                :gross_fare,
+                :base_fare,
+                :taxes,
+                :commission_a,
+                :govt_tax_b,
+                :iata_charge,
+                :net_fare,
+                :payable,
+                :total_payable,
+                :meta_data
+            )
+        ");
+        
+        $stmt->execute([
+            "uuid" => $uuid,
+            "sys_id" => $sysId,
+            "airline" => $data["airline"],
+            "pax" => json_encode($paxSummary, JSON_UNESCAPED_UNICODE),
+            "raw_gds" => $data["raw_gds"] ?? "",
+            "segments_json" => json_encode($segments, JSON_UNESCAPED_UNICODE),
+            "pricing_json" => json_encode($fares, JSON_UNESCAPED_UNICODE),
+            "copy_text" => $data["copy_text"] ?? "",
+            "gross_fare" => $totalGrossFare,
+            "base_fare" => $totalBaseFare,
+            "taxes" => $totalTaxes,
+            "commission_a" => $totalCommissionA,
+            "govt_tax_b" => $totalGovtTaxB,
+            "iata_charge" => $totalIataCharge,
+            "net_fare" => $totalNetFare,
+            "payable" => $totalPayable,
+            "total_payable" => $totalPayable,
+            "meta_data" => $meta
+        ]);
+        
+        echo json_encode([
+            "success" => true,
+            "message" => "Calculation saved successfully",
+            "uuid" => $uuid,
+            "sys_id" => $sysId
+        ]);
+    }
+    
 } catch (PDOException $e) {
     echo json_encode([
         "success" => false,

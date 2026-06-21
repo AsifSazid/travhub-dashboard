@@ -1,4 +1,5 @@
 <?php
+// FILE PATH: /api/leads/store.php
 // Prevent any accidental output before JSON
 ob_start();
 session_start();
@@ -14,7 +15,6 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 date_default_timezone_set('Asia/Dhaka');
-$now = date('d-m-Y H:i:s');
 
 // Get raw JSON input
 $input = file_get_contents("php://input");
@@ -33,18 +33,18 @@ require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
 
-
-// var_dump($data);
-// die;
 try {
     $uuid = generateIDs('leads');
     
+    // Build meta_data using your function for new record
+    $userName = $_SESSION['user_name'] ?? 'system';
     $metaDataJson = buildMetaData(
-        null,
-        $_SESSION['user_name'] ?? 'system'
+        null,      // No existing meta_data for new record
+        $userName, // Current user
+        20         // Max updates (optional)
     );
 
-    // Prepare SQL
+    // Prepare SQL (notice: no created_at/updated_at columns)
     $sql = "INSERT INTO leads (
                 uuid,
                 sys_id,
@@ -54,7 +54,7 @@ try {
                 service_data, 
                 lead_info, 
                 lead_status,
-                meta_data,
+                meta_data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $pdo->prepare($sql);
@@ -88,3 +88,4 @@ try {
     ]);
     exit;
 }
+?>
