@@ -89,14 +89,14 @@ try {
     }
     
     if ($mode === 'update' && !empty($uuid)) {
-        $checkSql = "SELECT meta_data, sys_id FROM leads WHERE sys_id = ? OR uuid = ?";
+        $checkSql = "SELECT meta_data, sys_id FROM air_ticket_calculations WHERE sys_id = ? OR uuid = ?";
         $checkStmt = $pdo->prepare($checkSql);
-        $checkStmt->execute([$leadId, $leadId]);
+        $checkStmt->execute([$uuid, $uuid]);
         $existingAirTicketCalculation = $checkStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$existingAirTicketCalculation) {
             ob_clean();
-            echo json_encode(["status" => "error", "message" => "Lead not found"]);
+            echo json_encode(["status" => "error", "message" => "AT Price not found"]);
             exit;
         }
     
@@ -127,8 +127,7 @@ try {
                 net_fare = :net_fare,
                 payable = :payable,
                 total_payable = :total_payable,
-                meta_data = :meta_data,
-                updated_at = NOW()
+                meta_data = :meta_data
             WHERE uuid = :uuid
         ");
         

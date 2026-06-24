@@ -27,34 +27,33 @@ if (!file_exists($apiKeyFile)) {
 $apiKey = trim(file_get_contents($apiKeyFile));
 
 $systemInstruction = "
-You are an expert GDS data parser. Your task is to extract structured flight segments and fare details from raw GDS text combined with human-readable pricing notes, and output a single, tightly validated JSON object.
+You are an expert GDS data parser. Your task is to extract structured flight segments and fare details from raw GDS text, and output a single, tightly validated JSON object.
 
 Extract flight segments and fares from GDS text. Ignore ARNK. Return JSON only.
 
 ## Segment Rules:
-- Format: [Line] [Flight] [Class] [Date] [Day] [Route] [Dep] [Arr] [Tag]
-- Tags: D1/D2=Departure, R1/R2=Return
-- Remove status codes
-- Route: add dash (DACHKG → DAC-HKG)
-- Keep date format: 04SEP
-- Time format: keep as is (0210, 0810)
+- Format: Extract Flight, Class, Date, Route, Departure, Arrival.
+- Identify Departure segments vs Return segments logically. Assign tags: 'D1', 'D2', 'R1', etc.
+- Identify the operating Airline full name for EACH segment line based on the code prefix (e.g., 'TK' -> 'Turkish Airlines', 'CX' -> 'Cathay Pacific') and include it inside the segment dataset as \"airline_name\".
+- Remove status codes completely.
+- Route: add dash (DACIST → DAC-IST).
+- Keep date format: 19MAY.
 
 ## Fare Rules:
-- Parse passenger types: ADT=Adult, CNN=Child, INF=Infant
-- Extract base fare, taxes, gross fare from fare lines
-- If total fare given, use that
+- Parse passenger types: ADT=Adult, CNN/CHD/PSG=Child, INF=Infant.
+- Map and extract exact numerical values for: base_fare (FARE), taxes (TAXES), and gross_fare (TOTAL / TOTAL PSG DES).
+- If FARE/TAXES columns contain single values but are mapped to multiple passengers, replicate them properly under each node.
 
-## Output JSON:
+## Output JSON Example:
 {
-  \"airline\": \"Cathay Pacific\",
+  \"airline\": \"Turkish Airlines\",
   \"segments\": [
-    {\"flight\":\"CX662\",\"class\":\"Q\",\"date\":\"04SEP\",\"route\":\"DAC-HKG\",\"departure\":\"0210\",\"arrival\":\"0810\",\"tag\":\"D1\"}
+    {\"flight\":\"TK713\",\"class\":\"M\",\"date\":\"19MAY\",\"route\":\"DAC-IST\",\"departure\":\"0650\",\"arrival\":\"1245\",\"tag\":\"D1\",\"airline_name\":\"Turkish Airlines\"}
   ],
   \"fares\": [
-    {\"type\":\"ADT\",\"pax\":1,\"base_fare\":99646,\"taxes\":0,\"gross_fare\":99646},
-    {\"type\":\"CNN\",\"pax\":1,\"base_fare\":73110,\"taxes\":0,\"gross_fare\":73110}
-  ],
-  \"total_fare\": 272402
+    {\"type\":\"ADT\",\"pax\":1,\"base_fare\":242758,\"taxes\":77047,\"gross_fare\":319805,\"iata_charge\": 0},
+    {\"type\":\"CHD\",\"pax\":1,\"base_fare\":242758,\"taxes\":77047,\"gross_fare\":319805,\"iata_charge\": 0}
+  ]
 }
 ";
 

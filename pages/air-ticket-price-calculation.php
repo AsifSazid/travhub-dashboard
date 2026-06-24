@@ -213,7 +213,7 @@ $mode = !empty($uuid) ? 'edit' : 'create';
                                 </label>
                                 <input
                                     id="commissionRate"
-                                    type="number"
+                                    type="text" inputmode="numeric" pattern="[0-9]*"
                                     step="0.01"
                                     value="7"
                                     class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -227,7 +227,7 @@ $mode = !empty($uuid) ? 'edit' : 'create';
                                 </label>
                                 <input
                                     id="govtTaxRate"
-                                    type="number"
+                                    type="text" inputmode="numeric" pattern="[0-9]*"
                                     step="0.01"
                                     value="0.3"
                                     class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -241,7 +241,7 @@ $mode = !empty($uuid) ? 'edit' : 'create';
                                 </label>
                                 <input
                                     id="globalIataCharge"
-                                    type="number"
+                                    type="text" inputmode="numeric" pattern="[0-9]*"
                                     value="0"
                                     class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
                                     oninput="applyGlobalIataCharge()"
@@ -408,253 +408,190 @@ $mode = !empty($uuid) ? 'edit' : 'create';
 
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
     <script>
+        // ============================================================
+        // PASTE THIS ENTIRE BLOCK INSIDE <script> TAG
+        // (replace everything after the PHP variable declarations)
+        // ============================================================
+        
         let currentSegments = [];
         let currentFares = [];
         let rawGdsText = "";
         let savedUuid = "<?php echo $uuid; ?>";
         let isSaved = false;
         let isEditMode = <?php echo ($mode === 'edit') ? 'true' : 'false'; ?>;
-
+        
         const EXTRACT_API = "../api/ticket-calculation/extract-gds.php";
-        const SAVE_API = "../api/ticket-calculation/save-calculation.php";
-        const LOAD_API = "../api/ticket-calculation/load-calculation.php";
-
+        const SAVE_API    = "../api/ticket-calculation/save-calculation.php";
+        const LOAD_API    = "../api/ticket-calculation/load-calculation.php";
+        
+        // ─── INIT ────────────────────────────────────────────────────
         document.addEventListener("DOMContentLoaded", function () {
-            // Load existing data if in edit mode
             if (isEditMode && savedUuid) {
                 loadQuotationData(savedUuid);
             }
         });
-
+        
+        // ─── LOAD ────────────────────────────────────────────────────
         async function loadQuotationData(uuid) {
             showLoading();
-            
             try {
                 const response = await fetch(`${LOAD_API}?uuid=${encodeURIComponent(uuid)}`);
-                const result = await response.json();
-
-                console.log('Load response:', result);
-
+                const result   = await response.json();
+        
                 if (!result.success) {
                     showError(result.message || "Failed to load quotation data.");
                     hideLoading();
                     return;
                 }
-
+        
                 const data = result.data;
-                
-                // Populate fields
-                document.getElementById("airline").value = data.airline || "";
-                document.getElementById("rawGds").value = data.raw_gds || "";
-
-                // Parse segments and fares
+                document.getElementById("airline").value  = data.airline  || "";
+                document.getElementById("rawGds").value   = data.raw_gds  || "";
+        
                 let segments = data.segments_json || [];
-                let fares = data.pricing_json || [];
-
-                console.log('Segments:', segments);
-                console.log('Fares:', fares);
-
+                let fares    = data.pricing_json  || [];
+        
                 if (segments.length === 0) {
                     showError("No segments found in saved data.");
                     hideLoading();
                     return;
                 }
-
-                // If fares is empty but we have pax data, create default fare
+        
                 if (fares.length === 0 && data.pax) {
-                    const paxData = typeof data.pax === 'string' ? JSON.parse(data.pax) : data.pax;
-                    const totalPax = paxData.total || 1;
-                    
-                    // Calculate per-person amounts
-                    const grossPerPax = Math.round(data.gross_fare / totalPax);
-                    const basePerPax = Math.round(data.base_fare / totalPax);
-                    const taxesPerPax = Math.round(data.taxes / totalPax);
-                    const payablePerPax = Math.round(data.payable / totalPax);
-                    
+                    const paxData   = typeof data.pax === 'string' ? JSON.parse(data.pax) : data.pax;
+                    const totalPax  = paxData.total || 1;
                     fares = [{
-                        type: "ADT",
-                        pax: totalPax,
-                        base_fare: basePerPax,
-                        taxes: taxesPerPax,
-                        gross_fare: grossPerPax,
-                        commission_a: Math.round(data.commission_a / totalPax),
-                        govt_tax_b: Math.round(data.govt_tax_b / totalPax),
-                        iata_charge: Math.round(data.iata_charge / totalPax),
-                        net_fare: Math.round(data.net_fare / totalPax),
-                        payable: payablePerPax,
+                        type          : "ADT",
+                        pax           : totalPax,
+                        base_fare     : Math.round(data.base_fare  / totalPax),
+                        taxes         : Math.round(data.taxes      / totalPax),
+                        gross_fare    : Math.round(data.gross_fare / totalPax),
+                        commission_a  : Math.round(data.commission_a / totalPax),
+                        govt_tax_b    : Math.round(data.govt_tax_b   / totalPax),
+                        iata_charge   : Math.round(data.iata_charge  / totalPax),
+                        net_fare      : Math.round(data.net_fare     / totalPax),
+                        payable       : Math.round(data.payable      / totalPax),
                         payable_edited: true,
-                        total_payable: data.payable
+                        total_payable : data.payable
                     }];
                 }
-
-                // Normalize the data
+        
                 currentSegments = normalizeSegments(segments);
-                currentFares = normalizeFares(fares);
-
-                // Store raw GDS text
-                rawGdsText = data.raw_gds || "";
-
-                // Show output area - hide empty state
+                currentFares    = normalizeFares(fares);
+                rawGdsText      = data.raw_gds || "";
+        
                 document.getElementById("emptyState").classList.add("hidden");
                 document.getElementById("outputArea").classList.remove("hidden");
-
-                // Set global IATA charge from first fare
+        
                 if (currentFares.length > 0 && currentFares[0].iata_charge) {
                     document.getElementById("globalIataCharge").value = currentFares[0].iata_charge;
                 }
-
-                // Render data
+        
                 renderSegments();
                 renderFares();
+                calculateAllFares(false);   // recalc after render so readonly fields populated
                 renderMarkdownPreview();
-
-                // Mark as saved
+        
                 isSaved = true;
                 document.getElementById("copyBtn").classList.remove("hidden");
                 document.getElementById("savedBadge").classList.remove("hidden");
                 document.getElementById("previewStatus").innerText = "Saved";
-
-                // Calculate fares with current rates
-                calculateAllFares(false);
-
+        
                 hideLoading();
-
             } catch (error) {
                 console.error("Load error:", error);
                 showError("Failed to load quotation data. Please try again.");
                 hideLoading();
             }
         }
-
+        
+        // ─── NORMALIZE ───────────────────────────────────────────────
         function normalizeSegments(segments) {
-            if (!Array.isArray(segments)) {
-                return [];
-            }
-            
+            if (!Array.isArray(segments)) return [];
             return segments
-                .filter(seg => {
-                    const flight = String(seg.flight || "").toUpperCase();
-                    return flight !== "ARNK";
-                })
-                .map((seg, index) => {
-                    return {
-                        line: seg.line || index + 1,
-                        flight: seg.flight || "",
-                        class: seg.class || "",
-                        date: seg.date || "",
-                        route: normalizeRoute(seg.route || ""),
-                        departure: seg.departure || "",
-                        arrival: seg.arrival || "",
-                        tag: seg.tag || `D${index + 1}` // Store tag from API
-                    };
-                });
+                .filter(seg => String(seg.flight || "").toUpperCase() !== "ARNK")
+                .map((seg, i) => ({
+                    line       : seg.line        || i + 1,
+                    flight     : seg.flight      || "",
+                    class      : seg.class       || "",
+                    date       : seg.date        || "",
+                    route      : normalizeRoute(seg.route || ""),
+                    departure  : seg.departure   || "",
+                    arrival    : seg.arrival     || "",
+                    tag        : seg.tag         || `D${i + 1}`,
+                    airline_name: seg.airline_name || ""
+                }));
         }
-
+        
         function normalizeFares(fares) {
             if (!Array.isArray(fares) || fares.length === 0) {
                 return [{
-                    type: "ADT",
-                    pax: 1,
-                    base_fare: 0,
-                    taxes: 0,
-                    gross_fare: 0,
-                    commission_a: 0,
-                    govt_tax_b: 0,
-                    iata_charge: 0,
-                    net_fare: 0,
-                    payable: 0,
-                    payable_edited: false,
-                    total_payable: 0
+                    type: "ADT", pax: 1, base_fare: 0, taxes: 0,
+                    gross_fare: 0, commission_a: 0, govt_tax_b: 0,
+                    iata_charge: 0, net_fare: 0, payable: 0,
+                    payable_edited: false, total_payable: 0
                 }];
             }
-            
-            return fares.map(fare => {
-                return {
-                    type: fare.type || "ADT",
-                    pax: Number(fare.pax || 1),
-                    base_fare: Number(fare.base_fare || 0),
-                    taxes: Number(fare.taxes || 0),
-                    gross_fare: Number(fare.gross_fare || 0),
-                    commission_a: Number(fare.commission_a || 0),
-                    govt_tax_b: Number(fare.govt_tax_b || 0),
-                    iata_charge: Number(fare.iata_charge || 0),
-                    net_fare: Number(fare.net_fare || 0),
-                    payable: Number(fare.payable || 0),
-                    payable_edited: Boolean(fare.payable_edited || false),
-                    total_payable: Number(fare.total_payable || 0)
-                };
-            });
+            return fares.map(f => ({
+                type          : f.type           || "ADT",
+                pax           : Number(f.pax     || 1),
+                base_fare     : Number(f.base_fare     || 0),
+                taxes         : Number(f.taxes         || 0),
+                gross_fare    : Number(f.gross_fare    || 0),
+                commission_a  : Number(f.commission_a  || 0),
+                govt_tax_b    : Number(f.govt_tax_b    || 0),
+                iata_charge   : Number(f.iata_charge   || 0),
+                net_fare      : Number(f.net_fare      || 0),
+                payable       : Number(f.payable       || 0),
+                payable_edited: Boolean(f.payable_edited || false),
+                total_payable : Number(f.total_payable || 0)
+            }));
         }
-
+        
         function normalizeRoute(route) {
-            let value = String(route || "").trim().toUpperCase();
-
-            if (value.includes("-")) {
-                return value;
-            }
-
-            if (value.length === 6) {
-                return value.substring(0, 3) + "-" + value.substring(3);
-            }
-
-            return value;
+            let v = String(route || "").trim().toUpperCase();
+            if (v.includes("-")) return v;
+            if (v.length === 6) return v.substring(0, 3) + "-" + v.substring(3);
+            return v;
         }
-
+        
+        // ─── PROCESS GDS ─────────────────────────────────────────────
         async function processGds() {
             rawGdsText = document.getElementById("rawGds").value.trim();
-
             hideError();
-
-            if (!rawGdsText) {
-                showError("Please paste raw GDS text first.");
-                return;
-            }
-
-            const processBtn = document.getElementById("processBtn");
-            processBtn.disabled = true;
-            processBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>Processing...`;
-
+        
+            if (!rawGdsText) { showError("Please paste raw GDS text first."); return; }
+        
+            const btn = document.getElementById("processBtn");
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>Processing...`;
+        
             try {
                 const response = await fetch(EXTRACT_API, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        raw_gds: rawGdsText
-                    })
+                    method : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body   : JSON.stringify({ raw_gds: rawGdsText })
                 });
-
                 const result = await response.json();
-
-                if (!result.success) {
-                    showError(result.message || "Extraction failed.");
-                    return;
-                }
-
-                // Ensure we have valid data
-                if (!result.data) {
-                    showError("No data extracted from GDS.");
-                    return;
-                }
-
+        
+                if (!result.success) { showError(result.message || "Extraction failed."); return; }
+                if (!result.data)    { showError("No data extracted from GDS.");           return; }
+        
                 renderOutput(result.data);
                 markUnsaved();
-
-            } catch (error) {
+            } catch (e) {
                 showError("Something went wrong while processing GDS.");
-                console.error(error);
+                console.error(e);
             } finally {
-                processBtn.disabled = false;
-                processBtn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Process GDS`;
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Process GDS`;
             }
         }
-
+        
         function renderOutput(data) {
             document.getElementById("emptyState").classList.add("hidden");
             document.getElementById("outputArea").classList.remove("hidden");
         
-            // Airline already comes from API with full name
             document.getElementById("airline").value = data.airline || "";
         
             currentSegments = normalizeSegments(data.segments || []);
@@ -662,16 +599,14 @@ $mode = !empty($uuid) ? 'edit' : 'create';
             if (Array.isArray(data.fares) && data.fares.length > 0) {
                 currentFares = normalizeFares(data.fares);
             } else {
-                currentFares = normalizeFares([
-                    {
-                        type: "ADT",
-                        pax: Number(data.pax || 1),
-                        base_fare: Number(data.base_fare || 0),
-                        taxes: Number(data.taxes || 0),
-                        gross_fare: Number(data.gross_fare || 0),
-                        iata_charge: 0
-                    }
-                ]);
+                currentFares = normalizeFares([{
+                    type      : "ADT",
+                    pax       : Number(data.pax       || 1),
+                    base_fare : Number(data.base_fare  || 0),
+                    taxes     : Number(data.taxes      || 0),
+                    gross_fare: Number(data.gross_fare || 0),
+                    iata_charge: 0
+                }]);
             }
         
             calculateAllFares(false);
@@ -679,679 +614,648 @@ $mode = !empty($uuid) ? 'edit' : 'create';
             renderFares();
             renderMarkdownPreview();
         }
-
+        
+        // ─── RENDER SEGMENTS (full re-render — only called on add/remove) ──
         function renderSegments() {
             const area = document.getElementById("segmentsArea");
             area.innerHTML = "";
         
             if (!currentSegments || currentSegments.length === 0) {
-                area.innerHTML = `
-                    <div class="text-center py-8 text-slate-500">
-                        No segments available. Add a segment or process GDS.
-                    </div>
-                `;
+                area.innerHTML = `<div class="text-center py-8 text-slate-500">No segments available. Add a segment or process GDS.</div>`;
                 return;
             }
         
             currentSegments.forEach((seg, index) => {
-                area.innerHTML += `
-                    <div class="grid grid-cols-[50px_120px_80px_110px_150px_100px_100px_100px_70px] gap-2 px-4 py-3 items-center">
-                        <div class="text-sm font-bold text-slate-500">${seg.tag || index + 1}</div>
+                const div = document.createElement("div");
+                div.className = "grid grid-cols-[50px_120px_80px_110px_150px_100px_100px_70px] gap-2 px-4 py-3 items-center";
+                div.dataset.index = index;
+                div.innerHTML = `
+                    <div class="text-sm font-bold text-slate-500">${escapeHtml(seg.tag || String(index + 1))}</div>
         
-                        <input
-                            value="${escapeHtml(seg.flight)}"
-                            oninput="updateSegment(${index}, 'flight', this.value)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold"
-                            placeholder="TK713"
-                        >
+                    <input type="text" inputmode="text"
+                        value="${escapeHtml(seg.flight)}"
+                        data-index="${index}" data-key="flight"
+                        class="seg-input border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold"
+                        placeholder="TK713">
         
-                        <input
-                            value="${escapeHtml(seg.class)}"
-                            oninput="updateSegment(${index}, 'class', this.value)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                            placeholder="M"
-                        >
+                    <input type="text" inputmode="text"
+                        value="${escapeHtml(seg.class)}"
+                        data-index="${index}" data-key="class"
+                        class="seg-input border border-slate-300 rounded-lg px-2 py-2 text-sm"
+                        placeholder="M">
         
-                        <input
-                            value="${escapeHtml(seg.date)}"
-                            oninput="updateSegment(${index}, 'date', this.value)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                            placeholder="19MAY"
-                        >
+                    <input type="text" inputmode="text"
+                        value="${escapeHtml(seg.date)}"
+                        data-index="${index}" data-key="date"
+                        class="seg-input border border-slate-300 rounded-lg px-2 py-2 text-sm"
+                        placeholder="19MAY">
         
-                        <input
-                            value="${escapeHtml(seg.route)}"
-                            oninput="updateSegment(${index}, 'route', this.value)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold"
-                            placeholder="DAC-IST"
-                        >
+                    <input type="text" inputmode="text"
+                        value="${escapeHtml(seg.route)}"
+                        data-index="${index}" data-key="route"
+                        class="seg-input border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold"
+                        placeholder="DAC-IST">
         
-                        <input
-                            value="${escapeHtml(seg.departure)}"
-                            oninput="updateSegment(${index}, 'departure', this.value)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                            placeholder="0650"
-                        >
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${escapeHtml(seg.departure)}"
+                        data-index="${index}" data-key="departure"
+                        class="seg-input border border-slate-300 rounded-lg px-2 py-2 text-sm"
+                        placeholder="0650">
         
-                        <input
-                            value="${escapeHtml(seg.arrival)}"
-                            oninput="updateSegment(${index}, 'arrival', this.value)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                            placeholder="1245"
-                        >
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${escapeHtml(seg.arrival)}"
+                        data-index="${index}" data-key="arrival"
+                        class="seg-input border border-slate-300 rounded-lg px-2 py-2 text-sm"
+                        placeholder="1245">
         
-                        <button
-                            type="button"
-                            onclick="removeSegment(${index})"
-                            class="bg-red-50 hover:bg-red-100 text-red-600 rounded-lg px-2 py-2"
-                            title="Remove"
-                        >
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
+                    <button type="button" data-remove-seg="${index}"
+                        class="bg-red-50 hover:bg-red-100 text-red-600 rounded-lg px-2 py-2">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 `;
+                area.appendChild(div);
             });
         }
-
+        
+        // ─── RENDER FARES (full re-render — only called on add/remove) ──
         function renderFares() {
             const area = document.getElementById("faresArea");
             area.innerHTML = "";
-
+        
             if (!currentFares || currentFares.length === 0) {
-                area.innerHTML = `
-                    <div class="text-center py-8 text-slate-500">
-                        No fare rows available. Add a fare or process GDS.
-                    </div>
-                `;
+                area.innerHTML = `<div class="text-center py-8 text-slate-500">No fare rows available. Add a fare or process GDS.</div>`;
                 return;
             }
-
+        
             currentFares.forEach((fare, index) => {
-                // Calculate total payable for this fare row
-                const totalPayable = Number(fare.payable || 0) * Number(fare.pax || 1);
-                fare.total_payable = totalPayable;
-                
-                area.innerHTML += `
-                    <div class="grid grid-cols-[90px_70px_130px_120px_130px_120px_120px_120px_130px_140px_150px_70px] gap-2 px-4 py-3 items-center">
-
-                        <input
-                            value="${escapeHtml(fare.type)}"
-                            oninput="updateFare(${index}, 'type', this.value, false)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm font-bold"
-                            placeholder="ADT"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.pax}"
-                            min="1"
-                            oninput="updateFare(${index}, 'pax', this.value, true)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.base_fare}"
-                            oninput="updateFare(${index}, 'base_fare', this.value, true)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.taxes}"
-                            oninput="updateFare(${index}, 'taxes', this.value, true)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.gross_fare}"
-                            oninput="updateFare(${index}, 'gross_fare', this.value, true)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.commission_a}"
-                            readonly
-                            class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.govt_tax_b}"
-                            readonly
-                            class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.iata_charge}"
-                            oninput="updateFare(${index}, 'iata_charge', this.value, true)"
-                            class="border border-slate-300 rounded-lg px-2 py-2 text-sm"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.net_fare}"
-                            readonly
-                            class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold"
-                        >
-
-                        <input
-                            type="number"
-                            value="${fare.payable}"
-                            oninput="updatePayable(${index}, this.value)"
-                            class="border-2 border-green-500 rounded-lg px-2 py-2 text-sm font-extrabold text-green-700"
-                        >
-
-                        <input
-                            type="text"
-                            value="BDT ${formatMoney(fare.total_payable)}/-"
-                            readonly
-                            class="bg-green-50 border border-green-200 rounded-lg px-2 py-2 text-sm font-bold text-green-700"
-                        >
-
-                        <button
-                            type="button"
-                            onclick="removeFare(${index})"
-                            class="bg-red-50 hover:bg-red-100 text-red-600 rounded-lg px-2 py-2"
-                            title="Remove"
-                        >
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
+                fare.total_payable = Number(fare.payable || 0) * Number(fare.pax || 1);
+        
+                const div = document.createElement("div");
+                div.className = "grid grid-cols-[90px_70px_130px_120px_130px_120px_120px_120px_130px_140px_150px_70px] gap-2 px-4 py-3 items-center";
+                div.dataset.fareIndex = index;
+                div.innerHTML = `
+                    <input type="text" inputmode="text"
+                        value="${escapeHtml(fare.type)}"
+                        data-fare-index="${index}" data-fare-key="type"
+                        class="fare-input border border-slate-300 rounded-lg px-2 py-2 text-sm font-bold"
+                        placeholder="ADT">
+        
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${fare.pax}"
+                        data-fare-index="${index}" data-fare-key="pax" data-numeric="1"
+                        class="fare-input border border-slate-300 rounded-lg px-2 py-2 text-sm">
+        
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${fare.base_fare}"
+                        data-fare-index="${index}" data-fare-key="base_fare" data-numeric="1"
+                        class="fare-input border border-slate-300 rounded-lg px-2 py-2 text-sm">
+        
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${fare.taxes}"
+                        data-fare-index="${index}" data-fare-key="taxes" data-numeric="1"
+                        class="fare-input border border-slate-300 rounded-lg px-2 py-2 text-sm">
+        
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${fare.gross_fare}"
+                        data-fare-index="${index}" data-fare-key="gross_fare" data-numeric="1"
+                        class="fare-input border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold">
+        
+                    <input type="text" inputmode="numeric"
+                        value="${fare.commission_a}"
+                        readonly
+                        data-fare-readonly="commission_a" data-fare-index="${index}"
+                        class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-2 text-sm">
+        
+                    <input type="text" inputmode="numeric"
+                        value="${fare.govt_tax_b}"
+                        readonly
+                        data-fare-readonly="govt_tax_b" data-fare-index="${index}"
+                        class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-2 text-sm">
+        
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${fare.iata_charge}"
+                        data-fare-index="${index}" data-fare-key="iata_charge" data-numeric="1"
+                        class="fare-input border border-slate-300 rounded-lg px-2 py-2 text-sm">
+        
+                    <input type="text" inputmode="numeric"
+                        value="${fare.net_fare}"
+                        readonly
+                        data-fare-readonly="net_fare" data-fare-index="${index}"
+                        class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold">
+        
+                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                        value="${fare.payable}"
+                        data-fare-index="${index}" data-fare-key="payable" data-payable="1"
+                        class="fare-payable border-2 border-green-500 rounded-lg px-2 py-2 text-sm font-extrabold text-green-700">
+        
+                    <input type="text"
+                        value="BDT ${formatMoney(fare.total_payable)}/-"
+                        readonly
+                        data-fare-readonly="total_payable" data-fare-index="${index}"
+                        class="bg-green-50 border border-green-200 rounded-lg px-2 py-2 text-sm font-bold text-green-700">
+        
+                    <button type="button" data-remove-fare="${index}"
+                        class="bg-red-50 hover:bg-red-100 text-red-600 rounded-lg px-2 py-2">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 `;
+                area.appendChild(div);
             });
         }
         
-        function updateSegment(index, key, value) {
-            currentSegments[index][key] = value;
-        
-            if (key === "route") {
-                currentSegments[index][key] = normalizeRoute(value);
-            }
-        
-            renderMarkdownPreview();
-            markUnsaved();
-        }
-
-        function updateFare(index, key, value, isNumber) {
-            if (isNumber) {
-                currentFares[index][key] = Number(value || 0);
-            } else {
-                currentFares[index][key] = value;
-            }
-
-            if (["base_fare", "gross_fare", "iata_charge", "pax"].includes(key)) {
-                if (key !== "pax") {
-                    currentFares[index].payable_edited = false;
-                }
-                calculateFare(index, false);
-            }
-
-            renderFares();
-            renderMarkdownPreview();
-            markUnsaved();
-        }
-
-        function updatePayable(index, value) {
-            currentFares[index].payable = Number(value || 0);
-            currentFares[index].payable_edited = true;
-            currentFares[index].total_payable = currentFares[index].payable * currentFares[index].pax;
-
-            renderFares();
-            renderMarkdownPreview();
-            markUnsaved();
-        }
-
-        function calculateAllFares(forceResetPayable = false) {
-            currentFares.forEach((fare, index) => {
-                calculateFare(index, forceResetPayable);
-            });
-
-            renderFares();
-            renderMarkdownPreview();
-            markUnsaved();
-        }
-
-        function calculateFare(index, forceResetPayable = false) {
+        // ─── TARGETED READONLY UPDATE (no re-render, no focus loss) ──
+        function updateFareReadonlyFields(index) {
             const fare = currentFares[index];
+            if (!fare) return;
         
-            const commissionRate = Number(document.getElementById("commissionRate").value || 7) / 100;
-            const govtTaxRate = Number(document.getElementById("govtTaxRate").value || 0.3) / 100;
+            // commission_a
+            const ca = document.querySelector(`[data-fare-readonly="commission_a"][data-fare-index="${index}"]`);
+            if (ca) ca.value = fare.commission_a;
         
-            const base = Number(fare.base_fare || 0);
-            const gross = Number(fare.gross_fare || 0);
-            const iata = Number(fare.iata_charge || 0);
+            // govt_tax_b
+            const gt = document.querySelector(`[data-fare-readonly="govt_tax_b"][data-fare-index="${index}"]`);
+            if (gt) gt.value = fare.govt_tax_b;
         
-            // Commission A = Base Fare * Commission Rate
-            fare.commission_a = Math.round(base * commissionRate);
-            
-            // Govt Tax B = Gross Fare * Govt Tax Rate
-            fare.govt_tax_b = Math.round(gross * govtTaxRate);
-            
-            // Net Fare = Gross - Commission + Tax + IATA
-            fare.net_fare = Math.round(gross - fare.commission_a + fare.govt_tax_b + iata);
+            // net_fare
+            const nf = document.querySelector(`[data-fare-readonly="net_fare"][data-fare-index="${index}"]`);
+            if (nf) nf.value = fare.net_fare;
         
-            // Payable = (Gross + Net) / 2
-            if (forceResetPayable || !fare.payable_edited || Number(fare.payable || 0) === 0) {
-                fare.payable = Math.round((gross + fare.net_fare) / 2);
-                fare.payable_edited = false;
+            // total_payable
+            const tp = document.querySelector(`[data-fare-readonly="total_payable"][data-fare-index="${index}"]`);
+            if (tp) tp.value = `BDT ${formatMoney(fare.total_payable)}/-`;
+        }
+        
+        // ─── EVENT DELEGATION (replaces inline oninput handlers) ─────
+        document.addEventListener("input", function (e) {
+            // Segment inputs
+            if (e.target.classList.contains("seg-input")) {
+                const index = Number(e.target.dataset.index);
+                const key   = e.target.dataset.key;
+                const value = e.target.value;
+        
+                currentSegments[index][key] = key === "route" ? normalizeRoute(value) : value;
+                renderMarkdownPreview();
+                markUnsaved();
+                return;
             }
         
-            fare.total_payable = Number(fare.payable || 0) * Number(fare.pax || 1);
-        }
-
-        function applyGlobalIataCharge() {
-            const globalIata = Number(document.getElementById("globalIataCharge").value || 0);
-
-            currentFares.forEach((fare, index) => {
-                fare.iata_charge = globalIata;
-                fare.payable_edited = false;
-                calculateFare(index, false);
-            });
-
-            renderFares();
-            renderMarkdownPreview();
-            markUnsaved();
-        }
-
+            // Fare payable input
+            if (e.target.dataset.payable === "1") {
+                const index = Number(e.target.dataset.fareIndex);
+                currentFares[index].payable        = Number(e.target.value || 0);
+                currentFares[index].payable_edited = true;
+                currentFares[index].total_payable  = currentFares[index].payable * currentFares[index].pax;
+                updateFareReadonlyFields(index);
+                renderMarkdownPreview();
+                markUnsaved();
+                return;
+            }
+        
+            // General fare inputs
+            if (e.target.classList.contains("fare-input") && e.target.dataset.fareKey) {
+                const index    = Number(e.target.dataset.fareIndex);
+                const key      = e.target.dataset.fareKey;
+                const isNumber = e.target.dataset.numeric === "1";
+                const value    = isNumber ? Number(e.target.value || 0) : e.target.value;
+        
+                currentFares[index][key] = value;
+        
+                if (["base_fare", "gross_fare", "iata_charge", "pax"].includes(key)) {
+                    if (key !== "pax") currentFares[index].payable_edited = false;
+                    calculateFare(index, false);
+                    updateFareReadonlyFields(index);
+        
+                    // If payable was auto-recalculated, update payable input too (without triggering event)
+                    if (!currentFares[index].payable_edited) {
+                        const payableInput = document.querySelector(`[data-fare-index="${index}"][data-payable="1"]`);
+                        if (payableInput && document.activeElement !== payableInput) {
+                            payableInput.value = currentFares[index].payable;
+                        }
+                    }
+                }
+        
+                renderMarkdownPreview();
+                markUnsaved();
+                return;
+            }
+        });
+        
+        // ─── EVENT DELEGATION for remove buttons ─────────────────────
+        document.addEventListener("click", function (e) {
+            const removeSegBtn  = e.target.closest("[data-remove-seg]");
+            const removeFareBtn = e.target.closest("[data-remove-fare]");
+        
+            if (removeSegBtn) {
+                removeSegment(Number(removeSegBtn.dataset.removeSeg));
+                return;
+            }
+            if (removeFareBtn) {
+                removeFare(Number(removeFareBtn.dataset.removeFare));
+                return;
+            }
+        });
+        
+        // ─── SEGMENT ADD / REMOVE ────────────────────────────────────
         function addSegment() {
-            const nextTag = `D${currentSegments.length + 1}`;
             currentSegments.push({
                 line: currentSegments.length + 1,
-                flight: "",
-                class: "",
-                date: "",
-                route: "",
-                departure: "",
-                arrival: "",
-                tag: nextTag
+                flight: "", class: "", date: "",
+                route: "", departure: "", arrival: "",
+                tag: `D${currentSegments.length + 1}`
             });
-        
             renderSegments();
             renderMarkdownPreview();
             markUnsaved();
         }
-
+        
         function removeSegment(index) {
             currentSegments.splice(index, 1);
             renderSegments();
             renderMarkdownPreview();
             markUnsaved();
         }
-
+        
+        // ─── FARE ADD / REMOVE ───────────────────────────────────────
         function addFareRow() {
             currentFares.push({
-                type: "ADT",
-                pax: 1,
-                base_fare: 0,
-                taxes: 0,
-                gross_fare: 0,
-                commission_a: 0,
-                govt_tax_b: 0,
+                type: "ADT", pax: 1, base_fare: 0, taxes: 0,
+                gross_fare: 0, commission_a: 0, govt_tax_b: 0,
                 iata_charge: Number(document.getElementById("globalIataCharge").value || 0),
-                net_fare: 0,
-                payable: 0,
-                payable_edited: false,
-                total_payable: 0
+                net_fare: 0, payable: 0, payable_edited: false, total_payable: 0
             });
-
             calculateFare(currentFares.length - 1, false);
             renderFares();
             renderMarkdownPreview();
             markUnsaved();
         }
-
+        
         function removeFare(index) {
             currentFares.splice(index, 1);
             renderFares();
             renderMarkdownPreview();
             markUnsaved();
         }
-
-        function generateCopyText() {
-            const airline = document.getElementById("airline").value.trim() || "Airline";
-            const segments = currentSegments;
-            const fares = currentFares;
-            
-            if (segments.length === 0) return "No flight segments available.";
-            
-            // --- 1. FIXED ROUTE SUMMARY LOGIC ---
-            let routeStations = [];
-            segments.forEach((seg) => {
-                if (seg.route) {
-                    const parts = seg.route.split('-');
-                    if (parts.length === 2) {
-                        const origin = parts[0].trim();
-                        const dest = parts[1].trim();
-                        if (routeStations.length === 0) {
-                            routeStations.push(origin);
-                        }
-                        // Avoid duplicating back-to-back transit hubs (e.g., DAC->HKG->HKG->ICN becomes DAC->HKG->ICN)
-                        if (routeStations[routeStations.length - 1] !== origin) {
-                            routeStations.push(origin);
-                        }
-                        if (routeStations[routeStations.length - 1] !== dest) {
-                            routeStations.push(dest);
-                        }
-                    }
-                }
-            });
-            const routeSummary = routeStations.join(' -> ');
-            
-            // Determine trip type
-            let tripType = "One Way";
-            if (segments.length >= 2) {
-                const first = segments[0];
-                const last = segments[segments.length - 1];
-                if (first.route && last.route) {
-                    const firstOrigin = first.route.split('-')[0].trim();
-                    const lastDest = last.route.split('-')[1].trim();
-                    if (firstOrigin === lastDest) {
-                        tripType = "Round Trip";
-                    } else {
-                        tripType = "Multi-City";
-                    }
-                }
+        
+        // ─── FARE CALCULATION ────────────────────────────────────────
+        function calculateAllFares(forceResetPayable = false) {
+            currentFares.forEach((_, i) => calculateFare(i, forceResetPayable));
+            renderFares();         // full re-render here is fine (called from rate inputs, not fare inputs)
+            renderMarkdownPreview();
+            markUnsaved();
+        }
+        
+        function calculateFare(index, forceResetPayable = false) {
+            const fare           = currentFares[index];
+            const commissionRate = Number(document.getElementById("commissionRate").value || 7)   / 100;
+            const govtTaxRate    = Number(document.getElementById("govtTaxRate").value    || 0.3) / 100;
+        
+            const base  = Number(fare.base_fare  || 0);
+            const gross = Number(fare.gross_fare || 0);
+            const iata  = Number(fare.iata_charge || 0);
+        
+            fare.commission_a = Math.round(base  * commissionRate);
+            fare.govt_tax_b   = Math.round(gross * govtTaxRate);
+            fare.net_fare     = Math.max(0, Math.round(gross - fare.commission_a + fare.govt_tax_b + iata));
+        
+            if (forceResetPayable || !fare.payable_edited || Number(fare.payable || 0) === 0) {
+                fare.payable        = Math.max(0, Math.round((gross + fare.net_fare) / 2));
+                fare.payable_edited = false;
             }
-            
-            // Count total passengers
-            let totalPax = 0;
-            fares.forEach(f => totalPax += (f.pax || 1));
-            let passengerLabel = totalPax > 1 ? 'Passengers' : 'Passenger';
-            
-            // Build output header
-            let output = `*${tripType} Ticket*\n`;
-            output += `Route: ${routeSummary}\n`;
-            output += `${totalPax} ${passengerLabel}\n\n`;
-            
-            output += `*Flight:*\n`;
-            output += `${airline.toUpperCase()}\n`;
-            
-            // Group segments by tag (D1, D2, R1, R2, etc.)
+        
+            fare.total_payable = Number(fare.payable || 0) * Number(fare.pax || 1);
+        }
+        
+        function applyGlobalIataCharge() {
+            const globalIata = Number(document.getElementById("globalIataCharge").value || 0);
+            currentFares.forEach((fare, i) => {
+                fare.iata_charge   = globalIata;
+                fare.payable_edited = false;
+                calculateFare(i, false);
+            });
+            renderFares();
+            renderMarkdownPreview();
+            markUnsaved();
+        }
+        
+        // ─── PREVIEW GENERATION ──────────────────────────────────────
+        function generateCopyText() {
+            const segments = currentSegments;
+            const fares    = currentFares;
+        
+            if (segments.length === 0) return "No flight segments available.";
+        
+            // Group by tag
             const groupedSegments = {};
-            segments.forEach((seg, idx) => {
-                const tag = seg.tag || `D${idx + 1}`;
+            segments.forEach(seg => {
+                const tag = seg.tag || "D1";
                 if (!groupedSegments[tag]) groupedSegments[tag] = [];
                 groupedSegments[tag].push(seg);
             });
-            
-            // Sort tags
-            const sortedTags = Object.keys(groupedSegments).sort();
-            
-            sortedTags.forEach((tag, idx) => {
-                const segs = groupedSegments[tag];
-                const isReturn = tag.startsWith('R');
-                
-                // --- 2. FIXED AIRLINE HEADER REPETITION FOR ARRIVALS ---
-                if (idx > 0) {
-                    output += `\n${isReturn ? 'Arrival' : 'Depart'}\n`;
-                    output += `${airline.toUpperCase()}\n`;
+        
+            // Route summary
+            const sortedTagsForRoute = Object.keys(groupedSegments).sort();
+            const routeSummaryParts  = [];
+            sortedTagsForRoute.forEach(tag => {
+                const group = groupedSegments[tag];
+                if (group.length > 0) {
+                    const first = group[0].route ? group[0].route.split('-')[0].trim() : '';
+                    const last  = group[group.length - 1].route ? group[group.length - 1].route.split('-')[1].trim() : '';
+                    if (first && last) routeSummaryParts.push(`${first} -> ${last}`);
                 }
-                
-                segs.forEach((seg, i) => {
-                    if (i > 0) output += `TRANSIT BREAK\n`;
-                    const depTime = formatTimeDisplay(seg.departure);
-                    const arrTime = formatTimeDisplay(seg.arrival);
-                    const depTimeRaw = seg.departure || '';
-                    const arrTimeRaw = seg.arrival || '';
-                    output += `${seg.date || ''} | ${seg.flight || ''}\n`;
-                    output += `${seg.route || ''}\n`;
-                    output += `${depTimeRaw} (${depTime}) - ${arrTimeRaw} (${arrTime})\n`;
-                });
             });
-            
+            const routeSummary = routeSummaryParts.join(' | ');
+        
+            // Trip type
+            let tripType = "One Way";
+            if (segments.length >= 2) {
+                const firstOrigin = segments[0].route ? segments[0].route.split('-')[0].trim() : '';
+                const lastDest    = segments[segments.length - 1].route ? segments[segments.length - 1].route.split('-')[1].trim() : '';
+                if (firstOrigin && lastDest) {
+                    tripType = firstOrigin === lastDest ? "Round Trip" : "Multi-City";
+                }
+            }
+        
+            // Pax count
+            let totalPax = 0;
+            fares.forEach(f => totalPax += (f.pax || 1));
+            const passengerLabel = totalPax > 1 ? 'Passengers' : 'Passenger';
+        
+            let output = `*${tripType} Ticket*\n`;
+            output += `Route: ${routeSummary}\n`;
+            output += `${totalPax} ${passengerLabel}\n\n`;
+            output += `*Flight Info:*\n`;
+        
+            const sortedTags = Object.keys(groupedSegments).sort();
+        
+            sortedTags.forEach((tag, idx) => {
+                const segs     = groupedSegments[tag];
+                const isReturn = tag.startsWith('R');
+                const airlineName = segs[0].airline_name
+                    || document.getElementById("airline").value.trim()
+                    || "AIRLINE";
+        
+                output += `*${isReturn ? 'Return' : 'Depart'} | ${airlineName.toUpperCase()}*\n`;
+        
+                segs.forEach((seg, i) => {
+                    const depFormatted = formatTimeDisplay(seg.departure);
+                    const arrFormatted = formatTimeDisplay(seg.arrival);
+                    const airports     = seg.route ? seg.route.split('-') : ['', ''];
+                    const originAP     = airports[0] ? airports[0].trim() : '';
+                    const destAP       = airports[1] ? airports[1].trim() : '';
+        
+                    // Transit line
+                    if (i > 0) {
+                        const transitDuration = calculateTransitTime(segs[i - 1], seg);
+                        const durationLabel   = transitDuration ? ` (${transitDuration})` : '';
+                        output += `*TRANSIT at ${originAP}${durationLabel}* \n`;
+                    }
+        
+                    // Overnight note
+                    const overnight     = isOvernightFlight(seg);
+                    const overnightNote = overnight ? `-${getNextDayLabel(seg.date)}` : '';
+        
+                    output += `*${seg.date || ''}* | ${seg.flight || ''}\n`;
+                    output += `${originAP} ${seg.departure || ''} (${depFormatted}) - ${destAP} ${seg.arrival || ''} (${arrFormatted})${overnightNote}\n`;
+                });
+        
+                if (idx < sortedTags.length - 1) output += `\n`;
+            });
+        
+            // Pricing
             output += `\n*Price:*\n`;
             let grandTotal = 0;
-            
+        
             fares.forEach(fare => {
-                const gross = Number(fare.gross_fare || 0);
-                const payable = Number(fare.payable || 0);
-                const pax = Number(fare.pax || 1);
-                const total = payable * pax;
-                grandTotal += total;
-                
-                const typeLabel = fare.type === 'ADT' ? 'Adult' : 
-                                 fare.type === 'CNN' ? 'Child' : 
-                                 fare.type === 'CHD' ? 'Child' :
-                                 fare.type === 'INF' ? 'Infant' : fare.type;
-                
+                const gross   = Number(fare.gross_fare || 0);
+                const payable = Number(fare.payable    || 0);
+                const pax     = Number(fare.pax        || 1);
+                grandTotal   += payable * pax;
+        
+                const typeLabel =
+                    fare.type === 'ADT' ? 'Adult'  :
+                    fare.type === 'CNN' ? 'Child'  :
+                    fare.type === 'CHD' ? 'Child'  :
+                    fare.type === 'INF' ? 'Infant' : fare.type;
+        
                 output += `- ${typeLabel}: Gross BDT ${formatMoney(gross)} per person\n`;
                 output += `- *Payable: BDT ${formatMoney(payable)}/- per person.*\n`;
             });
-            
+        
             output += `*Total payable: ${formatMoney(grandTotal)}/-*`;
-            
+        
             return output;
         }
-                
-        function formatTimeDisplay(time) {
-            if (!time) return '';
-            const str = String(time).padStart(4, '0');
-            const hours = parseInt(str.substring(0, 2));
-            const mins = str.substring(2, 4);
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            const h = hours > 12 ? hours - 12 : hours;
-            return `${String(h).padStart(2, '0')}:${mins} ${ampm}`;
-        }
-
-        function formatFlight(flight) {
-            const value = String(flight || "").trim().toUpperCase();
-
-            const match = value.match(/^([A-Z]{2})(\d+)$/);
-
-            if (!match) return value;
-
-            const code = match[1];
-            const number = match[2].padStart(4, " ");
-
-            return `${code}${number}`;
-        }
-
-        function formatArrival(arrival) {
-            const value = String(arrival || "").trim();
-
-            if (!value) return "";
-
-            return value;
-        }
-
-        function removeDash(route) {
-            return String(route || "").replaceAll("-", "");
-        }
-
+        
         function renderMarkdownPreview() {
             const preview = document.getElementById("markdownPreview");
-
-            if (!preview) return;
-
-            preview.innerText = generateCopyText();
+            if (preview) preview.innerText = generateCopyText();
         }
-
-        async function copyQuotation() {
-            if (!isSaved) {
-                alert("Please save the quotation first.");
-                return;
+        
+        // ─── OVERNIGHT HELPERS ───────────────────────────────────────
+        function isOvernightFlight(seg) {
+            if (!seg.departure || !seg.arrival) return false;
+            return parseInt(seg.arrival, 10) < parseInt(seg.departure, 10);
+        }
+        
+        function getNextDayLabel(dateStr) {
+            const currentYear = new Date().getFullYear();
+            const parsed = new Date(Date.parse(`${dateStr.replace(/(\d+)([A-Z]+)/, '$1 $2')} ${currentYear}`));
+            if (isNaN(parsed)) return '';
+            parsed.setDate(parsed.getDate() + 1);
+            const day   = String(parsed.getDate()).padStart(2, '0');
+            const month = parsed.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+            return `${day}${month}`;
+        }
+        
+        // ─── TRANSIT TIME ────────────────────────────────────────────
+        function calculateTransitTime(prevSeg, currentSeg) {
+            if (!prevSeg || !currentSeg) return '';
+        
+            const currentYear = new Date().getFullYear();
+        
+            const parseDateTime = (dateStr, timeStr) => {
+                if (!dateStr || !timeStr) return null;
+                const hh = timeStr.substring(0, 2);
+                const mm = timeStr.substring(2, 4);
+                return new Date(Date.parse(`${dateStr.replace(/(\d+)([A-Z]+)/, '$1 $2')} ${currentYear} ${hh}:${mm}`));
+            };
+        
+            const depDate    = parseDateTime(prevSeg.date, prevSeg.departure);
+            let   arrDate    = parseDateTime(prevSeg.date, prevSeg.arrival);
+            const nextDepDate = parseDateTime(currentSeg.date, currentSeg.departure);
+        
+            if (!depDate || !arrDate || !nextDepDate) return '';
+        
+            // Overnight: arrival HHMM < departure HHMM → +1 day
+            if (arrDate <= depDate) {
+                arrDate = new Date(arrDate.getTime() + 24 * 60 * 60 * 1000);
             }
-
-            const text = generateCopyText();
-
+        
+            let diffMs = nextDepDate - arrDate;
+            if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000; // safety net
+        
+            const totalMinutes = Math.floor(diffMs / (1000 * 60));
+            const hours        = Math.floor(totalMinutes / 60);
+            const minutes      = totalMinutes % 60;
+        
+            if (hours === 0) return `${minutes} mins`;
+            return `${String(hours).padStart(2, '0')} ${hours > 1 ? 'hrs' : 'hr'} ${minutes} ${minutes > 1 ? 'mins' : 'min'}`;
+        }
+        
+        // ─── TIME FORMAT ─────────────────────────────────────────────
+        function formatTimeDisplay(time) {
+            if (!time) return '';
+            const str   = String(time).padStart(4, '0');
+            const hours = parseInt(str.substring(0, 2));
+            const mins  = str.substring(2, 4);
+            const ampm  = hours >= 12 ? 'PM' : 'AM';
+            const h     = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+            return `${String(h).padStart(2, '0')}:${mins} ${ampm}`;
+        }
+        
+        // ─── SAVE / COPY / CLEAR ─────────────────────────────────────
+        async function copyQuotation() {
+            if (!isSaved) { alert("Please save the quotation first."); return; }
             try {
-                await navigator.clipboard.writeText(text);
+                await navigator.clipboard.writeText(generateCopyText());
                 alert("Quotation copied.");
-            } catch (error) {
+            } catch {
                 alert("Copy failed. Please copy manually from preview.");
             }
         }
-
+        
         async function saveQuotation() {
             hideError();
-
             if (!currentSegments.length || !currentFares.length) {
-                alert("No quotation data to save.");
-                return;
+                alert("No quotation data to save."); return;
             }
-
+        
             const saveBtn = document.getElementById("saveBtn");
             saveBtn.disabled = true;
             saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>${isEditMode ? 'Updating...' : 'Saving...'}`;
-
+        
             const payload = {
-                uuid: savedUuid,
-                airline: document.getElementById("airline").value.trim(),
-                raw_gds: rawGdsText,
-                segments: currentSegments,
-                fares: currentFares,
+                uuid     : savedUuid,
+                airline  : document.getElementById("airline").value.trim(),
+                raw_gds  : rawGdsText,
+                segments : currentSegments,
+                fares    : currentFares,
                 pricing_summary: getPricingSummary(),
                 copy_text: generateCopyText(),
-                mode: isEditMode ? 'update' : 'create'
+                mode     : isEditMode ? 'update' : 'create'
             };
-
+        
             try {
                 const response = await fetch(SAVE_API, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(payload)
+                    method : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body   : JSON.stringify(payload)
                 });
-
                 const result = await response.json();
-
+        
                 if (result.success) {
                     savedUuid = result.uuid;
-                    isSaved = true;
-
+                    isSaved   = true;
+        
                     document.getElementById("copyBtn").classList.remove("hidden");
                     document.getElementById("savedBadge").classList.remove("hidden");
                     document.getElementById("previewStatus").innerText = "Saved";
-
-                    // If it was a new save (create mode), update URL to edit mode
+        
                     if (!isEditMode) {
-                        const newUrl = `air-ticket-price-calculation.php?uuid=${encodeURIComponent(savedUuid)}`;
-                        window.history.pushState({}, "", newUrl);
+                        window.history.pushState({}, "", `air-ticket-price-calculation.php?uuid=${encodeURIComponent(savedUuid)}`);
                         isEditMode = true;
                     }
-
+        
                     alert(result.message || "Saved successfully.");
                 } else {
                     alert(result.message || "Save failed.");
                 }
-
-            } catch (error) {
-                console.error(error);
+            } catch (e) {
+                console.error(e);
                 alert("Something went wrong while saving.");
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk mr-2"></i>${isEditMode ? 'Update' : 'Save'} to System`;
             }
         }
-
+        
         function getPricingSummary() {
-            let totalBase = 0;
-            let totalTaxes = 0;
-            let totalGross = 0;
-            let totalCommissionA = 0;
-            let totalGovtTaxB = 0;
-            let totalIata = 0;
-            let totalNet = 0;
-            let totalPayable = 0;
-            let totalPax = 0;
-
+            let totalBase = 0, totalTaxes = 0, totalGross = 0,
+                totalCommissionA = 0, totalGovtTaxB = 0,
+                totalIata = 0, totalNet = 0, totalPayable = 0, totalPax = 0;
+        
             currentFares.forEach(fare => {
                 const pax = Number(fare.pax || 1);
-
-                totalPax += pax;
-                totalBase += Number(fare.base_fare || 0) * pax;
-                totalTaxes += Number(fare.taxes || 0) * pax;
-                totalGross += Number(fare.gross_fare || 0) * pax;
+                totalPax        += pax;
+                totalBase       += Number(fare.base_fare    || 0) * pax;
+                totalTaxes      += Number(fare.taxes        || 0) * pax;
+                totalGross      += Number(fare.gross_fare   || 0) * pax;
                 totalCommissionA += Number(fare.commission_a || 0) * pax;
-                totalGovtTaxB += Number(fare.govt_tax_b || 0) * pax;
-                totalIata += Number(fare.iata_charge || 0) * pax;
-                totalNet += Number(fare.net_fare || 0) * pax;
-                totalPayable += Number(fare.payable || 0) * pax;
+                totalGovtTaxB   += Number(fare.govt_tax_b   || 0) * pax;
+                totalIata       += Number(fare.iata_charge  || 0) * pax;
+                totalNet        += Number(fare.net_fare     || 0) * pax;
+                totalPayable    += Number(fare.payable      || 0) * pax;
             });
-
+        
             return {
-                total_pax: totalPax,
-                total_base_fare: totalBase,
-                total_taxes: totalTaxes,
-                total_gross_fare: totalGross,
+                total_pax         : totalPax,
+                total_base_fare   : totalBase,
+                total_taxes       : totalTaxes,
+                total_gross_fare  : totalGross,
                 total_commission_a: totalCommissionA,
-                total_govt_tax_b: totalGovtTaxB,
-                total_iata_charge: totalIata,
-                total_net_fare: totalNet,
-                total_payable: totalPayable
+                total_govt_tax_b  : totalGovtTaxB,
+                total_iata_charge : totalIata,
+                total_net_fare    : totalNet,
+                total_payable     : totalPayable
             };
         }
-
+        
         function clearAll() {
             if (isEditMode && isSaved) {
-                if (!confirm("This will reset the form. Continue?")) {
-                    return;
-                }
+                if (!confirm("This will reset the form. Continue?")) return;
             }
-
-            document.getElementById("rawGds").value = "";
-            document.getElementById("airline").value = "";
+        
+            document.getElementById("rawGds").value         = "";
+            document.getElementById("airline").value         = "";
             document.getElementById("markdownPreview").innerText = "";
-
-            currentSegments = [];
-            currentFares = [];
-            rawGdsText = "";
-            savedUuid = null;
-            isSaved = false;
-            isEditMode = false;
-
+        
+            currentSegments = []; currentFares = [];
+            rawGdsText = ""; savedUuid = null;
+            isSaved = false; isEditMode = false;
+        
             document.getElementById("outputArea").classList.add("hidden");
             document.getElementById("emptyState").classList.remove("hidden");
             document.getElementById("copyBtn").classList.add("hidden");
             document.getElementById("savedBadge").classList.add("hidden");
-
             hideError();
-
+        
             window.history.pushState({}, "", "air-ticket-price-calculation.php");
         }
-
+        
         function markUnsaved() {
             isSaved = false;
             document.getElementById("copyBtn").classList.add("hidden");
             document.getElementById("savedBadge").classList.add("hidden");
-
-            const previewStatus = document.getElementById("previewStatus");
-            if (previewStatus) {
-                previewStatus.innerText = "Unsaved";
-            }
+            const ps = document.getElementById("previewStatus");
+            if (ps) ps.innerText = "Unsaved";
         }
-
-        function showError(message) {
-            const errorBox = document.getElementById("processError");
-            errorBox.innerText = message;
-            errorBox.classList.remove("hidden");
+        
+        // ─── HELPERS ─────────────────────────────────────────────────
+        function showError(msg) {
+            const box = document.getElementById("processError");
+            box.innerText = msg;
+            box.classList.remove("hidden");
         }
-
         function hideError() {
-            const errorBox = document.getElementById("processError");
-            errorBox.innerText = "";
-            errorBox.classList.add("hidden");
+            const box = document.getElementById("processError");
+            box.innerText = "";
+            box.classList.add("hidden");
         }
-
-        function showLoading() {
-            document.getElementById("loadingOverlay").classList.remove("hidden");
-        }
-
-        function hideLoading() {
-            document.getElementById("loadingOverlay").classList.add("hidden");
-        }
-
+        function showLoading() { document.getElementById("loadingOverlay").classList.remove("hidden"); }
+        function hideLoading()  { document.getElementById("loadingOverlay").classList.add("hidden");    }
         function formatMoney(amount) {
-            return Number(amount || 0).toLocaleString("en-BD", {
-                maximumFractionDigits: 0
-            });
+            return Number(amount || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 });
         }
-
         function escapeHtml(value) {
             return String(value ?? "")
                 .replaceAll("&", "&amp;")
@@ -1360,6 +1264,13 @@ $mode = !empty($uuid) ? 'edit' : 'create';
                 .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#039;");
         }
+        
+        // ─── RATE INPUTS (commission, govtTax) — these DO full re-render ──
+        // Wire up via inline oninput in HTML as before:
+        //   oninput="calculateAllFares(true)"  ← commission & govtTax inputs
+        //   oninput="applyGlobalIataCharge()"  ← globalIataCharge input
+        //   oninput="renderMarkdownPreview(); markUnsaved();"  ← airline input
+        // No changes needed in HTML for these 4 inputs.
     </script>
 
 </body>
