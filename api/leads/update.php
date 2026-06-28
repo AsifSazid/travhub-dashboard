@@ -1,148 +1,92 @@
 <?php
-// FILE PATH: /api/leads/update.php
-// Prevent any accidental output before JSON
+/**
+ * FILE PATH: /api/leads/update.php
+ * Thin wrapper — delegates to store.php logic for consistency.
+ * Accepts same payload as store.php, updates lead by ?lead=SYS_ID
+ *
+ * POST ?lead=SYS_ID { client_info, service_type, service_data, lead_info, ... }
+ */
+
 ob_start();
 session_start();
+date_default_timezone_set('Asia/Dhaka');
 
-// Headers
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, PUT");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json");
-
-// Suppress PHP warnings/notices (production-ready)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, PUT');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Content-Type: application/json');
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-date_default_timezone_set('Asia/Dhaka');
-
-// Get raw JSON input
-$input = file_get_contents("php://input");
-$data = json_decode($input, true);
-
-if (!$data) {
-    ob_clean();
-    echo json_encode(["status" => "error", "message" => "Invalid JSON"]);
-    exit;
-}
-
-// DB connection
 require '../../server/db_connection.php';
 require '../../server/generate_meta_data.php';
 
-// Get lead ID from query string
-$leadId = isset($_GET['lead']) ? trim($_GET['lead']) : '';
+$input = file_get_contents('php://input');
+$data  = json_decode($input, true);
 
-if (empty($leadId)) {
+if (!$data) {
     ob_clean();
-    echo json_encode(["status" => "error", "message" => "Lead ID is required"]);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid JSON']);
+    exit;
+}
+
+$leadId   = trim($_GET['lead'] ?? '');
+$userName = $_SESSION['user_name'] ?? 'system';
+
+if (!$leadId) {
+    ob_clean();
+    echo json_encode(['status' => 'error', 'message' => 'Lead ID required']);
     exit;
 }
 
 try {
-    // First check if lead exists and get current meta_data
-    $checkSql = "SELECT meta_data, sys_id FROM leads WHERE sys_id = ? OR uuid = ?";
-    $checkStmt = $pdo->prepare($checkSql);
-    $checkStmt->execute([$leadId, $leadId]);
-    $existingLead = $checkStmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$existingLead) {
+    // Fetch existing meta
+    $s = $pdo->prepare("SELECT meta_data FROM leads WHERE sys_id = ? LIMIT 1");
+    $s->execute([$leadId]);
+    $existingMeta = $s->fetchColumn();
+    if ($existingMeta === false) {
         ob_clean();
-        echo json_encode(["status" => "error", "message" => "Lead not found"]);
+        echo json_encode(['status' => 'error', 'message' => 'Lead not found']);
         exit;
     }
 
-    // Build meta_data using your existing function
-    $userName = $_SESSION['user_name'] ?? 'system';
-    $metaDataJson = buildMetaData(
-        $existingLead['meta_data'],  // Pass existing meta_data
-        $userName,                    // Current user
-        20                            // Max updates (optional)
-    );
+    $meta = buildMetaData($existingMeta, $userName);
 
-    // Build update data
-    $updateData = [];
-    $params = [];
+    // Build update fields — accept both snake_case and camelCase keys
+    $clientInfo         = $data['client_info']         ?? $data['clientInfo']         ?? null;
+    $serviceType        = $data['service_type']        ?? $data['serviceType']        ?? null;
+    $serviceCount       = $data['service_count']       ?? $data['serviceCount']       ?? null;
+    $serviceData        = $data['service_data']        ?? $data['serviceData']        ?? null;
+    $leadInfo           = $data['lead_info']           ?? $data['leadInfo']           ?? null;
+    $leadStatus         = $data['lead_status']         ?? $data['leadStatus']         ?? null;
+    $instruction        = $data['instruction']         ?? [];
+    $specialInstruction = $data['special_instruction'] ?? $data['specialInstruction'] ?? [];
+    $assignedTo         = $data['assigned_to']         ?? $data['assignedTo']         ?? null;
 
-    if (isset($data['serviceCount'])) {
-        $updateData[] = "service_count = ?";
-        $params[] = $data['serviceCount'];
+    $sets   = ['meta_data = ?'];
+    $params = [$meta];
+
+    if ($clientInfo         !== null) { $sets[] = 'client_info = ?';          $params[] = json_encode($clientInfo,         JSON_UNESCAPED_UNICODE); }
+    if ($serviceType        !== null) { $sets[] = 'service_type = ?';         $params[] = json_encode($serviceType,        JSON_UNESCAPED_UNICODE); }
+    if ($serviceCount       !== null) { $sets[] = 'service_count = ?';        $params[] = $serviceCount; }
+    if ($serviceData        !== null) { $sets[] = 'service_data = ?';         $params[] = json_encode($serviceData,        JSON_UNESCAPED_UNICODE); }
+    if ($leadInfo           !== null) { $sets[] = 'lead_info = ?';            $params[] = json_encode($leadInfo,           JSON_UNESCAPED_UNICODE); }
+    if ($leadStatus         !== null) { $sets[] = 'lead_status = ?';          $params[] = $leadStatus; }
+    if (!empty($instruction))         { $sets[] = 'instruction = ?';          $params[] = json_encode($instruction,        JSON_UNESCAPED_UNICODE); }
+    if ($specialInstruction !== null) { $sets[] = 'special_instruction = ?';  $params[] = json_encode($specialInstruction, JSON_UNESCAPED_UNICODE); }
+    if (array_key_exists('assigned_to', $data) || array_key_exists('assignedTo', $data)) {
+        $sets[]   = 'assigned_to = ?';
+        $params[] = $assignedTo;
     }
 
-    if (isset($data['serviceType'])) {
-        $updateData[] = "service_type = ?";
-        $params[] = json_encode($data['serviceType'], JSON_UNESCAPED_UNICODE);
-    }
-
-    if (isset($data['clientInfo'])) {
-        $updateData[] = "client_info = ?";
-        $params[] = json_encode($data['clientInfo'], JSON_UNESCAPED_UNICODE);
-    }
-
-    if (isset($data['serviceData'])) {
-        $updateData[] = "service_data = ?";
-        $params[] = json_encode($data['serviceData'], JSON_UNESCAPED_UNICODE);
-    }
-
-    if (isset($data['leadInfo'])) {
-        $updateData[] = "lead_info = ?";
-        $params[] = json_encode($data['leadInfo'], JSON_UNESCAPED_UNICODE);
-    }
-
-    if (isset($data['leadStatus'])) {
-        $updateData[] = "lead_status = ?";
-        $params[] = $data['leadStatus'];
-    }
-
-    // Update meta_data with new values
-    $updateData[] = "meta_data = ?";
-    $params[] = $metaDataJson;
-
-    // Build the final SQL query (notice: no created_at/updated_at)
-    $sql = "UPDATE leads SET " . implode(", ", $updateData) . " WHERE sys_id = ? OR uuid = ?";
     $params[] = $leadId;
-    $params[] = $leadId;
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-
-    // Fetch updated lead data
-    $fetchSql = "SELECT 
-                    uuid,
-                    sys_id,
-                    service_count, 
-                    service_type, 
-                    client_info, 
-                    service_data, 
-                    lead_info, 
-                    lead_status,
-                    meta_data
-                FROM leads 
-                WHERE sys_id = ? OR uuid = ?";
-    $fetchStmt = $pdo->prepare($fetchSql);
-    $fetchStmt->execute([$leadId, $leadId]);
-    $updatedLead = $fetchStmt->fetch(PDO::FETCH_ASSOC);
-
-    // Decode JSON fields for response
-    $updatedLead['service_type'] = json_decode($updatedLead['service_type'], true);
-    $updatedLead['client_info'] = json_decode($updatedLead['client_info'], true);
-    $updatedLead['service_data'] = json_decode($updatedLead['service_data'], true);
-    $updatedLead['lead_info'] = json_decode($updatedLead['lead_info'], true);
-    $updatedLead['meta_data'] = json_decode($updatedLead['meta_data'], true);
+    $pdo->prepare("UPDATE leads SET " . implode(', ', $sets) . " WHERE sys_id = ?")
+        ->execute($params);
 
     ob_clean();
-    echo json_encode([
-        "status" => "success",
-        "message" => "Lead updated successfully",
-        "data" => $updatedLead
-    ]);
-    exit;
+    echo json_encode(['status' => 'success', 'message' => 'Lead updated', 'sys_id' => $leadId]);
+
 } catch (Exception $e) {
     ob_clean();
-    echo json_encode([
-        "status" => "error",
-        "message" => $e->getMessage()
-    ]);
-    exit;
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
-?>

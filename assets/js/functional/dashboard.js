@@ -34,6 +34,14 @@ const DashboardApp = (function () {
             .then(data => {
                 if (data.success && data.leads) {
                     leadsData = data.leads;
+                    
+                    // কনসোলে ডেটা চেক করুন
+                    // console.log('Full Lead Data:', leadsData);
+                    // if (leadsData.length > 0) {
+                    //     console.log('First Lead Object:', leadsData[0]);
+                    //     console.log('Available ID fields:', Object.keys(leadsData[0]).filter(key => key.includes('id') || key.includes('ID')));
+                    // }
+                    
                     renderLeads();
                 } else {
                     renderEmptyLeads();
@@ -72,11 +80,11 @@ const DashboardApp = (function () {
     function createLeadCard(lead) {
         const clientInfo = lead.client_info ? JSON.parse(lead.client_info) : {};
         const serviceData = lead.service_data ? JSON.parse(lead.service_data) : {};
-
+    
         const name = clientInfo.name || 'Unknown';
         const email = clientInfo.email || 'N/A';
         const phone = clientInfo.phone || 'N/A';
-
+    
         // Service type display
         let displayService = 'N/A';
         if (lead.service_type) {
@@ -91,25 +99,28 @@ const DashboardApp = (function () {
                 displayService = lead.service_type;
             }
         }
-
+    
         // Country
         let country = 'N/A';
         if (Array.isArray(serviceData) && serviceData.length > 0) {
             const firstService = serviceData[0];
             country = firstService.country ? firstService.country.toUpperCase() : 'N/A';
         }
-
+    
         // Date formatting
         const submittedAt = lead.created_at
             ? formatDate(lead.created_at)
             : 'Unknown';
-
+    
         // Create card element
         const card = document.createElement('div');
         card.className = 'kanban-card bg-white p-4 rounded-lg shadow-sm border border-gray-200 lead-card';
-        card.dataset.leadId = lead.id;
+        
+        // এখানে আপনার actual ID ফিল্ড ব্যবহার করুন
+        const leadId = lead.sys_id || lead.id || lead.lead_id || lead._id; // আপনার মতো করে পরিবর্তন করুন
+        card.dataset.leadId = leadId;
         card.dataset.leadInfo = JSON.stringify(lead);
-
+    
         card.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
@@ -131,14 +142,15 @@ const DashboardApp = (function () {
                 </button>
             </div>
         `;
-
-        // Add click event for lead details
+    
+        // ক্লিক ইভেন্ট - সঠিক ID ব্যবহার করুন
         card.addEventListener('click', function (e) {
             if (!e.target.closest('.kanban-btn-move') && !e.target.closest('.kanban-btn-edit')) {
-                openLeadDetailsModal(lead);
+                const id = this.dataset.leadId; // অথবা lead.sys_id
+                window.location.href = `create-leads.php?id=${id}`;
             }
         });
-
+    
         return card;
     }
 
@@ -351,12 +363,13 @@ const DashboardApp = (function () {
                 });
             }
         }
-
+    
+        // lead-card এর জন্য পেজ রিডাইরেক্ট ইভেন্ট
         if (card.classList.contains('lead-card')) {
             card.addEventListener('click', function (e) {
                 if (!e.target.closest('.kanban-btn-move') && !e.target.closest('.kanban-btn-edit')) {
-                    const leadData = JSON.parse(card.dataset.leadInfo);
-                    openLeadDetailsModal(leadData);
+                    const leadId = card.dataset.leadId;
+                    window.location.href = `create-leads.php?id=${leadId}`;
                 }
             });
         }
@@ -464,6 +477,13 @@ const DashboardApp = (function () {
                     created_at: new Date().toISOString(),
                     notes: ''
                 });
+                
+                // স্যাম্পল কার্ডের জন্য ক্লিক ইভেন্ট
+                newCard.addEventListener('click', function(e) {
+                    if (!e.target.closest('.kanban-btn-move') && !e.target.closest('.kanban-btn-edit')) {
+                        window.location.href = `create-leads.php?id=${newCard.dataset.leadId}`;
+                    }
+                });
                 break;
 
             case 'newWork':
@@ -558,7 +578,7 @@ const DashboardApp = (function () {
         saveBtn.disabled = true;
 
         setTimeout(() => {
-            console.log('Saving lead:', { leadId, notes });
+            // console.log('Saving lead:', { leadId, notes });
             saveBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Saved!';
 
             setTimeout(() => {
@@ -587,7 +607,7 @@ const DashboardApp = (function () {
             convertBtn.disabled = true;
 
             setTimeout(() => {
-                console.log('Converting lead to work:', { leadId });
+                // console.log('Converting lead to work:', { leadId });
                 convertBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Converted!';
 
                 const leadCard = document.querySelector(`.kanban-card[data-lead-id="${leadId}"]`);
@@ -667,10 +687,19 @@ const DashboardApp = (function () {
         document.addEventListener('click', function (e) {
             const leadCard = e.target.closest('.kanban-card[data-lead-id]');
             if (leadCard && !e.target.closest('.kanban-btn-move') && !e.target.closest('.kanban-btn-edit')) {
-                const leadData = JSON.parse(leadCard.dataset.leadInfo);
-                openLeadDetailsModal(leadData);
+                const leadId = leadCard.dataset.leadId; // অথবা leadCard.dataset.leadInfo থেকে পার্স করে নিন
+                window.location.href = `create-leads.php?id=${leadId}`;
             }
         });
+        
+        // document.addEventListener('click', function (e) {
+        //     const leadCard = e.target.closest('.kanban-card[data-lead-id]');
+        //     if (leadCard && !e.target.closest('.kanban-btn-move') && !e.target.closest('.kanban-btn-edit')) {
+        //         const leadData = JSON.parse(leadCard.dataset.leadInfo);
+        //         const leadId = leadData.sys_id || leadData.id || leadData.lead_id; // আপনার মতো করে
+        //         window.location.href = `create-leads.php?id=${leadId}`;
+        //     }
+        // });
 
         // Modal action buttons
         document.addEventListener('click', function (e) {

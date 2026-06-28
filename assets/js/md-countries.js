@@ -1,14 +1,5 @@
 /**
  * TravHub — MdCountries  (assets/js/md-countries.js)
- * ════════════════════════════════════════════════════
- * Features:
- *  - List countries with accordion cities inline
- *  - Search + region filter + status tabs
- *  - for_package toggle (globe icon) — controls package builder availability
- *  - Sync from JSON / Upload JSON / Export to JSON
- *  - Add / Edit country modal with city builder
- *  - Soft delete + restore + confirm dialog
- *  - Pagination + auto-export after every DB change
  */
 
 const MdCountries = (() => {
@@ -25,10 +16,8 @@ const MdCountries = (() => {
 
     let pendingCities = [];
 
-    // ── Init ──────────────────────────────────────────────────────────
     function init() { renderShell(); bindEvents(); load(); }
 
-    // ── Shell ─────────────────────────────────────────────────────────
     function renderShell() {
         document.getElementById('mainContent').innerHTML = `
         <div class="px-6 py-6 max-w-screen-xl mx-auto">
@@ -37,7 +26,7 @@ const MdCountries = (() => {
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-2xl font-bold text-[#1A2039]">Countries</h1>
-                    <p class="text-sm text-gray-400 mt-0.5">Manage countries and package availability</p>
+                    <p class="text-sm text-gray-400 mt-0.5">Manage countries and availability</p>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
                     <button id="btnSyncImport"
@@ -71,11 +60,12 @@ const MdCountries = (() => {
                     <option value="">All Regions</option>
                     ${REGIONS.map(r => `<option value="${r}">${r}</option>`).join('')}
                 </select>
-                <!-- Package filter -->
                 <select id="fltPackage" class="text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#50BC81] bg-white text-gray-700">
                     <option value="">All Countries</option>
-                    <option value="1">Package Enabled</option>
-                    <option value="0">Package Disabled</option>
+                    <option value="pkg_1">Package Enabled</option>
+                    <option value="pkg_0">Package Disabled</option>
+                    <option value="work_1">Work Enabled</option>
+                    <option value="work_0">Work Disabled</option>
                 </select>
                 <div class="flex gap-2">
                     ${['active','trash'].map(t => `
@@ -86,9 +76,9 @@ const MdCountries = (() => {
                 </div>
             </div>
 
-            <!-- Package filter info bar -->
+            <!-- Filter info bar -->
             <div id="pkgFilterInfo" class="hidden mb-4 px-4 py-2.5 bg-[#50BC81]/10 border border-[#50BC81]/30 rounded-xl text-sm text-[#3da868] flex items-center justify-between">
-                <span><i class="fa-solid fa-globe mr-2"></i>Showing package-enabled countries only</span>
+                <span id="pkgFilterInfoText"><i class="fa-solid fa-globe mr-2"></i>Filtered</span>
                 <button onclick="MdCountries._clearPkgFilter()" class="text-xs font-semibold hover:underline">Show all</button>
             </div>
 
@@ -104,10 +94,14 @@ const MdCountries = (() => {
                             <th class="px-4 py-3 text-right w-28">Rate (BDT)</th>
                             <th class="px-4 py-3 text-left w-32">Region</th>
                             <th class="px-4 py-3 text-center w-20">Cities</th>
-                            <th class="px-4 py-3 text-center w-28"
-                                title="Toggle to enable/disable this country in Package Builder">
+                            <th class="px-4 py-3 text-center w-28" title="Toggle to enable/disable in Package Builder">
                                 <span class="flex items-center justify-center gap-1">
                                     <i class="fa-solid fa-globe text-[#50BC81]"></i> Package
+                                </span>
+                            </th>
+                            <th class="px-4 py-3 text-center w-28" title="Toggle to enable/disable in Lead, Work, Task Builder">
+                                <span class="flex items-center justify-center gap-1">
+                                    <i class="fas fa-briefcase text-[#50BC81]"></i> Work
                                 </span>
                             </th>
                             <th class="px-4 py-3 text-center w-24">Actions</th>
@@ -125,7 +119,6 @@ const MdCountries = (() => {
                 </div>
             </div>
 
-            <!-- Pagination + package count -->
             <div id="pgBox" class="flex items-center justify-between"></div>
         </div>
 
@@ -163,25 +156,42 @@ const MdCountries = (() => {
                     </div>
                 </div>
 
-                <!-- for_package toggle in modal -->
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div>
-                        <div class="font-semibold text-sm text-gray-800 flex items-center gap-2">
-                            <i class="fa-solid fa-globe text-[#50BC81]"></i>
-                            Available in Package Builder
+                <!-- Toggles row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- for_package toggle -->
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div>
+                            <div class="font-semibold text-sm text-gray-800 flex items-center gap-2">
+                                <i class="fa-solid fa-globe text-[#50BC81]"></i> Package Builder
+                            </div>
+                            <div class="text-xs text-gray-400 mt-0.5">Show in package destination picker</div>
                         </div>
-                        <div class="text-xs text-gray-400 mt-0.5">
-                            When enabled, this country appears in destination selection when building packages
-                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+                            <input type="checkbox" id="fForPackage" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
+                                peer-checked:after:translate-x-full peer-checked:after:border-white
+                                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                                peer-checked:bg-[#50BC81]"></div>
+                        </label>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
-                        <input type="checkbox" id="fForPackage" class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
-                            peer-checked:after:translate-x-full peer-checked:after:border-white
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                            after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                            peer-checked:bg-[#50BC81]"></div>
-                    </label>
+                    <!-- for_work toggle -->
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div>
+                            <div class="font-semibold text-sm text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-briefcase text-[#50BC81]"></i> Work / Lead / Task
+                            </div>
+                            <div class="text-xs text-gray-400 mt-0.5">Show in Lead, Work, Task builder</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+                            <input type="checkbox" id="fForWork" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
+                                peer-checked:after:translate-x-full peer-checked:after:border-white
+                                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                                peer-checked:bg-[#50BC81]"></div>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Cities -->
@@ -248,7 +258,6 @@ const MdCountries = (() => {
         </style>`);
     }
 
-    // ── Events ────────────────────────────────────────────────────────
     function bindEvents() {
         document.getElementById('btnAdd').onclick          = () => openForm();
         document.getElementById('btnSyncImport').onclick   = () => runSync('import');
@@ -260,10 +269,23 @@ const MdCountries = (() => {
             clearTimeout(st.timer);
             st.timer = setTimeout(() => { st.search = e.target.value; st.page = 1; load(); }, 400);
         };
-        document.getElementById('fltRegion').onchange  = e => { st.region     = e.target.value; st.page = 1; load(); };
+        document.getElementById('fltRegion').onchange  = e => { st.region = e.target.value; st.page = 1; load(); };
         document.getElementById('fltPackage').onchange = e => {
             st.for_package = e.target.value; st.page = 1;
-            document.getElementById('pkgFilterInfo').classList.toggle('hidden', st.for_package !== '1');
+            const infoEl   = document.getElementById('pkgFilterInfo');
+            const textEl   = document.getElementById('pkgFilterInfoText');
+            if (st.for_package) {
+                const labels = {
+                    pkg_1:  '<i class="fa-solid fa-globe mr-2"></i>Showing Package-enabled countries only',
+                    pkg_0:  '<i class="fa-solid fa-globe mr-2"></i>Showing Package-disabled countries only',
+                    work_1: '<i class="fas fa-briefcase mr-2"></i>Showing Work-enabled countries only',
+                    work_0: '<i class="fas fa-briefcase mr-2"></i>Showing Work-disabled countries only',
+                };
+                textEl.innerHTML = labels[st.for_package] || '';
+                infoEl.classList.remove('hidden');
+            } else {
+                infoEl.classList.add('hidden');
+            }
             load();
         };
         document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
@@ -280,12 +302,10 @@ const MdCountries = (() => {
         document.getElementById('modalClose').onclick  = () => closeModal('modal');
         document.getElementById('modalCancel').onclick = () => closeModal('modal');
         document.getElementById('btnAddCity').onclick  = () => addCityRow();
-
         document.getElementById('syncClose').onclick   = () => { closeModal('syncModal'); load(); };
         document.getElementById('confirmCancel').onclick = () => closeModal('confirmModal');
     }
 
-    // ── Load ──────────────────────────────────────────────────────────
     async function load() {
         document.getElementById('tLoading').classList.remove('hidden');
         document.getElementById('tEmpty').classList.add('hidden');
@@ -295,6 +315,12 @@ const MdCountries = (() => {
             page: st.page, limit: st.limit,
             search: st.search, region: st.region, status: st.status,
         });
+        // Pass for_package / for_work filter to API
+        if (st.for_package === 'pkg_1')  params.set('for_package', '1');
+        if (st.for_package === 'pkg_0')  params.set('for_package', '0');
+        if (st.for_package === 'work_1') params.set('for_work', '1');
+        if (st.for_package === 'work_0') params.set('for_work', '0');
+
         const data = await thApi(`${API_BASE}api/masterdata/countries/list.php?${params}`);
         document.getElementById('tLoading').classList.add('hidden');
 
@@ -302,11 +328,13 @@ const MdCountries = (() => {
             document.getElementById('tEmpty').classList.remove('hidden');
             return;
         }
-        
+
         document.getElementById('tBody').innerHTML = data.data.map(renderRow).join('');
         thPagination('pgBox', data.pagination, 'MdCountries._page');
     }
+
     function _page(p) { st.page = p; load(); }
+
     function _clearPkgFilter() {
         st.for_package = '';
         document.getElementById('fltPackage').value = '';
@@ -314,10 +342,10 @@ const MdCountries = (() => {
         st.page = 1; load();
     }
 
-    // ── Row ───────────────────────────────────────────────────────────
     function renderRow(c) {
         const isTrashed  = c.status === 'deleted';
         const forPackage = c.for_package == 1;
+        const forWork    = c.for_work    == 1;
         const cities     = c.cities || [];
         const cityCount  = Array.isArray(cities) ? cities.length : (c.city_count || 0);
 
@@ -348,13 +376,24 @@ const MdCountries = (() => {
                 </span>
             </td>
 
-            <!-- for_package toggle column -->
+            <!-- for_package toggle -->
             <td class="px-4 py-3 text-center">
                 <label class="pkg-toggle" title="${forPackage ? 'Disable for packages' : 'Enable for packages'}">
                     <input type="checkbox"
                         ${forPackage ? 'checked' : ''}
-                        ${isTrashed ? 'disabled' : ''}
+                        ${isTrashed  ? 'disabled' : ''}
                         onchange="MdCountries._togglePackage('${c.sys_id}', this.checked, this)">
+                    <span class="pkg-slider"></span>
+                </label>
+            </td>
+
+            <!-- for_work toggle -->
+            <td class="px-4 py-3 text-center">
+                <label class="pkg-toggle" title="${forWork ? 'Disable for work' : 'Enable for work'}">
+                    <input type="checkbox"
+                        ${forWork   ? 'checked' : ''}
+                        ${isTrashed ? 'disabled' : ''}
+                        onchange="MdCountries._toggleWork('${c.sys_id}', this.checked, this)">
                     <span class="pkg-slider"></span>
                 </label>
             </td>
@@ -380,7 +419,7 @@ const MdCountries = (() => {
             </td>
         </tr>
         <tr id="exp-${c.sys_id}" class="${st.expanded.has(c.sys_id) ? '' : 'hidden'}">
-            <td colspan="9" class="px-8 pb-4 bg-[#1A2039]/5">
+            <td colspan="10" class="px-8 pb-4 bg-[#1A2039]/5">
                 <div id="cities-${c.sys_id}">
                     <div class="text-xs text-gray-400 py-2">Loading cities…</div>
                 </div>
@@ -388,9 +427,7 @@ const MdCountries = (() => {
         </tr>`;
     }
 
-    // ── for_package toggle (inline, no page reload) ───────────────────
     async function _togglePackage(sys_id, newValue, checkboxEl) {
-        // Optimistic UI — already toggled by browser
         try {
             const res = await thApi(
                 `${API_BASE}api/masterdata/countries/toggle-package.php`,
@@ -398,27 +435,34 @@ const MdCountries = (() => {
                 { sys_id, for_package: newValue ? 1 : 0 }
             );
             if (!res.success) {
-                // Revert checkbox if API failed
                 checkboxEl.checked = !newValue;
                 return toast('error', res.message || 'Toggle failed');
             }
-            toast('success', newValue ? `${res.name} enabled for packages` : `${res.name} removed from packages`);
-            // Update footer badge
-            const badge = document.getElementById('pkgCountBadge');
-            if (badge) {
-                const current = parseInt(badge.textContent) || 0;
-                // Re-count from DOM
-                const enabled = document.querySelectorAll('.pkg-toggle input:checked:not(:disabled)').length;
-                const total   = parseInt(badge.textContent.match(/of (\d+)/)?.[1] || 0);
-                badge.textContent = `${enabled} of ${total} package-enabled`;
-            }
+            toast('success', res.message);
         } catch (e) {
             checkboxEl.checked = !newValue;
             toast('error', 'Network error');
         }
     }
 
-    // ── Accordion ─────────────────────────────────────────────────────
+    async function _toggleWork(sys_id, newValue, checkboxEl) {
+        try {
+            const res = await thApi(
+                `${API_BASE}api/masterdata/countries/toggle-work.php`,
+                'POST',
+                { sys_id, for_work: newValue ? 1 : 0 }
+            );
+            if (!res.success) {
+                checkboxEl.checked = !newValue;
+                return toast('error', res.message || 'Toggle failed');
+            }
+            toast('success', res.message);
+        } catch (e) {
+            checkboxEl.checked = !newValue;
+            toast('error', 'Network error');
+        }
+    }
+
     async function _toggle(sys_id) {
         const row  = document.getElementById(`exp-${sys_id}`);
         const icon = document.getElementById(`icon-${sys_id}`);
@@ -435,9 +479,9 @@ const MdCountries = (() => {
     }
 
     async function loadCities(sys_id) {
-        const data = await thApi(`${API_BASE}api/masterdata/countries/get.php?sys_id=${sys_id}`);
+        const data   = await thApi(`${API_BASE}api/masterdata/countries/get.php?sys_id=${sys_id}`);
         const cities = data.data?.cities || [];
-        const el = document.getElementById(`cities-${sys_id}`);
+        const el     = document.getElementById(`cities-${sys_id}`);
         if (!cities.length) {
             el.innerHTML = '<p class="text-xs text-gray-400 py-2 italic">No cities added yet.</p>';
             return;
@@ -452,12 +496,12 @@ const MdCountries = (() => {
         </div>`;
     }
 
-    // ── Form ──────────────────────────────────────────────────────────
     async function openForm(sys_id = null) {
         pendingCities = [];
         ['fSysId','fName','fCode','fCurrency','fCurrCode','fRate'].forEach(id => thSetVal(id, ''));
         thSetVal('fRegion', '');
         document.getElementById('fForPackage').checked = false;
+        document.getElementById('fForWork').checked    = false;
         document.getElementById('cityList').innerHTML  = '';
         document.getElementById('modalTitle').textContent = sys_id ? 'Edit Country' : 'Add Country';
 
@@ -474,11 +518,13 @@ const MdCountries = (() => {
             thSetVal('fRate',     c.default_rate);
             thSetVal('fRegion',   c.region);
             document.getElementById('fForPackage').checked = c.for_package == 1;
+            document.getElementById('fForWork').checked    = c.for_work    == 1;
             pendingCities = [...(c.cities || [])];
         }
         renderCityList();
         openModal('modal');
     }
+
     async function _edit(sys_id) { await openForm(sys_id); }
 
     function renderCityList() {
@@ -508,7 +554,6 @@ const MdCountries = (() => {
     }
     function _removeCity(i) { pendingCities.splice(i, 1); renderCityList(); }
 
-    // ── Save ──────────────────────────────────────────────────────────
     async function save() {
         const sys_id = thVal('fSysId');
         const body   = {
@@ -520,6 +565,7 @@ const MdCountries = (() => {
             default_rate:  parseFloat(thVal('fRate') || 1),
             region:        thVal('fRegion'),
             for_package:   document.getElementById('fForPackage').checked ? 1 : 0,
+            for_work:      document.getElementById('fForWork').checked    ? 1 : 0,
         };
         if (!body.name || !body.code || !body.currency || !body.currency_code || !body.region) {
             return toast('error', 'Fill all required fields');
@@ -532,7 +578,6 @@ const MdCountries = (() => {
         document.getElementById('btnSave').disabled = false;
         if (!res.success) return toast('error', res.message || 'Error');
 
-        // Save cities for new country
         const targetSysId = res.sys_id || sys_id;
         if (targetSysId && pendingCities.length) {
             const citiesToSave = res.action === 'created'
@@ -556,7 +601,6 @@ const MdCountries = (() => {
         load();
     }
 
-    // ── Delete / Restore ──────────────────────────────────────────────
     async function _del(sys_id, restore) {
         if (!restore) {
             confirmAction({
@@ -580,7 +624,6 @@ const MdCountries = (() => {
         }
     }
 
-    // ── Sync ──────────────────────────────────────────────────────────
     async function runSync(action) {
         showLoader(action === 'import' ? 'Syncing JSON → DB…' : 'Exporting DB → JSON…');
         try {
@@ -609,7 +652,7 @@ const MdCountries = (() => {
         try {
             const parsed    = JSON.parse(await file.text());
             const countries = parsed.countries || (Array.isArray(parsed) ? parsed : []);
-            const cities    = parsed.cities || [];
+            const cities    = parsed.cities    || [];
             if (!countries.length) { hideLoader(); return toast('error', 'No countries in JSON'); }
             showLoader(`Importing ${countries.length} countries…`);
             const res = await thApi(`${API_BASE}api/masterdata/countries/sync.php`, 'POST', { action:'import', countries, cities });
@@ -629,7 +672,6 @@ const MdCountries = (() => {
         catch (e) { console.warn('Auto-export failed:', e.message); }
     }
 
-    // ── Confirm dialog ────────────────────────────────────────────────
     function confirmAction({ icon, title, msg, color, label, onOk }) {
         document.getElementById('confirmIcon').textContent  = icon;
         document.getElementById('confirmTitle').textContent = title;
@@ -667,5 +709,5 @@ const MdCountries = (() => {
         return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    return { init, _page, _toggle, _edit, _del, _removeCity, _togglePackage, _clearPkgFilter };
+    return { init, _page, _toggle, _edit, _del, _removeCity, _togglePackage, _toggleWork, _clearPkgFilter };
 })();

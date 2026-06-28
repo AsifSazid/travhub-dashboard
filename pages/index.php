@@ -462,7 +462,7 @@ $getAllLeadsApi = $ip_port . "api/leads/all-leads.php";
     </script>
         
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
-    <script src="../assets/js/functional/dashboard.js"></script>
+    <script src="../assets/js/functional/dashboard.js?time=<?php echo time(); ?>"></script>
 
     <script>
         // Initialize both when DOM is loaded
