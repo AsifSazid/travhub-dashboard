@@ -335,10 +335,6 @@ textarea.f-input{resize:vertical;}
                         </div>
                     </div>
                     <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-info-circle mr-1"></i>Only countries enabled for work are listed. Select one or more.</p>
-                    <button type="button" onclick="syncCountryGrid()"
-                        class="flex items-center gap-1.5 px-3 py-1.5 mt-2 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 text-slate-500 rounded-lg text-xs font-semibold transition">
-                        <i class="fas fa-rotate-right text-xs"></i> Sync Countries
-                    </button>
                 </div>
                 <div>
                     <label class="f-label">Tentative Start Date <span class="opt">(optional)</span></label>
@@ -625,24 +621,6 @@ async function loadCountries() {
     }
 }
 
-async function syncCountryGrid() {
-    // Save currently checked IDs before reload
-    const checkedIds = getSelectedCountryIds();
-    try {
-        const res  = await fetch(COUNTRIES_API + '?action=for_work');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const json = await res.json();
-        allCountries = json.data ?? [];
-        // Re-render, keep previously checked items checked
-        renderCountryCheckboxGrid(checkedIds);
-        showToast('success', 'Country list updated ✓');
-        // Notify dependent panels
-        onCommonCountryChange();
-    } catch(e) {
-        showToast('error', 'Failed to sync countries');
-    }
-}
-
 function renderCountryCheckboxGrid(selectedIds = []) {
     const grid = document.getElementById('countryCheckboxGrid');
     if (!grid) return;
@@ -913,8 +891,7 @@ function renderServicePanel(slug) {
     if (slug === 'umrah')                              return renderUmrahPanel(saved);
     if (slug === 'transport')                          return renderTransportPanel(saved);
     const svc    = allServices.find(s=>s.slug===slug);
-    const fields = svc?.fields ?? [];
-    return fields.length ? renderDynamicFields(slug, fields, saved) : renderGenericPanel(slug, saved);
+    const fields = svc?.fields ?? [];\n    return fields.length ? renderDynamicFields(slug, fields, saved) : renderGenericPanel(slug, saved);
 }
 
 /* ── Air Ticket Panel ── */
@@ -2719,35 +2696,114 @@ async function refinePrompt(){const text=document.getElementById('promptArea').v
    AI EXTRACT & BUILD
 ═══════════════════════════════════════════════ */
 async function extractAndBuild() {
-    const prompt=document.getElementById('promptArea').value.trim();
-    if(!prompt){showToast('error','Please enter a prompt first');return;}
+    const prompt = document.getElementById('promptArea').value.trim();
+    if (!prompt) { showToast('error', 'Please enter a prompt first'); return; }
+
     showLoader('AI extracting…');
     try {
-        const res=await fetch(EXTRACT_API,{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({prompt,services:allServices.map(s=>({slug:s.slug,name:s.name}))})});
-        const json=await res.json();
-        if(json.status!=='success') throw new Error(json.message??'Extraction failed');
-        const d=json.data;
-        if(d.client){
-            if(d.client.name) document.getElementById('clientName').value=d.client.name;
-            if(d.client.phone) document.getElementById('clientPhone').value=d.client.phone;
-            if(d.client.email) document.getElementById('clientEmail').value=d.client.email;
-            if(d.client.name){const q=d.client.name.toLowerCase();const f=clientsData.find(c=>(c.name||'').toLowerCase().includes(q));if(f)selectClient(clientsData.indexOf(f));}
+        const res  = await fetch(EXTRACT_API, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                prompt,
+                countries: allCountries.map(c => ({ sys_id: c.sys_id, name: c.name })),
+                services:  allServices.map(s  => ({ slug: s.slug,    name: s.name  })),
+            }),
+        });
+        const json = await res.json();
+        if (json.status !== 'success') throw new Error(json.message ?? 'Extraction failed');
+
+        const d = json.data;
+
+        // ── 1. Client ──────────────────────────────────────────
+        if (d.client?.name)  document.getElementById('clientName').value  = d.client.name;
+        if (d.client?.phone) document.getElementById('clientPhone').value = d.client.phone;
+        if (d.client?.email) document.getElementById('clientEmail').value = d.client.email;
+
+        // Try to auto-match existing client by name
+        if (d.client?.name && clientsData.length) {
+            const q = d.client.name.toLowerCase();
+            const found = clientsData.find(c => (c.name || '').toLowerCase().includes(q));
+            if (found) selectClient(clientsData.indexOf(found));
         }
-        if(d.source) document.getElementById('leadSource').value=d.source;
-        if(d.services?.length){selectedServices.clear();d.services.forEach(sl=>{if(allServices.find(s=>s.slug===sl))selectedServices.add(sl);});renderServiceGrid();}
-        if(d.service_data) Object.assign(serviceAnswers,d.service_data);
-        if(d.pax_adult)  document.getElementById('paxAdult').value=d.pax_adult;
-        if(d.pax_child)  document.getElementById('paxChild').value=d.pax_child;
-        if(d.pax_infant) document.getElementById('paxInfant').value=d.pax_infant;
-        if(d.budget)     document.getElementById('commonBudget').value=d.budget;
-        const items=[];
-        if(d.client?.name) items.push({icon:'fa-user',label:d.client.name,color:'indigo'});
-        if(d.services?.length) items.push({icon:'fa-layer-group',label:d.services.length+' service(s)',color:'green'});
-        document.getElementById('extractChips').innerHTML=items.map(i=>`<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-${i.color}-100 text-${i.color}-700"><i class="fas ${i.icon}"></i>${i.label}</span>`).join('');
+
+        // ── 2. Source ──────────────────────────────────────────
+        if (d.source) {
+            const srcEl = document.getElementById('leadSource');
+            if (srcEl) srcEl.value = d.source;
+        }
+
+        // ── 3. Services ────────────────────────────────────────
+        if (d.services?.length) {
+            selectedServices.clear();
+            d.services.forEach(sl => {
+                if (allServices.find(s => s.slug === sl)) selectedServices.add(sl);
+            });
+            renderServiceGrid();
+        }
+
+        // ── 4. Common fields ───────────────────────────────────
+        const common = d.common ?? {};
+
+        if (common.title)  { const el=document.getElementById('commonTitle'); if(el) el.value=common.title; }
+        if (common.budget) { const el=document.getElementById('commonBudget'); if(el) el.value=common.budget; }
+        if (common.notes)  { const el=document.getElementById('leadNotes');   if(el) el.value=common.notes; }
+        if (common.pax_adult  >= 0) { const el=document.getElementById('paxAdult');  if(el) el.value=common.pax_adult;  }
+        if (common.pax_child  >= 0) { const el=document.getElementById('paxChild');  if(el) el.value=common.pax_child;  }
+        if (common.pax_infant >= 0) { const el=document.getElementById('paxInfant'); if(el) el.value=common.pax_infant; }
+
+        // ── 5. Countries → checkbox grid ──────────────────────
+        if (common.countries?.length) {
+            // Fuzzy match against allCountries + check checkboxes
+            const toCheck = common.countries.map(ec => {
+                // Try exact sys_id match first
+                if (ec.sys_id) {
+                    const exact = allCountries.find(c => c.sys_id === ec.sys_id);
+                    if (exact) return exact.sys_id;
+                }
+                // Fuzzy name match
+                const q = (ec.name ?? '').toLowerCase();
+                const fuzzy = allCountries.find(c =>
+                    c.name.toLowerCase().includes(q) || q.includes(c.name.toLowerCase())
+                );
+                return fuzzy?.sys_id ?? null;
+            }).filter(Boolean);
+
+            // Check matched country checkboxes
+            document.querySelectorAll('.common-country-cb').forEach(cb => {
+                cb.checked = toCheck.includes(cb.value);
+            });
+            onCommonCountryChange();
+        }
+
+        // ── 6. service_data → serviceAnswers ──────────────────
+        if (d.service_data) {
+            Object.assign(serviceAnswers, d.service_data);
+        }
+
+        // ── 7. Rebuild service panels with filled data ─────────
+        await buildServicePanels();
+
+        // ── 8. Chips display ───────────────────────────────────
+        const chips = [];
+        if (d.client?.name)    chips.push({ icon:'fa-user',          label: d.client.name,              color:'indigo' });
+        if (d.services?.length)chips.push({ icon:'fa-layer-group',   label: d.services.length+' service(s)', color:'green'  });
+        if (common.countries?.length) chips.push({ icon:'fa-globe', label: common.countries.map(c=>c.name).join(', '), color:'blue' });
+        if (common.budget)     chips.push({ icon:'fa-money-bill',    label: 'BDT '+Number(common.budget).toLocaleString(), color:'emerald' });
+        if (common.pax_adult)  chips.push({ icon:'fa-users',         label: `${common.pax_adult} adult${common.pax_adult>1?'s':''}`, color:'purple' });
+
+        document.getElementById('extractChips').innerHTML = chips.map(i =>
+            `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-${i.color}-100 text-${i.color}-700">
+                <i class="fas ${i.icon}"></i>${i.label}
+            </span>`
+        ).join('');
         document.getElementById('extractResult').classList.remove('hidden');
-        showToast('success','Form auto-filled ✓');
-    } catch(e){showToast('error',e.message??'Extraction failed');}
+
+        showToast('success', 'Form auto-filled ✓');
+
+    } catch(e) {
+        showToast('error', e.message ?? 'Extraction failed');
+    }
     hideLoader();
 }
 

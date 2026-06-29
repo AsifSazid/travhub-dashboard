@@ -48,6 +48,7 @@ function _v2Registry(): array
         'tasks'         => ['table' => 'tasks',         'short' => 'TK'],
         'notifications' => ['table' => 'notifications', 'short' => 'NT'],
         'task_notes'    => ['table' => 'task_notes',    'short' => 'TN'],
+        'sm_posts'       => ['table' => 'sm_posts',       'short' => 'SM'],
     ];
 }
 
