@@ -28,7 +28,6 @@ error_reporting(E_ALL);
 
 require_once '../../server/ai-gemini.php';
 
-// Quick test via GET
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Test Gemini connectivity
     $apiKey = _geminiApiKey();
@@ -104,7 +103,7 @@ $pInfo = $platformRules[$platform] ?? $platformRules['facebook'];
 $languageInstructions = [
     'english'   => 'Write entirely in English.',
     'bangla'    => 'Write entirely in Bangla (Bengali script, বাংলা). Use proper Bengali grammar.',
-    'banglish'  => 'Write in Banglish (Bengali written in Roman/English script, e.g. "Amader travel agency theke...", "Apni ki jante chan...").',
+    'banglish'  => 'Write in Banglish — বাংলা ভাষায় লেখো কিন্তু যেখানে বাংলা শব্দ technical বা awkward সেখানে English word naturally mix করো। Example: "আমাদের Dubai package এ রয়েছে flight, hotel এবং visa সব কিছু included। এখনই book করুন!"',
 ];
 
 $langRule = $languageInstructions[$language] ?? $languageInstructions['english'];
@@ -112,17 +111,41 @@ $langRule = $languageInstructions[$language] ?? $languageInstructions['english']
 // ── ACTION: Generate Image Prompt ──────────────────────────
 if ($action === 'image_prompt') {
     $ratioDesc = [
-        '1:1'  => 'square format (1:1)',
-        '4:5'  => 'portrait format (4:5)',
-        '9:16' => 'vertical/stories format (9:16)',
-        '16:9' => 'landscape/widescreen format (16:9)',
-        '3:2'  => 'standard photo format (3:2)',
-    ][$ratio] ?? 'square format';
+        '1:1'  => 'square format (1:1 ratio)',
+        '4:5'  => 'portrait format (4:5 ratio)',
+        '9:16' => 'vertical stories format (9:16 ratio)',
+        '16:9' => 'landscape widescreen format (16:9 ratio)',
+        '3:2'  => 'standard photo format (3:2 ratio)',
+    ][$ratio] ?? 'square format (1:1 ratio)';
 
-    $system = "You are a visual prompt engineer for AI image generation. Create a vivid, detailed image generation prompt for a travel agency social media post. The prompt should describe a photorealistic scene that perfectly complements the content. Compose the scene for {$ratioDesc}. Return ONLY the image prompt, nothing else — no explanation, no JSON.";
-    $user   = "Social media content:\n{$content}\n\nPlatform: {$pInfo['name']}\nAspect ratio: {$ratio}\n\nWrite the image generation prompt:";
+    $system = <<<SYSPROMPT
+You are a professional travel poster designer and AI image prompt engineer.
 
-    $result = geminiCall($system, $user, 500, 0.8);
+Your job: Create a detailed AI image generation prompt for a travel agency social media post.
+
+STRICT RULES — follow these exactly:
+1. NO human faces, NO people, NO hands, NO body parts anywhere in the image
+2. The image must be POSTER-STYLE design — cinematic scene + graphic design aesthetic
+3. TYPOGRAPHY is required as part of the visual design:
+   - Extract the key title/destination/offer from the content (e.g. "Dubai", "50% Off", "Eid Special")
+   - Include it as bold, elegant text rendered INTO the scene (like a real travel poster)
+   - Typography should feel premium and intentional — not just a caption stuck on top
+4. Composition must suit {$ratioDesc}
+5. Colors: vibrant, warm, aspirational — travel magazine quality
+6. NO watermarks, NO logos, NO QR codes, NO borders
+
+STRUCTURE your prompt exactly like this:
+[Cinematic photorealistic background scene — NOT illustrated, NOT cartoon, NOT animated], [poster typography: show the text "[KEY TITLE]" in [font style] at [position]], [mood/lighting], [color palette], [{$ratioDesc}], [quality: ultra-detailed, 8K, RAW photo, photorealistic, professional travel photography + graphic design, shot on Sony A7R, golden hour lighting]
+
+STYLE KEYWORDS to always include at the end:
+"photorealistic, hyperrealistic, RAW photograph, DSLR quality, NOT cartoon, NOT illustration, NOT 3D render, NOT painting"
+
+Return ONLY the image generation prompt — no explanation, no JSON, nothing else.
+SYSPROMPT;
+
+    $user = "Social media post content:\n\"\"\"\n{$content}\n\"\"\"\n\nPlatform: {$pInfo['name']}\nAspect ratio: {$ratio}\n\nExtract the single most important title/keyword from this content, then write the poster image prompt with that typography included.";
+
+    $result = geminiCall($system, $user, 600, 0.85);
     ob_clean();
     echo json_encode($result['success']
         ? ['status' => 'success', 'image_prompt' => trim($result['text'])]
@@ -146,11 +169,14 @@ if ($action === 'generate_image') {
     $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=' . $apiKey;
 
     $ch = curl_init($url);
+    // Reinforce no-human rule in the actual generation prompt
+    $finalPrompt = $imagePrompt
+        . "\n\nCRITICAL: Photorealistic style only. RAW photograph quality. NO cartoon, NO illustration, NO 3D render, NO animation, NO painting. No human faces, no people, no body parts. Poster-style design with typography.";
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode([
-            'contents'         => [['parts' => [['text' => $imagePrompt]]]],
+            'contents'         => [['parts' => [['text' => $finalPrompt]]]],
             'generationConfig' => ['responseModalities' => ['TEXT', 'IMAGE']],
         ]),
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
@@ -215,34 +241,46 @@ if ($action === 'generate_image') {
 }
 
 // ── ACTION: Generate Content ───────────────────────────────
+$ob = '{'; $cb = '}'; // for use inside heredoc
+$jsonExample = $ob . '"post":"polished post text","hashtags":["tag1","tag2"],"keywords":["kw1","kw2"],"hook":"strong opening hook","cta":"call-to-action line","char_count":0,"tips":["tip 1","tip 2"]' . $cb;
+
 $system = <<<PROMPT
-You are an expert social media content writer for a Bangladeshi travel agency called TravHub Global Limited.
+You are an expert social media content writer for TravHub Global Limited, a Bangladeshi travel agency.
 
-Platform: {$pInfo['name']}
-Character limit: {$pInfo['char_limit']} characters
-Hashtag limit: {$pInfo['hashtag_limit']} hashtags
-Platform notes: {$pInfo['notes']}
-Tone: {$tone}
-Language: {$langRule}
-Target post length: approximately {$wordLimit} words (stay within platform character limit)
+PLATFORM: {$pInfo['name']}
+CHAR LIMIT: {$pInfo['char_limit']} characters
+HASHTAG LIMIT: max {$pInfo['hashtag_limit']}
+PLATFORM NOTES: {$pInfo['notes']}
+TONE: {$tone}
+TARGET LENGTH: approximately {$wordLimit} words
+LANGUAGE: {$langRule}
 
-Your task: Polish the user's raw content into an optimized {$pInfo['name']} post.
+TONE GUIDANCE:
+- professional → authoritative, trust-building, polished
+- casual → friendly, conversational, like talking to a friend
+- funny → witty and playful, humor feels natural not forced
+- inspirational → emotional, dream-invoking, motivating
+- informative → clear facts, structured, educational
 
-CRITICAL OUTPUT RULES:
-- Return ONLY raw JSON — no markdown, no ```json, no ``` fences, no explanation before or after
-- Your entire response must start with {{ and end with }}
-- Keep the "post" field within the character limit and approximately {$wordLimit} words
-- Do NOT use escaped unicode — write characters directly (বাংলা, emojis etc.)
+WRITING GUIDELINES:
+- Use emojis naturally where they enhance readability
+- For travel: paint a picture, evoke wanderlust or urgency
+- Add line breaks between paragraphs
+- End with a strong call to action
 
-JSON structure:
-{{"post":"full post text here","hashtags":["tag1","tag2"],"keywords":["kw1","kw2","kw3"],"hook":"strong opening hook","cta":"call to action","char_count":0,"tips":["tip1","tip2"]}}
+OUTPUT: Return ONLY a single raw JSON object. No markdown. No explanation. No code fences.
+Start your response with { and end with }
 
-Field rules:
-- hashtags: no # symbol, lowercase, underscores instead of spaces, max {$pInfo['hashtag_limit']}
+FORMAT: {$jsonExample}
+
+FIELD RULES:
+- post: complete ready-to-publish text
+- hashtags: no # symbol, lowercase, underscores for spaces, max {$pInfo['hashtag_limit']}
 - keywords: SEO terms, lowercase, 5-8 items
-- char_count: fill with 0 (recalculated server-side)
-- tips: exactly 2 platform-specific tips
-- {$langRule}
+- hook: 1-sentence strong alternative opening
+- cta: short actionable closing line
+- char_count: set 0 (recalculated server-side)
+- tips: exactly 2 short actionable {$pInfo['name']}-specific tips
 PROMPT;
 
 $result = geminiCall($system, $content, 4000, $temperature);

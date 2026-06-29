@@ -891,7 +891,8 @@ function renderServicePanel(slug) {
     if (slug === 'umrah')                              return renderUmrahPanel(saved);
     if (slug === 'transport')                          return renderTransportPanel(saved);
     const svc    = allServices.find(s=>s.slug===slug);
-    const fields = svc?.fields ?? [];\n    return fields.length ? renderDynamicFields(slug, fields, saved) : renderGenericPanel(slug, saved);
+    const fields = svc?.fields ?? [];
+    return fields.length ? renderDynamicFields(slug, fields, saved) : renderGenericPanel(slug, saved);
 }
 
 /* ── Air Ticket Panel ── */

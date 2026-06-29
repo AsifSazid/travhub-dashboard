@@ -5,9 +5,9 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$getAllWorksApi = $ip_port . "api/works/all-works.php";
-$storeWorkApi = $ip_port . "api/works/store.php";
-$deleteWorkApi = $ip_port . "api/works/delete.php";
+$getAllWorksApi = $ip_port . "api/com_works/all-works.php";
+$storeWorkApi = $ip_port . "api/com_works/store.php";
+$deleteWorkApi = $ip_port . "api/com_works/delete.php";
 
 ?>
 

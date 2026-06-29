@@ -30,9 +30,28 @@ $SERVICE_NAME_MAP = [
     'visa'         => 'Visa',
     'hotel'        => 'Hotel',
     'tour_package' => 'Tour Package',
+    'package'      => 'Tour Package',
     'umrah'        => 'Umrah',
     'transport'    => 'Transport',
 ];
+
+// service slug → department slug mapping
+$SERVICE_DEPT_SLUG = [
+    'air_ticket'   => 'air_ticketing',
+    'visa'         => 'visa',
+    'hotel'        => 'hotel',
+    'tour_package' => 'tour_package',
+    'package'      => 'tour_package',
+    'umrah'        => 'umrah',
+    'transport'    => 'transport',
+];
+
+// Pre-load department sys_ids by slug (one query)
+$deptStmt = $pdo->query("SELECT slug, sys_id FROM departments WHERE is_active = 1");
+$deptBySlug = [];
+foreach ($deptStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $deptBySlug[$row['slug']] = $row['sys_id'];
+}
 
 try {
     // 1. Fetch lead
@@ -48,7 +67,9 @@ try {
     $serviceData = json_decode($lead['service_data'], true) ?? [];
     $clientName  = $clientInfo['name']   ?? 'Unknown';
     $clientSysId = $clientInfo['sys_id'] ?? null;
-    $services    = array_values(array_filter(is_array($serviceType) ? $serviceType : [$serviceType]));
+    $services = array_values(array_unique(array_filter(
+        is_array($serviceType) ? $serviceType : [$serviceType]
+    )));
     $userName    = $_SESSION['user_name'] ?? 'system';
     $SERVER_CUS_PATH = trim(@file_get_contents('../../server-name.txt') ?? '');
 
@@ -89,7 +110,11 @@ try {
         $swIds    = generateV2IDs($pdo, 'service_works');
         $swMeta   = buildMetaData(null, $userName);
         $svcName  = $SERVICE_NAME_MAP[$svcSlug] ?? ucfirst(str_replace('_', ' ', $svcSlug));
-        $deptSysId= $deptMap[$svcSlug] ?? null;
+
+        // Auto-resolve department: deptMap override → slug mapping → null
+        $deptSlug  = $SERVICE_DEPT_SLUG[$svcSlug] ?? null;
+        $deptSysId = $deptMap[$svcSlug]                    // manual override
+            ?? ($deptSlug ? ($deptBySlug[$deptSlug] ?? null) : null); // auto
 
         $pdo->prepare("
             INSERT INTO service_works (uuid, sys_id, work_sys_id, department_sys_id, service_slug, service_name, status, meta_data)
@@ -100,6 +125,32 @@ try {
         if ($deptSysId) {
             _notifyDeptEmployees($pdo, $deptSysId, $workSysId, $swIds['sys_id'], $svcName, $clientName, $userName);
         }
+
+        // ── Segment-wise task creation ─────────────────────────
+        $svcSegments = _getSegments($svcSlug, $serviceData);
+
+        foreach ($svcSegments as $segIdx => $seg) {
+            $taskIds   = generateV2IDs($pdo, 'tasks');
+            $taskMeta  = buildMetaData(null, $userName);
+            $taskName  = _buildTaskName($svcSlug, $svcName, $seg, $segIdx, count($svcSegments));
+            $spIns     = $seg['special_instruction'] ?? [];
+
+            $pdo->prepare("
+                INSERT INTO tasks (
+                    uuid, sys_id, service_work_sys_id, work_sys_id,
+                    client_sys_id, workname, client_name,
+                    status, overall_status,
+                    special_ins, meta_data
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?, ?)
+            ")->execute([
+                $taskIds['uuid'], $taskIds['sys_id'],
+                $swIds['sys_id'], $workSysId,
+                $clientSysId, $taskName, $clientName,
+                $spIns ? json_encode($spIns, JSON_UNESCAPED_UNICODE) : null,
+                $taskMeta,
+            ]);
+        }
+        // ────────────────────────────────────────────────────────
 
         $createdSW[] = [
             'sys_id'        => $swIds['sys_id'],
@@ -126,6 +177,96 @@ try {
 } catch (PDOException $e) {
     ob_clean();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+}
+
+/**
+ * Extract segments from service_data for a given slug.
+ * Returns array of segments — each will become one task.
+ */
+function _getSegments(string $slug, array $serviceData): array
+{
+    $data = $serviceData[$slug] ?? [];
+
+    // Services with named segments array
+    if (in_array($slug, ['air_ticket', 'hotel', 'visa', 'transport'])) {
+        $segs = $data['segments'] ?? [];
+        // Filter out completely empty segments
+        $segs = array_values(array_filter($segs, fn($s) => !empty(array_filter($s))));
+        return !empty($segs) ? $segs : [['_auto' => true]]; // at least one task
+    }
+
+    // Tour package — one task per destination city (or just one overall)
+    if ($slug === 'tour_package' || $slug === 'package') {
+        $dests = $data['destinations'] ?? [];
+        if (!empty($dests)) {
+            return array_map(fn($d) => ['_dest' => $d], $dests);
+        }
+        return [['_title' => $data['title'] ?? '']];
+    }
+
+    // Umrah — single task
+    if ($slug === 'umrah') {
+        return [$data];
+    }
+
+    // Fallback — one task
+    return [['_auto' => true]];
+}
+
+/**
+ * Build a human-readable task name from segment data.
+ */
+function _buildTaskName(string $slug, string $svcName, array $seg, int $idx, int $total): string
+{
+    $num = $total > 1 ? ' #' . ($idx + 1) : '';
+
+    switch ($slug) {
+        case 'air_ticket':
+            $route = $seg['route'] ?? (($seg['from'] ?? '') . '-' . ($seg['to'] ?? ''));
+            return $svcName . $num . ($route ? ' — ' . strtoupper(trim($route, '-')) : '');
+
+        case 'hotel':
+            $hotel = $seg['hotel_name'] ?? '';
+            $city  = $seg['city_name']  ?? '';
+            $loc   = implode(', ', array_filter([$hotel, $city]));
+            return $svcName . $num . ($loc ? ' — ' . $loc : '');
+
+        case 'visa':
+            $country = $seg['country_name']  ?? '';
+            $cat     = $seg['category_name'] ?? '';
+            $detail  = implode(' / ', array_filter([$country, $cat]));
+            return $svcName . $num . ($detail ? ' — ' . $detail : '');
+
+        case 'transport':
+            $route = $seg['route'] ?? (($seg['from'] ?? '') . '-' . ($seg['to'] ?? ''));
+            $type  = $seg['type'] ?? '';
+            $detail = implode(' ', array_filter([$type, $route ? strtoupper(trim($route, '-')) : '']));
+            return $svcName . $num . ($detail ? ' — ' . $detail : '');
+
+        case 'tour_package':
+        case 'package':
+            if (isset($seg['_dest'])) {
+                $d = $seg['_dest'];
+                $cities   = implode(', ', $d['city_names'] ?? []);
+                $country  = $d['country_name'] ?? '';
+                $location = implode(' — ', array_filter([$country, $cities]));
+                return $svcName . $num . ($location ? ' — ' . $location : '');
+            }
+            $title = $seg['_title'] ?? '';
+            return $svcName . ($title ? ' — ' . $title : '');
+
+        case 'umrah':
+            $type   = $seg['umrah_type']   ?? '';
+            $nights = $seg['total_nights'] ?? '';
+            $detail = implode(', ', array_filter([
+                $type   ? ucwords(str_replace('_', ' ', $type)) : '',
+                $nights ? $nights . ' Nights'                   : '',
+            ]));
+            return $svcName . ($detail ? ' — ' . $detail : '');
+
+        default:
+            return $svcName . $num;
+    }
 }
 
 /**

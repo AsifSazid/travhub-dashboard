@@ -51,10 +51,10 @@ try {
 
     if ($assignedTo && !empty($assignedTo['sys_id'])) {
         // ── New assignment notification ──
-        $empStmt = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
-        $empStmt->execute([$assignedTo['sys_id']]);
-        $empRow = $empStmt->fetch(PDO::FETCH_ASSOC);
-        $deptId = $empRow['department_sys_id'] ?? null;
+        // $empStmt = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
+        // $empStmt->execute([$assignedTo['sys_id']]);
+        // $empRow = $empStmt->fetch(PDO::FETCH_ASSOC);
+        $deptId = $empRow['department_sys_id'] ?? 'system development';
 
         $ntIds  = generateV2IDs($pdo, 'notifications');
         $ntMeta = buildMetaData(null, $userName);
@@ -73,10 +73,10 @@ try {
 
     } elseif (!$assignedTo && !empty($oldAssigned['sys_id'])) {
         // ── Unassign notification → notify the person who was removed ──
-        $empStmt = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
-        $empStmt->execute([$oldAssigned['sys_id']]);
-        $empRow = $empStmt->fetch(PDO::FETCH_ASSOC);
-        $deptId = $empRow['department_sys_id'] ?? null;
+        // $empStmt = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
+        // $empStmt->execute([$oldAssigned['sys_id']]);
+        // $empRow = $empStmt->fetch(PDO::FETCH_ASSOC);
+        $deptId = $empRow['department_sys_id'] ?? 'system development';
 
         $ntIds  = generateV2IDs($pdo, 'notifications');
         $ntMeta = buildMetaData(null, $userName);

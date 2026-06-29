@@ -1,122 +1,171 @@
 <?php
+/**
+ * FILE PATH: /api/works/store.php
+ * Create a new work directly — no lead needed (walk-in, phone order)
+ *
+ * POST {
+ *   client_sys_id, client_name, client_info: {},
+ *   services: ["air_ticket", "hotel"],
+ *   dept_map: { "air_ticket": "THR-A26-DP-0001" },  (optional)
+ *   traveler_ids: [],
+ *   instruction, special_instruction
+ * }
+ *
+ * On service with dept → notifies ALL employees of that dept
+ */
+
+ob_start();
 session_start();
+date_default_timezone_set('Asia/Dhaka');
 
-require '../../server/db_connection.php';
-require '../../server/uuid_with_system_id_generator.php';
-require '../../server/generate_meta_data.php';
-require '../../server/make-dir.php';
-require '../../server/make-smb-dir.php';
-require_once '../../server/safe_folder_name.php';
+require_once '../../server/api_bootstrap.php';
+require_once '../../server/db_connection.php';
+require_once '../../server/sys_id_generator_v2.php';
+require_once '../../server/generate_meta_data.php';
+require_once '../../server/make-dir.php';
+require_once '../../server/make-smb-dir.php';
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+$body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-// get POST data (JSON)
-$input = json_decode(file_get_contents('php://input'), true);
-
-
-if (!$input) {
-    echo json_encode(['success' => false, 'message' => 'No data received']);
-    exit;
-}
-
-// input
-$rawClient = $input['client'] ?? null;
-$rawOwnedBy = $input['ownedBy'] ?? null;
-$workTitle = $input['work_title'] ?? null;
-
-// validation
-if (!$rawClient) {
-    echo json_encode(['success' => false, 'message' => 'Client missing']);
-    exit;
-}
-if (!$workTitle) {
-    echo json_encode(['success' => false, 'message' => 'Work Title missing']);
-    exit;
-}
-if (!$rawOwnedBy) {
-    echo json_encode(['success' => false, 'message' => 'Work Owner missing']);
-    exit;
-}
-
-// extract values
-$parts = explode('|', $rawClient);
-$ownedByParts = explode('|', $rawOwnedBy);
-
-// ID always first part
-$clientSysID = trim($parts[0]);
-$clientName = trim($parts[1]);
-$ownedBySysID = trim($ownedByParts[0]);
-$ownedByName = trim($ownedByParts[1]);
-
-$cleanSysId = preg_replace('/\s+/u', '', $clientSysID);
-$cleanFullName = preg_replace('/\s+/u', '', $clientName);
-$SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt')); // Server Naming 
-$clientFolderName = 'clients/' . $cleanSysId . '_' . $cleanFullName;
-
-$cloudPath = $SERVER_CUS_PATH . "_" . $clientFolderName;
+$SVC_NAMES = [
+    'air_ticket'   => 'Air Ticket',
+    'visa'         => 'Visa',
+    'hotel'        => 'Hotel',
+    'tour_package' => 'Tour Package',
+    'umrah'        => 'Umrah',
+    'transport'    => 'Transport',
+];
 
 try {
-    // 1. Get the existing info
-    $gettingClientPreviousWork = $pdo->prepare("SELECT work_name FROM clients WHERE sys_id = ?");
-    $gettingClientPreviousWork->execute([$clientSysID]);
-    $previousWorks = $gettingClientPreviousWork->fetch(PDO::FETCH_ASSOC);
+    $clientSysId = $body['client_sys_id'] ?? null;
+    $clientName  = trim($body['client_name'] ?? '');
+    $clientInfo  = $body['client_info'] ?? [];
+    $services    = array_values(array_filter(array_map('trim', (array)($body['services'] ?? []))));
+    $deptMap     = $body['dept_map']     ?? [];
+    $travelerIds = $body['traveler_ids'] ?? [];
+    $instruction = $body['instruction']  ?? '';
+    $specialIns  = $body['special_instruction'] ?? '';
 
-    if ($previousWorks) {
-        // 2. Combine the old and new data
-        $oldWork = $previousWorks['work_name'];
-        $updatedWorkName = empty($oldWork) ? $workTitle : $oldWork . ", " . $workTitle;
+    if (!$clientName)    throw new Exception('client_name is required');
+    if (empty($services)) throw new Exception('At least one service is required');
 
-        // 3. UPDATE the database
-        $updateStmt = $pdo->prepare("UPDATE clients SET work_name = ? WHERE sys_id = ?");
-        $updateStmt->execute([$updatedWorkName, $clientSysID]);
+    $clientInfo['sys_id'] = $clientSysId;
+    $clientInfo['name']   = $clientName;
 
-        $uuid = generateIDs('com_works');
+    $userName        = $_SESSION['user_name'] ?? 'system';
+    $SERVER_CUS_PATH = trim(@file_get_contents('../../server-name.txt') ?? '');
+    $meta            = buildMetaData(null, $userName);
 
-        $metaDataJson = buildMetaData(
-            null,
-            $_SESSION['user_name'] ?? 'system'
-        );
-        
-        $sysId = preg_replace('/\s+/u', '', $uuid['sys_id']);
-        $safeWorkTitle = safeFolderName($workTitle);
-        $workFolderName = $safeWorkTitle . '+' . $sysId;
+    // 1. Create work
+    $workIds   = generateV2IDs($pdo, 'works');
+    $workSysId = $workIds['sys_id'];
 
-        makeDir($clientFolderName, $workFolderName);
-        $fullPath = makeSMBDir($cloudPath, $workFolderName);
-        
-        $workStoreSql = "INSERT INTO com_works (
-                uuid,
-                sys_id,
-                file_name, 
-                client_sys_id, 
-                client_name, 
-                title,
-                owned_by,
-                meta_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-        $workStoreStmt = $pdo->prepare($workStoreSql);
-
-        $workStoreStmt->execute([
-            $uuid['uuid'],
-            $uuid['sys_id'],
-            isset($workFolderName) ? $workFolderName : null,
-            isset($clientSysID) ? $clientSysID : null,
-            isset($clientName) ? $clientName : null,
-            isset($workTitle) ? $workTitle : null,
-            isset($rawOwnedBy) ? $rawOwnedBy : null,
-            isset($metaDataJson) ? $metaDataJson : null
-        ]);
-
-        ob_clean();
-
-        echo json_encode(['success' => true, 'message' => 'Work updated successfully!' . $fullPath]);
-    } else {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Client not found in DB!']);
+    if ($clientSysId) {
+        $cleanSysId     = preg_replace('/\s+/u', '', $clientSysId);
+        $cleanName      = preg_replace('/\s+/u', '', $clientName);
+        $clientFolder   = 'clients/' . $cleanSysId . '_' . $cleanName;
+        $cloudPath      = $SERVER_CUS_PATH . '_' . $clientFolder;
+        $workFolderName = $workSysId . '+' . str_replace(' ', '_', $clientName);
+        makeDir($clientFolder, $workFolderName);
+        makeSMBDir($cloudPath, $workFolderName);
     }
-} catch (PDOException $e) {
+
+    // Build special_instruction JSON array
+    $specInsArr = is_array($specialIns) ? $specialIns : ($specialIns ? [$specialIns] : []);
+
+    $pdo->prepare("
+        INSERT INTO works (
+            uuid, sys_id, lead_sys_id,
+            client_info, service_type, service_count, service_data,
+            instruction, special_instruction, lead_info, lead_snapshot,
+            work_status, assigned_to, meta_data
+        ) VALUES (?, ?, NULL, ?, ?, ?, '{}', ?, ?, '{}', NULL, 'open', NULL, ?)
+    ")->execute([
+        $workIds['uuid'], $workSysId,
+        json_encode($clientInfo, JSON_UNESCAPED_UNICODE),
+        json_encode($services, JSON_UNESCAPED_UNICODE),
+        count($services),
+        json_encode(['text' => $instruction], JSON_UNESCAPED_UNICODE),
+        json_encode($specInsArr, JSON_UNESCAPED_UNICODE),
+        $meta,
+    ]);
+
+    // 2. Create service_works + notify dept employees
+    $createdSW = [];
+
+    foreach ($services as $svcSlug) {
+        $swIds    = generateV2IDs($pdo, 'service_works');
+        $swMeta   = buildMetaData(null, $userName);
+        $svcName  = $SVC_NAMES[$svcSlug] ?? ucfirst(str_replace('_', ' ', $svcSlug));
+        $deptSysId= $deptMap[$svcSlug] ?? null;
+
+        $pdo->prepare("
+            INSERT INTO service_works (uuid, sys_id, work_sys_id, department_sys_id, service_slug, service_name, status, meta_data)
+            VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
+        ")->execute([$swIds['uuid'], $swIds['sys_id'], $workSysId, $deptSysId, $svcSlug, $svcName, $swMeta]);
+
+        // Notify dept employees
+        if ($deptSysId) {
+            _notifyDeptEmployees($pdo, $deptSysId, $workSysId, $swIds['sys_id'], $svcName, $clientName, $userName);
+        }
+
+        $createdSW[] = [
+            'sys_id'       => $swIds['sys_id'],
+            'service_slug' => $svcSlug,
+            'service_name' => $svcName,
+            'dept_sys_id'  => $deptSysId,
+        ];
+    }
+
     ob_clean();
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode([
+        'status'                => 'success',
+        'message'               => 'Work created successfully.',
+        'work_sys_id'           => $workSysId,
+        'created_service_works' => $createdSW,
+    ]);
+
+} catch (Exception $e) {
+    ob_clean();
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+}
+
+function _notifyDeptEmployees(PDO $pdo, string $deptSysId, string $workSysId, string $swSysId, string $svcName, string $clientName, string $userName): void
+{
+    // Get department integer id
+    $d = $pdo->prepare("SELECT id FROM departments WHERE sys_id=? LIMIT 1");
+    $d->execute([$deptSysId]);
+    $deptRow = $d->fetch(PDO::FETCH_ASSOC);
+    if (!$deptRow) return;
+
+    $deptIntId = $deptRow['id'];
+
+    // All active employees in dept
+    $emp = $pdo->prepare("SELECT sys_id FROM employees WHERE department_id=? AND (status='active' OR status IS NULL)");
+    $emp->execute([$deptIntId]);
+    $employees = $emp->fetchAll(PDO::FETCH_COLUMN);
+
+    $title = "New Work: {$svcName}";
+    $body_ = "A new '{$svcName}' work (Work #{$workSysId}) has been created for client {$clientName}. Please check and create a task.";
+
+    if (empty($employees)) {
+        // Dept-level fallback
+        $ntIds  = generateV2IDs($pdo, 'notifications');
+        $ntMeta = buildMetaData(null, $userName);
+        $pdo->prepare("
+            INSERT INTO notifications (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, service_work_sys_id, is_read, meta_data)
+            VALUES (?, ?, 'department', ?, NULL, 'service_assigned', ?, ?, ?, ?, 0, ?)
+        ")->execute([$ntIds['uuid'], $ntIds['sys_id'], $deptSysId, $title, $body_, $workSysId, $swSysId, $ntMeta]);
+        return;
+    }
+
+    foreach ($employees as $empSysId) {
+        $ntIds  = generateV2IDs($pdo, 'notifications');
+        $ntMeta = buildMetaData(null, $userName);
+        $pdo->prepare("
+            INSERT INTO notifications (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, service_work_sys_id, is_read, meta_data)
+            VALUES (?, ?, 'user', ?, ?, 'service_assigned', ?, ?, ?, ?, 0, ?)
+        ")->execute([$ntIds['uuid'], $ntIds['sys_id'], $deptSysId, $empSysId, $title, $body_, $workSysId, $swSysId, $ntMeta]);
+    }
 }
