@@ -29,7 +29,7 @@ if (!$input) {
 
 try {
     // Get existing task
-    $stmt = $pdo->prepare("SELECT * FROM tasks WHERE sys_id = ? OR uuid = ?");
+    $stmt = $pdo->prepare("SELECT * FROM old_tasks WHERE sys_id = ? OR uuid = ?");
     $stmt->execute([$taskId, $taskId]);
     $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -63,7 +63,7 @@ try {
 
     // Save to database
     $updateStmt = $pdo->prepare("
-        UPDATE tasks 
+        UPDATE old_tasks 
         SET hotel_info = ?
         WHERE sys_id = ? OR uuid = ?
     ");

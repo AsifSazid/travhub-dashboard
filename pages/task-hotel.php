@@ -6,8 +6,8 @@ if (empty($ip_port)) {
 }
 $data = null;
 $taskId = $_GET['task_id']; 
-$getTicket = $ip_port . "api/tasks/get-hotel.php?task_id=$taskId";
-$updateJson = $ip_port . "api/tasks/update-hotel-json.php?task=$taskId";
+$getTicket = $ip_port . "api/old_tasks/get-hotel.php?task_id=$taskId";
+$updateJson = $ip_port . "api/old_tasks/update-hotel-json.php?task=$taskId";
 
 // Fetch invoice data from API
 $ch = curl_init($getTicket);

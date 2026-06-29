@@ -33,7 +33,7 @@ function generateUUID(PDO $pdo, string $tag): string
         'quotations' => ['table' => 'quotations', 'column' => 'sys_id', 'short' => 'QT'],
 
         // Project Management  
-        'tasks'     => ['table' => 'tasks',     'column' => 'sys_id', 'short' => 'TS'],
+        'old_tasks'     => ['table' => 'old_tasks',     'column' => 'sys_id', 'short' => 'TS'],
         'projects'  => ['table' => 'projects',  'column' => 'sys_id', 'short' => 'PR'],
 
         // Finance

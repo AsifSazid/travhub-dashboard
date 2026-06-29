@@ -6,9 +6,9 @@ if (empty($ip_port)) {
 }
 $workId = $_GET['work_id'];
 
-$getAllTasksForWorkApi = $ip_port . "api/tasks/tasks-for-work.php?work_id=$workId";
-$storeTasksApi = $ip_port . "api/tasks/store.php";
-$deleteTaskApi = $ip_port . "api/tasks/delete.php";
+$getAllTasksForWorkApi = $ip_port . "api/old_tasks/tasks-for-work.php?work_id=$workId";
+$storeTasksApi = $ip_port . "api/old_tasks/store.php";
+$deleteTaskApi = $ip_port . "api/old_tasks/delete.php";
 $getWorkFinEntriesApi = $ip_port . "api/financial_entries/work-fin-entries.php?work_id=$workId";
 $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
 

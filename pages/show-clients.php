@@ -9,10 +9,10 @@ $clientId = $_GET['client_id'];
 
 
 // $showClientApi = $ip_port . "api/clients/show.php";
-$getClientsWorksApi = $ip_port . "api/works/client-works.php?client_id=$clientId";
+$getClientsWorksApi = $ip_port . "api/com_works/client-works.php?client_id=$clientId";
 $getClientFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$clientId";
-$createWorkApi = $ip_port . "api/works/client-work-store.php?cid=$clientId";
-$storeWorkApi = $ip_port . "api/works/store.php";
+$createWorkApi = $ip_port . "api/com_works/client-work-store.php?cid=$clientId";
+$storeWorkApi = $ip_port . "api/com_works/store.php";
 $getClient = $ip_port . "api/clients/get-client.php?cid=$clientId";
 // $getClientFinEntriesApi = $ip_port . "api/financial_entries/client-fin-entries.php?client_id=$clientId";
 

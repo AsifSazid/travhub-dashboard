@@ -20,7 +20,7 @@ if (!$task_id) {
 
 try {
     // First, get task details to find associated files (optional - if you want to delete files)
-    $stmt = $pdo->prepare("SELECT all_file_name, work_sys_id, sys_id FROM tasks WHERE sys_id = ?");
+    $stmt = $pdo->prepare("SELECT all_file_name, work_sys_id, sys_id FROM old_tasks WHERE sys_id = ?");
     $stmt->execute([$task_id]);
     $task = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -61,7 +61,7 @@ try {
     }
     
     // Delete the task from database
-    $stmt = $pdo->prepare("DELETE FROM tasks WHERE sys_id = ?");
+    $stmt = $pdo->prepare("DELETE FROM old_tasks WHERE sys_id = ?");
     $stmt->execute([$task_id]);
     
     if ($stmt->rowCount() > 0) {

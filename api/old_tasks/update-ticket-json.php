@@ -22,7 +22,7 @@ if (!$input || json_last_error() !== JSON_ERROR_NONE) {
 
 try {
     // ── 3. Find the task ─────────────────────────────────────────────
-    $stmt = $pdo->prepare("SELECT * FROM tasks WHERE sys_id = ? OR uuid = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT * FROM old_tasks WHERE sys_id = ? OR uuid = ? LIMIT 1");
     $stmt->execute([$taskId, $taskId]);
     $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -137,7 +137,7 @@ try {
 
     // ── 9. Save to DB ────────────────────────────────────────────────
     $update = $pdo->prepare("
-        UPDATE tasks
+        UPDATE old_tasks
         SET    air_ticket_info = ?
         WHERE  sys_id = ? OR uuid = ?
         LIMIT  1

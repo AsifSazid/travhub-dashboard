@@ -35,7 +35,7 @@ function fileSaveinSMB($fileName, $filePath){
 }
 
 // ---------------- GET DATA ----------------
-$uuid           = generateIDs('tasks');
+$uuid           = generateIDs('old_tasks');
 $taskTitle      = $_POST['task_title'] ?? "No Title Entry";
 $category       = $_POST['task_category'] ?? null;
 $infoFileName   = $_POST['info_file_name'] ?? null;
@@ -599,7 +599,7 @@ try {
     $metaDataJson = json_encode($metaData);
 
     $stmt = $pdo->prepare("
-        INSERT INTO tasks (
+        INSERT INTO old_tasks (
             uuid, 
             sys_id, 
             title, 

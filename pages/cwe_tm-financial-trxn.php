@@ -11,7 +11,7 @@ $taskId = $_GET['task_id'];
 $getClientsApi = $ip_port . "api/clients/get-client-info.php?work_id=$workId";
 $getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=$taskId";
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
-$getTaskApi = $ip_port . "api/tasks/task-details.php?task_id=$taskId";
+$getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
 
 ?>
 

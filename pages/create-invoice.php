@@ -1111,8 +1111,8 @@ $base_ip_path = trim($ip_port, "/");
         const STORAGE_KEY = 'invoice_create_draft';
         const BANK_MFS_KEY = 'bank_mfs_data';
         const API_INVOICE_STORE = `${IP_PATH}/api/invoices/store.php`;
-        const FETCH_API_ALL_WORK = `${IP_PATH}/api/works/client-works.php`;
-        const FETCH_API_ALL_TASK = `${IP_PATH}/api/tasks/tasks-for-work.php`;
+        const FETCH_API_ALL_WORK = `${IP_PATH}/api/com_works/client-works.php`;
+        const FETCH_API_ALL_TASK = `${IP_PATH}/api/old_tasks/tasks-for-work.php`;
         const GET_ALL_CLIENTS_API = `${IP_PATH}/api/clients/all-clients.php`;
         const GET_FINANCIAL_STATEMENT_API = `${IP_PATH}/api/financial_entries/client-task-statement.php`;
     

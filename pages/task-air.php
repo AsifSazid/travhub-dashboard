@@ -6,7 +6,7 @@ if (empty($ip_port)) {
 }
 $data = null;
 $taskId = $_GET['task_id'] ?? '';
-$getTicket = $ip_port . "api/tasks/get-ticket.php?task_id=$taskId";
+$getTicket = $ip_port . "api/old_tasks/get-ticket.php?task_id=$taskId";
 
 // Fetch invoice data from API
 $ch = curl_init($getTicket);
@@ -449,7 +449,7 @@ function nested_val($array, $key, $default = "N/A") {
     async function doSave() {
         const payload = buildPayload();
         
-        const updateApi = `../api/tasks/update-ticket-json.php?task_id=<?php echo $taskId;?>`;
+        const updateApi = `../api/old_tasks/update-ticket-json.php?task_id=<?php echo $taskId;?>`;
         
         alert(updateApi);
 
