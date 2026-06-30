@@ -14,7 +14,7 @@
         </a>
     </div>
 
-    <form action="">
+    <form id="completedWorkForm" action="">
         <div class="grid grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 my-2">Work Title</label>
@@ -654,7 +654,7 @@
     document.addEventListener('DOMContentLoaded', loadWorks);
 
     // store work
-    const form = document.querySelector('form');
+    const form = document.getElementById('completedWorkForm');
     form.addEventListener('submit', function(e) {
         e.preventDefault(); // page reload prevent
 

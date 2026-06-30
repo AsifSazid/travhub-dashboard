@@ -133,6 +133,62 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </div>
             </div>
+
+            <!-- Report Accordion -->
+            <div class="accordion-item mt-4" data-accordion="report">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-chart-simple mr-3"></i>
+                        <span class="font-medium sidebar-text transition-all duration-300">Reports</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 sidebar-text"></i>
+                </button>
+
+                <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <a href="report-payment.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-payment.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-square-caret-up mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Payment</span>
+                    </a>
+                    <a href="report-receive.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-receive.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-square-caret-down mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Receive</span>
+                    </a>
+                    <a href="report-sale.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-sale.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-circle-check mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Sale</span>
+                    </a>
+                    <a href="report-purchase.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-purchase.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-square-check mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Purchase</span>
+                    </a>
+                    <a href="report-profit.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-profit.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-money-bill-trend-up mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Profit</span>
+                    </a>
+                    <a href="report-ac_payable.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-ac_payable.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-circle-up mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">A/C Payable</span>
+                    </a>
+                    <a href="report-ac_receivable.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-ac_receivable.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-circle-down mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">A/C Recievable</span>
+                    </a>
+                </div>
+            </div>
             
             <!-- HR Accordion -->
             <div class="accordion-item mt-4" data-accordion="hr">
@@ -243,6 +299,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                        <?= $currentPage == 'file-compressor.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-hotel mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">File Compressor</span>
+                    </a>
+                    <a href="index-smpost.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'index-smpost.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-brands fa-flickr mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Social Media Post</span>
                     </a>
                 </div>
             </div>
