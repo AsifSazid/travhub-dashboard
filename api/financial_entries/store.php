@@ -81,7 +81,7 @@ try {
 
     // ------------------ Task ------------------
     if ($taskId) {
-        $stmt = $pdo->prepare("SELECT title FROM tasks WHERE sys_id = ?");
+        $stmt = $pdo->prepare("SELECT title FROM old_tasks WHERE sys_id = ?");
         $stmt->execute([$taskId]);
         $taskTitle = $stmt->fetchColumn();
     }

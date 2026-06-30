@@ -162,6 +162,15 @@ $smpostApi = $ip_port . 'api/social/endpoints.php';
 <script>
 const SMPOST_API = '<?php echo $smpostApi; ?>';
 
+/* ── TEMP: Global error catcher for debugging — shows any JS error on page ── */
+window.addEventListener('error', function(e) {
+    console.error('[GLOBAL ERROR]', e.message, 'at', e.filename + ':' + e.lineno);
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px 16px;font-size:13px;font-family:monospace;z-index:99999;';
+    banner.textContent = '[JS ERROR] ' + e.message + ' (line ' + e.lineno + ')';
+    document.body.prepend(banner);
+});
+
 const PLAT_INFO = {
     facebook:  { icon:'fab fa-facebook-f',  cls:'pi-facebook',  name:'Facebook'  },
     instagram: { icon:'fab fa-instagram',   cls:'pi-instagram', name:'Instagram' },
@@ -194,7 +203,20 @@ function showToast(type, msg) {
 async function loadPosts() {
     try {
         const res  = await fetch(SMPOST_API + '?action=list&limit=200');
+        if (!res.ok) {
+            console.error('[loadPosts] HTTP error:', res.status, res.statusText);
+            showToast('error', `API error: HTTP ${res.status}`);
+            return;
+        }
         const json = await res.json();
+        console.log('[loadPosts] API response:', json); // TEMP DEBUG — remove after confirming fix
+
+        if (json.status && json.status !== 'success') {
+            console.error('[loadPosts] API returned error status:', json.message);
+            showToast('error', json.message ?? 'Failed to load posts');
+            return;
+        }
+
         // Parse JSON columns for each post
         allPosts = (json.data ?? []).map(p => ({
             ...p,
@@ -202,9 +224,13 @@ async function loadPosts() {
             keywords: sp(p.keywords) ?? [],
             tips:     sp(p.tips)     ?? [],
         }));
+
+        console.log('[loadPosts] allPosts populated:', allPosts.length, 'posts');
+
         updateStats();
         applyFilters();
     } catch(e) {
+        console.error('[loadPosts] exception:', e);
         document.getElementById('postsGrid').innerHTML =
             '<div class="col-span-3 text-center py-12 text-red-400"><i class="fas fa-exclamation-circle mr-2"></i>Failed to load posts</div>';
     }
@@ -319,9 +345,17 @@ function renderPagination() {
    PREVIEW MODAL
 ══════════════════════════════════════ */
 function openPreview(sysId) {
+    if (!sysId) { console.error('[openPreview] no sysId passed'); return; }
     const p = allPosts.find(x => x.sys_id === sysId);
-    if (!p) { showToast('error', 'Post not found'); return; }
+    if (!p) {
+        console.error('[openPreview] post not found for sysId:', sysId, 'allPosts.length=', allPosts.length);
+        showToast('error', 'Post not found');
+        return;
+    }
     _previewPost = p;
+
+    const modal = document.getElementById('previewModal');
+    if (!modal) { console.error('[openPreview] #previewModal element missing from DOM'); return; }
 
     const pi = PLAT_INFO[p.platform] ?? { icon:'fa-circle', cls:'', name: p.platform };
     const hashtags = Array.isArray(p.hashtags) ? p.hashtags : (sp(p.hashtags) ?? []);
@@ -391,11 +425,14 @@ function openPreview(sysId) {
     actionsHtml += (statusBtns[p.status] ?? '');
 
     document.getElementById('previewActions').innerHTML = actionsHtml;
-    document.getElementById('previewModal').classList.remove('hidden');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex'; // fallback in case 'hidden' utility class is overridden elsewhere
 }
 
 function closePreview() {
-    document.getElementById('previewModal').classList.add('hidden');
+    const modal = document.getElementById('previewModal');
+    modal.classList.add('hidden');
+    modal.style.display = '';
     _previewPost = null;
 }
 
@@ -473,15 +510,20 @@ async function confirmDelete() {
 }
 
 /* ── Event delegation for grid action buttons ── */
-document.getElementById('postsGrid').addEventListener('click', function(e) {
-    const btn = e.target.closest('.sm-action');
-    if (!btn) return;
-    const id     = btn.dataset.id;
-    const action = btn.dataset.action;
-    if (!id) return;
-    if (action === 'preview') openPreview(id);
-    if (action === 'delete')  openDeleteModal(id);
-});
+const _postsGridEl = document.getElementById('postsGrid');
+if (_postsGridEl) {
+    _postsGridEl.addEventListener('click', function(e) {
+        const btn = e.target.closest('.sm-action');
+        if (!btn) return;
+        const id     = btn.dataset.id;
+        const action = btn.dataset.action;
+        if (!id) { console.error('[sm-action] button missing data-id', btn); return; }
+        if (action === 'preview') openPreview(id);
+        if (action === 'delete')  openDeleteModal(id);
+    });
+} else {
+    console.error('[init] #postsGrid not found — preview/delete buttons will not work');
+}
 
 /* ── Init ── */
 loadPosts();

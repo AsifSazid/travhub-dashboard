@@ -36,14 +36,16 @@ $SERVICE_NAME_MAP = [
 ];
 
 // service slug → department slug mapping
+// Departments are ORGANIZATIONAL (Management/Visa/Package/Ticket/IT/Student/Medical/Account),
+// not one-department-per-service. Multiple services route to the same department.
 $SERVICE_DEPT_SLUG = [
-    'air_ticket'   => 'air_ticketing',
-    'visa'         => 'visa',
-    'hotel'        => 'hotel',
-    'tour_package' => 'tour_package',
-    'package'      => 'tour_package',
-    'umrah'        => 'umrah',
-    'transport'    => 'transport',
+    'air_ticket'   => 'ticket',    // → Ticket dept
+    'transport'    => 'ticket',    // → Ticket dept (grouped with air ticketing)
+    'visa'         => 'visa',      // → Visa dept
+    'hotel'        => 'package',   // → Package dept
+    'tour_package' => 'package',   // → Package dept
+    'package'      => 'package',   // → Package dept
+    'umrah'        => 'package',   // → Package dept
 ];
 
 // Pre-load department sys_ids by slug (one query)
@@ -274,21 +276,30 @@ function _buildTaskName(string $slug, string $svcName, array $seg, int $idx, int
  */
 function _notifyDeptEmployees(PDO $pdo, string $deptSysId, string $workSysId, string $swSysId, string $svcName, string $clientName, string $userName): void
 {
-    // Get department integer id first
-    $d = $pdo->prepare("SELECT id FROM departments WHERE sys_id=? LIMIT 1");
-    $d->execute([$deptSysId]);
-    $deptRow = $d->fetch(PDO::FETCH_ASSOC);
-    if (!$deptRow) return;
-
-    $deptIntId = $deptRow['id'];
-
-    // Get all active employees in this department
-    $emp = $pdo->prepare("SELECT sys_id, name FROM employees WHERE department_id=? AND status='active'");
-    $emp->execute([$deptIntId]);
+    // ── Preferred: match via employees.department_sys_id (reliable, new system) ──
+    $emp = $pdo->prepare("SELECT sys_id, name FROM employees WHERE department_sys_id = ? AND status = 'active'");
+    $emp->execute([$deptSysId]);
     $employees = $emp->fetchAll(PDO::FETCH_ASSOC);
 
+    // ── Fallback: legacy employees.department_name text match against departments.name ──
+    // (covers employees not yet migrated to department_sys_id)
     if (empty($employees)) {
-        // Fallback: dept-level notification (no user target)
+        $d = $pdo->prepare("SELECT name FROM departments WHERE sys_id = ? LIMIT 1");
+        $d->execute([$deptSysId]);
+        $deptRow = $d->fetch(PDO::FETCH_ASSOC);
+
+        if ($deptRow) {
+            $empFallback = $pdo->prepare("
+                SELECT sys_id, name FROM employees
+                WHERE LOWER(TRIM(department_name)) = LOWER(TRIM(?)) AND status = 'active'
+            ");
+            $empFallback->execute([$deptRow['name']]);
+            $employees = $empFallback->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+
+    if (empty($employees)) {
+        // Final fallback: dept-level notification (no specific user target)
         _insertNotif($pdo, $deptSysId, null, $workSysId, null, $swSysId, $svcName, $clientName, $userName);
         return;
     }

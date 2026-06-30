@@ -8,7 +8,11 @@ $updateStatusApi = $ip_port . "api/works/update-status.php";
 $addTaskApi      = $ip_port . "api/works/add-task.php";
 $addServiceApi   = $ip_port . "api/works/add-service.php";
 $deptApi         = $ip_port . "api/masterdata/departments/endpoints.php";
+$workTravelersApi = $ip_port . "api/works/travelers.php";
+$allTravelersApi  = $ip_port . "api/travelers/all-travelers.php";
 $workSysId       = $_GET['id'] ?? '';
+$deepLinkSw      = $_GET['sw']   ?? '';
+$deepLinkTask    = $_GET['task'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -32,6 +36,11 @@ $workSysId       = $_GET['id'] ?? '';
         .svc-tab:hover:not(.active) { background:#f3f4f6; color:#374151; }
 
         .task-card { border:1.5px solid #e5e7eb; border-radius:10px; padding:14px; transition:all .15s; cursor:pointer; }
+        .task-card.deep-link-highlight { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); animation: deepLinkPulse 1.8s ease-in-out 2; }
+        @keyframes deepLinkPulse {
+            0%, 100% { background-color: #fff; }
+            50%      { background-color: #eef2ff; }
+        }
         .task-card:hover { border-color:#c7d2fe; box-shadow:0 4px 12px rgba(99,102,241,.08); }
         .task-card.active-task { border-color:#6366f1; background:#f5f3ff; }
 
@@ -171,9 +180,9 @@ $workSysId       = $_GET['id'] ?? '';
                 <div class="bg-white rounded-xl shadow-sm p-5">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-users mr-2 text-indigo-400"></i>Travelers</h3>
-                        <button class="w-6 h-6 bg-indigo-50 text-indigo-600 rounded-full text-xs hover:bg-indigo-100 transition">+</button>
+                        <button onclick="openAddTravelerModal()" class="w-6 h-6 bg-indigo-50 text-indigo-600 rounded-full text-xs hover:bg-indigo-100 transition">+</button>
                     </div>
-                    <div id="travelersList" class="text-xs text-gray-400">No travelers linked.</div>
+                    <div id="travelersList" class="text-xs text-gray-400 space-y-2">No travelers linked.</div>
                 </div>
 
                 <!-- Source Lead -->
@@ -211,6 +220,34 @@ $workSysId       = $_GET['id'] ?? '';
     </div>
 </div>
 
+<!-- ADD TRAVELER MODAL -->
+<div id="addTravelerModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
+            <h3 class="font-semibold text-gray-800"><i class="fas fa-user-plus mr-2 text-indigo-500"></i>Add Traveler</h3>
+            <button onclick="closeModal('addTravelerModal')" class="text-gray-400 hover:text-gray-700 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-5 flex-shrink-0">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input type="text" id="travelerSearchInput" placeholder="Search by name, passport, NID, phone…"
+                    autocomplete="off"
+                    class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    oninput="filterTravelerSearch()">
+            </div>
+        </div>
+        <div id="travelerSearchResults" class="overflow-y-auto flex-1 px-5 pb-3 space-y-2">
+            <div class="text-center py-8 text-gray-400 text-sm"><i class="fas fa-spinner fa-spin"></i> Loading travelers…</div>
+        </div>
+        <div class="p-5 border-t border-gray-100 flex-shrink-0">
+            <a href="create-traveler.php" target="_blank"
+                class="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-sm font-semibold transition">
+                <i class="fas fa-plus"></i>Create New Traveler
+            </a>
+        </div>
+    </div>
+</div>
+
 <!-- STATUS MODAL -->
 <div id="statusModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
@@ -239,12 +276,16 @@ $workSysId       = $_GET['id'] ?? '';
 <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 <script>
 const WORK_SYS_ID = "<?php echo htmlspecialchars($workSysId); ?>";
+const DEEP_LINK_SW   = "<?php echo htmlspecialchars($deepLinkSw); ?>";
+const DEEP_LINK_TASK = "<?php echo htmlspecialchars($deepLinkTask); ?>";
 const API = {
     getWork:    "<?php echo $getWorkApi; ?>",
     status:     "<?php echo $updateStatusApi; ?>",
     addTask:    "<?php echo $addTaskApi; ?>",
     addService: "<?php echo $addServiceApi; ?>",
     depts:      "<?php echo $deptApi; ?>",
+    workTravelers: "<?php echo $workTravelersApi; ?>",
+    allTravelers:  "<?php echo $allTravelersApi; ?>",
 };
 
 let allDepts = [];
@@ -342,6 +383,134 @@ function renderPage() {
 
     // Service tabs
     renderServiceTabs(serviceWorks, services);
+
+    // Travelers
+    loadWorkTravelers();
+}
+
+/* ══════════════════════════════════════════════
+   TRAVELERS
+══════════════════════════════════════════════ */
+let linkedTravelers = [];  // travelers currently attached to this work
+let allTravelersData = []; // full traveler directory (loaded lazily)
+
+async function loadWorkTravelers() {
+    try {
+        const res  = await fetch(`${API.workTravelers}?action=list&work_sys_id=${encodeURIComponent(WORK_SYS_ID)}`);
+        const json = await res.json();
+        linkedTravelers = (json.status === 'success') ? (json.data ?? []) : [];
+        renderTravelersList();
+    } catch(e) {
+        document.getElementById('travelersList').innerHTML =
+            `<p class="text-red-400 text-xs"><i class="fas fa-exclamation-circle mr-1"></i>Failed to load travelers</p>`;
+    }
+}
+
+function renderTravelersList() {
+    const wrap = document.getElementById('travelersList');
+    if (!linkedTravelers.length) {
+        wrap.innerHTML = '<p class="text-gray-400">No travelers linked.</p>';
+        return;
+    }
+    wrap.innerHTML = linkedTravelers.map(t => {
+        const initial = (t.name || '?').charAt(0).toUpperCase();
+        const sub = [t.passport_no, t.phone].filter(Boolean).join(' · ');
+        return `<div class="flex items-center gap-2 group">
+            <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">${initial}</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-gray-700 font-medium truncate">${esc(t.name)}</p>
+                ${sub ? `<p class="text-gray-400 text-[10px] truncate">${esc(sub)}</p>` : ''}
+            </div>
+            <button onclick="unlinkTraveler('${esc(t.sys_id)}')"
+                class="opacity-0 group-hover:opacity-100 transition text-gray-300 hover:text-red-500 text-xs flex-shrink-0" title="Remove">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>`;
+    }).join('');
+}
+
+async function unlinkTraveler(travelerSysId) {
+    if (!confirm('Remove this traveler from the work?')) return;
+    try {
+        const res  = await fetch(API.workTravelers, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'unlink', work_sys_id: WORK_SYS_ID, traveler_sys_id: travelerSysId }),
+        });
+        const json = await res.json();
+        if (json.status !== 'success') throw new Error(json.message ?? 'Failed');
+        linkedTravelers = linkedTravelers.filter(t => t.sys_id !== travelerSysId);
+        renderTravelersList();
+    } catch(e) {
+        alert('Failed to remove traveler: ' + e.message);
+    }
+}
+
+async function openAddTravelerModal() {
+    document.getElementById('addTravelerModal').classList.remove('hidden');
+    document.getElementById('travelerSearchInput').value = '';
+    if (!allTravelersData.length) {
+        try {
+            const res  = await fetch(API.allTravelers);
+            const json = await res.json();
+            allTravelersData = json.success ? (json.travelers ?? []) : [];
+        } catch(e) {
+            allTravelersData = [];
+        }
+    }
+    filterTravelerSearch();
+}
+
+function filterTravelerSearch() {
+    const q = (document.getElementById('travelerSearchInput').value || '').toLowerCase().trim();
+    const linkedIds = new Set(linkedTravelers.map(t => t.sys_id));
+
+    let results = allTravelersData;
+    if (q) {
+        results = results.filter(t =>
+            (t.name || '').toLowerCase().includes(q) ||
+            (t.passport_no || '').toLowerCase().includes(q) ||
+            (t.nid_no || '').toLowerCase().includes(q) ||
+            (t.phone || '').toLowerCase().includes(q)
+        );
+    }
+    results = results.slice(0, 50); // cap render
+
+    const wrap = document.getElementById('travelerSearchResults');
+    if (!results.length) {
+        wrap.innerHTML = '<p class="text-center text-gray-400 text-sm py-6">No travelers found.</p>';
+        return;
+    }
+
+    wrap.innerHTML = results.map(t => {
+        const isLinked = linkedIds.has(t.sys_id);
+        const initial  = (t.name || '?').charAt(0).toUpperCase();
+        const sub = [t.passport_no, t.phone].filter(Boolean).join(' · ');
+        return `<div class="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 hover:border-indigo-200 transition">
+            <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0">${initial}</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-700 truncate">${esc(t.name)}</p>
+                ${sub ? `<p class="text-xs text-gray-400 truncate">${esc(sub)}</p>` : ''}
+            </div>
+            ${isLinked
+                ? `<span class="text-xs text-green-600 font-semibold flex-shrink-0"><i class="fas fa-check mr-1"></i>Added</span>`
+                : `<button onclick="linkTraveler('${esc(t.sys_id)}')" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-semibold transition flex-shrink-0">Add</button>`}
+        </div>`;
+    }).join('');
+}
+
+async function linkTraveler(travelerSysId) {
+    try {
+        const res  = await fetch(API.workTravelers, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'link', work_sys_id: WORK_SYS_ID, traveler_sys_id: travelerSysId }),
+        });
+        const json = await res.json();
+        if (json.status !== 'success') throw new Error(json.message ?? 'Failed');
+        await loadWorkTravelers();
+        filterTravelerSearch(); // refresh "Added" badge in modal
+    } catch(e) {
+        alert('Failed to add traveler: ' + e.message);
+    }
 }
 
 function renderWorkDetails(ci, w) {
@@ -377,10 +546,31 @@ function renderServiceTabs(sws, services) {
 
     bar.innerHTML = tabHtml;
 
-    // Activate first tab
+    // Activate tab — prefer deep-linked sw param, fallback to first tab
     if (sws.length > 0) {
-        activeSwId = sws[0].sys_id;
-        renderTasksForSw(sws[0].sys_id);
+        let targetSw = sws[0].sys_id;
+        let targetBtn = bar.querySelector('.svc-tab');
+
+        if (DEEP_LINK_SW) {
+            const match = sws.find(s => s.sys_id === DEEP_LINK_SW);
+            if (match) {
+                targetSw = match.sys_id;
+                const idx = sws.indexOf(match);
+                targetBtn = bar.querySelectorAll('.svc-tab')[idx];
+            }
+        }
+
+        document.querySelectorAll('.svc-tab').forEach(t => t.classList.remove('active'));
+        targetBtn?.classList.add('active');
+        activeSwId = targetSw;
+        renderTasksForSw(targetSw);
+
+        // Scroll the service card into view if we deep-linked
+        if (DEEP_LINK_SW || DEEP_LINK_TASK) {
+            setTimeout(() => {
+                document.getElementById('svcTabBar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
+        }
     } else {
         document.getElementById('svcTabContent').innerHTML = `<div class="text-center py-8 text-gray-400"><i class="fas fa-info-circle mr-2"></i>No services linked to this work.</div>`;
     }
@@ -410,8 +600,10 @@ function renderTasksForSw(swSysId) {
             <i class="fas fa-tasks text-2xl mb-2 block opacity-30"></i>No tasks yet. Click "Add Task" to create one.
         </div>`;
     } else {
-        html += `<div class="space-y-3">` + tasks.map(t => `
-            <div class="task-card" onclick="selectTask('${t.sys_id}')">
+        html += `<div class="space-y-3">` + tasks.map(t => {
+            const isDeepLinked = DEEP_LINK_TASK && t.sys_id === DEEP_LINK_TASK;
+            return `
+            <div class="task-card${isDeepLinked ? ' deep-link-highlight' : ''}" data-task-id="${t.sys_id}" onclick="selectTask('${t.sys_id}')">
                 <div class="flex items-start justify-between mb-2">
                     <div>
                         <div class="font-semibold text-gray-800 text-sm">${t.workname ?? 'Untitled Task'}</div>
@@ -432,10 +624,22 @@ function renderTasksForSw(swSysId) {
                     <span>B: <b class="text-gray-600">৳${parseFloat(t.total_booking).toLocaleString()}</b></span>
                     <span>C: <b class="text-gray-600">৳${parseFloat(t.total_confirmation).toLocaleString()}</b></span>
                 </div>` : ''}
-            </div>`).join('') + `</div>`;
+            </div>`;
+        }).join('') + `</div>`;
     }
 
     content.innerHTML = html;
+
+    // Auto-select + scroll to deep-linked task
+    if (DEEP_LINK_TASK) {
+        const targetCard = content.querySelector(`.task-card[data-task-id="${DEEP_LINK_TASK}"]`);
+        if (targetCard) {
+            selectTask(DEEP_LINK_TASK);
+            setTimeout(() => {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 250);
+        }
+    }
 }
 
 // ── Task selection (phase tabs) ───────────────────────────
@@ -544,6 +748,7 @@ function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }));
 
 function safeParse(v) { if (!v) return null; if (typeof v === 'object') return v; try { return JSON.parse(v); } catch { return null; } }
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function badgeHtml(status) {
     const map = { open:['badge-open','🟡 Open'], in_progress:['badge-in_progress','🔵 In Progress'], done:['badge-done','✅ Done'], cancelled:['badge-cancelled','❌ Cancelled'] };
@@ -608,13 +813,13 @@ async function confirmAddService() {
                 <select id="newServiceSlug" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     onchange="document.getElementById('newServiceName').value = this.options[this.selectedIndex].text.replace(/^.. /,'')">
                     <option value="">Select service type…</option>
-                    <option value="air_ticket">✈️ Air Ticket</option>
-                    <option value="visa">🛂 Visa</option>
-                    <option value="hotel">🏨 Hotel</option>
-                    <option value="tour_package">🧳 Tour Package</option>
-                    <option value="umrah">🕌 Umrah</option>
-                    <option value="transport">🚌 Transport</option>
-                    <option value="other">📋 Other</option>
+                    <option value="air_ticket">Air Ticket</option>
+                    <option value="visa">Visa</option>
+                    <option value="hotel">Hotel</option>
+                    <option value="tour_package">Tour Package</option>
+                    <option value="umrah">Umrah</option>
+                    <option value="transport">Transport</option>
+                    <option value="other">Other</option>
                 </select>
             </div>
             <div>
