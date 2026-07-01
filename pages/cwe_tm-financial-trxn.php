@@ -1,19 +1,40 @@
 <?php
+// cwe_tm-financial-trnx.php (modified - with better error handling)
 include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$workId = $_GET['work_id'];
-$taskId = $_GET['task_id'];
+$workId = $_GET['work_id'] ?? '';
+$taskId = $_GET['task_id'] ?? '';
 
-$getClientsApi = $ip_port . "api/clients/get-client-info.php?work_id=$workId";
-$getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=$taskId";
+$getClientsApi = $ip_port . "api/clients/get-client-info.php?work_id=" . urlencode($workId);
+$getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=" . urlencode($taskId);
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
-$getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
+$getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($taskId);
 
+// কাজের টাইটেল এবং টাস্ক টাইটেল JS এ pass করার জন্য
+$workTitle = '';
+$taskTitle = '';
+$taskCategory = '';
+
+try {
+    $taskData = @file_get_contents($getTaskApi);
+    if ($taskData) {
+        $taskData = json_decode($taskData, true);
+        if ($taskData && $taskData['success'] && isset($taskData['task'])) {
+            $task = $taskData['task'];
+            $workTitle = $task['work_title'] ?? '';
+            $taskTitle = $task['title'] ?? '';
+            $taskCategory = $task['category'] ?? '';
+        }
+    }
+} catch (Exception $e) {
+    // error handling - silent
+}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -144,6 +165,28 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             background-color: #e2e8f0;
             transform: translateY(-1px);
         }
+
+        /* QTY/RATE/AMOUNT auto-calc highlight */
+        .calc-field:focus {
+            ring: 2px solid #6366f1;
+        }
+        .calc-result {
+            background-color: #f0fdf4;
+            border-color: #86efac !important;
+        }
+        .qty-rate-group {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 1px solid #bae6fd;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+        }
+        .qty-rate-group .label-sm {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #0369a1;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
 
@@ -258,18 +301,28 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="fas fa-money-bill-wave mr-1"></i> Amount
-                                    </label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
-                                        <input type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            id="client_amount"
-                                            placeholder="0.00"
-                                            class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                                <!-- QTY / RATE / AMOUNT - Auto Calculate -->
+                                <div class="qty-rate-group">
+                                    <p class="text-xs text-blue-600 font-medium mb-2">
+                                        <i class="fas fa-calculator mr-1"></i>
+                                        যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
+                                    </p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <label class="block label-sm mb-1">QTY</label>
+                                            <input type="number" step="0.01" min="0" id="client_qty" placeholder="0"
+                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 text-sm calc-field">
+                                        </div>
+                                        <div>
+                                            <label class="block label-sm mb-1">Rate</label>
+                                            <input type="number" step="0.01" min="0" id="client_rate" placeholder="0.00"
+                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 text-sm calc-field">
+                                        </div>
+                                        <div>
+                                            <label class="block label-sm mb-1">Amount ৳</label>
+                                            <input type="number" step="0.01" min="0" id="client_amount" placeholder="0.00"
+                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 text-sm calc-field">
+                                        </div>
                                     </div>
                                 </div>
 
@@ -365,18 +418,28 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"></textarea>
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="fas fa-money-bill-wave mr-1"></i> Amount
-                                    </label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
-                                        <input type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            id="vendor_amount"
-                                            placeholder="0.00"
-                                            class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                <!-- QTY / RATE / AMOUNT - Auto Calculate -->
+                                <div class="qty-rate-group" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac;">
+                                    <p class="text-xs text-emerald-600 font-medium mb-2">
+                                        <i class="fas fa-calculator mr-1"></i>
+                                        যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
+                                    </p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <label class="block label-sm mb-1" style="color: #065f46;">QTY</label>
+                                            <input type="number" step="0.01" min="0" id="vendor_qty" placeholder="0"
+                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 text-sm calc-field">
+                                        </div>
+                                        <div>
+                                            <label class="block label-sm mb-1" style="color: #065f46;">Rate</label>
+                                            <input type="number" step="0.01" min="0" id="vendor_rate" placeholder="0.00"
+                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 text-sm calc-field">
+                                        </div>
+                                        <div>
+                                            <label class="block label-sm mb-1" style="color: #065f46;">Amount ৳</label>
+                                            <input type="number" step="0.01" min="0" id="vendor_amount" placeholder="0.00"
+                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 text-sm calc-field">
+                                        </div>
                                     </div>
                                 </div>
 
@@ -432,7 +495,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client/Vendor</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">QTY</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -589,14 +654,28 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                         required></textarea>
                 </div>
                 
-                <!-- Amount -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
-                        <input type="number" id="edit_amount" step="0.01" min="0.01"
-                            class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required>
+                <!-- QTY / RATE / AMOUNT - Edit Modal -->
+                <div class="mb-4 qty-rate-group">
+                    <p class="text-xs text-blue-600 font-medium mb-2">
+                        <i class="fas fa-calculator mr-1"></i>
+                        যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
+                    </p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block label-sm mb-1">QTY</label>
+                            <input type="number" step="0.01" min="0" id="edit_qty" placeholder="0"
+                                class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field">
+                        </div>
+                        <div>
+                            <label class="block label-sm mb-1">Rate</label>
+                            <input type="number" step="0.01" min="0" id="edit_rate" placeholder="0.00"
+                                class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field">
+                        </div>
+                        <div>
+                            <label class="block label-sm mb-1">Amount ৳</label>
+                            <input type="number" step="0.01" min="0" id="edit_amount" placeholder="0.00"
+                                class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field" required>
+                        </div>
                     </div>
                 </div>
                 
@@ -665,14 +744,74 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             loadClientData();
             loadFinancialData();
             setupEventListeners();
+            setupQtyRateCalc();  // NEW: QTY/RATE/AMOUNT auto-calc
         });
 
-        // Load Task Meta Data
+        // ============================================================
+        // QTY / RATE / AMOUNT AUTO-CALCULATE
+        // Logic: যেকোনো দুইটা field এ value দিলে তৃতীয়টা auto calculate হবে
+        // qty × rate = amount
+        // amount ÷ qty = rate
+        // amount ÷ rate = qty
+        // "last edited" field টা auto-calculate এর target হয় না
+        // ============================================================
+        function setupQtyRateCalc() {
+            setupCalcGroup('client_qty', 'client_rate', 'client_amount');
+            setupCalcGroup('vendor_qty', 'vendor_rate', 'vendor_amount');
+            setupCalcGroup('edit_qty', 'edit_rate', 'edit_amount');
+        }
+
+        function setupCalcGroup(qtyId, rateId, amountId) {
+            const qtyEl = document.getElementById(qtyId);
+            const rateEl = document.getElementById(rateId);
+            const amountEl = document.getElementById(amountId);
+
+            if (!qtyEl || !rateEl || !amountEl) return;
+
+            let lastEdited = null;
+
+            function smartCalc() {
+                const qty = parseFloat(qtyEl.value) || null;
+                const rate = parseFloat(rateEl.value) || null;
+                const amount = parseFloat(amountEl.value) || null;
+
+                // Remove previous highlight
+                [qtyEl, rateEl, amountEl].forEach(el => el.classList.remove('calc-result'));
+
+                // lastEdited টা auto-fill হবে না, বাকি দুইটা থেকে calculate
+                if (lastEdited !== 'amount' && qty !== null && rate !== null && qty > 0 && rate > 0) {
+                    amountEl.value = (qty * rate).toFixed(2);
+                    amountEl.classList.add('calc-result');
+                } else if (lastEdited !== 'rate' && qty !== null && amount !== null && qty > 0 && amount > 0) {
+                    rateEl.value = (amount / qty).toFixed(2);
+                    rateEl.classList.add('calc-result');
+                } else if (lastEdited !== 'qty' && rate !== null && amount !== null && rate > 0 && amount > 0) {
+                    qtyEl.value = (amount / rate).toFixed(2);
+                    qtyEl.classList.add('calc-result');
+                }
+            }
+
+            qtyEl.addEventListener('input', () => { lastEdited = 'qty'; smartCalc(); });
+            rateEl.addEventListener('input', () => { lastEdited = 'rate'; smartCalc(); });
+            amountEl.addEventListener('input', () => { lastEdited = 'amount'; smartCalc(); });
+        }
+
+        // Build qty_rate JSON string
+        function buildQtyRate(qtyId, rateId) {
+            const qty = parseFloat(document.getElementById(qtyId)?.value) || null;
+            const rate = parseFloat(document.getElementById(rateId)?.value) || null;
+            if (!qty && !rate) return null;
+            return JSON.stringify({ qty: qty || 0, rate: rate || 0 });
+        }
+
+        // ============================================================
+        // TASK META DATA - with proper error handling
+        // ============================================================
         async function loadTaskMetaData() {
             try {
                 const response = await fetch(GET_TASK_API);
                 const data = await response.json();
-
+        
                 if (data.success && data.task) {
                     task = data.task;
                     const category = task.category;
@@ -680,34 +819,41 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     WORK_TITLE = task.work_title;
                     TASK_TITLE = task.title;
                     let text = '';
-                    let raw = '';
                     let container = document.getElementById("client_purpose");
                     
-                    if(category == 1){
-                        raw = JSON.parse(task.air_ticket_info);
-                        let purposeData = JSON.parse(raw[0]);
-                        let purposes = purposeData.purpose;
+                    try {
+                        if (category == 1 && task.air_ticket_info) {
+                            const raw = JSON.parse(task.air_ticket_info);
+                            if (raw && Array.isArray(raw) && raw.length > 0 && raw[0]) {
+                                const purposeData = JSON.parse(raw[0]);
+                                if (purposeData && purposeData.purpose && Array.isArray(purposeData.purpose)) {
+                                    text = purposeData.purpose.map(p => {
+                                        return `${p.route || ''}\n${(p.passengers || []).join(", ")}\n${p.travel_date || ''}\n${(p.others || []).join(", ")}`;
+                                    }).join("\n\n");
+                                }
+                            }
+                        }
                         
-                        // Join korar somoy <br> er jaygay \n bebohar koro
-                        text = purposes.map(p => {
-                            return `${p.route}\n${p.passengers.join(", ")}\n${p.travel_date}\n${p.others.join(", ")}`;
-                        }).join("\n\n");
+                        if (category == 2 && task.hotel_info) {
+                            const raw = JSON.parse(task.hotel_info);
+                            if (raw && Array.isArray(raw) && raw.length > 0 && raw[0]) {
+                                const parseData = JSON.parse(raw[0]);
+                                if (parseData) {
+                                    text = `${parseData.hotel_name || ''},\n${parseData.hotel_city || ''}, ${parseData.hotel_country || ''}\n${(parseData.guest_names || []).join(" | ")}\nC/In: ${parseData.check_in_date || ''} | C/Out: ${parseData.check_out_date || ''} | ${parseData.no_of_nights || 0} Nights\n${parseData.room_info || ''} | ${parseData.meal_plan || ''} | ${parseData.total_rooms || 0} Room('s)`;
+                                }
+                            }
+                        }
+                    } catch (parseError) {
+                        console.warn('Error parsing task data:', parseError);
+                        text = ''; // এখানে খালি রাখবো
                     }
                     
-                    if(category == 2){
-                        raw = JSON.parse(task.hotel_info);
-                        let parseData = JSON.parse(raw[0]);
-
-                        text = `${parseData.hotel_name},\n${parseData.hotel_city}, ${parseData.hotel_country}\n${parseData.guest_names.join(" | ")}\nC/In: ${parseData.check_in_date} | C/Out: ${parseData.check_out_date} | ${parseData.no_of_nights} Nights\n${parseData.room_info} | ${parseData.meal_plan} | ${parseData.total_rooms} Room('s)`;
-                    }
-                    
-                    // Input field ba textarea hole .value use korte hoy, .innerHTML noy
                     container.value = text;
-
+        
                     // Update task info card
                     document.getElementById('taskIdDisplay').textContent = task.sys_id || 'N/A';
                     document.getElementById('taskNameDisplay').textContent = task.title || 'N/A';
-
+        
                     // Category
                     let categoryText = 'Unknown';
                     let categoryColor = 'gray';
@@ -720,24 +866,26 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     }
                     document.getElementById('taskCategory').textContent = categoryText;
                     document.getElementById('taskCategory').classList.add(`text-${categoryColor}-600`);
-
+        
                     // Meta data
                     const meta = task.meta_data ? JSON.parse(task.meta_data) : {};
                     const created = meta.created_by_date || {};
                     const updatedArray = meta.updated_by_date || [];
                     const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
-
+        
                     document.getElementById('taskCreated').textContent = created.date || 'N/A';
                     document.getElementById('taskUpdated').textContent = lastUpdate ? lastUpdate.date : 'N/A';
-
+        
                     // Update task meta section
                     updateTaskMetaSection(task, meta);
-
+        
                     // Load files
                     loadTaskFiles(task);
                 }
             } catch (error) {
                 console.error('Error loading task data:', error);
+                // ইউজারকে দেখানোর জন্য
+                document.getElementById('client_purpose').value = 'Error loading task data';
             }
         }
 
@@ -758,21 +906,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 </div>
                 
                 <div class="stat-card bg-gradient-to-r from-green-50 to-green-100 border-green-200 p-4 rounded-lg">
-                    <div class="items-center justify-between">
-                        <div>
-                            <p class="text-sm text-green-600 font-medium">Work Title</p>
-                            <div class="relative group">
-                                <p class="text-lg font-semibold text-green-900 truncate">
-                                    ${task.work_title || 'N/A'}
-                                </p>
-                            
-                                <div class="absolute left-0 top-full mt-1 hidden group-hover:block 
-                                            bg-black text-white text-xs px-2 py-1 rounded z-10">
-                                    ${task.work_title || 'N/A'}
-                                </div>
-                            </div>
-                        </div>
-                        <i class="fas fa-briefcase text-green-400 text-2xl"></i>
+                    <div>
+                        <p class="text-sm text-green-600 font-medium">Work Title</p>
+                        <p class="text-lg font-semibold text-green-900 truncate">${task.work_title || 'N/A'}</p>
                     </div>
                 </div>
                 
@@ -805,9 +941,7 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         }
         
         function loadTaskFiles(task) {
-            
             if (!task || !clientName || !currentClientId) {
-                console.warn('Task files skipped: client data not ready');
                 return;
             }
     
@@ -841,12 +975,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                             color = 'indigo';
                         }
                         
-                        // Escape special characters
                         const cleanClientName = clientName.replace(/\s+/g, '');
                         const cleanWorkTitle  = WORK_TITLE.replace(/\s+/g, '_');
-                        // const cleanTaskTitle  = TASK_TITLE.replace(/\s+/g, '_');
                         const cleanTaskTitle  = TASK_TITLE;
-                        
 
                         const safeFilePath =
                             `/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}+${cleanWorkTitle}/tasks/${TASK_ID}+${cleanTaskTitle}/` +
@@ -859,10 +990,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                                 <i class="${icon} text-${color}-500 mr-1"></i>
                                 <span class="truncate max-w-[150px]">${fileName}</span>
                             </a>
-                            <button class="file-chip cursor-pointer hover:shadow-sm" >
-                                <i class="fas fa-plus mr-1"></i>
-                                <span class="truncate max-w-[150px]">Add New File</span>
-                            </button>
                         `;
                     }).join('');
 
@@ -878,20 +1005,20 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     `;
                 } else {
                     fileAttachments.innerHTML = `
-                <div class="text-center py-4 text-gray-500">
-                    <i class="fas fa-file text-3xl mb-2"></i>
-                    <p>No files attached to this task</p>
-                </div>
-            `;
+                        <div class="text-center py-4 text-gray-500">
+                            <i class="fas fa-file text-3xl mb-2"></i>
+                            <p>No files attached to this task</p>
+                        </div>
+                    `;
                 }
             } catch (error) {
                 console.error('Error loading files:', error);
                 fileAttachments.innerHTML = `
-            <div class="text-center py-4 text-red-500">
-                <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
-                <p>Error loading files</p>
-            </div>
-        `;
+                    <div class="text-center py-4 text-red-500">
+                        <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                        <p>Error loading files</p>
+                    </div>
+                `;
             }
         }
         
@@ -917,11 +1044,11 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                             </div>
                             <div>
                                 <div class="font-semibold text-gray-900">${clientName}</div>
-                                    <div class="text-sm text-gray-600">
-                                        ${client.email ? JSON.parse(client.email).primary || 'No email' : 'No email'} | 
-                                        ${client.phone ? JSON.parse(client.phone).primary_no || 'No phone' : 'No phone'}
-                                    </div>                                
-                                    <div class="text-xs text-gray-500 mt-1">
+                                <div class="text-sm text-gray-600">
+                                    ${client.email ? JSON.parse(client.email).primary || 'No email' : 'No email'} | 
+                                    ${client.phone ? JSON.parse(client.phone).primary_no || 'No phone' : 'No phone'}
+                                </div>                                
+                                <div class="text-xs text-gray-500 mt-1">
                                     Work: <span class="font-medium">${workName}</span>
                                 </div>
                             </div>
@@ -940,12 +1067,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         function extractIds(value) {
             if (!value || typeof value !== 'string') return null;
             
-            // Split by pipe and trim
             const parts = value.split('|').map(v => v.trim());
             
-            // Ensure we have at least 2 parts (ID and Name)
             if (parts.length < 2) {
-                // Try to extract ID from the beginning if format is different
                 const idMatch = value.match(/^(\d+)/);
                 if (idMatch) {
                     return {
@@ -969,29 +1093,15 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             const vendorSection = document.getElementById('vendorSection');
             const accountSection = document.getElementById('accountSection');
             
-            // Set initial state
-            if (vendorRadio.checked) {
-                vendorSection.classList.remove('hidden');
-                accountSection.classList.add('hidden');
-            } else {
-                vendorSection.classList.add('hidden');
-                accountSection.classList.remove('hidden');
+            function toggle() {
+                const isVendor = vendorRadio.checked;
+                vendorSection.classList.toggle('hidden', !isVendor);
+                accountSection.classList.toggle('hidden', isVendor);
             }
             
-            // Add event listeners for radio buttons
-            vendorRadio.addEventListener('change', function() {
-                if (this.checked) {
-                    vendorSection.classList.remove('hidden');
-                    accountSection.classList.add('hidden');
-                }
-            });
-            
-            ownRadio.addEventListener('change', function() {
-                if (this.checked) {
-                    vendorSection.classList.add('hidden');
-                    accountSection.classList.remove('hidden');
-                }
-            });
+            toggle();
+            vendorRadio.addEventListener('change', toggle);
+            ownRadio.addEventListener('change', toggle);
         }
         
         function buildDateTime(dateOnly) {
@@ -1005,7 +1115,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             return `${dateOnly} ${time}`;
         }
 
-        // Record Transaction
+        // ============================================================
+        // RECORD TRANSACTION (UPDATED with qty_rate)
+        // ============================================================
         async function recordTransaction(type) {
             try {
                 const workId = WORK_ID;
@@ -1016,6 +1128,7 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     const amount = parseFloat(document.getElementById('client_amount').value);
                     const date = document.getElementById('client_date').value;
                     const ref = document.getElementById('client_note').value;
+                    const qtyRate = buildQtyRate('client_qty', 'client_rate');
 
                     if (!currentClientId) {
                         showNotification('Client ID not found', 'error');
@@ -1035,7 +1148,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                         work_id: workId,
                         task_id: taskId,
                         date: buildDateTime(date),
-                        ref: ref
+                        ref: ref,
+                        qty_rate: qtyRate
                     };
 
                     await saveTransaction(transactionData, 'Debit');
@@ -1043,12 +1157,15 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     // Clear form
                     document.getElementById('client_purpose').value = '';
                     document.getElementById('client_amount').value = '';
+                    document.getElementById('client_qty').value = '';
+                    document.getElementById('client_rate').value = '';
 
                 } else if (type === 'credit') {
                     const purpose = document.getElementById('vendor_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('vendor_amount').value);
                     const date = document.getElementById('vendor_date').value;
                     const vendorType = document.querySelector('input[name="account_type"]:checked').value;
+                    const qtyRate = buildQtyRate('vendor_qty', 'vendor_rate');
                     
                     let vendorId = null;
                     let accountId = null;
@@ -1088,26 +1205,26 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                         type: 'credit',
                         amount: amount,
                         purpose: purpose,
-                        vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
+                        vendor_type: vendorType === 'vendor' ? 0 : 1,
                         work_id: workId,
                         task_id: taskId,
-                        date: buildDateTime(date)
+                        date: buildDateTime(date),
+                        qty_rate: qtyRate
                     };
 
-                    // Add vendor_id or account_id based on type
                     if (vendorType === 'vendor' && vendorId) {
                         transactionData.vendor_id = vendorId;
                     } else if (vendorType === 'own' && accountId) {
                         transactionData.account_id = accountId;
                     }
-                    
-                    console.log(transactionData);
 
                     await saveTransaction(transactionData, 'Credit');
 
                     // Clear form
                     document.getElementById('vendor_purpose').value = '';
                     document.getElementById('vendor_amount').value = '';
+                    document.getElementById('vendor_qty').value = '';
+                    document.getElementById('vendor_rate').value = '';
                     document.getElementById('vendorInput').value = '';
                     document.getElementById('accountInput').value = '';
                 }
@@ -1128,6 +1245,7 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     const amount = parseFloat(document.getElementById('client_amount').value);
                     const date = document.getElementById('client_date').value;
                     const ref = document.getElementById('client_note').value;
+                    const qtyRate = buildQtyRate('client_qty', 'client_rate');
 
                     if (!currentClientId) {
                         showNotification('Client ID not found', 'error');
@@ -1147,7 +1265,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                         work_id: workId,
                         task_id: taskId,
                         date: buildDateTime(date),
-                        ref: ref
+                        ref: ref,
+                        qty_rate: qtyRate
                     };
 
                     await saveTransaction(transactionData, 'Credit');
@@ -1155,12 +1274,15 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     // Clear form
                     document.getElementById('client_purpose').value = '';
                     document.getElementById('client_amount').value = '';
+                    document.getElementById('client_qty').value = '';
+                    document.getElementById('client_rate').value = '';
 
                 } else if (type === 'debit') {
                     const purpose = document.getElementById('vendor_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('vendor_amount').value);
                     const date = document.getElementById('vendor_date').value;
                     const vendorType = document.querySelector('input[name="account_type"]:checked').value;
+                    const qtyRate = buildQtyRate('vendor_qty', 'vendor_rate');
                     
                     let vendorId = null;
                     let accountId = null;
@@ -1200,26 +1322,26 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                         type: 'debit',
                         amount: amount,
                         purpose: purpose,
-                        vendor_type: vendorType === 'vendor' ? 0 : 1, // 0 for Vendor, 1 for Own Account
+                        vendor_type: vendorType === 'vendor' ? 0 : 1,
                         work_id: workId,
                         task_id: taskId,
-                        date: buildDateTime(date)
+                        date: buildDateTime(date),
+                        qty_rate: qtyRate
                     };
 
-                    // Add vendor_id or account_id based on type
                     if (vendorType === 'vendor' && vendorId) {
                         transactionData.vendor_id = vendorId;
                     } else if (vendorType === 'own' && accountId) {
                         transactionData.account_id = accountId;
                     }
-                    
-                    console.log(transactionData);
 
                     await saveTransaction(transactionData, 'Debit');
 
                     // Clear form
                     document.getElementById('vendor_purpose').value = '';
                     document.getElementById('vendor_amount').value = '';
+                    document.getElementById('vendor_qty').value = '';
+                    document.getElementById('vendor_rate').value = '';
                     document.getElementById('vendorInput').value = '';
                     document.getElementById('accountInput').value = '';
                 }
@@ -1231,7 +1353,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         }
 
         async function saveTransaction(data, type) {
-                // console.log(data);
             try {
                 const response = await fetch(FINANCIAL_ENTRIES_STORE_API, {
                     method: 'POST',
@@ -1260,7 +1381,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             }
         }
 
-        // Load Financial Data
+        // ============================================================
+        // FINANCIAL DATA
+        // ============================================================
         async function loadFinancialData() {
             try {
                 const response = await fetch(GET_FINANCIAL_STATEMENT_API);
@@ -1283,8 +1406,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             if (transactions.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                            <i class="fas fa-wallet text-3xl mb-2"></i>
+                        <td colspan="9" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-wallet text-3xl mb-2 block"></i>
                             <p class="text-lg">No transactions yet</p>
                             <p class="text-sm mt-1">Record your first transaction above</p>
                         </td>
@@ -1307,6 +1430,18 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 const amountClass = isDebit ? 'amount-debit' : 'amount-credit';
                 const amountPrefix = isDebit ? '+' : '-';
 
+                // Parse qty_rate
+                let qtyCell = '—', rateCell = '—';
+                if (transaction.qty_rate) {
+                    try {
+                        const qr = typeof transaction.qty_rate === 'string' 
+                            ? JSON.parse(transaction.qty_rate) 
+                            : transaction.qty_rate;
+                        if (qr.qty) qtyCell = parseFloat(qr.qty).toFixed(2);
+                        if (qr.rate) rateCell = '৳' + parseFloat(qr.rate).toLocaleString('en-US', {minimumFractionDigits: 2});
+                    } catch(e) {}
+                }
+
                 return `
                     <tr class="transaction-row">
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -1319,11 +1454,13 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                             <div class="text-sm text-gray-900">${transaction.ref || 'Unknown'}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900"> ${transaction.user_name || 'N/A'}</div>
+                            <div class="text-sm text-gray-900">${transaction.user_name || 'N/A'}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600">${qtyCell}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600">${rateCell}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-semibold ${amountClass}">
+                            <div class="text-sm font-semibold ${amountClass} text-right">
                                 ${amountPrefix} ৳${parseFloat(transaction.amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}
                             </div>
                         </td>
@@ -1392,21 +1529,17 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         function updateQuickStats(transactions) {
             document.getElementById('totalTransactions').textContent = transactions.length;
 
-            // Update transaction progress (max 10 transactions for 100%)
             const progress = Math.min((transactions.length / 10) * 100, 100);
             document.getElementById('transactionProgress').style.width = `${progress}%`;
 
-            // Debit vs Credit ratio
             const debitCount = transactions.filter(t => t.type.toLowerCase() === 'debit').length;
             const creditCount = transactions.filter(t => t.type.toLowerCase() === 'credit').length;
             document.getElementById('debitCreditRatio').textContent = `${debitCount}:${creditCount}`;
 
-            // Update bars
             const total = debitCount + creditCount || 1;
             document.getElementById('debitBar').style.width = `${(debitCount / total) * 100}%`;
             document.getElementById('creditBar').style.width = `${(creditCount / total) * 100}%`;
 
-            // Net balance
             const totalDebit = transactions
                 .filter(t => t.type.toLowerCase() === 'debit')
                 .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
@@ -1443,14 +1576,12 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 </div>
             `;
 
-            // Add to top of recent activity
             if (recentActivity.firstChild) {
                 recentActivity.insertBefore(activityItem, recentActivity.firstChild);
             } else {
                 recentActivity.appendChild(activityItem);
             }
 
-            // Limit to 5 items
             const items = recentActivity.querySelectorAll('div.flex.items-start');
             if (items.length > 5) {
                 items[items.length - 1].remove();
@@ -1458,7 +1589,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         }
 
         function showNotification(message, type = 'info') {
-            // Create notification element
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${
                 type === 'success' ? 'bg-green-500 text-white' :
@@ -1474,7 +1604,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
 
             document.body.appendChild(notification);
 
-            // Remove after 3 seconds
             setTimeout(() => {
                 notification.style.opacity = '0';
                 notification.style.transform = 'translateX(100%)';
@@ -1483,7 +1612,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         }
 
         function setupEventListeners() {
-            // Enter key support for forms
             document.getElementById('client_amount').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') recordTransaction('debit');
             });
@@ -1492,7 +1620,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 if (e.key === 'Enter') recordTransaction('credit');
             });
             
-            // Setup type toggle
             setupTypeToggle();
         }
 
@@ -1508,56 +1635,56 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
         }
 
         function previewFile(filePath) {
-            // Implement file preview logic here
             alert('File preview would show: ' + filePath.split('/').pop());
-            // You can implement modal preview for PDFs/images
         }
 
-        // function editTransaction(id) {
-        //     // Implement edit functionality
-        //     showNotification('Edit functionality coming soon', 'info');
-        // }
-        
-        
-        // Edit Transaction
+        // ============================================================
+        // EDIT TRANSACTION (UPDATED with qty_rate)
+        // ============================================================
         async function editTransaction(id) {
             try {
-                // Find the transaction
                 const transaction = allTransactions.find(t => t.id == id);
                 if (!transaction) {
                     showNotification('Transaction not found', 'error');
                     return;
                 }
         
-                // Populate modal with transaction data
                 document.getElementById('edit_transaction_id').value = transaction.id;
                 document.getElementById('edit_original_type').value = transaction.type;
                 document.getElementById('edit_purpose').value = transaction.purpose || '';
                 document.getElementById('edit_amount').value = transaction.amount;
                 
-                // Format date for datetime-local input
+                // Populate qty/rate from qty_rate JSON
+                document.getElementById('edit_qty').value = '';
+                document.getElementById('edit_rate').value = '';
+                if (transaction.qty_rate) {
+                    try {
+                        const qr = typeof transaction.qty_rate === 'string' 
+                            ? JSON.parse(transaction.qty_rate) 
+                            : transaction.qty_rate;
+                        if (qr.qty) document.getElementById('edit_qty').value = qr.qty;
+                        if (qr.rate) document.getElementById('edit_rate').value = qr.rate;
+                    } catch(e) {}
+                }
+                
                 if (transaction.date) {
                     const dateStr = transaction.date.replace(' ', 'T');
                     document.getElementById('edit_date').value = dateStr.substring(0, 16);
                 }
                 
-                // Set type display
                 const typeDisplay = document.getElementById('edit_type_display');
                 const type = transaction.type.toLowerCase();
                 typeDisplay.innerHTML = type === 'debit' ? 
                     '<span class="text-green-600 font-semibold">DEBIT (Client Deposit)</span>' : 
                     '<span class="text-red-600 font-semibold">CREDIT (Vendor Payment)</span>';
                 
-                // Handle vendor/account selection for credit transactions
                 const selectionContainer = document.getElementById('edit_selection_container');
                 if (type === 'credit') {
                     selectionContainer.classList.remove('hidden');
                     
-                    // Determine if it's vendor or own account
                     const isVendor = transaction.vendor_type == 0;
                     document.getElementById('edit_vendor_type').value = isVendor ? 'vendor' : 'own';
                     
-                    // Set radio button
                     const vendorRadio = document.querySelector('input[name="edit_account_type"][value="vendor"]');
                     const ownRadio = document.querySelector('input[name="edit_account_type"][value="own"]');
                     
@@ -1569,10 +1696,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                         ownRadio.checked = true;
                     }
                     
-                    // Load the appropriate container
                     await loadEditSelectionContainers();
                     
-                    // Set the initial value
                     if (isVendor && transaction.vendor_id) {
                         const vendorName = transaction.vendor_name || 'Unknown Vendor';
                         const vendorInput = document.getElementById('editVendorInput');
@@ -1592,7 +1717,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     selectionContainer.classList.add('hidden');
                 }
                 
-                // Show modal
                 document.getElementById('editModal').classList.remove('hidden');
                 
             } catch (error) {
@@ -1601,37 +1725,31 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
             }
         }
         
-        // Load edit selection containers
         async function loadEditSelectionContainers() {
             const vendorContainer = document.getElementById('edit_vendor_container');
             const accountContainer = document.getElementById('edit_account_container');
             
-            // Load vendor component if not already loaded
             if (vendorContainer.children.length === 0) {
                 const vendorResponse = await fetch('form-selects/vendors-edit.php');
                 const vendorHtml = await vendorResponse.text();
                 vendorContainer.innerHTML = vendorHtml;
                 
-                // Load vendors data
                 if (typeof loadEditVendors === 'function') {
                     loadEditVendors();
                 }
             }
             
-            // Load account component if not already loaded
             if (accountContainer.children.length === 0) {
                 const accountResponse = await fetch('form-selects/accounts-edit.php');
                 const accountHtml = await accountResponse.text();
                 accountContainer.innerHTML = accountHtml;
                 
-                // Load accounts data
                 if (typeof loadEditAccounts === 'function') {
                     loadEditAccounts();
                 }
             }
         }
         
-        // Toggle between vendor and account selection
         function toggleEditSelection() {
             const type = document.querySelector('input[name="edit_account_type"]:checked')?.value;
             const vendorContainer = document.getElementById('edit_vendor_container');
@@ -1641,7 +1759,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 vendorContainer.classList.remove('hidden');
                 accountContainer.classList.add('hidden');
                 
-                // Setup vendor search if not already setup
                 if (typeof setupEditVendorSearch === 'function') {
                     setTimeout(() => setupEditVendorSearch(), 100);
                 }
@@ -1649,14 +1766,12 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 vendorContainer.classList.add('hidden');
                 accountContainer.classList.remove('hidden');
                 
-                // Setup account search if not already setup
                 if (typeof setupEditAccountSearch === 'function') {
                     setTimeout(() => setupEditAccountSearch(), 100);
                 }
             }
         }
         
-        // Update transaction
         async function updateTransaction(event) {
             event.preventDefault();
             
@@ -1666,21 +1781,21 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 const purpose = document.getElementById('edit_purpose').value.trim();
                 const amount = parseFloat(document.getElementById('edit_amount').value);
                 const dateTime = document.getElementById('edit_date').value.replace('T', ' ');
+                const qtyRate = buildQtyRate('edit_qty', 'edit_rate');
                 
                 if (!purpose || !amount || amount <= 0) {
                     showNotification('Please enter valid purpose and amount', 'error');
                     return;
                 }
                 
-                // Build update data
                 const updateData = {
                     id: transactionId,
                     purpose: purpose,
                     amount: amount,
-                    date: dateTime
+                    date: dateTime,
+                    qty_rate: qtyRate
                 };
                 
-                // Add vendor/account info for credit transactions
                 if (originalType.toLowerCase() === 'credit') {
                     const accountType = document.querySelector('input[name="edit_account_type"]:checked')?.value;
                     
@@ -1709,7 +1824,6 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                     }
                 }
                 
-                // Send update request
                 const response = await fetch(UPDATE_FINANCIAL_ENTRY_API, {
                     method: 'POST',
                     headers: {
@@ -1723,7 +1837,7 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 if (result.success) {
                     showNotification('Transaction updated successfully!', 'success');
                     closeEditModal();
-                    loadFinancialData(); // Reload the table
+                    loadFinancialData();
                 } else {
                     showNotification('Error: ' + (result.message || 'Failed to update transaction'), 'error');
                 }
@@ -1733,25 +1847,22 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=$taskId";
                 showNotification('Network error occurred', 'error');
             }
         }
-    
-    // Close edit modal
-    function closeEditModal() {
-        document.getElementById('editModal').classList.add('hidden');
-        document.getElementById('editTransactionForm').reset();
-    }
         
-    function deleteTransaction(id) {
-        if (confirm('Are you sure you want to delete this transaction?')) {
-            // Implement delete functionality
-            showNotification('Delete functionality coming soon', 'info');
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editTransactionForm').reset();
         }
-    }
+        
+        function deleteTransaction(id) {
+            if (confirm('Are you sure you want to delete this transaction?')) {
+                showNotification('Delete functionality coming soon', 'info');
+            }
+        }
 
-    // Reload function
-    function reloadFinancialTable() {
-        loadFinancialData();
-        showNotification('Data refreshed', 'success');
-    }
+        function reloadFinancialTable() {
+            loadFinancialData();
+            showNotification('Data refreshed', 'success');
+        }
     </script>
 </body>
 

@@ -1,10 +1,10 @@
 <?php
-// PATH: /api/clients/cl-ac-sale-store.php
-// Changes:
-//   - related_type=1 explicitly যোগ করা হয়েছে (আগে missing ছিল, default 1 ছিল coincidentally)
-//   - amount field এখন sellingPrice থেকে নেওয়া হচ্ছে (dual amount support)
-//   - vendorId/vendorName field remove করা হয়েছে — এই file শুধু client entry করে
-//     vendor entry আলাদা ve-ac-purchase-store.php থেকে হয়
+// PATH: /api/clients/cl-ac-discount-store.php  ← NEW FILE
+//
+// Discount to Client
+//   → financial_entries: user_type=client, type=credit, related_type=5, is_discounted=1
+//   → কোনো bank movement নাই (ac_banking_stmts touch হয় না)
+//   → শুধু client এর outstanding কমবে
 session_start();
 
 require '../../server/db_connection.php';
@@ -31,14 +31,13 @@ if (!$data) {
 
 $clientId        = $data['clientId']        ?? null;
 $clientName      = $data['clientName']      ?? null;
-// sellingPrice → backward compat: amount ও accept করে
-$amount          = $data['sellingPrice']    ?? $data['amount'] ?? 0;
+$amount          = $data['amount']          ?? 0;
 $particular      = $data['particular']      ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
 
 if (!is_numeric($amount) || $amount <= 0) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid selling price / amount']);
+    echo json_encode(['success' => false, 'message' => 'Invalid amount']);
     exit;
 }
 if (!$clientId) {
@@ -53,14 +52,14 @@ try {
     $feUUIDs = generateIDs('financial_entries');
     $feMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
-    // related_type=1 (client + debit = sale)
+    // related_type=5 (discount), is_discounted=1
     $pdo->prepare("
         INSERT INTO financial_entries
         (uuid, sys_id, user_sys_id, user_name, user_type,
-         date, purpose, type, related_type, amount, ref, meta_data)
+         date, purpose, type, related_type, is_discounted, amount, ref, meta_data)
         VALUES
         (:uuid, :sys_id, :user_sys_id, :user_name, 'client',
-         :date, :purpose, 'debit', 1, :amount, :ref, :meta)
+         :date, :purpose, 'credit', 5, 1, :amount, '', :meta)
     ")->execute([
         ':uuid'        => $feUUIDs['uuid'],
         ':sys_id'      => $feUUIDs['sys_id'],
@@ -69,7 +68,6 @@ try {
         ':date'        => $transactionDate,
         ':purpose'     => $particular,
         ':amount'      => $amount,
-        ':ref'         => '',
         ':meta'        => $feMeta
     ]);
 
@@ -77,7 +75,7 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => 'Sale recorded successfully',
+        'message' => 'Discount recorded successfully',
         'data'    => ['financial_entry_id' => $feUUIDs['sys_id']]
     ]);
 

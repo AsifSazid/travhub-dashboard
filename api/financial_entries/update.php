@@ -1,21 +1,20 @@
 <?php
+// PATH: /api/financial_entries/update.php
 session_start();
 
 require '../../server/db_connection.php';
 require '../../server/generate_meta_data.php';
+require '../../server/uuid_with_system_id_generator.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 function validateUpdateInput(array $data): array
 {
     $errors = [];
-    if (!isset($data['id']) || empty($data['id'])) {
+    if (empty($data['id'])) {
         $errors[] = 'Transaction ID is required';
     }
     if (!isset($data['amount']) || !is_numeric($data['amount']) || $data['amount'] <= 0) {
@@ -38,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-    
+
     $errors = validateUpdateInput($input);
     if ($errors) {
         http_response_code(400);
@@ -47,192 +46,172 @@ try {
     }
 
     $transactionId = $input['id'];
-    $amount = (float) $input['amount'];
-    $purpose = trim($input['purpose']);
-    $date = $input['date'];
-    
-    $newVendorId = $input['vendor_id'] ?? null;
-    $newAccountId = $input['account_id'] ?? null;
-    $newVendorType = $input['vendor_type'] ?? null;
+    $amount        = (float)$input['amount'];
+    $purpose       = trim($input['purpose']);
+    $date          = $input['date'];
+    $newVendorType = isset($input['vendor_type']) ? (int)$input['vendor_type'] : null;
+    $inputVendorId = $input['vendor_id']  ?? null;
+    $inputAccountId= $input['account_id'] ?? null;
+    $qtyRate       = $input['qty_rate']   ?? null; // JSON string
 
-    // Get original transaction
     $stmt = $pdo->prepare("SELECT * FROM financial_entries WHERE id = ? OR sys_id = ?");
     $stmt->execute([$transactionId, $transactionId]);
-    $originalTransaction = $stmt->fetch(PDO::FETCH_ASSOC);
+    $orig = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$originalTransaction) {
+    if (!$orig) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Transaction not found']);
         exit;
     }
 
-    $originalAmount = (float) $originalTransaction['amount'];
-    $originalVendorType = $originalTransaction['vendor_type'];
-    $originalUserSysId = $originalTransaction['user_sys_id'];
-    $originalType = $originalTransaction['type'];
+    $origAmount     = (float)$orig['amount'];
+    $origVendorType = (int)$orig['vendor_type'];
+    $origUserSysId  = $orig['user_sys_id'];
+    $origType       = $orig['type'];
+    $origRelatedType= (int)$orig['related_type'];
 
-    // ============= ac_banking HANDLING =============
-    
-    // CASE 1: Original transaction was from an account (vendor_type = 1)
-    if ($originalVendorType == 1 && $originalTransaction['user_type'] === 'account') {
-        $originalAccountId = $originalUserSysId;
-        
-        // Get original account balance
-        $stmt = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ?");
-        $stmt->execute([$originalAccountId]);
-        $originalAccount = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($originalAccount) {
-            $originalBalance = (float) $originalAccount['balance'];
-            
-            // Reverse the original transaction effect
-            if ($originalType === 'credit') {
-                // Original was credit (withdraw), so ADD BACK the amount
-                $balanceAfterReverse = $originalBalance + $originalAmount;
-            } else {
-                // Original was debit (deposit), so SUBTRACT the amount
-                $balanceAfterReverse = $originalBalance - $originalAmount;
-            }
-            
-            // Update original account balance (reverse effect)
-            $updateStmt = $pdo->prepare("UPDATE ac_banking SET balance = ? WHERE sys_id = ?");
-            $updateStmt->execute([$balanceAfterReverse, $originalAccountId]);
-            
-            // Delete or mark banking statement as deleted
-            $stmt = $pdo->prepare("UPDATE ac_banking_stmts SET status = 0 WHERE ref = ? OR ref = ?");
-            $stmt->execute([$originalTransaction['sys_id'], $originalTransaction['id']]);
+    // Reverse original bank effect
+    if ($origVendorType === 1 && $orig['user_type'] === 'account' && $origUserSysId) {
+
+        $s = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ?");
+        $s->execute([$origUserSysId]);
+        $origAccBalance = (float)$s->fetchColumn();
+
+        if ($origType === 'credit') {
+            $reversedBalance = $origAccBalance + $origAmount;
+        } else {
+            $reversedBalance = $origAccBalance - $origAmount;
+        }
+
+        $pdo->prepare("UPDATE ac_banking SET balance = ? WHERE sys_id = ?")
+            ->execute([$reversedBalance, $origUserSysId]);
+
+        $pdo->prepare("DELETE FROM ac_banking_stmts WHERE ref = ?")
+            ->execute([$orig['sys_id']]);
+    }
+
+    // Determine new user info
+    $newUserSysId = $origUserSysId;
+    $newUserName  = $orig['user_name'];
+    $newUserType  = $orig['user_type'];
+    $finalVendorType = $newVendorType ?? $origVendorType;
+
+    if ($newVendorType === 0 && $inputVendorId) {
+        $s = $pdo->prepare("SELECT name FROM vendors WHERE sys_id = ?");
+        $s->execute([$inputVendorId]);
+        $vName = $s->fetchColumn();
+        if ($vName) {
+            $newUserSysId = $inputVendorId;
+            $newUserName  = $vName;
+            $newUserType  = 'vendor';
         }
     }
 
-    // CASE 2: New transaction is from an account
-    $newAccountId = null;
-    $newAccountName = null;
-    
-    if ($newVendorType == 1 && isset($input['account_id'])) {
-        $newAccountId = $input['account_id'];
-        
-        // Get new account details
-        $stmt = $pdo->prepare("SELECT acc_name, balance FROM ac_banking WHERE sys_id = ?");
-        $stmt->execute([$newAccountId]);
-        $newAccount = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($newAccount) {
-            $newAccountName = $newAccount['acc_name'];
-            $newAccountBalance = (float) $newAccount['balance'];
-            
-            // Apply new transaction effect
-            if ($originalType === 'credit') {
-                // Credit transaction (withdraw)
-                $newBalance = $newAccountBalance - $amount;
-            } else {
-                // Debit transaction (deposit)
-                $newBalance = $newAccountBalance + $amount;
-            }
-            
-            // Update new account balance
-            $updateStmt = $pdo->prepare("UPDATE ac_banking SET balance = ? WHERE sys_id = ?");
-            $updateStmt->execute([$newBalance, $newAccountId]);
-            
-            // Insert new banking statement
-            $ids = generateIDs('ac_banking_stmts');
-            $user = $_SESSION['user_name'] ?? 'system';
-            $stmtMeta = buildMetaData(null, $user);
-            
-            if ($originalType === 'credit') {
-                $insertSql = "
-                    INSERT INTO ac_banking_stmts
-                    (uuid, sys_id, ledger_db_id, name, date, particular, withdraw, balance, meta_data, ref)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ";
-                $stmt = $pdo->prepare($insertSql);
-                $stmt->execute([
-                    $ids['uuid'], $ids['sys_id'], $newAccountId, $newAccountName,
-                    $date, $purpose, $amount, $newBalance, $stmtMeta, $originalTransaction['sys_id']
-                ]);
-            } else {
-                $insertSql = "
-                    INSERT INTO ac_banking_stmts
-                    (uuid, sys_id, ledger_db_id, name, date, particular, deposit, balance, meta_data, ref)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ";
-                $stmt = $pdo->prepare($insertSql);
-                $stmt->execute([
-                    $ids['uuid'], $ids['sys_id'], $newAccountId, $newAccountName,
-                    $date, $purpose, $amount, $newBalance, $stmtMeta, $originalTransaction['sys_id']
-                ]);
-            }
+    $newAccountBalance = null;
+    if ($newVendorType === 1 && $inputAccountId) {
+        $s = $pdo->prepare("SELECT acc_name, balance FROM ac_banking WHERE sys_id = ?");
+        $s->execute([$inputAccountId]);
+        $accRow = $s->fetch(PDO::FETCH_ASSOC);
+
+        if ($accRow) {
+            $newUserSysId      = $inputAccountId;
+            $newUserName       = $accRow['acc_name'];
+            $newUserType       = 'account';
+            $newAccountBalance = (float)$accRow['balance'];
         }
     }
-    
-    // CASE 3: Transaction is from a vendor (vendor_type = 0)
-    $newVendorName = null;
-    $newVendorId = null;
-    
-    if ($newVendorType == 0 && isset($input['vendor_id'])) {
-        $newVendorId = $input['vendor_id'];
-        
-        $stmt = $pdo->prepare("SELECT name FROM vendors WHERE sys_id = ?");
-        $stmt->execute([$newVendorId]);
-        $newVendorName = $stmt->fetchColumn();
+
+    // Apply new bank effect
+    if ($newVendorType === 1 && $inputAccountId && $newAccountBalance !== null) {
+        if ($origType === 'credit') {
+            $finalBalance = $newAccountBalance - $amount;
+        } else {
+            $finalBalance = $newAccountBalance + $amount;
+        }
+
+        $pdo->prepare("UPDATE ac_banking SET balance = ? WHERE sys_id = ?")
+            ->execute([$finalBalance, $inputAccountId]);
+
+        $newStmtIds  = generateIDs('ac_banking_stmts');
+        $newStmtMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+
+        if ($origType === 'credit') {
+            $pdo->prepare("
+                INSERT INTO ac_banking_stmts
+                (uuid, sys_id, ledger_db_id, name, date, particular,
+                 withdraw, deposit, balance, related_type, meta_data, ref)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 2, ?, ?)
+            ")->execute([
+                $newStmtIds['uuid'], $newStmtIds['sys_id'],
+                $inputAccountId, $newUserName,
+                $date, $purpose, $amount, $finalBalance,
+                $newStmtMeta, $orig['sys_id']
+            ]);
+        } else {
+            $pdo->prepare("
+                INSERT INTO ac_banking_stmts
+                (uuid, sys_id, ledger_db_id, name, date, particular,
+                 withdraw, deposit, balance, related_type, meta_data, ref)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 1, ?, ?)
+            ")->execute([
+                $newStmtIds['uuid'], $newStmtIds['sys_id'],
+                $inputAccountId, $newUserName,
+                $date, $purpose, $amount, $finalBalance,
+                $newStmtMeta, $orig['sys_id']
+            ]);
+        }
     }
 
-    // Determine final user_sys_id and user_name
-    if ($newVendorType == 1 && $newAccountId) {
-        $userSysId = $newAccountId;
-        $userName = $newAccountName;
-        $userType = 'account';
-    } elseif ($newVendorType == 0 && $newVendorId) {
-        $userSysId = $newVendorId;
-        $userName = $newVendorName;
-        $userType = 'vendor';
-    } else {
-        // No change in vendor/account
-        $userSysId = $originalUserSysId;
-        $userName = $originalTransaction['user_name'];
-        $userType = $originalTransaction['user_type'];
+    // Recalculate related_type
+    $newRelatedType = $origRelatedType;
+
+    if ($newUserType === 'client') {
+        $newRelatedType = ($origType === 'debit') ? 1 : 0;
+    } elseif ($newUserType === 'vendor') {
+        $newRelatedType = ($origType === 'credit') ? 2 : 0;
+    } elseif ($newUserType === 'account') {
+        $newRelatedType = ($origType === 'credit') ? 2 : 3;
     }
 
-    // Update meta data
-    $metaData = json_decode($originalTransaction['meta_data'], true) ?? [];
-    $updatedMeta = buildMetaData($metaData, $_SESSION['user_name'] ?? 'system');
-    $updatedMeta['updated_at'] = date('Y-m-d H:i:s');
-    $updatedMeta['updated_by'] = $_SESSION['user_name'] ?? 'system';
+    // Update financial_entries with qty_rate
+    $existingMeta = json_decode($orig['meta_data'], true) ?? [];
+    $updatedMeta  = buildMetaData($existingMeta, $_SESSION['user_name'] ?? 'system');
 
-    // Update financial entry
-    $updateSql = "
-        UPDATE financial_entries 
-        SET 
-            purpose = :purpose,
-            amount = :amount,
-            date = :date,
-            user_sys_id = :user_sys_id,
-            user_name = :user_name,
-            user_type = :user_type,
-            vendor_type = :vendor_type,
-            meta_data = :meta_data
+    $pdo->prepare("
+        UPDATE financial_entries
+        SET purpose      = :purpose,
+            amount       = :amount,
+            qty_rate     = :qty_rate,
+            date         = :date,
+            user_sys_id  = :user_sys_id,
+            user_name    = :user_name,
+            user_type    = :user_type,
+            vendor_type  = :vendor_type,
+            related_type = :related_type,
+            meta_data    = :meta_data
         WHERE id = :id OR sys_id = :sys_id
-    ";
-
-    $updateStmt = $pdo->prepare($updateSql);
-    $updateStmt->execute([
-        ':purpose' => $purpose,
-        ':amount' => $amount,
-        ':date' => $date,
-        ':user_sys_id' => $userSysId,
-        ':user_name' => $userName,
-        ':user_type' => $userType,
-        ':vendor_type' => $newVendorType ?? $originalVendorType,
-        ':meta_data' => json_encode($updatedMeta),
-        ':id' => is_numeric($transactionId) ? $transactionId : 0,
-        ':sys_id' => $transactionId
+    ")->execute([
+        ':purpose'      => $purpose,
+        ':amount'       => $amount,
+        ':qty_rate'     => $qtyRate,
+        ':date'         => $date,
+        ':user_sys_id'  => $newUserSysId,
+        ':user_name'    => $newUserName,
+        ':user_type'    => $newUserType,
+        ':vendor_type'  => $finalVendorType,
+        ':related_type' => $newRelatedType,
+        ':meta_data'    => $updatedMeta,
+        ':id'           => is_numeric($transactionId) ? (int)$transactionId : 0,
+        ':sys_id'       => $transactionId
     ]);
 
     http_response_code(200);
     echo json_encode([
-        'success' => true,
-        'message' => 'Transaction updated successfully',
-        'transaction_id' => $transactionId,
-        'account_updated' => $newAccountId ? true : false
+        'success'          => true,
+        'message'          => 'Transaction updated successfully',
+        'transaction_id'   => $transactionId,
+        'related_type'     => $newRelatedType,
+        'account_updated'  => ($newVendorType === 1 && $inputAccountId) ? true : false
     ]);
 
 } catch (Throwable $e) {
@@ -240,7 +219,6 @@ try {
     echo json_encode([
         'success' => false,
         'message' => 'Server error',
-        'error' => $e->getMessage()
+        'error'   => $e->getMessage()
     ]);
 }
-?>

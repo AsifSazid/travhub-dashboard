@@ -1,1353 +1,1314 @@
+<!--
+    PATH: /clients/sc-accounting.php
+    Changes from previous version:
+    - Receive modal এ unpaid sale list যোগ হয়েছে (Option C)
+    - Multiple sale selection support
+    - Full / Partial / Discount-to-close তিন case handle
+    - Modal close bug fix: class="cl-modal-close" + data-modal দিয়ে addEventListener
+    - inline onclick সম্পূর্ণ বাদ
+-->
+
+<!-- ==================== SUMMARY CARDS ==================== -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 m-8">
-    <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <p id="total-trnx" class="font-semibold text-purple-800">1</p>
+    <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="cl-total-trnx" class="font-semibold text-purple-800">--</p>
         <p class="text-xs text-purple-600 mt-1">Total Trnx</p>
     </div>
-    <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <p id="total-credit" class="font-semibold text-green-800">1</p>
+    <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="cl-total-credit" class="font-semibold text-green-800">--</p>
         <p class="text-xs text-green-600 mt-1">Total Credit</p>
     </div>
-    <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <p id="total-debit" class="font-semibold text-red-800">1</p>
+    <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="cl-total-debit" class="font-semibold text-red-800">--</p>
         <p class="text-xs text-red-600 mt-1">Total Debit</p>
-        </div>
-    <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <p id="total-outstanding" class="font-semibold text-yellow-800">1</p>
+    </div>
+    <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <p id="cl-total-outstanding" class="font-semibold text-yellow-800">--</p>
         <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
     </div>
-    <button onclick="addTrnx()">
-        <div class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <p id="total-outstanding" class="font-semibold text-blue-800">+ Add New Trnx</p>
-        </div>
-    </button>
+    <div id="cl-addTrnxCard"
+        class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+        <p class="font-semibold text-blue-800">+ Add New Trnx</p>
+    </div>
 </div>
 
-<div class="fixed bottom-4 right-4 space-x-2 z-40">
-    <button onclick="openTransactionModal('receive')" 
-            class="bg-green-600 text-white p-3 rounded-full shadow-lg hover:bg-green-700">
-        <i class="fas fa-plus-circle text-xl"></i>
-    </button>
-    <button onclick="openTransactionModal('payment')"
-            class="bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700">
-        <i class="fas fa-minus-circle text-xl"></i>
-    </button>
+<!-- ==================== FLOATING BUTTONS ==================== -->
+<div class="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-40">
+    <div>
+        <button id="cl-btn-discount" title="Give Discount"
+            class="bg-orange-500 text-white p-3 rounded-full shadow-lg hover:bg-orange-600 transition-colors">
+            <i class="fas fa-tag text-xl"></i>
+        </button>
+    </div>
+    <div>
+        <button id="cl-btn-refund" title="Refund to Client"
+            class="bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-colors">
+            <i class="fas fa-undo-alt text-xl"></i>
+        </button>
+    </div>
+    <div>
+        <button id="cl-btn-sale" title="Sale / Provide Service"
+            class="bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-colors">
+            <i class="fas fa-minus-circle text-xl"></i>
+        </button>
+    </div>
+    <div>
+        <button id="cl-btn-receive" title="Receive Money"
+            class="bg-green-600 text-white p-3 rounded-full shadow-lg hover:bg-green-700 transition-colors">
+            <i class="fas fa-plus-circle text-xl"></i>
+        </button>
+    </div>
 </div>
 
-
-<div class="bg-white rounded-lg shadow p-4 flex flex-col">
+<!-- ==================== TABLE ==================== -->
+<div class="bg-white rounded-lg shadow p-4">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 class="text-2xl font-semibold text-gray-800">Financial Transactions</h2>
-        
-        <!-- Search and Filter Section -->
         <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <!-- Search Input -->
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-gray-400"></i>
                 </div>
-                <input 
-                    type="text" 
-                    id="searchInput"
-                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-                    placeholder="Search transactions..."
-                >
+                <input type="text" id="cl-searchInput"
+                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-full"
+                    placeholder="Search transactions...">
             </div>
-            
-            <!-- Filter Dropdown -->
             <div class="relative">
-                <select 
-                    id="filterType" 
-                    class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-                >
+                <select id="cl-filterType"
+                    class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-full">
                     <option value="all">All Types</option>
-                    <option value="debit">Credit</option>
-                    <option value="credit">Debit</option>
+                    <option value="debit">Debit (Sale)</option>
+                    <option value="credit">Credit (Receive/Refund/Discount)</option>
                 </select>
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <i class="fas fa-chevron-down text-gray-400"></i>
                 </div>
             </div>
-            
-            <!-- Reset Button -->
-            <button 
-                id="resetFilters"
-                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
+            <button id="cl-resetFilters"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
                 <i class="fas fa-redo mr-2"></i>Reset
             </button>
         </div>
     </div>
 
-    <div class="overflow-x-auto table-container">
-        <table id="finTable" class="min-w-full divide-y divide-gray-200">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Purpose</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Running Outstanding</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-64">Purpose</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Work</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-green-600 uppercase">Credit</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-red-600 uppercase">Debit</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstanding</th>
                 </tr>
             </thead>
-            <tbody id="finTableBody" class="bg-white divide-y divide-gray-200 text-left">
-            </tbody>
-            <!-- Total Row -->
+            <tbody id="cl-finTableBody" class="bg-white divide-y divide-gray-200 text-left"></tbody>
             <tfoot class="bg-gray-50 font-semibold">
                 <tr>
-                    <td colspan="4" class="px-6 py-4 text-right text-sm text-gray-700">Total:</td>
-                    <td id="total-amount" class="px-6 py-4 text-sm text-gray-900">0.00</td>
-                    <td id="final-outstanding" class="px-6 py-4 text-sm text-yellow-700 font-bold">0.00</td>
+                    <td colspan="5" class="px-6 py-4 text-right text-sm text-gray-700">Total:</td>
+                    <td id="cl-total-credit" class="px-6 py-4 text-sm text-right text-green-700 font-bold">0.00</td>
+                    <td id="cl-total-debit" class="px-6 py-4 text-sm text-right text-red-700 font-bold">0.00</td>
+                    <td id="cl-final-outstanding" class="px-6 py-4 text-sm text-right text-orange-700 font-bold">0.00</td>
                 </tr>
             </tfoot>
         </table>
-        
-        <!-- No Results Message -->
-        <div id="noResultsMessage" class="hidden px-6 py-10 text-center text-gray-500">
-            <div class="flex flex-col items-center gap-2">
-                <i class="fas fa-search text-3xl text-gray-400"></i>
-                <p class="text-sm">No transactions match your search criteria</p>
-            </div>
+        <div id="cl-noResultsMessage" class="hidden px-6 py-10 text-center text-gray-500">
+            <i class="fas fa-search text-3xl text-gray-400 block mb-2"></i>
+            <p class="text-sm">No transactions found</p>
         </div>
-        
-        <!-- Load More Button -->
-        <div id="loadMoreContainer" class="hidden mt-4 text-center">
-            <button 
-                id="loadMoreBtn"
-                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-                <i class="fas fa-spinner fa-spin hidden mr-2" id="loadMoreSpinner"></i>
-                Load More
+        <div id="cl-loadMoreContainer" class="hidden mt-4 text-center">
+            <button id="cl-loadMoreBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <i class="fas fa-spinner fa-spin hidden mr-2" id="cl-loadMoreSpinner"></i>Load More
             </button>
         </div>
     </div>
 </div>
 
-<div id="transactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-lg bg-white">
-        
-        <!-- Modal Header -->
+
+<!-- ==================== MODAL 1: RECEIVE ==================== -->
+<div id="cl-receiveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-6 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-lg bg-white mb-6">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-xl font-semibold text-gray-900">
-                <i class="fas fa-exchange-alt mr-2 text-blue-600"></i>
-                <span id="modalTitle">New Transaction</span>
+                <i class="fas fa-plus-circle text-green-600 mr-2"></i>
+                Receive Money — <span id="cl-rcv-clientName" class="text-green-700"></span>
             </h3>
-            <button onclick="closeTransactionModal()" class="text-gray-400 hover:text-gray-600">
+            <button class="cl-modal-close text-gray-400 hover:text-gray-600" data-modal="cl-receiveModal">
                 <i class="fas fa-times text-2xl"></i>
             </button>
         </div>
+        <div class="mt-4 space-y-4">
 
-        <!-- Modal Content -->
-        <div class="mt-4">
-            <!-- Transaction Type Selection -->
-            <div class="bg-blue-50 p-4 rounded-lg mb-4">
-                <div class="flex items-center space-x-6">
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="radio" name="transactionType" value="receive" checked 
-                               onchange="toggleTransactionType('receive')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-plus-circle text-green-600 mr-1"></i>Receive Money (from Client)</span>
-                    </label>
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="radio" name="transactionType" value="payment" 
-                               onchange="toggleTransactionType('payment')" class="w-4 h-4 text-blue-600">
-                        <span class="text-lg font-medium"><i class="fas fa-minus-circle text-red-600 mr-1"></i>Sale/Provide Service (to Client)</span>
-                    </label>
+            <!-- Step 1: Unpaid Sales List -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-sm font-semibold text-gray-700">
+                        <i class="fas fa-list-check mr-1 text-blue-600"></i>
+                        Unpaid / Partial Sales
+                        <span class="text-xs text-gray-400 font-normal ml-1">(কোন কাজের payment আসছে select করো)</span>
+                    </h4>
+                    <button id="cl-rcv-selectAll" class="text-xs text-blue-600 hover:underline">Select All</button>
+                </div>
+                <div id="cl-rcv-saleList" class="space-y-2 max-h-48 overflow-y-auto">
+                    <p class="text-xs text-gray-400 text-center py-4">Loading unpaid sales...</p>
+                </div>
+                <!-- Selected total -->
+                <div class="mt-3 pt-3 border-t flex justify-between items-center">
+                    <span class="text-xs text-gray-500">Selected Total:</span>
+                    <span id="cl-rcv-selectedTotal" class="text-sm font-bold text-blue-700">0.00</span>
                 </div>
             </div>
 
-            <!-- Opening Date Info -->
-            <div id="openingDateInfo" class="bg-purple-50 border-l-4 border-purple-400 p-2 mb-3 text-sm text-purple-700 hidden">
-                <i class="fas fa-calendar-alt mr-2"></i>
-                <span id="openingDateText"></span>
+            <div id="cl-rcv-openingDateInfo" class="bg-purple-50 border-l-4 border-purple-400 p-2 text-sm text-purple-700 hidden">
+                <i class="fas fa-calendar-alt mr-2"></i><span id="cl-rcv-openingDateText"></span>
             </div>
 
-            <!-- Date Warning -->
-            <p id="dateWarning" class="text-xs text-red-500 mt-1 mb-2 hidden"></p>
-
-            <form id="transactionForm" class="space-y-6">
-                <input type="hidden" id="paymentType" name="paymentType" value="Deposit">
-                <input type="hidden" id="accountId" name="accountId">
-                <input type="hidden" id="accountName" name="accountName">
-                <input type="hidden" id="currentAccountBalance" name="currentAccountBalance">
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    
-                    <!-- Party Type (Client/Vendor) - Hidden now, will be auto-detected -->
-                    <input type="hidden" id="select_type" value="client">
-                    
-                    <!-- Client (Auto-detected, shown for reference) -->
-                    <div id="client-section" class="col-span-1">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fa-solid fa-user"></i> Client
-                        </label>
-                        <span id="clientName" class="block text-sm font-medium text-center text-gray-700 mb-2"></span>
-                    </div>
-
-                    <!-- Date -->
-                    <div class="col-span-1">
-                        <label for="transactionDate" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-calendar-alt mr-1"></i> Date
-                        </label>
-                        <input type="date"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            id="transactionDate" name="transactionDate" required>
-                    </div>
-
-                    <!-- Amount -->
-                    <div class="col-span-1">
-                        <label for="balance" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-dollar-sign mr-1"></i> Amount
-                        </label>
-                        <input type="number" step="0.01" min="0"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            id="balance" name="balance" required placeholder="0.00">
-                    </div>
-                    
-                    <!-- Payment Section - Only shown for Receive transactions -->
-                    <div id="paymentSection" class="hidden w-full md:col-span-2 lg:col-span-3">
-                        
-                        <!-- Rules Notice -->
-                        <!--<div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">-->
-                        <!--    <p><i class="fas fa-info-circle mr-2"></i> <strong>Rules:</strong></p>-->
-                        <!--    <ul class="list-disc list-inside ml-4 mt-1">-->
-                        <!--        <li>Backdated entries can be made up to a maximum of 10 days.</li>-->
-                        <!--        <li>Opening Balance এর আগের তারিখের entry শুধু সংরক্ষিত হবে (ব্যালেন্সে যোগ হবে না)</li>-->
-                        <!--        <li>ব্যাকডেটেড entry করলে পরবর্তী সকল entry স্বয়ংক্রিয়ভাবে পুনরায় ক্যালকুলেট হবে</li>-->
-                        <!--    </ul>-->
-                        <!--</div>-->
-            
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                <i class="fas fa-credit-card mr-2 text-blue-600"></i>Payment Details
-                            </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- From Account (Payment) -->
-                                <div class="col-span-1">
-                                    <label id="accountLabel" for="accountInput" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-wallet mr-1"></i> From Account
-                                    </label>
-                                    <?php include('form-selects/accounts.php') ?>
-                                </div>
-
-                                <!-- Transfer Method (Payment) -->
-                                <div class="col-span-1">
-                                    <label for="transfer_method" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-money-check-alt mr-1"></i> Payment Method
-                                    </label>
-                                    <select name="transfer_method" id="transfer_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                                        <option value="cash" selected>Cash</option>
-                                        <option value="cheque">Cheque</option>
-                                        <option value="npsb-rtgs">NPSB/RTGS</option>
-                                        <option value="bftn-eft">BFTN/EFT</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Cheque Details Section -->
-                    <div id="cheque-details-section" class="hidden md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="col-span-1">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="col-span-1">
-                                    <label for="cheque_no" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-file-invoice mr-1"></i> Cheque No
-                                    </label>
-                                    <input type="text"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                        id="cheque_no" name="cheque_no" placeholder="Enter cheque number">
-                                </div>
-                                <div class="col-span-1">
-                                    <label for="cheque_date" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-calendar-day mr-1"></i> Cheque Date
-                                    </label>
-                                    <input type="date"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                        id="cheque_date" name="cheque_date">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-span-1">
-                            <label for="cheque_account_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-user-circle mr-1"></i> Account Name
-                            </label>
-                            <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                id="cheque_account_name" name="cheque_account_name" placeholder="Enter account name">
-                        </div>
-                        <div class="col-span-1">
-                            <label for="bank_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-university mr-1"></i> Bank Name
-                            </label>
-                            <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                id="bank_name" name="bank_name" placeholder="Enter bank name">
-                        </div>
-                    </div>
-
-                    <!-- BFTN/EFT Details Section -->
-                    <div id="bftn-details-section" class="hidden md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="col-span-1">
-                            <label for="account_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-user-circle mr-1"></i> Account Name
-                            </label>
-                            <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                id="account_name" name="account_name" placeholder="Enter account name">
-                        </div>
-                        <div class="col-span-1">
-                            <label for="eft_bank_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-university mr-1"></i> Bank Name
-                            </label>
-                            <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                id="eft_bank_name" name="eft_bank_name" placeholder="Enter bank name">
-                        </div>
-                        <div class="col-span-1">
-                            <label for="bftn_date" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-calendar-check mr-1"></i> Transaction Date
-                            </label>
-                            <input type="date"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                id="bftn_date" name="bftn_date">
-                        </div>
-                    </div>
-
-                    <!-- Particular -->
-                    <div class="md:col-span-2 lg:col-span-3">
-                        <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-file-alt mr-1"></i> Particular
-                        </label>
-                        <textarea
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"
-                            id="particular" name="particular" placeholder="Enter transaction description"></textarea>
-                    </div>
-                    
-                    <input type="hidden" id="vendorPaymentType" name="vendorPaymentType" value="Withdraw">
-                    <div id="vendorSection" class="hidden md:col-span-2 lg:col-span-3 text-left">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fa-solid fa-user"></i> Vendor
-                        </label>
-                        <?php include('form-selects/vendors.php') ?>
-                    </div>
-                    
-                    <!-- Particular -->
-                    <div id="vendorParticularSection" class="hidden md:col-span-2 lg:col-span-3 text-left">
-                        <label for="particular" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-file-alt mr-1"></i> Particular for Vendor
-                        </label>
-                        <textarea
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"
-                            id="vendorParticularInput" name="vendorParticularInput" placeholder="Enter transaction description"></textarea>
-                    </div>
-                
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-calendar-alt mr-1"></i> Date
+                    </label>
+                    <input type="date" id="cl-rcv-date"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
                 </div>
-                
-
-                <!-- Form Actions -->
-                <div class="flex justify-end space-x-3 pt-4 border-t">
-                    <button type="button" onclick="resetTransactionModal()"
-                        class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                        <i class="fas fa-redo mr-2"></i> Reset
-                    </button>
-                    <button type="button" onclick="closeTransactionModal()"
-                        class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                        <i class="fas fa-times mr-2"></i> Cancel
-                    </button>
-                    <button type="button"
-                        class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-                        id="saveTransactionBtn">
-                        <span id="spinner" class="hidden spinner-border spinner-border-sm mr-2"></span>
-                        <i class="fas fa-save mr-2"></i>
-                        <span id="saveButtonText">Save Transaction</span>
-                    </button>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-taka-sign mr-1"></i> Receive Amount
+                        <span id="cl-rcv-amountHint" class="text-xs text-gray-400"></span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="cl-rcv-amount" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
                 </div>
-            
-            </form>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-wallet mr-1"></i> Deposit To Account
+                    </label>
+                    <select id="cl-rcv-accountSelect"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        <option value="">-- Select Account --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-money-check-alt mr-1"></i> Payment Method
+                    </label>
+                    <select id="cl-rcv-method"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        <option value="cash">Cash</option>
+                        <option value="npsb-rtgs">NPSB/RTGS</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="bftn-eft">BFTN/EFT</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Cheque Details -->
+            <div id="cl-rcv-cheque" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-3 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cheque No</label>
+                    <input type="text" id="cl-rcv-cheque-no" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Cheque number">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cheque Date</label>
+                    <input type="date" id="cl-rcv-cheque-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                    <input type="text" id="cl-rcv-cheque-acc" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Account name">
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                    <input type="text" id="cl-rcv-cheque-bank" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Bank name">
+                </div>
+            </div>
+
+            <!-- BFTN Details -->
+            <div id="cl-rcv-bftn" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-3 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                    <input type="text" id="cl-rcv-bftn-acc" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Account name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                    <input type="text" id="cl-rcv-bftn-bank" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Bank name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Date</label>
+                    <input type="date" id="cl-rcv-bftn-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+            </div>
+
+            <!-- Payment status indicator -->
+            <div id="cl-rcv-statusBanner" class="hidden rounded-lg p-3 text-sm font-medium"></div>
+
+            <!-- Discount-to-close section -->
+            <div id="cl-rcv-discountSection" class="hidden bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="cl-rcv-withDiscount" class="w-4 h-4 text-orange-500 rounded">
+                    <span class="text-sm font-medium text-orange-800">
+                        বাকি টাকা Discount দিয়ে Close করবো
+                        <span id="cl-rcv-discountHint" class="text-xs text-orange-600 ml-1"></span>
+                    </span>
+                </label>
+                <div id="cl-rcv-discountFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Discount Amount</label>
+                        <input type="number" step="0.01" min="0" id="cl-rcv-discountAmount" placeholder="0.00"
+                            class="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Discount Reason</label>
+                        <input type="text" id="cl-rcv-discountParticular" placeholder="Reason for discount"
+                            class="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-400 text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Particular -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-file-alt mr-1"></i> Particular
+                </label>
+                <textarea id="cl-rcv-particular" rows="2" placeholder="Transaction description"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-3 border-t">
+                <button class="cl-modal-close px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" data-modal="cl-receiveModal">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+                <button id="cl-rcv-saveBtn"
+                    class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
+
+<!-- ==================== MODAL 2: SALE ==================== -->
+<div id="cl-saleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-semibold text-gray-900">
+                <i class="fas fa-minus-circle text-red-600 mr-2"></i>
+                Sale / Provide Service — <span id="cl-sale-clientName" class="text-red-700"></span>
+            </h3>
+            <button class="cl-modal-close text-gray-400 hover:text-gray-600" data-modal="cl-saleModal">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div class="mt-4 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-calendar-alt mr-1"></i> Date</label>
+                    <input type="date" id="cl-sale-date"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-taka-sign mr-1 text-red-600"></i> Selling Price
+                        <span class="text-xs text-gray-400">(Client charge)</span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="cl-sale-sellingPrice" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-user-tie mr-1"></i> Vendor
+                        <span class="text-xs text-gray-400">(Optional)</span>
+                    </label>
+                    <?php include('form-selects/vendors.php') ?>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-taka-sign mr-1 text-blue-600"></i> Purchase Price
+                        <span class="text-xs text-gray-400">(Vendor cost)</span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="cl-sale-purchasePrice" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex items-end pb-1">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3 w-full text-center">
+                        <p class="text-xs text-gray-500">Profit</p>
+                        <p id="cl-sale-profit" class="text-lg font-bold text-green-700">0.00</p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-file-alt mr-1"></i> Particular <span class="text-xs text-gray-400">(Client entry)</span>
+                </label>
+                <textarea id="cl-sale-particular" rows="2" placeholder="Service description for client"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"></textarea>
+            </div>
+            <div id="cl-sale-vendorParticularWrapper" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-file-alt mr-1"></i> Particular for Vendor
+                </label>
+                <textarea id="cl-sale-vendorParticular" rows="2" placeholder="Purchase description for vendor"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-3 border-t">
+                <button class="cl-modal-close px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" data-modal="cl-saleModal">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+                <button id="cl-sale-saveBtn"
+                    class="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save Sale
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ==================== MODAL 3: REFUND ==================== -->
+<div id="cl-refundModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-semibold text-gray-900">
+                <i class="fas fa-undo-alt text-purple-600 mr-2"></i>
+                Refund — <span id="cl-ref-clientName" class="text-purple-700"></span>
+            </h3>
+            <button class="cl-modal-close text-gray-400 hover:text-gray-600" data-modal="cl-refundModal">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div class="mt-4 space-y-4">
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="cl-ref-isPhysical" class="w-4 h-4 text-purple-600 rounded">
+                    <div>
+                        <p class="text-sm font-medium text-purple-800">টাকা ইতিমধ্যে Receive করা হয়েছে (Physical Refund)</p>
+                        <p class="text-xs text-purple-600">Check করলে Bank account থেকে টাকা বের হবে</p>
+                    </div>
+                </label>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-calendar-alt mr-1"></i> Date</label>
+                    <input type="date" id="cl-ref-date"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-taka-sign mr-1"></i> Refund Amount</label>
+                    <input type="number" step="0.01" min="0" id="cl-ref-amount" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+            </div>
+            <div id="cl-ref-physicalSection" class="hidden space-y-3">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-2 text-sm text-yellow-700">
+                    <i class="fas fa-info-circle mr-1"></i> নিচের Account থেকে টাকা বের করে client কে দেয়া হবে।
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-wallet mr-1"></i> Withdraw From Account</label>
+                        <select id="cl-ref-accountSelect"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-money-check-alt mr-1"></i> Method</label>
+                        <select id="cl-ref-method"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="cash">Cash</option>
+                            <option value="npsb-rtgs">NPSB/RTGS</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="bftn-eft">BFTN/EFT</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-file-alt mr-1"></i> Particular / Reason</label>
+                <textarea id="cl-ref-particular" rows="2" placeholder="Reason for refund"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-3 border-t">
+                <button class="cl-modal-close px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" data-modal="cl-refundModal">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+                <button id="cl-ref-saveBtn"
+                    class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save Refund
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ==================== MODAL 4: DISCOUNT ==================== -->
+<div id="cl-discountModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-10 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-semibold text-gray-900">
+                <i class="fas fa-tag text-orange-500 mr-2"></i>
+                Discount — <span id="cl-disc-clientName" class="text-orange-600"></span>
+            </h3>
+            <button class="cl-modal-close text-gray-400 hover:text-gray-600" data-modal="cl-discountModal">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div class="mt-4 space-y-4">
+            <div class="bg-orange-50 border-l-4 border-orange-400 p-2 text-sm text-orange-700">
+                <i class="fas fa-info-circle mr-1"></i> Discount এ কোনো bank transaction হয় না।
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-calendar-alt mr-1"></i> Date</label>
+                    <input type="date" id="cl-disc-date"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-taka-sign mr-1"></i> Discount Amount</label>
+                    <input type="number" step="0.01" min="0" id="cl-disc-amount" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-file-alt mr-1"></i> Particular / Reason</label>
+                <textarea id="cl-disc-particular" rows="2" placeholder="Reason for discount"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-3 border-t">
+                <button class="cl-modal-close px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" data-modal="cl-discountModal">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+                <button id="cl-disc-saveBtn"
+                    class="px-5 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save Discount
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <style>
-    /* Spinner animation */
-    .spinner {
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        border-left-color: #3b82f6;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-    }
-    .spinner-border-sm {
-        width: 1rem;
-        height: 1rem;
-        border-width: 0.2em;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    .hidden {
-        display: none !important;
-    }
-
-    /* Modal animation */
-    #transactionModal {
-        transition: opacity 0.3s ease;
-    }
-
-    #transactionModal > div {
-        transform: scale(0.9);
-        transition: transform 0.3s ease;
-    }
-
-    #transactionModal.show > div {
-        transform: scale(1);
-    }
-    
-    /* Add to your existing styles */
-    mark {
-        background-color: #fef3c7;
-        padding: 0 2px;
-        border-radius: 2px;
-    }
-    
-    #searchInput:focus {
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .table-container {
-        scroll-behavior: smooth;
-    }
-    
-    /* Loading animation */
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    .animate-pulse {
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-    
-    /* Transition for filter changes */
-    #finTableBody tr {
-        transition: background-color 0.2s ease;
-    }
+    .hidden { display: none !important; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .animate-pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+    .sale-item-selected { background-color: #f0fdf4; border-color: #16a34a !important; }
 </style>
 
+
 <script>
-    // Financial Transactions Search and Filter
-    const GET_FINANCIAL_STATEMENT_BY_CLIENT_API = "<?php echo $getClientFinEntriesApi; ?>";
-    let originalFinStmts = []; // Store original data for filtering
-    let displayedFinStmts = []; // Store currently displayed data
-    let currentOffset = 0; // Start from newest
-    const incrementAmount = 5; // How many to load each time
-    let isFiltering = false; // Track if we're in filtering mode
-    let searchTimeout = null; // For debouncing search input
-    let currentTransactionType = 'receive';
-    const clientId = "<?php echo isset($clientId) ? $clientId : ''; ?>";
+(function () {
 
-    // DOM Elements
-    const finTableBody = document.getElementById('finTableBody');
-    const searchInput = document.getElementById('searchInput');
-    const filterType = document.getElementById('filterType');
-    const resetFilters = document.getElementById('resetFilters');
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    const finalOutstanding = document.getElementById('final-outstanding');
-    const loadMoreContainer = document.getElementById('loadMoreContainer');
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    const loadMoreSpinner = document.getElementById('loadMoreSpinner');
-    const vendorSection = document.getElementById('vendorSection');
-    const vendorParticularSection = document.getElementById('vendorParticularSection');
+    const IP_PATH      = `<?php echo $ip_port; ?>`;
+    const CLIENT_ID    = "<?php echo isset($clientId) ? $clientId : ''; ?>";
+    const FIN_API      = `${IP_PATH}/api/financial_entries/fin-entries.php?id=${CLIENT_ID}`;
+    const FETCH_STMT   = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
+    const FIN_ENTRIES  = `${IP_PATH}/api/financial_entries/fin-entries.php`;
+    const API_RECEIVE  = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
+    const API_SALE     = `${IP_PATH}/api/clients/cl-ac-sale-store.php`;
+    const API_PURCHASE = `${IP_PATH}/api/vendors/ve-ac-purchase-store.php`;
+    const API_REFUND   = `${IP_PATH}/api/clients/cl-ac-refund-store.php`;
+    const API_DISCOUNT = `${IP_PATH}/api/clients/cl-ac-discount-store.php`;
 
-    // Main function to load data
-    function reloadFinancialTable() {
-        // Show skeleton loaders while fetching
-        showSkeletonLoaders();
-        
-        fetch(GET_FINANCIAL_STATEMENT_BY_CLIENT_API)
-            .then(res => res.json())
-            .then(data => {
-                if (!data.success) {
-                    console.error('API returned unsuccessful:', data);
-                    return;
-                }
-                
-                // Store all transactions in original array
-                originalFinStmts = data.finStmts || [];
-                
-                // Sort by date descending (newest first)
-                originalFinStmts.sort((a, b) => {
-                    const dateA = new Date(a.date);
-                    const dateB = new Date(b.date);
-                    if (dateA.getTime() !== dateB.getTime()) {
-                        return dateB - dateA;
-                    }
-                    return (b.id || 0) - (a.id || 0);
-                });
+    let originalFinStmts  = [];
+    let displayedFinStmts = [];
+    let currentOffset     = 0;
+    const PAGE_SIZE       = 5;
+    let isFiltering       = false;
+    let debounceTimer     = null;
 
-                // Initially display first 5 transactions
-                currentOffset = 0;
-                displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-                renderFinTable(displayedFinStmts, originalFinStmts);
-                updateSummary(originalFinStmts);
-                
-                // Toggle Load More button
-                toggleLoadMoreButton();
-            })
-            .catch(error => {
-                console.error('Error fetching transactions:', error);
-                showErrorState();
-            });
+    // Unpaid sales cache
+    let unpaidSales       = [];
+    let selectedSaleIds   = new Set();
+
+    const RT_BADGE = {
+        0: { label: 'Refund',   cls: 'bg-purple-100 text-purple-700' },
+        1: { label: 'Sale',     cls: 'bg-red-100 text-red-700' },
+        2: { label: 'Purchase', cls: 'bg-blue-100 text-blue-700' },
+        3: { label: 'Receive',  cls: 'bg-green-100 text-green-700' },
+        4: { label: 'Payment',  cls: 'bg-orange-100 text-orange-700' },
+        5: { label: 'Discount', cls: 'bg-yellow-100 text-yellow-700' },
+    };
+
+    // ==================== UTILITIES ====================
+    function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+    function getEl(id) { return document.getElementById(id); }
+
+    function setToday(inputId) {
+        const el = getEl(inputId);
+        if (el) { const t = new Date().toISOString().split('T')[0]; el.value = t; el.max = t; }
     }
 
-    // Show skeleton loading state
+    function setBtnLoading(btnId, loading) {
+        const btn = getEl(btnId);
+        if (!btn) return;
+        btn.disabled = loading;
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = loading ? 'fas fa-spinner fa-spin' : 'fas fa-save';
+    }
+
+    function buildDateTime(dateOnly) {
+        return `${dateOnly} ${new Date().toTimeString().split(' ')[0]}`;
+    }
+
+    function validateAmount(val, label) {
+        if (!val || parseFloat(val) <= 0) { alert(`Please enter a valid ${label}`); return false; }
+        return true;
+    }
+
+    async function postJSON(url, data) {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return r.json();
+    }
+
+    function closeModal(id) { getEl(id)?.classList.add('hidden'); }
+    function openModal(id)  { getEl(id)?.classList.remove('hidden'); }
+
+    // Account options — API থেকে load করে সব select এ populate করে
+    // একবার fetch করে cache করে রাখে, বারবার API call হয় না
+    let accountsCache = null;
+
+    async function loadAllAccounts() {
+        if (accountsCache) return accountsCache;
+        try {
+            const r    = await fetch(`${IP_PATH}/api/accounts/all-accounts.php`);
+            const data = await r.json();
+            accountsCache = data.success ? (data.accounts || []) : [];
+        } catch(e) {
+            accountsCache = [];
+        }
+        return accountsCache;
+    }
+
+    function buildAccountOptions(accounts) {
+        let html = '<option value="">-- Select Account --</option>';
+        accounts.forEach(acc => {
+            // ac_banking table এ acc_name column আছে, name না
+            const label = acc.acc_name || acc.name || acc.sys_id;
+            html += `<option value="${acc.sys_id}|${label}">${label}</option>`;
+        });
+        return html;
+    }
+
+    async function populateAccountSelect(selectId) {
+        const el = getEl(selectId);
+        if (!el) return;
+        const accounts = await loadAllAccounts();
+        el.innerHTML   = buildAccountOptions(accounts);
+    }
+
+    // একসাথে সব account select populate করে
+    async function syncAccountsTo(...selectIds) {
+        const accounts = await loadAllAccounts();
+        const html     = buildAccountOptions(accounts);
+        selectIds.forEach(id => {
+            const el = getEl(id);
+            if (el) el.innerHTML = html;
+        });
+    }
+
+    // ==================== TABLE ====================
+    function reloadFinancialTable() {
+        showSkeletonLoaders();
+        fetch(FIN_API)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { showErrorState(); return; }
+                originalFinStmts = (data.finStmts || []).sort((a, b) => {
+                    const da = new Date(a.date), db = new Date(b.date);
+                    return da - db !== 0 ? db - da : (b.id || 0) - (a.id || 0);
+                });
+                currentOffset     = 0;
+                displayedFinStmts = originalFinStmts.slice(0, PAGE_SIZE);
+                renderFinTable(displayedFinStmts, originalFinStmts);
+                updateSummary(originalFinStmts);
+                toggleLoadMoreButton();
+            })
+            .catch(() => showErrorState());
+    }
+
     function showSkeletonLoaders() {
-        if (!finTableBody) return;
-        
-        finTableBody.innerHTML = '';
+        const tbody = getEl('cl-finTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
         for (let i = 0; i < 5; i++) {
             const tr = document.createElement('tr');
-            tr.className = "animate-pulse";
+            tr.className = 'animate-pulse';
             tr.innerHTML = `
                 <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
                 <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-48"></div></td>
                 <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-32"></div></td>
                 <td class="px-6 py-4"><div class="h-6 bg-gray-200 rounded-full w-16"></div></td>
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-16"></div></td>
                 <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
-                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
-            `;
-            finTableBody.appendChild(tr);
+                <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>`;
+            tbody.appendChild(tr);
         }
     }
 
-    // Show error state
     function showErrorState() {
-        if (!finTableBody) return;
-        
-        finTableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                    <div class="flex flex-col items-center gap-2">
-                        <i class="fas fa-exclamation-triangle text-3xl text-red-400"></i>
-                        <p class="text-sm">Error loading transactions. Please try again.</p>
-                    </div>
-                </td>
-            </tr>
-        `;
+        const tbody = getEl('cl-finTableBody');
+        if (tbody) tbody.innerHTML = `
+            <tr><td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                <i class="fas fa-exclamation-triangle text-3xl text-red-400 block mb-2"></i>
+                <p class="text-sm">Error loading. Please try again.</p>
+            </td></tr>`;
     }
 
-    // Update summary cards
     function updateSummary(list) {
-        const totalTrnx = document.getElementById('total-trnx'); 
-        const totalCredit = document.getElementById('total-credit'); 
-        const totalDebit = document.getElementById('total-debit'); 
-        const totalOutstanding = document.getElementById('total-outstanding');
-        const totalAmount = document.getElementById('total-amount');
-        
-        if (!totalTrnx || !totalCredit || !totalDebit || !totalOutstanding || !totalAmount) return;
-        
-        let totalTrnxCount = list.length;
-        let totalCreditAmount = 0;
-        let totalDebitAmount = 0;
-        let totalAmountSum = 0;
-
-        list.forEach(finSingleEntry => {
-            const type = (finSingleEntry.type || '').toLowerCase();
-            const amount = Number(finSingleEntry.amount) || 0;
-            
-            totalAmountSum += amount;
-            
-            if (type === 'debit') {
-                totalCreditAmount += amount;
-            }
-            if (type === 'credit') {
-                totalDebitAmount += amount;
-            }
+        let credit = 0, debit = 0, total = 0;
+        list.forEach(e => {
+            const amt = Number(e.amount) || 0;
+            total += amt;
+            if ((e.type || '').toLowerCase() === 'debit') debit += amt;
+            else credit += amt;
         });
-        
-        const totalOutstandingAmount = totalCreditAmount - totalDebitAmount;
-        
-        totalTrnx.textContent = totalTrnxCount;
-        totalCredit.textContent = totalCreditAmount.toFixed(2);
-        totalDebit.textContent = totalDebitAmount.toFixed(2);
-        totalOutstanding.textContent = totalOutstandingAmount.toFixed(2);
-        totalAmount.textContent = totalAmountSum.toFixed(2);
+        setEl('cl-total-trnx', list.length);
+        setEl('cl-total-credit', credit.toFixed(2));
+        setEl('cl-total-debit', debit.toFixed(2));
+        setEl('cl-total-outstanding', (debit - credit).toFixed(2));
     }
 
-    // Filter transactions based on search and type
-    function filterTransactions() {
-        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const selectedType = filterType ? filterType.value : 'all';
-        
-        // Clear any pending timeout
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
-        }
-        
-        // Debounce search for better performance
-        searchTimeout = setTimeout(() => {
-            isFiltering = searchTerm !== '' || selectedType !== 'all';
-            
-            if (isFiltering) {
-                // Filter locally from stored array
-                let filteredList = originalFinStmts.filter(entry => {
-                    // Search filter - check multiple fields
-                    const matchesSearch = searchTerm === '' || 
-                        (entry.purpose && entry.purpose.toLowerCase().includes(searchTerm)) ||
-                        (entry.work_title && entry.work_title.toLowerCase().includes(searchTerm)) ||
-                        (entry.date && entry.date.toLowerCase().includes(searchTerm)) ||
-                        (entry.amount && entry.amount.toString().includes(searchTerm)) ||
-                        (entry.client_name && entry.client_name.toLowerCase().includes(searchTerm)) ||
-                        (entry.vendor_name && entry.vendor_name.toLowerCase().includes(searchTerm));
-                    
-                    // Type filter
-                    const matchesType = selectedType === 'all' || 
-                        (entry.type && entry.type.toLowerCase() === selectedType);
-                    
-                    return matchesSearch && matchesType;
-                });
-                
-                // Show all filtered results (no pagination in filter mode)
-                displayedFinStmts = filteredList;
-                
-                renderFinTable(displayedFinStmts, filteredList);
-                updateSummary(filteredList);
-                
-                // Show/hide no results message
-                if (noResultsMessage) {
-                    if (filteredList.length === 0) {
-                        noResultsMessage.classList.remove('hidden');
-                        if (finTableBody) finTableBody.innerHTML = '';
-                        if (finalOutstanding) finalOutstanding.textContent = '0.00';
-                        if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
-                    } else {
-                        noResultsMessage.classList.add('hidden');
-                        if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
-                    }
-                }
-            } else {
-                // No filters - show paginated results
-                currentOffset = 0;
-                displayedFinStmts = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-                renderFinTable(displayedFinStmts, originalFinStmts);
-                updateSummary(originalFinStmts);
-                if (noResultsMessage) noResultsMessage.classList.add('hidden');
-                toggleLoadMoreButton();
-            }
-        }, 300); // 300ms debounce
-    }
+    function renderFinTable(displayList, calcList) {
+        const tbody = getEl('cl-finTableBody');
+        const finalEl = getEl('cl-final-outstanding');
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
-    // Render the table with data
-    function renderFinTable(displayList, calculationList) {
-        if (!finTableBody) return;
-        
-        finTableBody.innerHTML = '';
-        
-        if (!displayList || displayList.length === 0) {
-            finTableBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                        <div class="flex flex-col items-center gap-2">
-                            <i class="fas fa-search text-3xl text-gray-400"></i>
-                            <p class="text-sm">No transactions found</p>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            if (finalOutstanding) finalOutstanding.textContent = '0.00';
+        if (!displayList?.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                <i class="fas fa-inbox text-3xl text-gray-400 block mb-2"></i>
+                <p class="text-sm">No transactions found</p></td></tr>`;
+            if (finalEl) finalEl.textContent = '0.00';
             return;
         }
-        
-        // Calculate running balances using calculationList (sorted oldest to newest)
-        const sortedForCalculation = [...calculationList].sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            if (dateA.getTime() !== dateB.getTime()) {
-                return dateA - dateB; // Oldest first
-            }
-            return (a.id || 0) - (b.id || 0);
+
+        // Running balance
+        const sorted = [...calcList].sort((a, b) => {
+            const da = new Date(a.date), db = new Date(b.date);
+            return da - db !== 0 ? da - db : (a.id || 0) - (b.id || 0);
         });
-        
-        // Calculate running balances
-        let cumulativeBalance = 0;
-        const runningBalances = new Map();
-        
-        sortedForCalculation.forEach((entry) => {
-            const type = (entry.type || '').toLowerCase();
-            const amount = Number(entry.amount) || 0;
-            
-            if (type === 'debit') { // Credit/Receive increases balance
-                cumulativeBalance += amount;
-            } else if (type === 'credit') { // Debit/Payment decreases balance
-                cumulativeBalance -= amount;
-            }
-            
-            runningBalances.set(entry.id, cumulativeBalance);
+        let cum = 0;
+        const runMap = new Map();
+        sorted.forEach(e => {
+            const amt = Number(e.amount) || 0;
+            const t   = (e.type || '').toLowerCase();
+            // Client: debit=sale (owed বাড়ে), credit=receive/refund/discount (owed কমে)
+            cum += t === 'debit' ? amt : -amt;
+            runMap.set(e.id, cum);
         });
-        
-        const finalBalance = cumulativeBalance;
-        
-        // Render displayList (already sorted newest to oldest)
-        displayList.forEach(finSingleEntry => {
+
+        displayList.forEach(e => {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50 transition-colors";
-    
-            const type = (finSingleEntry.type || '').toLowerCase();
-            const amount = Number(finSingleEntry.amount) || 0;
-            const runningOutstanding = runningBalances.get(finSingleEntry.id) || 0;
-    
-            // Determine party name (client or vendor)
-            const partyName = finSingleEntry.user_name || 'N/A';
-            
-            // Style based on transaction type
-            let typeBadge = '';
-            if (type === 'debit') {
-                typeBadge = `
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                        Credit
-                    </span>
-                `;
-            } else if (type === 'credit') {
-                typeBadge = `
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                        Debit
-                    </span>
-                `;
-            } else {
-                typeBadge = `
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                        UNKNOWN
-                    </span>
-                `;
+            tr.className = 'hover:bg-gray-50 transition-colors';
+            const type   = (e.type || '').toLowerCase();
+            const amt    = Number(e.amount) || 0;
+            const rt     = e.related_type !== undefined ? parseInt(e.related_type) : null;
+            const runBal = runMap.get(e.id) || 0;
+
+            const typeBadge = type === 'debit'
+                ? `<span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Debit</span>`
+                : `<span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Credit</span>`;
+
+            let rtBadge = '';
+            if (rt !== null && RT_BADGE[rt]) {
+                const cfg = RT_BADGE[rt];
+                rtBadge = `<span class="ml-1 px-2 py-0.5 rounded text-xs font-medium ${cfg.cls}">${cfg.label}</span>`;
             }
-    
-            const purpose = finSingleEntry.purpose || 'No Data Found';
-            const workTitle = finSingleEntry.work_title || 'No Data Found';
-    
+
+            // Status badges
+            let statusBadges = '';
+            if (e.is_paid == 1)       statusBadges += `<span class="px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700 mr-1">Paid</span>`;
+            if (e.is_partial == 1)    statusBadges += `<span class="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 mr-1">Partial</span>`;
+            if (e.is_discounted == 1) statusBadges += `<span class="px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-700 mr-1">Disc.</span>`;
+            if (!statusBadges && type === 'debit') statusBadges = `<span class="px-1.5 py-0.5 rounded text-xs bg-yellow-100 text-yellow-700">Unpaid</span>`;
+
+            // Credit/Debit আলাদা column
+            const creditAmt = type === 'credit' ? amt : null;
+            const debitAmt  = type === 'debit'  ? amt : null;
+
             tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${finSingleEntry.date || 'N/A'}
-                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${e.date || 'N/A'}</td>
                 <td class="px-6 py-2 text-sm text-gray-700 max-w-xs break-words whitespace-normal">
-                    <div class="font-medium">${purpose}</div>
-                    <div class="text-xs text-gray-500 mt-1">${partyName}</div>
+                    <div class="font-medium">${e.purpose || 'N/A'}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">${e.user_name || ''}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    ${workTitle}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    ${typeBadge}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${type === 'debit' ? 'text-green-600' : 'text-red-600'}">
-                    ${amount.toFixed(2)}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm ${runningOutstanding >= 0 ? 'text-green-700' : 'text-red-700'} font-semibold">
-                    ${runningOutstanding.toFixed(2)}
-                </td>
-            `;
-    
-            finTableBody.appendChild(tr);
+                <td class="px-6 py-4 text-sm text-gray-600">${e.work_title || '—'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${typeBadge}${rtBadge}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${statusBadges}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-green-600">
+                    ${creditAmt !== null ? creditAmt.toFixed(2) : '<span class="text-gray-300">—</span>'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-red-600">
+                    ${debitAmt !== null ? debitAmt.toFixed(2) : '<span class="text-gray-300">—</span>'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right ${runBal > 0 ? 'text-orange-600' : runBal < 0 ? 'text-green-600' : 'text-gray-500'}">
+                    ${runBal.toFixed(2)}</td>`;
+            tbody.appendChild(tr);
         });
-    
-        // Update final outstanding
-        if (finalOutstanding) {
-            finalOutstanding.textContent = finalBalance.toFixed(2);
-            finalOutstanding.className = finalBalance >= 0 
-                ? "px-6 py-4 text-sm text-green-700 font-bold" 
-                : "px-6 py-4 text-sm text-red-700 font-bold";
+
+        // Tfoot: Credit, Debit, Outstanding আলাদা
+        let totalCredit = 0, totalDebit = 0;
+        calcList.forEach(e => {
+            const a = Number(e.amount) || 0;
+            if ((e.type || '').toLowerCase() === 'credit') totalCredit += a;
+            else totalDebit += a;
+        });
+
+        const creditEl = getEl('cl-total-credit');
+        const debitEl  = getEl('cl-total-debit');
+        if (creditEl) creditEl.textContent = totalCredit.toFixed(2);
+        if (debitEl)  debitEl.textContent  = totalDebit.toFixed(2);
+
+        if (finalEl) {
+            finalEl.textContent = cum.toFixed(2);
+            finalEl.className = `px-6 py-4 text-sm font-bold text-right ${cum > 0 ? 'text-orange-700' : cum < 0 ? 'text-green-700' : 'text-gray-700'}`;
         }
     }
 
-    // Toggle Load More button visibility
+    function filterTransactions() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const term = getEl('cl-searchInput')?.value.toLowerCase().trim() || '';
+            const type = getEl('cl-filterType')?.value || 'all';
+            isFiltering = term !== '' || type !== 'all';
+            if (isFiltering) {
+                const filtered = originalFinStmts.filter(e => {
+                    const ms = !term ||
+                        (e.purpose || '').toLowerCase().includes(term) ||
+                        (e.work_title || '').toLowerCase().includes(term) ||
+                        (e.date || '').includes(term) ||
+                        String(e.amount || '').includes(term) ||
+                        (e.user_name || '').toLowerCase().includes(term);
+                    const mt = type === 'all' || (e.type || '').toLowerCase() === type;
+                    return ms && mt;
+                });
+                displayedFinStmts = filtered;
+                renderFinTable(filtered, filtered);
+                updateSummary(filtered);
+                getEl('cl-noResultsMessage')?.classList.toggle('hidden', filtered.length > 0);
+                getEl('cl-loadMoreContainer')?.classList.add('hidden');
+            } else {
+                resetPagination();
+            }
+        }, 300);
+    }
+
+    function resetPagination() {
+        currentOffset     = 0;
+        isFiltering       = false;
+        displayedFinStmts = originalFinStmts.slice(0, PAGE_SIZE);
+        renderFinTable(displayedFinStmts, originalFinStmts);
+        updateSummary(originalFinStmts);
+        getEl('cl-noResultsMessage')?.classList.add('hidden');
+        toggleLoadMoreButton();
+    }
+
     function toggleLoadMoreButton() {
-        if (!loadMoreContainer || !loadMoreBtn) return;
-        
-        if (!isFiltering && originalFinStmts && (currentOffset + incrementAmount) < originalFinStmts.length) {
-            loadMoreContainer.classList.remove('hidden');
-        } else {
-            loadMoreContainer.classList.add('hidden');
-        }
+        const show = !isFiltering && (currentOffset + PAGE_SIZE) < originalFinStmts.length;
+        getEl('cl-loadMoreContainer')?.classList.toggle('hidden', !show);
     }
 
-    // Load more transactions
     function loadMoreTransactions() {
-        if (isFiltering || !loadMoreSpinner || !loadMoreBtn) return;
-        
-        loadMoreSpinner.classList.remove('hidden');
-        loadMoreBtn.disabled = true;
-        
-        // Simulate loading delay for better UX
+        const spinner = getEl('cl-loadMoreSpinner');
+        const btn     = getEl('cl-loadMoreBtn');
+        if (!btn) return;
+        spinner?.classList.remove('hidden');
+        btn.disabled = true;
         setTimeout(() => {
-            currentOffset += incrementAmount;
-            const nextBatch = originalFinStmts.slice(currentOffset, currentOffset + incrementAmount);
-            displayedFinStmts = [...displayedFinStmts, ...nextBatch];
-            
+            currentOffset += PAGE_SIZE;
+            const next = originalFinStmts.slice(currentOffset, currentOffset + PAGE_SIZE);
+            displayedFinStmts = [...displayedFinStmts, ...next];
             renderFinTable(displayedFinStmts, originalFinStmts);
             updateSummary(originalFinStmts);
             toggleLoadMoreButton();
-            
-            loadMoreSpinner.classList.add('hidden');
-            loadMoreBtn.disabled = false;
+            spinner?.classList.add('hidden');
+            btn.disabled = false;
         }, 300);
     }
-    
-    // Reset all filters
-    function resetFiltersAndSearch() {
-        if (searchInput) searchInput.value = '';
-        if (filterType) filterType.value = 'all';
-        currentOffset = 0;
-        isFiltering = false;
-        
-        // Trigger filter
-        filterTransactions();
-        
-        // Scroll to top of table
-        const container = document.querySelector('.table-container');
-        if (container) container.scrollTop = 0;
-    }
-    
-    // NEW Transactions Here
-    function addTrnx() {
-        openTransactionModal('receive');
-    }
-    
-    // Transaction Modal Functionality
-    function openTransactionModal(type = 'receive') {
-        const modal = document.getElementById('transactionModal');
-        if (!modal) return;
-        
-        currentTransactionType = type;
-        
-        // Set modal title and labels based on type
-        updateTransactionUI(type);
-        
-        // Set initial visibility of payment section - only show for Receive
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (type === 'receive') {
-                paymentSection.classList.remove('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
-        
-        // Show modal
-        modal.classList.remove('hidden');
-        setTimeout(() => modal.classList.add('show'), 10);
-        
-        const clientNameSpan = document.getElementById('clientName');
-        if (clientNameSpan) clientNameSpan.innerHTML = clientName;
-        
-        // Set default date
-        const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate) {
-            const today = new Date().toISOString().split('T')[0];
-            transactionDate.value = today;
-            transactionDate.max = today;
-        }
-    }
-    
-    function closeTransactionModal() {
-        const modal = document.getElementById('transactionModal');
-        if (!modal) return;
-        
-        modal.classList.remove('show');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-        resetTransactionModal();
-    }
-    
-    function updateTransactionUI(type) {
-        const modalTitle = document.getElementById('modalTitle');
-        const accountLabel = document.getElementById('accountLabel');
-        const paymentType = document.getElementById('paymentType');
-        
-        if (!modalTitle || !accountLabel || !paymentType) return;
-        
-        if (type === 'receive') {
-            modalTitle.innerHTML = `<i class="fas fa-plus-circle text-green-600 mr-2"></i>Receive Money for ${clientName}`;
-            accountLabel.innerHTML = '<i class="fas fa-sign-in-alt mr-1"></i> Deposit To Account';
-            paymentType.value = 'Deposit';
-        } else {
-            modalTitle.innerHTML = `<i class="fas fa-minus-circle text-red-600 mr-2"></i>Make Payment for ${clientName}`;
-            accountLabel.innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i> Withdraw From Account';
-            paymentType.value = 'Withdraw';
-        }
-    }
-    
-    function toggleTransactionType(type) {
-        currentTransactionType = type;
-        updateTransactionUI(type);
-        
-        // Show/hide payment section - show for Receive, hide for Payment
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (type === 'receive') {
-                paymentSection.classList.remove('hidden');
-                vendorSection.classList.add('hidden');
-                vendorParticularSection.classList.add('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                vendorSection.classList.remove('hidden');
-                vendorParticularSection.classList.remove('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
-    }
-    
-    function resetTransactionModal() {
-        const form = document.getElementById('transactionForm');
-        if (form) form.reset();
-        
-        // Reset date
-        const transactionDate = document.getElementById('transactionDate');
-        if (transactionDate) {
-            const today = new Date().toISOString().split('T')[0];
-            transactionDate.value = today;
-        }
-        
-        // Reset warnings
-        const dateWarning = document.getElementById('dateWarning');
-        if (dateWarning) dateWarning.classList.add('hidden');
-        
-        const openingDateInfo = document.getElementById('openingDateInfo');
-        if (openingDateInfo) openingDateInfo.classList.add('hidden');
-        
-        // Reset payment method sections
-        const chequeSection = document.getElementById('cheque-details-section');
-        const bftnSection = document.getElementById('bftn-details-section');
-        
-        if (chequeSection) chequeSection.classList.add('hidden');
-        if (bftnSection) bftnSection.classList.add('hidden');
-        
-        // Reset payment section based on current type
-        const paymentSection = document.getElementById('paymentSection');
-        const accountInput = document.getElementById('accountInput');
-        const transferMethod = document.getElementById('transfer_method');
-        
-        if (paymentSection) {
-            if (currentTransactionType === 'receive') {
-                paymentSection.classList.remove('hidden');
-                if (accountInput) accountInput.setAttribute('required', 'required');
-                if (transferMethod) transferMethod.setAttribute('required', 'required');
-            } else {
-                paymentSection.classList.add('hidden');
-                if (accountInput) accountInput.removeAttribute('required');
-                if (transferMethod) transferMethod.removeAttribute('required');
-            }
-        }
-    }
-    
-    // Setup transaction form
-    function setupTransactionForm() {
-        const API_RECEIVE = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
-        const API_SALE = `${IP_PATH}/api/clients/cl-ac-sale-store.php`;
-        const API_PURCHASE = `${IP_PATH}/api/vendors/ve-ac-purchase-store.php`;
-        const FETCH_STATEMENT = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
-        
-        const accountInput = document.getElementById('accountInput');
-        const transactionDate = document.getElementById('transactionDate');
-        const transferMethod = document.getElementById('transfer_method');
-        const saveBtn = document.getElementById('saveTransactionBtn');
-        const spinner = document.getElementById('spinner');
-        const saveButtonText = document.getElementById('saveButtonText');
-        
-        if (!saveBtn) return;
-        
-        let openingDate = null;
-        
-        // Extract IDs from combined field
-        function extractIds(value) {
-            if (!value) return null;
-            const parts = value.split('|').map(v => v.trim());
-            return {
-                sys_id: parts[0] || null,
-                name: parts[1] || null,
-            };
-        }
-        
-        function secondExtractIds(value) {
-            if (!value || typeof value !== 'string') return null;
-            
-            // Split by pipe and trim
-            const parts = value.split('|').map(v => v.trim());
-            
-            // Ensure we have at least 2 parts (ID and Name)
-            if (parts.length < 2) {
-                // Try to extract ID from the beginning if format is different
-                const idMatch = value.match(/^(\d+)/);
-                if (idMatch) {
-                    return {
-                        sys_id: idMatch[1],
-                        name: value.substring(idMatch[1].length).trim()
-                    };
-                }
-                return null;
-            }
-            
-            return {
-                sys_id: parts[0] || null,
-                name: parts[1] || null,
-            };
-        }
-        
-        // Fetch opening date for account
-        async function fetchOpeningDate(accountId) {
-            if (!accountId) {
-                openingDate = null;
-                const info = document.getElementById('openingDateInfo');
-                if (info) info.classList.add('hidden');
+
+
+    // ==================== RECEIVE MODAL ====================
+    async function loadUnpaidSales() {
+        const listEl = getEl('cl-rcv-saleList');
+        if (!listEl) return;
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</p>';
+
+        try {
+            // Server-side filter: debit + related_type=1 (sale) + is_paid=0
+            // API এখন received_amount, discounted_amount, remaining_amount পাঠাচ্ছে
+            const r    = await fetch(`${FIN_ENTRIES}?id=${CLIENT_ID}&type=debit&related_type=1&is_paid=0`);
+            const data = await r.json();
+            unpaidSales = data.finStmts || [];
+
+            if (!unpaidSales.length) {
+                listEl.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">কোনো unpaid sale নেই। General receive হিসেবে record হবে।</p>';
                 return;
             }
-            
-            try {
-                const response = await fetch(`${FETCH_STATEMENT}?ledger_db_id=${accountId}&opening_only=1`);
-                const result = await response.json();
-                
-                if (result.success && result.data && result.data.length > 0) {
-                    openingDate = result.data[0].date;
-                    
-                    const dateObj = new Date(openingDate);
-                    const formattedDate = dateObj.toLocaleDateString('bn-BD', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
-                    
-                    const text = document.getElementById('openingDateText');
-                    const info = document.getElementById('openingDateInfo');
-                    
-                    if (text) {
-                        text.innerHTML = `এই অ্যাকাউন্টের Opening Balance: <strong>${formattedDate}</strong>। এর আগের তারিখে entry করলে তা শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।`;
-                    }
-                    if (info) info.classList.remove('hidden');
-                    
-                    // Allow dates before opening balance
-                    if (transactionDate) transactionDate.removeAttribute('min');
-                }
-            } catch (error) {
-                console.error('Error fetching opening date:', error);
-            }
-        }
-        
-        // Validate date
-        function validateTransactionDate(selectedDate) {
-            const selected = new Date(selectedDate);
-            const today = new Date();
-            
-            selected.setHours(0, 0, 0, 0);
-            today.setHours(0, 0, 0, 0);
-            
-            const diffDays = (today - selected) / (1000 * 60 * 60 * 24);
-            
-            // Check if before opening balance
-            if (openingDate && selectedDate < openingDate) {
-                return {
-                    valid: true,
-                    warning: 'আপনি Opening Balance এর আগের তারিখে entry করছেন। এই entry শুধু সংরক্ষিত হবে, ব্যালেন্স ক্যালকুলেশনে যোগ হবে না।',
-                    isHistorical: true
-                };
-            }
-            
-            // Check max backdated (10 days)
-            if (diffDays > 10) {
-                return {
-                    valid: false,
-                    message: 'You can make backdated entries up to a maximum of 10 days.'
-                };
-            }
-            
-            return { valid: true, isHistorical: false };
-        }
-        
-        // Toggle payment method sections
-        function togglePaymentDetails() {
-            const method = transferMethod ? transferMethod.value : 'cash';
-            const chequeSection = document.getElementById('cheque-details-section');
-            const bftnSection = document.getElementById('bftn-details-section');
-            
-            if (chequeSection) chequeSection.classList.add('hidden');
-            if (bftnSection) bftnSection.classList.add('hidden');
-            
-            if (method === 'cheque' && chequeSection) {
-                chequeSection.classList.remove('hidden');
-            } else if (method === 'bftn-eft' && bftnSection) {
-                bftnSection.classList.remove('hidden');
-            }
-        }
-        
-        if (transferMethod) {
-            transferMethod.addEventListener('change', togglePaymentDetails);
-        }
-        
-        // Account change handler
-        if (accountInput) {
-            accountInput.addEventListener('change', function() {
-                const account = extractIds(accountInput.value);
-                if (account && account.sys_id) {
-                    const idField = document.getElementById('accountId');
-                    const nameField = document.getElementById('accountName');
-                    
-                    if (idField) idField.value = account.sys_id;
-                    if (nameField) nameField.value = account.name;
-                    
-                    fetchOpeningDate(account.sys_id);
-                }
-            });
-        }
-        
-        // Date validation
-        if (transactionDate) {
-            transactionDate.addEventListener('change', function() {
-                const warning = document.getElementById('dateWarning');
-                if (!warning) return;
-                
-                const validation = validateTransactionDate(this.value);
-                
-                if (!validation.valid) {
-                    warning.textContent = validation.message;
-                    warning.classList.remove('hidden');
-                    warning.classList.add('text-red-500');
-                    if (saveBtn) saveBtn.disabled = true;
-                } else if (validation.warning) {
-                    warning.textContent = validation.warning;
-                    warning.classList.remove('hidden');
-                    warning.classList.remove('text-red-500');
-                    warning.classList.add('text-yellow-600');
-                    if (saveBtn) saveBtn.disabled = false;
-                } else {
-                    warning.classList.add('hidden');
-                    if (saveBtn) saveBtn.disabled = false;
-                }
-            });
-        }
-        
-        // Form validation
-        function validateForm() {
-            // Only validate account and payment method for Receive transactions
-            if (currentTransactionType === 'receive') {
-                const account = extractIds(accountInput?.value);
-                if (!account || !account.sys_id) {
-                    alert('Please select an account');
-                    return false;
-                }
-                
-                if (!transferMethod?.value) {
-                    alert('Please select a payment method');
-                    return false;
-                }
-            }
-            
-            if (!transactionDate?.value) {
-                alert('Please select a date');
-                return false;
-            }
-            
-            const dateValidation = validateTransactionDate(transactionDate.value);
-            if (!dateValidation.valid) {
-                alert(dateValidation.message);
-                return false;
-            }
-            
-            const amount = document.getElementById('balance')?.value;
-            if (!amount || parseFloat(amount) <= 0) {
-                alert('Please enter a valid amount');
-                return false;
-            }
-            
-            const particular = document.getElementById('particular')?.value;
-            if (!particular || !particular.trim()) {
-                alert('Please enter particulars');
-                return false;
-            }
-            
-            return true;
-        }
-        
-        // Build datetime
-        function buildDateTime(dateOnly) {
-            const now = new Date();
-            const time = now.toTimeString().split(' ')[0];
-            return `${dateOnly} ${time}`;
-        }
-        
-        // Submit form
-        saveBtn.addEventListener('click', async function() {
-            if (!validateForm()) return;
-            
-            const type = currentTransactionType;
-            const method = transferMethod?.value || 'cash';
-            const account = extractIds(accountInput?.value);
-            const dateValidation = validateTransactionDate(transactionDate?.value);
-            
-            // 1. Prepare Primary Data
-            const data = {
-                clientId: clientId,
-                clientName: clientName,
-                amount: document.getElementById('balance')?.value,
-                particular: document.getElementById('particular')?.value.trim(),
-                transactionDate: buildDateTime(transactionDate?.value),
-                isHistorical: dateValidation.isHistorical ? 1 : 0
-            };
-            
-            if (type === 'receive') {
-                data.accountId = account?.sys_id;
-                data.accountName = account?.name;
-                data.transferMethod = method;
-            }
-        
-            // 2. Prepare Vendor Data (Declare outside so it's scoped for later)
-            let vendorData = null;
-            if (type === 'payment') {
-                // const vendorValue = document.getElementById('vendorInput').value;
-                let vendor = null;
-                if(vendorInput){
-                    vendorInfo = secondExtractIds(vendorInput?.value);
-                }    
-                if(vendorInfo){
-                    vendorData = {
-                        type: 'receive',
-                        vendorId: vendorInfo.sys_id,
-                        vendorName: vendorInfo.name,
-                        amount: document.getElementById('balance')?.value,
-                        particular: document.getElementById('vendorParticularInput')?.value.trim(),
-                        transactionDate: buildDateTime(transactionDate?.value),
-                    };
-                }
-            }
-            
-            // console.log(vendorData);
-            
-            // Add method-specific fields to 'data'
-            if (method === 'cheque') {
-                data.chequeNo = document.getElementById('cheque_no')?.value;
-                data.chequeDate = document.getElementById('cheque_date')?.value;
-                data.chequeAccountName = document.getElementById('cheque_account_name')?.value;
-                data.bankName = document.getElementById('bank_name')?.value;
-            } else if (method === 'bftn-eft') {
-                data.bftnAccountName = document.getElementById('account_name')?.value;
-                data.eftBankName = document.getElementById('eft_bank_name')?.value;
-                data.bftnDate = document.getElementById('bftn_date')?.value;
-            }
-        
-            // UI Updates
-            saveBtn.disabled = true;
-            if (spinner) spinner.classList.remove('hidden');
-            if (saveButtonText) saveButtonText.textContent = 'Processing...';
-            
-            try {
-                // First API Call
-                const apiUrl = type === 'receive' ? API_RECEIVE : API_SALE;
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok && result.success) {
 
-                    const messages = {
-                        receive: 'Payment received successfully!',
-                        default: 'Service provided successfully!',
-                        historical: 'Historic Data Stored Successfully'
-                    };
-                    
-                    let message = result.is_historical 
-                        ? messages.historical 
-                        : messages[type] || messages.default;
-                    
-                    alert(message);
-        
-                    // Second API Call (Only for payments)
-                    if (type === 'payment' && vendorData) {
-                        const vResponse = await fetch(API_PURCHASE, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(vendorData)
-                        });
-                        const vResult = await vResponse.json();
-                        
-                        if (vResponse.ok && vResult.success) {
-                            alert('Vendor transaction completed!');
-                        } else {
-                            alert('Client saved, but Vendor failed: ' + (vResult.message || 'Unknown error'));
-                        }
+            listEl.innerHTML = '';
+            unpaidSales.forEach(sale => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-3 p-2 border border-gray-200 rounded-lg cursor-pointer hover:border-green-400 transition-colors';
+                div.dataset.sysId      = sale.sys_id;
+                div.dataset.amount     = sale.amount;
+                div.dataset.remaining  = sale.remaining_amount ?? sale.amount;
+
+                const saleAmt      = Number(sale.amount);
+                const receivedAmt  = Number(sale.received_amount  || 0);
+                const remainingAmt = Number(sale.remaining_amount ?? saleAmt);
+
+                const partialBadge = sale.is_partial == 1
+                    ? `<span class="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 ml-1">Partial</span>` : '';
+
+                // Received progress bar
+                const receivedPct = saleAmt > 0 ? Math.min((receivedAmt / saleAmt) * 100, 100) : 0;
+                const progressBar = receivedAmt > 0 ? `
+                    <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                        <div class="bg-green-500 h-1 rounded-full" style="width: ${receivedPct}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-0.5">Received: ${receivedAmt.toFixed(2)} · Remaining: <span class="text-orange-600 font-medium">${remainingAmt.toFixed(2)}</span></p>
+                ` : '';
+
+                div.innerHTML = `
+                    <input type="checkbox" class="sale-checkbox w-4 h-4 text-green-600 rounded flex-shrink-0"
+                        data-sys-id="${sale.sys_id}" data-amount="${sale.amount}" data-remaining="${remainingAmt}">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-medium text-gray-800 truncate">${sale.purpose || 'N/A'}</p>
+                        <p class="text-xs text-gray-400">${sale.date || ''} ${sale.work_title ? '· ' + sale.work_title : ''}</p>
+                        ${progressBar}
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-sm font-bold text-red-600">${saleAmt.toFixed(2)}</p>
+                        ${partialBadge}
+                    </div>`;
+
+                // Click anywhere on row = toggle checkbox
+                div.addEventListener('click', (e) => {
+                    if (e.target.type === 'checkbox') return; // checkbox নিজেই handle করবে
+                    const cb = div.querySelector('.sale-checkbox');
+                    cb.checked = !cb.checked;
+                    cb.dispatchEvent(new Event('change'));
+                });
+
+                div.querySelector('.sale-checkbox').addEventListener('change', (e) => {
+                    const sysId = e.target.dataset.sysId;
+                    if (e.target.checked) {
+                        selectedSaleIds.add(sysId);
+                        div.classList.add('sale-item-selected');
+                    } else {
+                        selectedSaleIds.delete(sysId);
+                        div.classList.remove('sale-item-selected');
                     }
-        
-                    closeTransactionModal();
-                    location.reload(); // Uncomment if needed
-                } else {
-                    alert(result.error || result.message || 'Transaction failed.');
-                }
-            } catch (error) {
-                console.error('Transaction error:', error);
-                alert('Network error. Please check your connection.');
-            } finally {
-                saveBtn.disabled = false;
-                if (spinner) spinner.classList.add('hidden');
-                if (saveButtonText) saveButtonText.textContent = 'Save Transaction';
-            }
-        });
+                    updateReceiveUI();
+                });
+
+                listEl.appendChild(div);
+            });
+        } catch(e) {
+            listEl.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Error loading sales.</p>';
+        }
     }
 
-    // Initialize everything when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        // Load initial data
-        reloadFinancialTable();
-        
-        // Setup event listeners
-        if (searchInput) {
-            searchInput.addEventListener('input', filterTransactions);
-            searchInput.addEventListener('keyup', (e) => {
-                if (e.key === 'Escape') {
-                    resetFiltersAndSearch();
-                }
-            });
-        }
-        
-        if (filterType) {
-            filterType.addEventListener('change', filterTransactions);
-        }
-        
-        if (resetFilters) {
-            resetFilters.addEventListener('click', resetFiltersAndSearch);
-        }
-        
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', loadMoreTransactions);
-        }
-        
-        // Setup transaction form
-        setupTransactionForm();
-        
-        // Add keyboard shortcut for search (Ctrl+F)
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'f') {
-                e.preventDefault();
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.select();
-                }
+    function getSelectedTotal() {
+        let total = 0;
+        unpaidSales.forEach(s => {
+            if (selectedSaleIds.has(s.sys_id)) {
+                // remaining_amount ব্যবহার করি — আগে কিছু receive হলে সেটা বাদ
+                const remaining = Number(s.remaining_amount ?? s.amount);
+                total += remaining;
             }
         });
+        return total;
+    }
+
+    function updateReceiveUI() {
+        const selectedTotal = getSelectedTotal();
+        const receiveAmt    = parseFloat(getEl('cl-rcv-amount')?.value) || 0;
+
+        setEl('cl-rcv-selectedTotal', selectedTotal.toFixed(2));
+
+        const hint = getEl('cl-rcv-amountHint');
+        if (selectedSaleIds.size > 0 && hint) {
+            hint.textContent = `(Selected total: ${selectedTotal.toFixed(2)})`;
+        } else if (hint) {
+            hint.textContent = '';
+        }
+
+        // Status banner
+        const banner      = getEl('cl-rcv-statusBanner');
+        const discSection = getEl('cl-rcv-discountSection');
+        const discHint    = getEl('cl-rcv-discountHint');
+
+        if (!banner || !discSection) return;
+
+        if (selectedSaleIds.size === 0) {
+            banner.classList.add('hidden');
+            discSection.classList.add('hidden');
+            return;
+        }
+
+        banner.classList.remove('hidden');
+        const diff = selectedTotal - receiveAmt;
+
+        if (Math.abs(diff) < 0.01) {
+            // Full payment
+            banner.className = 'rounded-lg p-3 text-sm font-medium bg-green-50 border border-green-300 text-green-800';
+            banner.innerHTML = `<i class="fas fa-check-circle mr-1"></i> Full Payment — সব selected sale paid হয়ে যাবে`;
+            discSection.classList.add('hidden');
+        } else if (receiveAmt > 0 && receiveAmt < selectedTotal) {
+            // Partial or discount-to-close
+            banner.className = 'rounded-lg p-3 text-sm font-medium bg-blue-50 border border-blue-300 text-blue-800';
+            banner.innerHTML = `<i class="fas fa-info-circle mr-1"></i> Partial Payment — বাকি আছে <strong>${diff.toFixed(2)}</strong> টাকা`;
+            discSection.classList.remove('hidden');
+            if (discHint) discHint.textContent = `(বাকি: ${diff.toFixed(2)})`;
+        } else if (receiveAmt > selectedTotal) {
+            banner.className = 'rounded-lg p-3 text-sm font-medium bg-yellow-50 border border-yellow-300 text-yellow-800';
+            banner.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> Receive amount (${receiveAmt.toFixed(2)}) > Selected total (${selectedTotal.toFixed(2)})`;
+            discSection.classList.add('hidden');
+        }
+    }
+
+    async function openReceiveModal() {
+        setEl('cl-rcv-clientName', clientName);
+        setToday('cl-rcv-date');
+        getEl('cl-rcv-amount').value = '';
+        getEl('cl-rcv-particular').value = '';
+        getEl('cl-rcv-method').value = 'cash';
+        getEl('cl-rcv-cheque')?.classList.add('hidden');
+        getEl('cl-rcv-bftn')?.classList.add('hidden');
+        getEl('cl-rcv-openingDateInfo')?.classList.add('hidden');
+        getEl('cl-rcv-statusBanner')?.classList.add('hidden');
+        getEl('cl-rcv-discountSection')?.classList.add('hidden');
+        getEl('cl-rcv-discountFields')?.classList.add('hidden');
+        getEl('cl-rcv-withDiscount') && (getEl('cl-rcv-withDiscount').checked = false);
+        selectedSaleIds.clear();
+        setEl('cl-rcv-selectedTotal', '0.00');
+
+        // Account options load — await করা জরুরি, না হলে modal open এর আগে load হবে না
+        await loadAccountsFromAPI();
+
+        openModal('cl-receiveModal');
+        loadUnpaidSales();
+    }
+
+    async function loadAccountsFromAPI() {
+        // Receive modal + Refund modal দুইটাতেই একসাথে populate করি
+        await syncAccountsTo('cl-rcv-accountSelect', 'cl-ref-accountSelect');
+    }
+
+    async function submitReceive() {
+        const date       = getEl('cl-rcv-date')?.value;
+        const amount     = getEl('cl-rcv-amount')?.value;
+        const method     = getEl('cl-rcv-method')?.value;
+        const particular = getEl('cl-rcv-particular')?.value.trim();
+        const accEl      = getEl('cl-rcv-accountSelect');
+        const accParts   = accEl?.value?.split('|').map(v => v.trim()) || [];
+        const accountId  = accParts[0] || '';
+        const accountName= accParts[1] || '';
+        const withDiscount  = getEl('cl-rcv-withDiscount')?.checked || false;
+        const discountAmount= getEl('cl-rcv-discountAmount')?.value || 0;
+        const discountParticular = getEl('cl-rcv-discountParticular')?.value.trim() || '';
+
+        if (!date)                              return alert('Please select a date');
+        if (!validateAmount(amount, 'amount'))  return;
+        if (!accountId)                         return alert('Please select an account');
+        if (!particular)                        return alert('Please enter particular');
+        if (withDiscount && (!discountAmount || parseFloat(discountAmount) <= 0))
+            return alert('Please enter discount amount');
+
+        const payload = {
+            clientId:           CLIENT_ID,
+            clientName:         clientName,
+            amount,
+            particular,
+            transactionDate:    buildDateTime(date),
+            accountId,
+            accountName,
+            transferMethod:     method,
+            isHistorical:       0,
+            selectedSaleIds:    [...selectedSaleIds],
+            withDiscount,
+            discountAmount:     withDiscount ? discountAmount : 0,
+            discountParticular: withDiscount ? discountParticular : ''
+        };
+
+        if (method === 'cheque') {
+            payload.chequeNo          = getEl('cl-rcv-cheque-no')?.value;
+            payload.chequeDate        = getEl('cl-rcv-cheque-date')?.value;
+            payload.chequeAccountName = getEl('cl-rcv-cheque-acc')?.value;
+            payload.bankName          = getEl('cl-rcv-cheque-bank')?.value;
+        } else if (method === 'bftn-eft') {
+            payload.bftnAccountName   = getEl('cl-rcv-bftn-acc')?.value;
+            payload.eftBankName       = getEl('cl-rcv-bftn-bank')?.value;
+            payload.bftnDate          = getEl('cl-rcv-bftn-date')?.value;
+        }
+
+        setBtnLoading('cl-rcv-saveBtn', true);
+        try {
+            const res = await postJSON(API_RECEIVE, payload);
+            if (res.success) {
+                const msg = res.is_historical   ? 'ঐতিহাসিক entry সংরক্ষিত হয়েছে'
+                          : res.is_partial      ? 'Partial payment recorded!'
+                          : res.is_discounted   ? 'Payment + Discount recorded!'
+                          : 'Payment received successfully!';
+                alert(msg);
+                closeModal('cl-receiveModal');
+                location.reload();
+            } else {
+                alert(res.message || 'Failed');
+            }
+        } catch(e) { alert('Network error.'); }
+        finally { setBtnLoading('cl-rcv-saveBtn', false); }
+    }
+
+
+    // ==================== SALE MODAL ====================
+    function openSaleModal() {
+        setEl('cl-sale-clientName', clientName);
+        setToday('cl-sale-date');
+        getEl('cl-sale-sellingPrice').value = '';
+        getEl('cl-sale-purchasePrice').value = '';
+        setEl('cl-sale-profit', '0.00');
+        getEl('cl-sale-particular').value = '';
+        getEl('cl-sale-vendorParticular').value = '';
+        getEl('cl-sale-vendorParticularWrapper')?.classList.add('hidden');
+        if (typeof vendorInput !== 'undefined' && vendorInput) vendorInput.value = '';
+        openModal('cl-saleModal');
+    }
+
+    function updateProfitPreview() {
+        const sell   = parseFloat(getEl('cl-sale-sellingPrice')?.value) || 0;
+        const buy    = parseFloat(getEl('cl-sale-purchasePrice')?.value) || 0;
+        const profit = sell - buy;
+        const el     = getEl('cl-sale-profit');
+        if (el) {
+            el.textContent = profit.toFixed(2);
+            el.className   = `text-lg font-bold ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`;
+        }
+    }
+
+    async function submitSale() {
+        const date          = getEl('cl-sale-date')?.value;
+        const sellingPrice  = getEl('cl-sale-sellingPrice')?.value;
+        const purchasePrice = getEl('cl-sale-purchasePrice')?.value;
+        const particular    = getEl('cl-sale-particular')?.value.trim();
+        const vendorParticular = getEl('cl-sale-vendorParticular')?.value.trim();
+        const vendor = (typeof vendorInput !== 'undefined' && vendorInput?.value)
+            ? (() => { const p = vendorInput.value.split('|').map(v=>v.trim()); return {sys_id:p[0],name:p[1]}; })()
+            : null;
+
+        if (!date)                                     return alert('Please select a date');
+        if (!validateAmount(sellingPrice, 'Selling Price')) return;
+        if (!particular)                               return alert('Please enter particular for client');
+
+        setBtnLoading('cl-sale-saveBtn', true);
+        try {
+            const r1 = await postJSON(API_SALE, {
+                clientId: CLIENT_ID, clientName, sellingPrice, particular,
+                transactionDate: buildDateTime(date)
+            });
+            if (!r1.success) { alert(r1.message || 'Client sale failed'); return; }
+
+            if (vendor?.sys_id && purchasePrice && parseFloat(purchasePrice) > 0) {
+                const r2 = await postJSON(API_PURCHASE, {
+                    vendorId: vendor.sys_id, vendorName: vendor.name,
+                    purchasePrice,
+                    particular: vendorParticular || particular,
+                    transactionDate: buildDateTime(date)
+                });
+                if (!r2.success) {
+                    alert(`Client sale saved, কিন্তু Vendor purchase failed: ${r2.message || 'Unknown'}`);
+                    closeModal('cl-saleModal'); location.reload(); return;
+                }
+            }
+
+            alert('Sale recorded successfully!');
+            closeModal('cl-saleModal');
+            location.reload();
+        } catch(e) { alert('Network error.'); }
+        finally { setBtnLoading('cl-sale-saveBtn', false); }
+    }
+
+
+    // ==================== REFUND MODAL ====================
+    function openRefundModal() {
+        setEl('cl-ref-clientName', clientName);
+        setToday('cl-ref-date');
+        getEl('cl-ref-amount').value = '';
+        getEl('cl-ref-particular').value = '';
+        getEl('cl-ref-isPhysical').checked = false;
+        getEl('cl-ref-physicalSection')?.classList.add('hidden');
+        syncAccountsTo('cl-ref-accountSelect');
+        openModal('cl-refundModal');
+    }
+
+    async function submitRefund() {
+        const date       = getEl('cl-ref-date')?.value;
+        const amount     = getEl('cl-ref-amount')?.value;
+        const particular = getEl('cl-ref-particular')?.value.trim();
+        const isPhysical = getEl('cl-ref-isPhysical')?.checked;
+
+        if (!date)                                   return alert('Please select a date');
+        if (!validateAmount(amount, 'Refund Amount')) return;
+        if (!particular)                             return alert('Please enter reason for refund');
+
+        const payload = { clientId: CLIENT_ID, clientName, amount, particular,
+            transactionDate: buildDateTime(date), isPhysical: isPhysical ? 1 : 0 };
+
+        if (isPhysical) {
+            const accParts = getEl('cl-ref-accountSelect')?.value?.split('|').map(v=>v.trim()) || [];
+            if (!accParts[0]) return alert('Please select an account');
+            payload.accountId      = accParts[0];
+            payload.accountName    = accParts[1] || '';
+            payload.transferMethod = getEl('cl-ref-method')?.value || 'cash';
+        }
+
+        setBtnLoading('cl-ref-saveBtn', true);
+        try {
+            const res = await postJSON(API_REFUND, payload);
+            if (res.success) { alert('Refund recorded!'); closeModal('cl-refundModal'); location.reload(); }
+            else alert(res.message || 'Failed');
+        } catch(e) { alert('Network error.'); }
+        finally { setBtnLoading('cl-ref-saveBtn', false); }
+    }
+
+
+    // ==================== DISCOUNT MODAL ====================
+    function openDiscountModal() {
+        setEl('cl-disc-clientName', clientName);
+        setToday('cl-disc-date');
+        getEl('cl-disc-amount').value = '';
+        getEl('cl-disc-particular').value = '';
+        openModal('cl-discountModal');
+    }
+
+    async function submitDiscount() {
+        const date       = getEl('cl-disc-date')?.value;
+        const amount     = getEl('cl-disc-amount')?.value;
+        const particular = getEl('cl-disc-particular')?.value.trim();
+
+        if (!date)                                     return alert('Please select a date');
+        if (!validateAmount(amount, 'Discount Amount')) return;
+        if (!particular)                               return alert('Please enter reason for discount');
+
+        setBtnLoading('cl-disc-saveBtn', true);
+        try {
+            const res = await postJSON(API_DISCOUNT, {
+                clientId: CLIENT_ID, clientName, amount, particular,
+                transactionDate: buildDateTime(date)
+            });
+            if (res.success) { alert('Discount recorded!'); closeModal('cl-discountModal'); location.reload(); }
+            else alert(res.message || 'Failed');
+        } catch(e) { alert('Network error.'); }
+        finally { setBtnLoading('cl-disc-saveBtn', false); }
+    }
+
+
+    // ==================== INIT ====================
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // Modal close — addEventListener pattern (inline onclick bug fix)
+        document.querySelectorAll('.cl-modal-close').forEach(btn => {
+            btn.addEventListener('click', () => closeModal(btn.getAttribute('data-modal')));
+        });
+
+        // Floating buttons
+        getEl('cl-btn-receive')?.addEventListener('click',  openReceiveModal);
+        getEl('cl-btn-sale')?.addEventListener('click',     openSaleModal);
+        getEl('cl-btn-refund')?.addEventListener('click',   openRefundModal);
+        getEl('cl-btn-discount')?.addEventListener('click', openDiscountModal);
+        getEl('cl-addTrnxCard')?.addEventListener('click',  openReceiveModal);
+
+        // Receive modal: amount input → update UI
+        getEl('cl-rcv-amount')?.addEventListener('input', updateReceiveUI);
+
+        // Receive: Select All
+        getEl('cl-rcv-selectAll')?.addEventListener('click', () => {
+            document.querySelectorAll('.sale-checkbox').forEach(cb => {
+                if (!cb.checked) {
+                    cb.checked = true;
+                    cb.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+
+        // Receive: method toggle
+        getEl('cl-rcv-method')?.addEventListener('change', function() {
+            getEl('cl-rcv-cheque')?.classList.toggle('hidden', this.value !== 'cheque');
+            getEl('cl-rcv-bftn')?.classList.toggle('hidden',   this.value !== 'bftn-eft');
+        });
+
+        // Receive: account → opening date
+        getEl('cl-rcv-accountSelect')?.addEventListener('change', async function() {
+            const parts = this.value.split('|').map(v => v.trim());
+            if (!parts[0]) return;
+            try {
+                const r   = await fetch(`${FETCH_STMT}?ledger_db_id=${parts[0]}&opening_only=1`);
+                const res = await r.json();
+                if (res.success && res.data?.length > 0) {
+                    setEl('cl-rcv-openingDateText', `Opening Balance: ${res.data[0].date?.split(' ')[0]}`);
+                    getEl('cl-rcv-openingDateInfo')?.classList.remove('hidden');
+                }
+            } catch(e) {}
+        });
+
+        // Discount-to-close checkbox
+        getEl('cl-rcv-withDiscount')?.addEventListener('change', function() {
+            getEl('cl-rcv-discountFields')?.classList.toggle('hidden', !this.checked);
+            if (this.checked) {
+                // Auto-fill discount amount = remaining
+                const selectedTotal = getSelectedTotal();
+                const receiveAmt    = parseFloat(getEl('cl-rcv-amount')?.value) || 0;
+                const remaining     = selectedTotal - receiveAmt;
+                if (remaining > 0) getEl('cl-rcv-discountAmount').value = remaining.toFixed(2);
+            }
+        });
+
+        // Refund: physical toggle
+        getEl('cl-ref-isPhysical')?.addEventListener('change', function() {
+            getEl('cl-ref-physicalSection')?.classList.toggle('hidden', !this.checked);
+        });
+
+        // Sale: profit preview
+        getEl('cl-sale-sellingPrice')?.addEventListener('input',  updateProfitPreview);
+        getEl('cl-sale-purchasePrice')?.addEventListener('input', updateProfitPreview);
+
+        // Sale: vendor particular show/hide
+        if (typeof vendorInput !== 'undefined' && vendorInput) {
+            vendorInput.addEventListener('change', () => {
+                getEl('cl-sale-vendorParticularWrapper')?.classList.toggle('hidden', !vendorInput.value);
+            });
+        }
+
+        // Save buttons
+        getEl('cl-rcv-saveBtn')?.addEventListener('click',  submitReceive);
+        getEl('cl-sale-saveBtn')?.addEventListener('click', submitSale);
+        getEl('cl-ref-saveBtn')?.addEventListener('click',  submitRefund);
+        getEl('cl-disc-saveBtn')?.addEventListener('click', submitDiscount);
+
+        // Table controls
+        getEl('cl-searchInput')?.addEventListener('input', filterTransactions);
+        getEl('cl-searchInput')?.addEventListener('keyup', e => { if (e.key === 'Escape') resetPagination(); });
+        getEl('cl-filterType')?.addEventListener('change', filterTransactions);
+        getEl('cl-resetFilters')?.addEventListener('click', () => {
+            getEl('cl-searchInput') && (getEl('cl-searchInput').value = '');
+            getEl('cl-filterType') && (getEl('cl-filterType').value = 'all');
+            resetPagination();
+        });
+        getEl('cl-loadMoreBtn')?.addEventListener('click', loadMoreTransactions);
+
+        document.addEventListener('keydown', e => {
+            if (e.ctrlKey && e.key === 'f') { e.preventDefault(); getEl('cl-searchInput')?.focus(); }
+        });
+
+        reloadFinancialTable();
     });
+
+})();
 </script>

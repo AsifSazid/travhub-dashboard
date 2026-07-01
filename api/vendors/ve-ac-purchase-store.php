@@ -1,4 +1,9 @@
 <?php
+// PATH: /api/vendors/ve-ac-purchase-store.php
+// Changes:
+//   - related_type=2 explicitly যোগ করা হয়েছে (আগে missing ছিল, default 1 বসতো — ভুল ছিল)
+//   - amount field এখন purchasePrice থেকে নেওয়া হচ্ছে (backward compat: amount ও চলবে)
+//   - এই file শুধু vendor entry করে (vendor + credit = purchase)
 session_start();
 
 require '../../server/db_connection.php';
@@ -10,129 +15,74 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-/* ================= METHOD CHECK ================= */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Method Not Allowed'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
     exit;
 }
 
-/* ================= READ JSON ================= */
 $data = json_decode(file_get_contents('php://input'), true);
 if (!$data) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid JSON'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Invalid JSON']);
     exit;
 }
 
-/* ================= INPUT ================= */
-$clientId = $data['clientId'] ?? null;
-$clientName = $data['clientName'] ?? null;
-$vendorId = $data['vendorId'] ?? null;
-$vendorName = $data['vendorName'] ?? null;
-$amount = $data['amount'] ?? 0;
-$particular = $data['particular'] ?? '';
+$vendorId        = $data['vendorId']        ?? null;
+$vendorName      = $data['vendorName']      ?? null;
+// purchasePrice → backward compat: amount ও accept করে
+$amount          = $data['purchasePrice']   ?? $data['amount'] ?? 0;
+$particular      = $data['particular']      ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
-$stmtSysId = $data['ref'] ?? '';
 
-/* ================= BASIC VALIDATION ================= */
 if (!is_numeric($amount) || $amount <= 0) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid amount'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Invalid purchase price / amount']);
     exit;
 }
-
-// Check if we have either client or vendor
-if (!$clientId && !$vendorId) {
+if (!$vendorId) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Either client or vendor must be selected'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Vendor is required']);
     exit;
 }
 
 try {
-    /* ================= START TRANSACTION ================= */
     $pdo->beginTransaction();
 
-    /* ================= 1. INSERT INTO FINANCIAL ENTRIES ================= */
-    $financialUUIDs = generateIDs('financial_entries');
-    $financialMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    $feUUIDs = generateIDs('financial_entries');
+    $feMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
-    $userSysId = $clientId ?? $vendorId;
-    $userName = $clientName ?? $vendorName;
-    $userType = $clientId ? 'client' : 'vendor';
-
-    // financial_entries এ is_historical ব্যবহার করা হচ্ছে না
-    $financialStmt = $pdo->prepare("
-        INSERT INTO financial_entries (
-            uuid, sys_id,
-            user_sys_id, user_name, user_type,
-            date, purpose, type, amount, ref,
-            meta_data
-        ) VALUES (
-            :uuid, :sys_id,
-            :user_sys_id, :user_name, :user_type,
-            :date, :purpose, :type, :amount, :ref,
-            :meta_data
-        )
-    ");
-
-    $financialStmt->execute([
-        ':uuid' => $financialUUIDs['uuid'],
-        ':sys_id' => $financialUUIDs['sys_id'],
-        ':user_sys_id' => $userSysId,
-        ':user_name' => $userName,
-        ':user_type' => $userType,
-        ':date' => $transactionDate,
-        ':purpose' => $particular,
-        ':type' => 'credit',
-        ':amount' => $amount,
-        ':ref' => $stmtSysId,
-        ':meta_data' => $financialMeta
+    // related_type=2 (vendor + credit = purchase)
+    $pdo->prepare("
+        INSERT INTO financial_entries
+        (uuid, sys_id, user_sys_id, user_name, user_type,
+         date, purpose, type, related_type, amount, ref, meta_data)
+        VALUES
+        (:uuid, :sys_id, :user_sys_id, :user_name, 'vendor',
+         :date, :purpose, 'credit', 2, :amount, :ref, :meta)
+    ")->execute([
+        ':uuid'        => $feUUIDs['uuid'],
+        ':sys_id'      => $feUUIDs['sys_id'],
+        ':user_sys_id' => $vendorId,
+        ':user_name'   => $vendorName,
+        ':date'        => $transactionDate,
+        ':purpose'     => $particular,
+        ':amount'      => $amount,
+        ':ref'         => '',
+        ':meta'        => $feMeta
     ]);
 
-    /* ================= COMMIT ================= */
     $pdo->commit();
 
-    // Fetch the inserted record for receipt
-    // $itemData = [
-    //     'uuid' => $stmtUUIDs['uuid'] ,
-    //     'sys_id' => $stmtUUIDs['sys_id'],
-    //     'date' => $transactionDate,
-    //     'particular' => $particular,
-    // ];
-
-    http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Payment transaction recorded successfully',
-        'data' => [
-            'financial_entry_id' => $financialUUIDs['sys_id'],
-        ], 
+        'message' => 'Purchase recorded successfully',
+        'data'    => ['financial_entry_id' => $feUUIDs['sys_id']]
     ]);
 
 } catch (Throwable $e) {
-
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-
+    if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
-
 ?>

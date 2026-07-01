@@ -1,4 +1,11 @@
 <?php
+// PATH: /api/clients/cl-ac-receive-store.php
+// Major changes:
+//   - Selected sale entries এর বিপরীতে payment link হচ্ছে (Option C)
+//   - is_paid, is_partial, is_discounted logic যোগ হয়েছে
+//   - ref column এ JSON array
+//   - 3 case: full payment, partial, discount-to-close
+//   - Discount entry same transaction এ insert হচ্ছে
 session_start();
 
 require '../../server/db_connection.php';
@@ -10,133 +17,104 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-/* ================= METHOD CHECK ================= */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Method Not Allowed'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
     exit;
 }
 
-/* ================= READ JSON ================= */
 $data = json_decode(file_get_contents('php://input'), true);
 if (!$data) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid JSON'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Invalid JSON']);
     exit;
 }
 
 /* ================= INPUT ================= */
-$accountId = $data['accountId'] ?? '';
-$accountName = $data['accountName'] ?? '';
-$clientId = $data['clientId'] ?? null;
-$clientName = $data['clientName'] ?? null;
-$vendorId = $data['vendorId'] ?? null;
-$vendorName = $data['vendorName'] ?? null;
-$amount = $data['amount'] ?? 0;
-$particular = $data['particular'] ?? '';
+$clientId        = $data['clientId']        ?? null;
+$clientName      = $data['clientName']      ?? null;
+$amount          = $data['amount']          ?? 0;
+$particular      = $data['particular']      ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
-$transferMethod = $data['transferMethod'] ?? 'cash';
-$isHistorical = isset($data['isHistorical']) ? (int)$data['isHistorical'] : 0;
-$withdraw = 0;
+$transferMethod  = $data['transferMethod']  ?? 'cash';
+$accountId       = $data['accountId']       ?? '';
+$accountName     = $data['accountName']     ?? '';
+$isHistorical    = isset($data['isHistorical']) ? (int)$data['isHistorical'] : 0;
 
-// Payment type is always Deposit for received
-$paymentType = 'Deposit';
+// Selected sale sys_ids — কোন sale গুলোর বিপরীতে payment আসছে
+$selectedSaleIds    = $data['selectedSaleIds']    ?? [];
 
-// Cheque/BFTN details
-$chequeNo = $data['chequeNo'] ?? '';
-$chequeDate = $data['chequeDate'] ?? '';
+// Discount-to-close
+$withDiscount       = isset($data['withDiscount']) ? (bool)$data['withDiscount'] : false;
+$discountAmount     = $data['discountAmount']     ?? 0;
+$discountParticular = $data['discountParticular'] ?? '';
+
+// Cheque/BFTN
+$chequeNo          = $data['chequeNo']          ?? '';
+$chequeDate        = $data['chequeDate']        ?? '';
 $chequeAccountName = $data['chequeAccountName'] ?? '';
-$bankName = $data['bankName'] ?? '';
-$accountNameEFT = $data['bftnAccountName'] ?? '';
-$eftBankName = $data['eftBankName'] ?? '';
-$bftnDate = $data['bftnDate'] ?? '';
+$bankName          = $data['bankName']          ?? '';
+$accountNameEFT    = $data['bftnAccountName']   ?? '';
+$eftBankName       = $data['eftBankName']       ?? '';
+$bftnDate          = $data['bftnDate']          ?? '';
 
-/* ================= BASIC VALIDATION ================= */
+/* ================= VALIDATION ================= */
 if (!is_numeric($amount) || $amount <= 0) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid amount'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Invalid amount']);
     exit;
 }
-
-// Check if we have either client or vendor
-if (!$clientId && !$vendorId) {
+if (!$clientId) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Either client or vendor must be selected'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Client is required']);
+    exit;
+}
+if ($withDiscount && (!is_numeric($discountAmount) || $discountAmount <= 0)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid discount amount']);
     exit;
 }
 
-// Check account (mandatory from 2026-02-01)
 $cutoffDate = new DateTime('2026-02-01 00:00:00', new DateTimeZone('Asia/Dhaka'));
 $txnDateObj = new DateTime($transactionDate, new DateTimeZone('Asia/Dhaka'));
-
-if ($txnDateObj >= $cutoffDate) {
-    if (!$accountId || !$accountName) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Account is required from 1 Feb 2026'
-        ]);
-        exit;
-    }
+if ($txnDateObj >= $cutoffDate && (!$accountId || !$accountName)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Account is required from 1 Feb 2026']);
+    exit;
 }
 
-/* ================= HANDLE INSTRUMENT (Cheque/BFTN-EFT) ================= */
+/* ================= INSTRUMENT HANDLING ================= */
 $instrumentMethods = ['cheque', 'bftn-eft'];
-$instrumentId = null;
-$instrumentData = null;
-
 if (in_array($transferMethod, $instrumentMethods, true)) {
-    /* ================= CALL INSTRUMENT API ================= */
     $instrumentApiUrl = "https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/store.php";
 
-    /* ================= PREPARE INSTRUMENT DATA ================= */
-    // Determine values based on method
-    $instrumentAccountName = '';
-    $instrumentBankName = '';
-    $instrumentDate = '';
-    $instrumentNo = '';
-    
     if ($transferMethod === 'cheque') {
-        $instrumentAccountName = $chequeAccountName;
-        $instrumentBankName = $bankName;
-        $instrumentDate = $chequeDate ?: date('Y-m-d');
-        $instrumentNo = $chequeNo;
-    } elseif ($transferMethod === 'bftn-eft') {
-        $instrumentAccountName = $accountNameEFT;
-        $instrumentBankName = $eftBankName;
-        $instrumentDate = $bftnDate ?: date('Y-m-d');
-        $instrumentNo = $data['bftnNo'] ?? '';
+        $instAccName  = $chequeAccountName;
+        $instBankName = $bankName;
+        $instDate     = $chequeDate ?: date('Y-m-d');
+        $instNo       = $chequeNo;
+    } else {
+        $instAccName  = $accountNameEFT;
+        $instBankName = $eftBankName;
+        $instDate     = $bftnDate ?: date('Y-m-d');
+        $instNo       = $data['bftnNo'] ?? '';
     }
-    
-    // Prepare instrument payload
+
     $instrumentPayload = [
         "instrument_type" => strtoupper($transferMethod),
-        "instrument_no"   => $instrumentNo,
-        "account_name"    => $instrumentAccountName,
-        "bank_name"       => $instrumentBankName,
-        "instrument_date" => $instrumentDate,
+        "instrument_no"   => $instNo,
+        "account_name"    => $instAccName,
+        "bank_name"       => $instBankName,
+        "instrument_date" => $instDate,
         "status"          => 'pending',
         "date"            => date('Y-m-d'),
         "remarks"         => $particular,
         "related_type"    => 'received',
-        "related_from"    => $clientId ? ($clientId . ' || ' . $clientName) : ($vendorId . ' || ' . $vendorName),
+        "related_from"    => $clientId . ' || ' . $clientName,
         "related_to"      => $accountId . ' || ' . $accountName,
         "amount"          => $amount
     ];
 
-    // Call instrument API
     $ch = curl_init($instrumentApiUrl);
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
@@ -145,325 +123,283 @@ if (in_array($transferMethod, $instrumentMethods, true)) {
         CURLOPT_POSTFIELDS     => json_encode($instrumentPayload),
         CURLOPT_TIMEOUT        => 10
     ]);
-
     $response = curl_exec($ch);
     $error    = curl_error($ch);
     curl_close($ch);
 
     if ($error) {
         http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Instrument API call failed',
-            'error'   => $error
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Instrument API failed', 'error' => $error]);
         exit;
     }
-
     $result = json_decode($response, true);
-
     if (!$result || !$result['success']) {
         http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Instrument store failed',
-            'api_response' => $response
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Instrument store failed']);
         exit;
     }
-
-    $instrumentData = $result['data'];
-    $instrumentId = $result['data']['sys_id'] ?? null;
-
-    // If instrument method, we only record instrument, not transaction
-    http_response_code(200);
     echo json_encode([
-        'success' => true,
-        'message' => 'Instrument recorded successfully. Transaction pending.',
-        'instrument' => $instrumentData
+        'success'    => true,
+        'message'    => 'Instrument recorded. Transaction pending clearance.',
+        'instrument' => $result['data']
     ]);
     exit;
 }
 
+/* ================= MAIN TRANSACTION ================= */
 try {
-    /* ================= START TRANSACTION ================= */
     $pdo->beginTransaction();
 
-    /* ================= 1. FETCH ACCOUNT BALANCE ================= */
-    $accStmt = $pdo->prepare("
-        SELECT balance 
-        FROM ac_banking 
-        WHERE sys_id = ?
-        FOR UPDATE
-    ");
+    /* ===== 1. Selected sale entries fetch ===== */
+    $selectedSaleData = [];
+    $totalSaleAmount  = 0;
+
+    if (!empty($selectedSaleIds)) {
+        $placeholders = implode(',', array_fill(0, count($selectedSaleIds), '?'));
+        $saleStmt = $pdo->prepare("
+            SELECT sys_id, amount, is_paid, is_partial, is_discounted, ref
+            FROM financial_entries
+            WHERE sys_id IN ($placeholders)
+            AND user_sys_id = ?
+            AND user_type = 'client'
+            AND type = 'debit'
+            AND related_type = 1
+        ");
+        $saleStmt->execute([...$selectedSaleIds, $clientId]);
+        $selectedSaleData = $saleStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($selectedSaleData as $sale) {
+            $totalSaleAmount += (float)$sale['amount'];
+        }
+    }
+
+    /* ===== 2. Payment type determine ===== */
+    $receiveAmount = (float)$amount;
+    $discountAmt   = $withDiscount ? (float)$discountAmount : 0;
+    $totalCoverage = $receiveAmount + $discountAmt;
+
+    // selected sale না থাকলে standalone receive (no linking)
+    $hasSelection  = !empty($selectedSaleData);
+    $isFullPayment = !$hasSelection || abs($totalCoverage - $totalSaleAmount) < 0.01;
+    $isPartial     = $hasSelection && !$isFullPayment && !$withDiscount;
+    $isDiscounted  = $withDiscount && $hasSelection;
+
+    $receivePaid       = ($isFullPayment || $isDiscounted) ? 1 : 0;
+    $receivePartial    = $isPartial ? 1 : 0;
+    $receiveDiscounted = $isDiscounted ? 1 : 0;
+
+    /* ===== 3. Bank: balance update ===== */
+    $accStmt = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ? FOR UPDATE");
     $accStmt->execute([$accountId]);
     $account = $accStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$account) throw new Exception('Account not found');
+    $currentBalance = (float)$account['balance'];
 
-    if (!$account) {
-        throw new Exception('Account not found');
-    }
-
-    $currentBalance = $account['balance'];
-
-    /* ================= 2. CHECK OPENING BALANCE DATE ================= */
-    try {
-        $openingQuery = "
-            SELECT MIN(date) as opening_date 
-            FROM ac_banking_stmts 
-            WHERE ledger_db_id = :account_id 
-            AND particular = 'Opening Balance'
-        ";
-        $openingStmt = $pdo->prepare($openingQuery);
-        $openingStmt->execute([':account_id' => $accountId]);
-        $openingDate = $openingStmt->fetch(PDO::FETCH_ASSOC)['opening_date'];
-        
-        // If transaction date is before opening date, mark as historical
-        if ($openingDate && $transactionDate < $openingDate) {
-            $isHistorical = 1;
-        }
-    } catch (PDOException $e) {
-        // Continue with provided isHistorical value
-    }
-
-    /* ================= 3. CHECK 5-DAY BACKDATED LIMIT ================= */
-    $maxBackdatedDays = 10;
-    $dateCheckQuery = "SELECT DATEDIFF(NOW(), :transaction_date) as days_diff";
-    $dateStmt = $pdo->prepare($dateCheckQuery);
-    $dateStmt->execute([':transaction_date' => $transactionDate]);
-    $daysDiff = $dateStmt->fetch(PDO::FETCH_ASSOC)['days_diff'];
-
-    // Only check 5-day limit if not historical (opening balance er age)
-    if (!$isHistorical && $daysDiff > $maxBackdatedDays) {
-        throw new Exception('You can make backdated entries up to 10 days.');
-    }
-
-    /* ================= 4. CALCULATE NEW BALANCE ================= */
-    // For historical entries, balance doesn't change
-    if ($isHistorical) {
-        $newBalance = $currentBalance;
-    } else {
-        $newBalance = $currentBalance + $amount;
-    }
-
-    /* ================= 5. UPDATE ACCOUNT BALANCE (ONLY IF NOT HISTORICAL) ================= */
-    if (!$isHistorical) {
-        $updateStmt = $pdo->prepare("
-            UPDATE ac_banking 
-            SET balance = :balance 
-            WHERE sys_id = :id
-        ");
-        $updateStmt->execute([
-            ':balance' => $newBalance,
-            ':id'      => $accountId
-        ]);
-    }
-
-    /* ================= 6. INSERT INTO BANK STATEMENTS ================= */
-    $stmtUUIDs = generateIDs('ac_banking_stmts');
-    $stmtMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
-
-    $stmtInsert = $pdo->prepare("
-        INSERT INTO ac_banking_stmts
-        (
-            uuid, sys_id, ledger_db_id, name, date, particular,
-            withdraw, deposit, balance, transfer_method, meta_data, is_historical
-        )
-        VALUES
-        (
-            :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
-            :withdraw, :deposit, :balance, :transfer_method, :meta_data, :is_historical
-        )
+    $openingStmt = $pdo->prepare("
+        SELECT MIN(date) as opening_date FROM ac_banking_stmts
+        WHERE ledger_db_id = :aid AND particular = 'Opening Balance'
     ");
+    $openingStmt->execute([':aid' => $accountId]);
+    $openingDate = $openingStmt->fetch(PDO::FETCH_ASSOC)['opening_date'] ?? null;
+    if ($openingDate && $transactionDate < $openingDate) $isHistorical = 1;
 
-    $stmtInsert->execute([
-        ':uuid' => $stmtUUIDs['uuid'],
-        ':sys_id' => $stmtUUIDs['sys_id'],
-        ':ledger_db_id' => $accountId,
-        ':name' => $accountName,
-        ':date' => $transactionDate,
+    $dateStmt = $pdo->prepare("SELECT DATEDIFF(NOW(), :txn_date) as days_diff");
+    $dateStmt->execute([':txn_date' => $transactionDate]);
+    $daysDiff = (int)$dateStmt->fetch(PDO::FETCH_ASSOC)['days_diff'];
+    if (!$isHistorical && $daysDiff > 10) throw new Exception('Backdated entry limit is 10 days.');
+
+    $newBalance = $isHistorical ? $currentBalance : ($currentBalance + $receiveAmount);
+
+    if (!$isHistorical) {
+        $pdo->prepare("UPDATE ac_banking SET balance = :bal WHERE sys_id = :id")
+            ->execute([':bal' => $newBalance, ':id' => $accountId]);
+    }
+
+    // financial_entries UUID আগেই generate করি — ac_banking_stmts.ref এ বসাবো
+    $receiveUUIDs = generateIDs('financial_entries');
+
+    // ac_banking_stmts
+    $stmtUUIDs = generateIDs('ac_banking_stmts');
+    $stmtMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    $pdo->prepare("
+        INSERT INTO ac_banking_stmts
+        (uuid, sys_id, ledger_db_id, name, date, particular,
+         withdraw, deposit, balance, transfer_method, related_type, meta_data, is_historical, ref)
+        VALUES
+        (:uuid, :sys_id, :ledger, :name, :date, :particular,
+         0, :deposit, :balance, :method, 1, :meta, :hist, :ref)
+    ")->execute([
+        ':uuid'       => $stmtUUIDs['uuid'],
+        ':sys_id'     => $stmtUUIDs['sys_id'],
+        ':ledger'     => $accountId,
+        ':name'       => $accountName,
+        ':date'       => $transactionDate,
         ':particular' => $particular,
-        ':withdraw' => $withdraw,
-        ':deposit' => $amount,
-        ':balance' => $newBalance,
-        ':transfer_method' => $transferMethod,
-        ':meta_data' => $stmtMeta,
-        ':is_historical' => $isHistorical
+        ':deposit'    => $receiveAmount,
+        ':balance'    => $newBalance,
+        ':method'     => $transferMethod,
+        ':meta'       => $stmtMeta,
+        ':hist'       => $isHistorical,
+        ':ref'        => $receiveUUIDs['sys_id']  // financial_entries sys_id
     ]);
-
     $stmtSysId = $stmtUUIDs['sys_id'];
 
-    /* ================= 7. INSERT INTO FINANCIAL ENTRIES ================= */
-    $financialUUIDs = generateIDs('financial_entries');
-    $financialMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    /* ===== 4. financial_entries: receive row ===== */
+    // UUID already generated above
+    $receiveMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+    $receiveRef   = !empty($selectedSaleIds) ? json_encode($selectedSaleIds) : $stmtSysId;
 
-    $userSysId = $clientId ?? $vendorId;
-    $userName = $clientName ?? $vendorName;
-    $userType = $clientId ? 'client' : 'vendor';
-
-    $financialStmt = $pdo->prepare("
-        INSERT INTO financial_entries (
-            uuid, sys_id,
-            user_sys_id, user_name, user_type,
-            date, purpose, type, amount, ref,
-            meta_data
-        ) VALUES (
-            :uuid, :sys_id,
-            :user_sys_id, :user_name, :user_type,
-            :date, :purpose, :type, :amount, :ref,
-            :meta_data
-        )
-    ");
-
-    $financialStmt->execute([
-        ':uuid' => $financialUUIDs['uuid'],
-        ':sys_id' => $financialUUIDs['sys_id'],
-        ':user_sys_id' => $userSysId,
-        ':user_name' => $userName,
-        ':user_type' => $userType,
-        ':date' => $transactionDate,
-        ':purpose' => $particular,
-        ':type' => 'credit',
-        ':amount' => $amount,
-        ':ref' => $stmtSysId,
-        ':meta_data' => $financialMeta
+    $pdo->prepare("
+        INSERT INTO financial_entries
+        (uuid, sys_id, user_sys_id, user_name, user_type,
+         date, purpose, type, related_type,
+         is_paid, is_partial, is_discounted,
+         amount, ref, meta_data)
+        VALUES
+        (:uuid, :sys_id, :user_sys_id, :user_name, 'client',
+         :date, :purpose, 'credit', 3,
+         :is_paid, :is_partial, :is_discounted,
+         :amount, :ref, :meta)
+    ")->execute([
+        ':uuid'          => $receiveUUIDs['uuid'],
+        ':sys_id'        => $receiveUUIDs['sys_id'],
+        ':user_sys_id'   => $clientId,
+        ':user_name'     => $clientName,
+        ':date'          => $transactionDate,
+        ':purpose'       => $particular,
+        ':is_paid'       => $receivePaid,
+        ':is_partial'    => $receivePartial,
+        ':is_discounted' => $receiveDiscounted,
+        ':amount'        => $receiveAmount,
+        ':ref'           => $receiveRef,
+        ':meta'          => $receiveMeta
     ]);
+    $receiveSysId = $receiveUUIDs['sys_id'];
 
-    /* ================= 8. CHECK FOR BACKDATED RECALCULATION ================= */
-    $recalculated = false;
-    $recalculatedDate = null;
-    
-    if (!$isHistorical && ($daysDiff > 0 || $transactionDate < date('Y-m-d'))) {
-        // Call recalculate function
-        $recalcResult = recalculateBalances($pdo, $accountId, $transactionDate);
-        $recalculated = true;
-        $recalculatedDate = $transactionDate;
-        $newBalance = $recalcResult['final_balance'];
+    /* ===== 5. Discount entry (withDiscount=true হলে) ===== */
+    $discountSysId = null;
+    if ($isDiscounted && $discountAmt > 0) {
+        $discountUUIDs = generateIDs('financial_entries');
+        $discountMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+        $discountRef   = json_encode([...$selectedSaleIds, $receiveSysId]);
+
+        $pdo->prepare("
+            INSERT INTO financial_entries
+            (uuid, sys_id, user_sys_id, user_name, user_type,
+             date, purpose, type, related_type,
+             is_paid, is_partial, is_discounted,
+             amount, ref, meta_data)
+            VALUES
+            (:uuid, :sys_id, :user_sys_id, :user_name, 'client',
+             :date, :purpose, 'credit', 5,
+             1, 0, 1,
+             :amount, :ref, :meta)
+        ")->execute([
+            ':uuid'        => $discountUUIDs['uuid'],
+            ':sys_id'      => $discountUUIDs['sys_id'],
+            ':user_sys_id' => $clientId,
+            ':user_name'   => $clientName,
+            ':date'        => $transactionDate,
+            ':purpose'     => $discountParticular ?: ('Discount: ' . $particular),
+            ':amount'      => $discountAmt,
+            ':ref'         => $discountRef,
+            ':meta'        => $discountMeta
+        ]);
+        $discountSysId = $discountUUIDs['sys_id'];
     }
 
-    /* ================= COMMIT ================= */
+    /* ===== 6. Sale entries update ===== */
+    if (!empty($selectedSaleData)) {
+        $saleRefArray = [$receiveSysId];
+        if ($discountSysId) $saleRefArray[] = $discountSysId;
+        $saleRef = json_encode($saleRefArray);
+
+        $updateSaleStmt = $pdo->prepare("
+            UPDATE financial_entries
+            SET is_paid       = :is_paid,
+                is_partial    = :is_partial,
+                is_discounted = :is_discounted,
+                ref           = :ref
+            WHERE sys_id = :sys_id
+        ");
+
+        foreach ($selectedSaleData as $sale) {
+            $updateSaleStmt->execute([
+                ':is_paid'       => $receivePaid,
+                ':is_partial'    => $receivePartial,
+                ':is_discounted' => $receiveDiscounted,
+                ':ref'           => $saleRef,
+                ':sys_id'        => $sale['sys_id']
+            ]);
+        }
+    }
+
+    /* ===== 7. Receive ref update — discount id যোগ ===== */
+    if ($discountSysId) {
+        $updatedReceiveRef = json_encode([...$selectedSaleIds, $discountSysId]);
+        $pdo->prepare("UPDATE financial_entries SET ref = :ref WHERE sys_id = :sid")
+            ->execute([':ref' => $updatedReceiveRef, ':sid' => $receiveSysId]);
+    }
+
+    /* ===== 8. Backdated recalculation ===== */
+    if (!$isHistorical && $daysDiff > 0) {
+        recalculateBalances($pdo, $accountId, $transactionDate);
+    }
+
     $pdo->commit();
 
-    // Fetch the inserted record for receipt
-    $itemData = [
-        'uuid' => $stmtUUIDs['uuid'],
-        'sys_id' => $stmtUUIDs['sys_id'],
-        'ledger_db_id' => $accountId,
-        'name' => $accountName,
-        'date' => $transactionDate,
-        'particular' => $particular,
-        'withdraw' => $withdraw,
-        'deposit' => $amount,
-        'balance' => $newBalance,
-        'transfer_method' => $transferMethod,
-        'is_historical' => $isHistorical
-    ];
-
-    http_response_code(200);
     echo json_encode([
-        'success' => true,
-        'message' => $isHistorical ? 'ঐতিহাসিক এন্ট্রি সংরক্ষিত হয়েছে' : 'Received transaction recorded successfully',
-        'data' => [
-            'bank_stmt_id' => $stmtSysId,
-            'financial_entry_id' => $financialUUIDs['sys_id'],
-            'new_balance' => $newBalance
-        ],
-        'item' => $itemData,
+        'success'       => true,
+        'message'       => $isHistorical
+            ? 'ঐতিহাসিক entry সংরক্ষিত হয়েছে'
+            : ($isPartial ? 'Partial payment recorded' : 'Payment received successfully'),
         'is_historical' => $isHistorical,
-        'recalculated' => $recalculated,
-        'recalculated_date' => $recalculatedDate
+        'is_partial'    => $isPartial,
+        'is_discounted' => $isDiscounted,
+        'data' => [
+            'bank_stmt_id'      => $stmtSysId,
+            'receive_entry_id'  => $receiveSysId,
+            'discount_entry_id' => $discountSysId,
+            'new_balance'       => $newBalance
+        ]
     ]);
 
 } catch (Throwable $e) {
-
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-
+    if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-/**
- * নির্দিষ্ট তারিখ থেকে পরবর্তী সব ট্রানজেকশন রি-ক্যালকুলেট করার ফাংশন
- */
 function recalculateBalances($pdo, $accountId, $fromDate) {
-    // ঐ তারিখের আগের শেষ ব্যালেন্স বের করা (শুধু non-historical)
-    $prevBalanceQuery = "
-        SELECT balance FROM ac_banking_stmts 
-        WHERE ledger_db_id = :account_id 
-        AND date < :from_date 
-        AND is_historical = 0
-        ORDER BY date DESC, sys_id DESC 
-        LIMIT 1
-    ";
-    $prevStmt = $pdo->prepare($prevBalanceQuery);
-    $prevStmt->execute([
-        ':account_id' => $accountId,
-        ':from_date' => $fromDate
-    ]);
+    $prevStmt = $pdo->prepare("
+        SELECT balance FROM ac_banking_stmts
+        WHERE ledger_db_id = :aid AND date < :from AND is_historical = 0
+        ORDER BY date DESC, sys_id DESC LIMIT 1
+    ");
+    $prevStmt->execute([':aid' => $accountId, ':from' => $fromDate]);
     $prevBalance = (float)$prevStmt->fetchColumn();
-    
+
     if (!$prevBalance) {
-        // আগের কোনো ব্যালেন্স না থাকলে, Opening Balance থেকে শুরু
-        $openingQuery = "
-            SELECT balance FROM ac_banking_stmts 
-            WHERE ledger_db_id = :account_id 
-            AND particular = 'Opening Balance'
-            LIMIT 1
-        ";
-        $openingStmt = $pdo->prepare($openingQuery);
-        $openingStmt->execute([':account_id' => $accountId]);
-        $prevBalance = (float)$openingStmt->fetchColumn();
+        $s = $pdo->prepare("SELECT balance FROM ac_banking_stmts WHERE ledger_db_id = :aid AND particular = 'Opening Balance' LIMIT 1");
+        $s->execute([':aid' => $accountId]);
+        $prevBalance = (float)$s->fetchColumn();
     }
-    
-    // ঐ তারিখ থেকে পরবর্তী সব ট্রানজেকশন নেওয়া (ক্রমানুসারে) - শুধু non-historical
-    $transactionsQuery = "
-        SELECT sys_id, date, withdraw, deposit
-        FROM ac_banking_stmts 
-        WHERE ledger_db_id = :account_id 
-        AND date >= :from_date 
-        AND is_historical = 0
+
+    $transStmt = $pdo->prepare("
+        SELECT sys_id, withdraw, deposit FROM ac_banking_stmts
+        WHERE ledger_db_id = :aid AND date >= :from AND is_historical = 0
         ORDER BY date ASC, sys_id ASC
-    ";
-    $transStmt = $pdo->prepare($transactionsQuery);
-    $transStmt->execute([
-        ':account_id' => $accountId,
-        ':from_date' => $fromDate
-    ]);
-    $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    $runningBalance = $prevBalance;
-    
-    // প্রতিটি ট্রানজেকশনের ব্যালেন্স পুনরায় ক্যালকুলেট
-    foreach ($transactions as $trans) {
-        if ($trans['withdraw'] > 0) {
-            $runningBalance -= $trans['withdraw'];
-        } elseif ($trans['deposit'] > 0) {
-            $runningBalance += $trans['deposit'];
-        }
-        
-        // আপডেট ব্যালেন্স
-        $updateSql = "UPDATE ac_banking_stmts SET balance = :balance WHERE sys_id = :sys_id";
-        $updateStmt = $pdo->prepare($updateSql);
-        $updateStmt->execute([
-            ':balance' => $runningBalance,
-            ':sys_id' => $trans['sys_id']
-        ]);
+    ");
+    $transStmt->execute([':aid' => $accountId, ':from' => $fromDate]);
+
+    $running = $prevBalance;
+    $upStmt  = $pdo->prepare("UPDATE ac_banking_stmts SET balance = :bal WHERE sys_id = :sid");
+    foreach ($transStmt->fetchAll(PDO::FETCH_ASSOC) as $t) {
+        if ($t['withdraw'] > 0)    $running -= $t['withdraw'];
+        elseif ($t['deposit'] > 0) $running += $t['deposit'];
+        $upStmt->execute([':bal' => $running, ':sid' => $t['sys_id']]);
     }
-    
-    // মূল অ্যাকাউন্টের ব্যালেন্স আপডেট
-    $updateAccountSql = "UPDATE ac_banking SET balance = :balance WHERE sys_id = :account_id";
-    $updateAccStmt = $pdo->prepare($updateAccountSql);
-    $updateAccStmt->execute([
-        ':balance' => $runningBalance,
-        ':account_id' => $accountId
-    ]);
-    
-    return [
-        'final_balance' => $runningBalance
-    ];
+
+    $pdo->prepare("UPDATE ac_banking SET balance = :bal WHERE sys_id = :aid")
+        ->execute([':bal' => $running, ':aid' => $accountId]);
 }
-?>
