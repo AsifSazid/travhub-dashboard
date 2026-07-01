@@ -1,5 +1,8 @@
 <?php
 
+include_once('./under-maintenance.php');
+die;
+
 session_start();
 if (!isset($_SESSION['user_email'])) {
     header("Location: ../auth/login.php");
