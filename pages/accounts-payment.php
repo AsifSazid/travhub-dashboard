@@ -869,29 +869,51 @@ $base_ip_path = trim($ip_port, "/");
                 // Check if this is historical (opening balance er age)
                 const dateValidation = validateTransactionDate(transactionDate.value);
         
+                // 1. Pre-define your conditions for better readability and easier maintenance
+                const isClient = type === 'client';
+                const isVendor = type === 'vendor';
+                const isClientOrVendor = isClient || isVendor;
+                
+                const isCheque = method === 'cheque';
+                const isBftnEft = method === 'bftn-eft';
+                
+                // 2. Build the payload
                 const data = {
                     accountId: account?.sys_id || null,
                     accountName: account?.name || null,
-                    clientId: type === 'client' ? client?.sys_id : null,
-                    clientName: type === 'client' ? client?.name : null,
-                    vendorId: type === 'vendor' ? vendor?.sys_id : null,
-                    vendorName: type === 'vendor' ? vendor?.name : null,
-                    payTo: (type === 'client' || type === 'vendor') ? type : '',
-                    amount: amountInput.value,
-                    particular: particularTextarea.value.trim(),
-                    transactionDate: buildDateTime(transactionDate.value),
+                    
+                    clientId: isClient ? client?.sys_id : null,
+                    clientName: isClient ? client?.name : null,
+                    
+                    vendorId: isVendor ? vendor?.sys_id : null,
+                    vendorName: isVendor ? vendor?.name : null,
+                    
+                    payTo: isClientOrVendor ? type : '',
+                    
+                    // Highly recommended: Parse string input to a number for financial APIs
+                    amount: Number(amountInput?.value) || 0, 
+                    particular: particularTextarea?.value?.trim() || '',
+                    transactionDate: buildDateTime(transactionDate?.value),
                     transferMethod: method,
-                    chequeNo: method === 'cheque' ? chequeNoInput.value.trim() : null,
-                    chequeDate: method === 'cheque' ? chequeDateInput.value : null,
-                    chequeAccountName: method === 'cheque' ? chequeAccountNameInput.value : null,
-                    bankName: method === 'cheque' ? bankNameInput.value.trim() : null,
-                    bftnAccountName: method === 'bftn-eft' ? accountNameInput.value.trim() : null,
-                    eftBankName: method === 'bftn-eft' ? eftBankNameInput.value.trim() : null,
-                    bftnDate: method === 'bftn-eft' ? bftnDateInput.value : null,
-                    isHistorical: dateValidation.isHistorical ? 1 : 0  // Send historical flag
+                    
+                    // Cheque specific fields (using optional chaining ?. to prevent crashes if element is hidden)
+                    chequeNo: isCheque ? chequeNoInput?.value?.trim() : null,
+                    chequeDate: isCheque ? chequeDateInput?.value : null,
+                    chequeAccountName: isCheque ? chequeAccountNameInput?.value : null,
+                    bankName: isCheque ? bankNameInput?.value?.trim() : null,
+                    
+                    // BFTN/EFT specific fields
+                    bftnAccountName: isBftnEft ? accountNameInput?.value?.trim() : null,
+                    eftBankName: isBftnEft ? eftBankNameInput?.value?.trim() : null,
+                    bftnDate: isBftnEft ? bftnDateInput?.value : null,
+                    
+                    // Meta flags (Fixed the missing comma here)
+                    isHistorical: dateValidation?.isHistorical ? 1 : 0,  
+                    related_type_for_stmt: 2,
+                    related_type_for_finen: isClientOrVendor ? 5 : 4
                 };
                 
-                console.log('Payment data:', data);
+                // console.log('Payment data:', data);
         
                 // Disable button and show spinner
                 saveTransactionBtn.disabled = true;

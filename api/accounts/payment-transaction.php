@@ -48,6 +48,8 @@ $vendorId = $data['vendorId'] ?? null;
 $vendorName = $data['vendorName'] ?? null;
 $amount = $data['amount'] ?? 0;
 $particular = $data['particular'] ?? '';
+$relatedTypeForStmt = $data['related_type_for_stmt'] ?? '';
+$relatedTypeForFinEn = $data['related_type_for_finen'] ?? '';
 $transactionDate = $data['transactionDate'] ?? date('Y-m-d H:i:s');
 $transferMethod = $data['transferMethod'] ?? 'cash';
 $isHistorical = isset($data['isHistorical']) ? (int)$data['isHistorical'] : 0;
@@ -281,12 +283,12 @@ try {
     $stmtInsert = $pdo->prepare("
         INSERT INTO ac_banking_stmts
         (
-            uuid, sys_id, ledger_db_id, name, date, particular,
+            uuid, sys_id, ledger_db_id, name, date, particular, related_type,
             withdraw, deposit, balance, transfer_method, meta_data, is_historical
         )
         VALUES
         (
-            :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
+            :uuid, :sys_id, :ledger_db_id, :name, :date, :particular, :related_type,
             :withdraw, :deposit, :balance, :transfer_method, :meta_data, :is_historical
         )
     ");
@@ -298,6 +300,7 @@ try {
         ':name' => $accountName,
         ':date' => $transactionDate,
         ':particular' => $particular,
+        ':related_type' => $relatedTypeForStmt,
         ':withdraw' => $amount,
         ':deposit' => $deposit,
         ':balance' => $newBalance,
@@ -320,12 +323,12 @@ try {
     $financialStmt = $pdo->prepare("
         INSERT INTO financial_entries (
             uuid, sys_id,
-            user_sys_id, user_name, user_type,
+            user_sys_id, user_name, user_type, related_type,
             date, purpose, type, amount, ref,
             meta_data
         ) VALUES (
             :uuid, :sys_id,
-            :user_sys_id, :user_name, :user_type,
+            :user_sys_id, :user_name, :user_type, :related_type,
             :date, :purpose, :type, :amount, :ref,
             :meta_data
         )
@@ -339,6 +342,7 @@ try {
         ':user_type' => $userType,
         ':date' => $transactionDate,
         ':purpose' => $particular,
+        ':related_type' => $relatedTypeForFinEn,
         ':type' => 'debit',
         ':amount' => $amount,
         ':ref' => $stmtSysId,
