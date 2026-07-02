@@ -100,9 +100,10 @@ const UIInteractions = (function () {
         sidebarCollapsed = !sidebarCollapsed;
     
         if (sidebarCollapsed) {
+            alert('dhukchi');
             sidebar.classList.remove('w-64');
             sidebar.classList.add('w-16', 'sidebar-collapsed');
-            mainContent.classList.remove('pl-64');
+            mainContent.classList.remove('pl-4');
             mainContent.classList.add('pl-16');
     
             // Hide all text elements
@@ -129,10 +130,11 @@ const UIInteractions = (function () {
             });
     
         } else {
+            alert('dhuki nai');
             sidebar.classList.remove('w-16', 'sidebar-collapsed');
             sidebar.classList.add('w-64');
-            mainContent.classList.remove('pl-16');
-            mainContent.classList.add('pl-64');
+            mainContent.classList.remove('');
+            mainContent.classList.add('pl-16');
     
             // Show all text elements
             document.querySelectorAll('.sidebar-text, .user-info-text').forEach(text => {

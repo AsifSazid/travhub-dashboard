@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Under Maintenance</title>
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -128,6 +130,7 @@
 
         <h1>We’ll Be Right Back</h1>
         <p>We are currently performing scheduled system upgrades to improve your experience. The platform will be up and running shortly. Thank you for your patience!</p>
+        <p>আপনাদের জন্য প্ল্যাটফর্মটিকে আরও উন্নত করার কাজ চলছে। খুব শীঘ্রই প্ল্যাটফর্মটি আবার চালু হয়ে যাবে।সাময়িক এই অসুবিধার জন্য দুঃখিত এবং আপনার ধৈর্যের জন্য ধন্যবাদ!</p>
         
         <div class="status-badge">
             <span class="pulse-dot"></span>
@@ -141,3 +144,5 @@
 
 </body>
 </html>
+
+<?php die; ?>

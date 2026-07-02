@@ -258,9 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $client_phone_no = isset($_POST['client_phone_no']) ? sanitize($_POST['client_phone_no']) : '';
         $client_cc = isset($_POST['client_cc']) ? sanitize($_POST['client_cc']) : '';
 
-        $total_amount = isset($_POST['total_amount']) ? (float) $_POST['total_amount'] : 0;
-        $paid_amount = isset($_POST['paid_amount']) ? (float) $_POST['paid_amount'] : 0;
-        $due_amount = isset($_POST['due_amount']) ? (float) $_POST['due_amount'] : 0;
+        $total_amount   = isset($_POST['total_amount'])   ? (float)$_POST['total_amount']   : 0;
+        $paid_amount    = isset($_POST['paid_amount'])    ? (float)$_POST['paid_amount']    : 0;
+        $due_amount     = isset($_POST['due_amount'])     ? (float)$_POST['due_amount']     : 0;
+        $use_advance    = isset($_POST['use_advance'])    ? (int)$_POST['use_advance']      : 0;
+        $advance_amount = isset($_POST['advance_amount']) ? (float)$_POST['advance_amount'] : 0;
 
         // Validate required fields
         if (empty($date)) {
@@ -288,29 +290,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // ==================== WORK ITEMS ====================
         $work_items = [];
-        
+        $financial_entry_ids = []; // invoice এ linked sale entry sys_ids
+
         // Check if work_title exists and is array
         if (isset($_POST['work_title']) && is_array($_POST['work_title'])) {
-            $work_titles = $_POST['work_title'];
-            $work_qtys = isset($_POST['work_qty']) && is_array($_POST['work_qty']) ? $_POST['work_qty'] : [];
-            $work_rates = isset($_POST['work_rate']) && is_array($_POST['work_rate']) ? $_POST['work_rate'] : [];
-            $work_particulars = isset($_POST['work_particular']) && is_array($_POST['work_particular']) ? $_POST['work_particular'] : [];
-            $amounts = isset($_POST['amount']) && is_array($_POST['amount']) ? $_POST['amount'] : [];
+            $work_titles     = $_POST['work_title'];
+            $work_qtys       = isset($_POST['work_qty'])        && is_array($_POST['work_qty'])        ? $_POST['work_qty']        : [];
+            $work_rates      = isset($_POST['work_rate'])       && is_array($_POST['work_rate'])       ? $_POST['work_rate']       : [];
+            $work_particulars= isset($_POST['work_particular']) && is_array($_POST['work_particular']) ? $_POST['work_particular'] : [];
+            $amounts         = isset($_POST['amount'])          && is_array($_POST['amount'])          ? $_POST['amount']          : [];
+            // financial_entry_ids per item (system import হলে থাকবে, manual হলে empty)
+            $fe_ids_per_item = isset($_POST['fe_sys_id'])       && is_array($_POST['fe_sys_id'])       ? $_POST['fe_sys_id']       : [];
 
             $itemCount = count($work_titles);
-            
+
             for ($i = 0; $i < $itemCount; $i++) {
-                $work_items[] = [
-                    'title' => isset($work_titles[$i]) ? sanitize($work_titles[$i]) : '',
-                    'qty' => isset($work_qtys[$i]) ? (int) $work_qtys[$i] : 1,
-                    'rate' => isset($work_rates[$i]) ? (float) $work_rates[$i] : 0,
-                    'particular' => isset($work_particulars[$i]) ? $work_particulars[$i] : '',
-                    'amount' => isset($amounts[$i]) ? (float) $amounts[$i] : 0
+                $item = [
+                    'title'      => isset($work_titles[$i])      ? sanitize($work_titles[$i])       : '',
+                    'qty'        => isset($work_qtys[$i])        ? (int)$work_qtys[$i]               : 1,
+                    'rate'       => isset($work_rates[$i])       ? (float)$work_rates[$i]            : 0,
+                    'particular' => isset($work_particulars[$i]) ? $work_particulars[$i]             : '',
+                    'amount'     => isset($amounts[$i])          ? (float)$amounts[$i]               : 0,
+                    'fe_sys_id'  => isset($fe_ids_per_item[$i])  ? sanitize($fe_ids_per_item[$i])    : null,
                 ];
+                $work_items[] = $item;
+
+                // financial_entry_ids collect করি
+                if (!empty($item['fe_sys_id'])) {
+                    $financial_entry_ids[] = $item['fe_sys_id'];
+                }
             }
         }
-        
-        $work_items_json = json_encode($work_items, JSON_UNESCAPED_UNICODE);
+
+        // JSON format এও financial_entry_ids আসতে পারে (system import এর batch case)
+        if (isset($_POST['financial_entry_ids']) && !empty($_POST['financial_entry_ids'])) {
+            $extraIds = json_decode($_POST['financial_entry_ids'], true);
+            if (is_array($extraIds)) {
+                $financial_entry_ids = array_unique(array_merge($financial_entry_ids, $extraIds));
+            }
+        }
+
+        $work_items_json       = json_encode($work_items, JSON_UNESCAPED_UNICODE);
+        $financial_entry_ids   = array_values(array_filter($financial_entry_ids));
+        $financial_entry_ids_json = !empty($financial_entry_ids)
+            ? json_encode($financial_entry_ids)
+            : null;
 
         // ==================== VENDOR PAYMENT METHODS ====================
         $vendor_payment_methods = processFormBankMfsData();
@@ -326,37 +350,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ==================== INSERT INTO DATABASE ====================
         $stmt = $pdo->prepare("
             INSERT INTO invoices (
-                uuid, sys_id, date, 
+                uuid, sys_id, date,
                 client_sys_id, client_name, client_info,
-                total_amount, paid_amount, due_amount, 
-                total_amount_in_words, work_items, 
+                total_amount, paid_amount, due_amount,
+                total_amount_in_words, work_items,
+                financial_entry_ids,
                 vendor_payment_methods, status, meta_data,
                 created_at, updated_at
             ) VALUES (
                 :uuid, :sys_id, :date,
                 :client_sys_id, :client_name, :client_info,
                 :total_amount, :paid_amount, :due_amount,
-                :words, :work_items, :vendor_methods, 
-                :status, :meta_data,
+                :words, :work_items,
+                :fe_ids,
+                :vendor_methods, :status, :meta_data,
                 NOW(), NOW()
             )
         ");
 
         $result = $stmt->execute([
-            ':uuid' => $uuid['uuid'],
-            ':sys_id' => $invoice_no,
-            ':date' => $date,
-            ':client_sys_id' => $client_sys_id,
-            ':client_name' => $client_name,
-            ':client_info' => $client_info,
-            ':total_amount' => $total_amount,
-            ':paid_amount' => $paid_amount,
-            ':due_amount' => $due_amount,
-            ':words' => $total_amount_in_words,
-            ':work_items' => $work_items_json,
+            ':uuid'           => $uuid['uuid'],
+            ':sys_id'         => $invoice_no,
+            ':date'           => $date,
+            ':client_sys_id'  => $client_sys_id,
+            ':client_name'    => $client_name,
+            ':client_info'    => $client_info,
+            ':total_amount'   => $total_amount,
+            ':paid_amount'    => $paid_amount,
+            ':due_amount'     => $due_amount,
+            ':words'          => $total_amount_in_words,
+            ':work_items'     => $work_items_json,
+            ':fe_ids'         => $financial_entry_ids_json,
             ':vendor_methods' => $vendor_payment_methods_json,
-            ':status' => 0,
-            ':meta_data' => $meta_data
+            ':status'         => 0,
+            ':meta_data'      => $meta_data
         ]);
 
         if (!$result) {
@@ -401,6 +428,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // ==================== is_invoiced UPDATE ====================
+        if (!empty($financial_entry_ids)) {
+            $ph = implode(',', array_fill(0, count($financial_entry_ids), '?'));
+            $pdo->prepare("
+                UPDATE financial_entries
+                SET is_invoiced = 1
+                WHERE sys_id IN ($ph)
+                AND type = 'debit'
+                AND related_type = 1
+            ")->execute($financial_entry_ids);
+        }
+
+        // ==================== ADVANCE CONSUME ====================
+        // Client advance থেকে invoice payment করলে advance entries mark করি
+        $advanceUsed = 0;
+        if ($use_advance && $advance_amount > 0) {
+            // Client এর unpaid advance entries (credit, rt=6, is_paid=0) oldest first
+            $advStmt = $pdo->prepare("
+                SELECT sys_id, amount FROM financial_entries
+                WHERE user_sys_id = :cid
+                AND user_type = 'client'
+                AND type = 'credit'
+                AND related_type = 6
+                AND is_paid = 0
+                ORDER BY date ASC, id ASC
+            ");
+            $advStmt->execute([':cid' => $client_sys_id]);
+            $advEntries = $advStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $remaining = $advance_amount;
+            foreach ($advEntries as $adv) {
+                if ($remaining <= 0) break;
+                $useAmt = min((float)$adv['amount'], $remaining);
+
+                // Advance entry mark as paid
+                $pdo->prepare("UPDATE financial_entries SET is_paid = 1 WHERE sys_id = ?")
+                    ->execute([$adv['sys_id']]);
+
+                // Advance used এর debit entry insert (advance consumed)
+                $advConsumeIds = generateIDs('financial_entries');
+                $advConsumeMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+                $pdo->prepare("
+                    INSERT INTO financial_entries
+                    (uuid, sys_id, user_sys_id, user_name, user_type,
+                     date, purpose, type, related_type,
+                     is_paid, amount, ref, meta_data)
+                    VALUES (?, ?, ?, ?, 'client', NOW(), ?, 'debit', 6, 1, ?, ?, ?)
+                ")->execute([
+                    $advConsumeIds['uuid'], $advConsumeIds['sys_id'],
+                    $client_sys_id, $client_name,
+                    'Advance Used: Invoice ' . $invoice_no,
+                    $useAmt,
+                    $adv['sys_id'], // ref = original advance entry
+                    $advConsumeMeta
+                ]);
+
+                $advanceUsed += $useAmt;
+                $remaining   -= $useAmt;
+            }
+
+            // paid_amount আর due_amount update (advance use করলে)
+            if ($advanceUsed > 0.01) {
+                $paid_amount = $advanceUsed;
+                $due_amount  = max(0, $total_amount - $advanceUsed);
+                $pdo->prepare("
+                    UPDATE invoices
+                    SET paid_amount = ?, due_amount = ?
+                    WHERE sys_id = ?
+                ")->execute([$paid_amount, $due_amount, $invoice_no]);
+            }
+        }
+
         // Commit transaction
         $pdo->commit();
 
@@ -411,13 +510,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'invoice_id' => (int) $invoice_id,
             'invoice_no' => $invoice_no,
             'data' => [
-                'client_sys_id' => $client_sys_id,
-                'client_name' => $client_name,
-                'total_amount' => $total_amount,
-                'total_in_words' => $total_amount_in_words,
+                'client_sys_id'    => $client_sys_id,
+                'client_name'      => $client_name,
+                'total_amount'     => $total_amount,
+                'paid_amount'      => $paid_amount,
+                'due_amount'       => $due_amount,
+                'advance_used'     => $advanceUsed ?? 0,
+                'total_in_words'   => $total_amount_in_words,
                 'work_items_count' => count($work_items),
-                'banks_count' => count($vendor_payment_methods['banks']),
-                'mfs_count' => count($vendor_payment_methods['mfs'])
+                'banks_count'      => count($vendor_payment_methods['banks']),
+                'mfs_count'        => count($vendor_payment_methods['mfs'])
             ]
         ], JSON_UNESCAPED_UNICODE);
 

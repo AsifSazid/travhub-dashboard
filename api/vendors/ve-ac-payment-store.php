@@ -150,7 +150,8 @@ try {
 
     /* ===== 1. Selected purchase entries fetch ===== */
     $selectedPurchaseData = [];
-    $totalPurchaseAmount  = 0;
+    $totalPurchaseAmount  = 0; // full amount
+    $totalRemainingAmount = 0; // remaining (after previous partial payments)
 
     if (!empty($selectedPurchaseIds)) {
         $placeholders = implode(',', array_fill(0, count($selectedPurchaseIds), '?'));
@@ -168,6 +169,30 @@ try {
 
         foreach ($selectedPurchaseData as $p) {
             $totalPurchaseAmount += (float)$p['amount'];
+
+            // Remaining = amount - previously paid/discounted linked entries
+            $remaining = (float)$p['amount'];
+            if (!empty($p['ref'])) {
+                $refIds = json_decode($p['ref'], true);
+                if (is_array($refIds) && !empty($refIds)) {
+                    $ph = implode(',', array_fill(0, count($refIds), '?'));
+
+                    $prevPaid = $pdo->prepare("
+                        SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+                        WHERE sys_id IN ($ph) AND type = 'debit' AND related_type = 4
+                    ");
+                    $prevPaid->execute($refIds);
+                    $remaining -= (float)$prevPaid->fetchColumn();
+
+                    $prevDisc = $pdo->prepare("
+                        SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+                        WHERE sys_id IN ($ph) AND type = 'debit' AND related_type = 5
+                    ");
+                    $prevDisc->execute($refIds);
+                    $remaining -= (float)$prevDisc->fetchColumn();
+                }
+            }
+            $totalRemainingAmount += max(0, $remaining);
         }
     }
 
@@ -176,14 +201,25 @@ try {
     $discountAmt   = $withDiscount ? (float)$discountAmount : 0;
     $totalCoverage = $paymentAmount + $discountAmt;
 
+
     $hasSelection  = !empty($selectedPurchaseData);
-    $isFullPayment = !$hasSelection || abs($totalCoverage - $totalPurchaseAmount) < 0.01;
+    // Purchase select না করলে → pure advance to vendor (related_type=6)
+    $isAdvance     = !$hasSelection;
+    // remaining amount দিয়ে compare — overpayment হলেও full payment হিসেবে mark হবে
+    $isFullPayment = !$hasSelection || ($totalCoverage >= $totalRemainingAmount - 0.01);
     $isPartial     = $hasSelection && !$isFullPayment && !$withDiscount;
     $isDiscounted  = $withDiscount && $hasSelection;
 
     $paymentPaid       = ($isFullPayment || $isDiscounted) ? 1 : 0;
     $paymentPartial    = $isPartial ? 1 : 0;
     $paymentDiscounted = $isDiscounted ? 1 : 0;
+
+    // Overpayment — purchase select করে বেশি দিলে advance entry হবে (related_type=6)
+    $overpaymentAmount = 0;
+    if ($hasSelection && $paymentAmount > $totalRemainingAmount + 0.01) {
+        $overpaymentAmount = $paymentAmount - $totalRemainingAmount;
+    }
+
 
     /* ===== 3. Bank: balance update ===== */
     $accStmt = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ? FOR UPDATE");
@@ -248,6 +284,9 @@ try {
     // UUID already generated above
     $payMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
     $payRef   = !empty($selectedPurchaseIds) ? json_encode($selectedPurchaseIds) : $stmtSysId;
+    // Advance হলে related_type=6, regular payment হলে related_type=4
+    $payRelatedType = $isAdvance ? 6 : 4;
+    $payPurpose     = $isAdvance ? ('Advance to Vendor: ' . $particular) : $particular;
 
     $pdo->prepare("
         INSERT INTO financial_entries
@@ -257,7 +296,7 @@ try {
          amount, ref, meta_data)
         VALUES
         (:uuid, :sys_id, :user_sys_id, :user_name, 'vendor',
-         :date, :purpose, 'debit', 4,
+         :date, :purpose, 'debit', :related_type,
          :is_paid, :is_partial, :is_discounted,
          :amount, :ref, :meta)
     ")->execute([
@@ -266,8 +305,9 @@ try {
         ':user_sys_id'   => $vendorId,
         ':user_name'     => $vendorName,
         ':date'          => $transactionDate,
-        ':purpose'       => $particular,
-        ':is_paid'       => $paymentPaid,
+        ':purpose'       => $payPurpose,
+        ':related_type'  => $payRelatedType,
+        ':is_paid'       => $isAdvance ? 0 : $paymentPaid, // advance is_paid=0 (এখনো use হয়নি)
         ':is_partial'    => $paymentPartial,
         ':is_discounted' => $paymentDiscounted,
         ':amount'        => $paymentAmount,
@@ -340,7 +380,37 @@ try {
             ->execute([':ref' => $updatedPayRef, ':sid' => $paySysId]);
     }
 
-    /* ===== 8. Backdated recalculation ===== */
+    /* ===== 8. Overpayment → Advance entry (related_type=6) ===== */
+    $advanceSysId = null;
+    if ($hasSelection && $overpaymentAmount > 0.01) {
+        $advUUIDs = generateIDs('financial_entries');
+        $advMeta  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+        $pdo->prepare("
+            INSERT INTO financial_entries
+            (uuid, sys_id, user_sys_id, user_name, user_type,
+             date, purpose, type, related_type,
+             is_paid, is_partial, is_discounted,
+             amount, ref, meta_data)
+            VALUES
+            (:uuid, :sys_id, :user_sys_id, :user_name, 'vendor',
+             :date, :purpose, 'debit', 6,
+             0, 0, 0,
+             :amount, :ref, :meta)
+        ")->execute([
+            ':uuid'        => $advUUIDs['uuid'],
+            ':sys_id'      => $advUUIDs['sys_id'],
+            ':user_sys_id' => $vendorId,
+            ':user_name'   => $vendorName,
+            ':date'        => $transactionDate,
+            ':purpose'     => 'Advance: ' . $particular,
+            ':amount'      => $overpaymentAmount,
+            ':ref'         => $paySysId,
+            ':meta'        => $advMeta
+        ]);
+        $advanceSysId = $advUUIDs['sys_id'];
+    }
+
+    /* ===== 9. Backdated recalculation ===== */
     if (!$isHistorical && $daysDiff > 0) {
         recalculateBalances($pdo, $accountId, $transactionDate);
     }
@@ -348,17 +418,24 @@ try {
     $pdo->commit();
 
     echo json_encode([
-        'success'       => true,
-        'message'       => $isHistorical
+        'success'          => true,
+        'message'          => $isHistorical
             ? 'ঐতিহাসিক entry সংরক্ষিত হয়েছে'
-            : ($isPartial ? 'Partial payment recorded' : 'Payment recorded successfully'),
-        'is_historical' => $isHistorical,
-        'is_partial'    => $isPartial,
-        'is_discounted' => $isDiscounted,
+            : ($isAdvance ? 'Advance to vendor recorded (৳' . number_format($paymentAmount, 2) . ')'
+                : ($isPartial ? 'Partial payment recorded'
+                    : ($advanceSysId ? 'Payment recorded with advance (' . number_format($overpaymentAmount, 2) . ' BDT)'
+                        : 'Payment recorded successfully'))),
+        'is_historical'    => $isHistorical,
+        'is_advance'       => $isAdvance,
+        'is_partial'       => $isPartial,
+        'is_discounted'    => $isDiscounted,
+        'overpayment'      => $overpaymentAmount > 0.01,
+        'overpayment_amount' => $overpaymentAmount,
         'data' => [
             'bank_stmt_id'      => $stmtSysId,
             'payment_entry_id'  => $paySysId,
             'discount_entry_id' => $discountSysId,
+            'advance_entry_id'  => $advanceSysId,
             'new_balance'       => $newBalance
         ]
     ]);

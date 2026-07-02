@@ -1,4 +1,5 @@
 <?php
+include_once('./under-maintenance.php');
 include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {

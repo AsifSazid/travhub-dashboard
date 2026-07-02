@@ -1,5 +1,5 @@
 <?php
-// cwe_tm-financial-trnx.php (modified - with better error handling)
+// cwe_tm-financial-trnx.php (Print Fix)
 include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
@@ -13,41 +13,22 @@ $getClientsApi = $ip_port . "api/clients/get-client-info.php?work_id=" . urlenco
 $getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=" . urlencode($taskId);
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
 $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($taskId);
-
-// কাজের টাইটেল এবং টাস্ক টাইটেল JS এ pass করার জন্য
-$workTitle = '';
-$taskTitle = '';
-$taskCategory = '';
-
-try {
-    $taskData = @file_get_contents($getTaskApi);
-    if ($taskData) {
-        $taskData = json_decode($taskData, true);
-        if ($taskData && $taskData['success'] && isset($taskData['task'])) {
-            $task = $taskData['task'];
-            $workTitle = $task['work_title'] ?? '';
-            $taskTitle = $task['title'] ?? '';
-            $taskCategory = $task['category'] ?? '';
-        }
-    }
-} catch (Exception $e) {
-    // error handling - silent
-}
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Financial Transaction - Task Management</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        /* ============================================================
+           CUSTOM STYLES
+           ============================================================ */
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
@@ -118,6 +99,7 @@ try {
             border-radius: 9999px;
             font-size: 0.75rem;
             font-weight: 600;
+            display: inline-block;
         }
 
         .type-debit {
@@ -166,20 +148,13 @@ try {
             transform: translateY(-1px);
         }
 
-        /* QTY/RATE/AMOUNT auto-calc highlight */
-        .calc-field:focus {
-            ring: 2px solid #6366f1;
-        }
-        .calc-result {
-            background-color: #f0fdf4;
-            border-color: #86efac !important;
-        }
         .qty-rate-group {
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
             border: 1px solid #bae6fd;
             border-radius: 0.75rem;
             padding: 0.75rem;
         }
+
         .qty-rate-group .label-sm {
             font-size: 0.7rem;
             font-weight: 600;
@@ -187,535 +162,929 @@ try {
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+
+        .calc-field:focus {
+            ring: 2px solid #6366f1;
+        }
+        .calc-result {
+            background-color: #f0fdf4;
+            border-color: #86efac !important;
+        }
+
+        /* ============================================================
+           MOBILE RESPONSIVE
+           ============================================================ */
+        #sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            width: 280px;
+            z-index: 1000;
+        }
+
+        #sidebar.open {
+            transform: translateX(0);
+        }
+
+        #sidebarOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        #sidebarOverlay.active {
+            display: block;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            #sidebar {
+                transform: translateX(0) !important;
+                width: 256px;
+            }
+            #sidebarOverlay {
+                display: none !important;
+            }
+            .mobile-menu-btn {
+                display: none !important;
+            }
+            #mainContent {
+                margin-left: 256px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            #mainContent {
+                margin-left: 0;
+                padding-top: 4rem;
+            }
+            .stat-card .text-xl {
+                font-size: 1.1rem;
+            }
+            .stat-card .text-2xl {
+                font-size: 1.25rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .grid-cols-1.md\:grid-cols-2 {
+                grid-template-columns: 1fr !important;
+            }
+            .lg\:grid-cols-3 {
+                grid-template-columns: 1fr !important;
+            }
+            .lg\:col-span-2 {
+                grid-column: span 1 !important;
+            }
+            .p-6 {
+                padding: 0.75rem !important;
+            }
+            .p-5 {
+                padding: 0.75rem !important;
+            }
+            .px-6 {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+            .py-4 {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+            .text-2xl {
+                font-size: 1.25rem !important;
+            }
+            .text-lg {
+                font-size: 1rem !important;
+            }
+            .gap-6 {
+                gap: 0.75rem !important;
+            }
+            .space-y-6 > * + * {
+                margin-top: 0.75rem !important;
+            }
+            .qty-rate-group .grid-cols-3 {
+                grid-template-columns: 1fr 1fr;
+            }
+            .floating-action {
+                bottom: 1rem;
+                right: 1rem;
+            }
+            .floating-action button {
+                width: 2.75rem;
+                height: 2.75rem;
+                font-size: 0.875rem;
+            }
+            .hide-mobile {
+                display: none !important;
+            }
+            .transaction-mobile-card {
+                background: #f8fafc;
+                border-radius: 0.75rem;
+                padding: 0.75rem;
+                margin-bottom: 0.5rem;
+                border: 1px solid #e2e8f0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .qty-rate-group .grid-cols-3 {
+                grid-template-columns: 1fr;
+            }
+            .gap-4 {
+                gap: 0.5rem !important;
+            }
+            .space-y-4 > * + * {
+                margin-top: 0.5rem !important;
+            }
+            .text-sm {
+                font-size: 0.75rem !important;
+            }
+            .text-xs {
+                font-size: 0.65rem !important;
+            }
+            .px-4 {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+            .py-3 {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+        }
+
+        /* ============================================================
+           PRINT STYLES - FIXED
+           ============================================================ */
+        @media print {
+            /* Hide everything except main content */
+            header,
+            #sidebar,
+            #sidebarOverlay,
+            .mobile-menu-btn,
+            .floating-action,
+            .no-print,
+            #previewModal,
+            #editModal,
+            .file-chip,
+            .transaction-row button,
+            [onclick]:not(.print-header *),
+            button:not(.print-header *),
+            .badge,
+            .no-print {
+                display: none !important;
+            }
+
+            /* Show main content full width */
+            #mainContent {
+                margin-left: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            /* Print header */
+            .print-header {
+                display: block !important;
+                text-align: center;
+                padding: 1rem 0;
+                border-bottom: 2px solid #333;
+                margin-bottom: 1rem;
+            }
+
+            .print-header h1 {
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: #000;
+            }
+
+            .print-header .print-meta {
+                font-size: 0.75rem;
+                color: #666;
+                margin-top: 0.25rem;
+            }
+
+            /* Remove shadows and backgrounds */
+            .bg-white {
+                background: white !important;
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+            }
+
+            .shadow-lg {
+                box-shadow: none !important;
+            }
+
+            .rounded-xl {
+                border-radius: 0 !important;
+            }
+
+            .gradient-bg {
+                background: #f0f0f0 !important;
+                color: #000 !important;
+            }
+
+            .gradient-bg h3 {
+                color: #000 !important;
+            }
+
+            .gradient-bg p {
+                color: #555 !important;
+            }
+
+            .gradient-bg .text-white {
+                color: #000 !important;
+            }
+
+            .gradient-bg .text-blue-100 {
+                color: #555 !important;
+            }
+
+            .bg-gradient-to-r {
+                background: #f0f0f0 !important;
+            }
+
+            /* Table styles */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 0.65rem !important;
+            }
+
+            table th,
+            table td {
+                border: 1px solid #ddd !important;
+                padding: 0.3rem 0.4rem !important;
+                text-align: left !important;
+            }
+
+            table th {
+                background: #f5f5f5 !important;
+                font-weight: bold !important;
+                color: #000 !important;
+            }
+
+            /* Show all table rows */
+            .sm\:table-header-group {
+                display: table-header-group !important;
+            }
+
+            .sm\:table-row-group {
+                display: table-row-group !important;
+            }
+
+            .sm\:table-row {
+                display: table-row !important;
+            }
+
+            .sm\:table-cell {
+                display: table-cell !important;
+            }
+
+            /* Force table to show all columns */
+            .hide-mobile {
+                display: table-cell !important;
+            }
+
+            /* Amount colors in print */
+            .amount-debit,
+            .amount-credit {
+                color: #000 !important;
+            }
+
+            /* Summary cards */
+            .summary-card {
+                background: #f9f9f9 !important;
+                border: 1px solid #ddd !important;
+                padding: 0.5rem !important;
+            }
+
+            .summary-card .text-2xl {
+                font-size: 1.1rem !important;
+            }
+
+            /* Print layout */
+            .print-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+
+            /* Footer */
+            .print-footer {
+                display: block !important;
+                text-align: center;
+                font-size: 0.65rem;
+                color: #999;
+                border-top: 1px solid #ddd;
+                padding-top: 0.5rem;
+                margin-top: 1rem;
+            }
+
+            /* Task meta section */
+            #taskMetaSection .stat-card {
+                border-left: 3px solid #333 !important;
+                background: #f9f9f9 !important;
+                padding: 0.5rem !important;
+            }
+
+            #taskMetaSection .stat-card p {
+                color: #000 !important;
+            }
+
+            /* Dark backgrounds in print */
+            .bg-blue-50,
+            .bg-green-50,
+            .bg-purple-50,
+            .bg-orange-50 {
+                background: #f5f5f5 !important;
+            }
+
+            .text-blue-600,
+            .text-green-600,
+            .text-purple-600,
+            .text-orange-600 {
+                color: #000 !important;
+            }
+
+            /* Hide scrollbars */
+            .overflow-x-auto {
+                overflow: visible !important;
+            }
+
+            /* DO NOT force hidden elements to show */
+            .hidden {
+                display: none !important;
+            }
+
+            /* Only show hidden elements that are specifically for print */
+            .print-only {
+                display: block !important;
+            }
+
+            /* QTY/RATE in print */
+            .qty-rate-group {
+                background: #f5f5f5 !important;
+                border: 1px solid #ddd !important;
+            }
+
+            /* Transaction mobile card - hide in print */
+            .transaction-mobile-card {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+
+            /* Type badge in print */
+            .type-badge {
+                border: 1px solid #000 !important;
+                background: transparent !important;
+                color: #000 !important;
+            }
+        }
+
+        /* Print header - hidden by default */
+        .print-header,
+        .print-footer,
+        .print-user-info {
+            display: none;
+        }
+
+        /* ============================================================
+           SCROLLBAR STYLING
+           ============================================================ */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 
-<body class="bg-gray-50 font-sans">
-    <!-- Top Navigation -->
+<body class="bg-gray-50 font-sans antialiased">
+    <!-- ============================================================
+    SIDEBAR OVERLAY (Mobile)
+    ============================================================ -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- ============================================================
+    HEADER
+    ============================================================ -->
     <?php include '../elements/header.php'; ?>
 
-    <!-- Sidebar -->
+    <!-- ============================================================
+    SIDEBAR
+    ============================================================ -->
     <?php include '../elements/aside.php'; ?>
-    
-    <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
+
+    <!-- ============================================================
+    MODALS
+    ============================================================ -->
+    <?php include '../elements/preview-model.php'; ?>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Edit Transaction</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
+            <div class="p-4">
+                <form id="editTransactionForm" onsubmit="updateTransaction(event)">
+                    <input type="hidden" id="edit_transaction_id">
+                    <input type="hidden" id="edit_original_type">
+                    <input type="hidden" id="edit_vendor_type" value="">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                        <div id="edit_type_display" class="px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium"></div>
+                    </div>
+                    
+                    <div id="edit_selection_container" class="mb-4 hidden">
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Type</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="edit_account_type" value="vendor" class="form-radio text-blue-600" onchange="toggleEditSelection()">
+                                    <span class="ml-2">Vendor</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="edit_account_type" value="own" class="form-radio text-blue-600" onchange="toggleEditSelection()">
+                                    <span class="ml-2">Own Account</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="edit_vendor_container">
+                            <?php include('form-selects/vendors-edit.php') ?>
+                        </div>
+                        <div id="edit_account_container" class="hidden">
+                            <?php include('form-selects/accounts-edit.php') ?>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                        <textarea id="edit_purpose" rows="3" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            required></textarea>
+                    </div>
+                    
+                    <div class="mb-4 qty-rate-group">
+                        <p class="text-xs text-blue-600 font-medium mb-2">
+                            <i class="fas fa-calculator mr-1"></i>
+                            যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
+                        </p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block label-sm mb-1">QTY</label>
+                                <input type="number" step="0.01" min="0" id="edit_qty" placeholder="0"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field">
+                            </div>
+                            <div>
+                                <label class="block label-sm mb-1">Rate</label>
+                                <input type="number" step="0.01" min="0" id="edit_rate" placeholder="0.00"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field">
+                            </div>
+                            <div>
+                                <label class="block label-sm mb-1">Amount ৳</label>
+                                <input type="number" step="0.01" min="0" id="edit_amount" placeholder="0.00"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="datetime-local" id="edit_date"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeEditModal()"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="fas fa-save mr-2"></i> Update
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
-    <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
-        <!-- Task Overview Section -->
-        <div class="p-6">
-            <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Financial Transaction Management</h1>
-                        <p class="text-gray-600 mt-1">Manage all financial transactions for this task</p>
-                    </div>
-                    <div class="mt-4 lg:mt-0 flex space-x-3">
-                        <a href="task-entry.php?work_id=<?php echo $workId; ?>"
-                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center">
-                            <i class="fas fa-arrow-left mr-2"></i> Back to Tasks
-                        </a>
-                        <button onclick="printPage()"
-                            class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors flex items-center">
-                            <i class="fas fa-print mr-2"></i> Print Report
-                        </button>
-                        <a href="create-vendor.php"
-                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center">
-                            <i class="fas fa-plus mr-2"></i> Create a New Vendor
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Task Meta Data Section -->
-                <div id="taskMetaSection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <!-- Loading skeleton -->
-                    <div class="animate-pulse">
-                        <div class="h-24 bg-gray-200 rounded-lg"></div>
-                    </div>
-                </div>
-
-                <!-- File Attachments -->
-                <div id="fileAttachments" class="mb-6">
-                    <!-- Files will be loaded here -->
-                </div>
+    <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+    <main id="mainContent" class="pt-16 transition-all duration-300">
+        <!-- Print Header -->
+        <div class="print-header">
+            <h1>Financial Transaction Report</h1>
+            <div class="print-meta">
+                <span>Generated: <?php echo date('Y-m-d H:i:s'); ?></span>
+                <span class="mx-2">|</span>
+                <span>User: <?php echo $_SESSION['user_name'] ?? 'System'; ?></span>
+                <span class="mx-2">|</span>
+                <span>Work ID: <?php echo $workId; ?></span>
+                <span class="mx-2">|</span>
+                <span>Task ID: <?php echo $taskId; ?></span>
             </div>
         </div>
 
-        <!-- Main Content Grid -->
-        <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Left Column: Transaction Entry -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Transaction Entry Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Debit Card -->
+        <!-- ============================================================
+        TASK OVERVIEW
+        ============================================================ -->
+        <div class="p-4 sm:p-6 no-print">
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-100">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Financial Transaction Management</h1>
+                        <p class="text-sm sm:text-base text-gray-600 mt-1">Manage all financial transactions for this task</p>
+                    </div>
+                    <div class="mt-3 sm:mt-0 flex flex-wrap gap-2">
+                        <a href="task-entry.php?work_id=<?php echo $workId; ?>"
+                            class="px-3 sm:px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center text-sm">
+                            <i class="fas fa-arrow-left mr-2"></i> <span class="hidden xs:inline">Back</span>
+                        </a>
+                        <button onclick="printPage()"
+                            class="px-3 sm:px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors flex items-center text-sm">
+                            <i class="fas fa-print mr-2"></i> <span class="hidden xs:inline">Print</span>
+                        </button>
+                        <a href="create-vendor.php"
+                            class="px-3 sm:px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center text-sm">
+                            <i class="fas fa-plus mr-2"></i> <span class="hidden xs:inline">Vendor</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="taskMetaSection" class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div class="animate-pulse"><div class="h-20 sm:h-24 bg-gray-200 rounded-lg"></div></div>
+                </div>
+
+                <div id="fileAttachments" class="mb-4"></div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+        MAIN GRID
+        ============================================================ -->
+        <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <!-- Left Column -->
+            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+                <!-- Transaction Cards - Hidden in Print -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 no-print">
+                    
+                    <!-- DEBIT CARD -->
                     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-                        <div class="gradient-bg p-4">
+                        <div class="gradient-bg p-3 sm:p-4">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <h3 class="text-lg font-semibold text-white">Client Deposit (Debit)</h3>
-                                    <p class="text-blue-100 text-sm">Record client payments</p>
+                                    <h3 class="text-base sm:text-lg font-semibold text-white">Client Deposit</h3>
+                                    <p class="text-blue-100 text-xs sm:text-sm">Record client payments</p>
                                 </div>
-                                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-arrow-down text-white text-xl"></i>
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-arrow-down text-white text-lg sm:text-xl"></i>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="p-5">
-                            <div id="clientWorkInfo" class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div class="p-3 sm:p-5 space-y-3 sm:space-y-4">
+                            <div id="clientWorkInfo" class="p-3 bg-blue-50 rounded-lg border border-blue-100">
                                 <div class="flex items-center">
                                     <i class="fas fa-info-circle text-blue-500 mr-2"></i>
-                                    <span class="text-sm text-blue-700">Loading client information...</span>
+                                    <span class="text-xs sm:text-sm text-blue-700">Loading...</span>
                                 </div>
                             </div>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="fas fa-bullseye mr-1"></i> Purpose
-                                    </label>
-                                    <textarea type="text"
-                                        id="client_purpose"
-                                        placeholder="e.g., Initial Payment, Final Payment, Extra Service" rows="6"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="fa-solid fa-highlighter mr-1"></i> Note
-                                    </label>
-                                    <textarea type="text"
-                                        id="client_note"
-                                        placeholder="e.g., Any types of Note that can help you future..." rows="2"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"></textarea>
-                                </div>
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-bullseye mr-1"></i> Purpose
+                                </label>
+                                <textarea id="client_purpose" rows="4"
+                                    placeholder="e.g., Initial Payment, Final Payment"
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
 
-                                <!-- QTY / RATE / AMOUNT - Auto Calculate -->
-                                <div class="qty-rate-group">
-                                    <p class="text-xs text-blue-600 font-medium mb-2">
-                                        <i class="fas fa-calculator mr-1"></i>
-                                        যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
-                                    </p>
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <label class="block label-sm mb-1">QTY</label>
-                                            <input type="number" step="0.01" min="0" id="client_qty" placeholder="0"
-                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 text-sm calc-field">
-                                        </div>
-                                        <div>
-                                            <label class="block label-sm mb-1">Rate</label>
-                                            <input type="number" step="0.01" min="0" id="client_rate" placeholder="0.00"
-                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 text-sm calc-field">
-                                        </div>
-                                        <div>
-                                            <label class="block label-sm mb-1">Amount ৳</label>
-                                            <input type="number" step="0.01" min="0" id="client_amount" placeholder="0.00"
-                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 text-sm calc-field">
-                                        </div>
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fa-solid fa-highlighter mr-1"></i> Note
+                                </label>
+                                <textarea id="client_note" rows="2"
+                                    placeholder="Any notes..."
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+
+                            <div class="qty-rate-group">
+                                <p class="text-xs text-blue-600 font-medium mb-2">
+                                    <i class="fas fa-calculator mr-1"></i> যেকোনো দুইটা দিলে তৃতীয়টা auto হবে
+                                </p>
+                                <div class="grid grid-cols-3 gap-1 sm:gap-2">
+                                    <div>
+                                        <label class="block label-sm mb-1">QTY</label>
+                                        <input type="number" step="0.01" min="0" id="client_qty" placeholder="0"
+                                            class="w-full px-2 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm calc-field">
+                                    </div>
+                                    <div>
+                                        <label class="block label-sm mb-1">Rate</label>
+                                        <input type="number" step="0.01" min="0" id="client_rate" placeholder="0.00"
+                                            class="w-full px-2 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm calc-field">
+                                    </div>
+                                    <div>
+                                        <label class="block label-sm mb-1">Amount ৳</label>
+                                        <input type="number" step="0.01" min="0" id="client_amount" placeholder="0.00"
+                                            class="w-full px-2 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm calc-field">
                                     </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="far fa-calendar mr-1"></i> Date
-                                    </label>
-                                    <input type="date"
-                                        id="client_date"
-                                        value="<?php echo date('Y-m-d'); ?>"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                                </div>
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="far fa-calendar mr-1"></i> Date
+                                </label>
+                                <input type="date" id="client_date" value="<?php echo date('Y-m-d'); ?>"
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
 
-                                <div class="grid grid-cols-2 gap-4">
-                                    <button onclick="refundTransaction('credit')"
-                                        class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                        <i class="fas fa-plus-circle mr-2"></i> Refund
-                                    </button>
-                                    <button onclick="recordTransaction('debit')"
-                                        class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                        <i class="fas fa-plus-circle mr-2"></i> Record Debit
-                                    </button>
-                                </div>
+                            <div class="grid grid-cols-2 gap-2 sm:gap-4">
+                                <button onclick="refundTransaction('credit')"
+                                    class="w-full py-2 sm:py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all text-xs sm:text-sm flex items-center justify-center">
+                                    <i class="fas fa-undo mr-1 sm:mr-2"></i> Refund
+                                </button>
+                                <button onclick="recordTransaction('debit')"
+                                    class="w-full py-2 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all text-xs sm:text-sm flex items-center justify-center">
+                                    <i class="fas fa-plus mr-1 sm:mr-2"></i> Debit
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Credit Card -->
+                    <!-- CREDIT CARD -->
                     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-                        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-4">
+                        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-3 sm:p-4">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <h3 class="text-lg font-semibold text-white">Vendor Payment (Credit)</h3>
-                                    <p class="text-green-100 text-sm">Record vendor expenses</p>
+                                    <h3 class="text-base sm:text-lg font-semibold text-white">Vendor Payment</h3>
+                                    <p class="text-green-100 text-xs sm:text-sm">Record vendor expenses</p>
                                 </div>
-                                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-arrow-up text-white text-xl"></i>
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-arrow-up text-white text-lg sm:text-xl"></i>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="p-5">
-                            <div class="mb-4">
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-3">
-                                        <i class="fa-solid fa-shapes mr-1"></i> Select Type
-                                    </label>
-                                    
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <input type="radio" id="type-vendor" name="account_type" value="vendor" class="hidden peer" checked required>
-                                            <label for="type-vendor" class="flex flex-col items-center justify-center p-4 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
-                                                <i class="fa-solid fa-shop mb-2 text-2xl"></i>
-                                                <span class="text-sm font-semibold">Vendor</span>
-                                            </label>
-                                        </div>
-                                
-                                        <div>
-                                            <input type="radio" id="type-own" name="account_type" value="own" class="hidden peer">
-                                            <label for="type-own" class="flex flex-col items-center justify-center p-4 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
-                                                <i class="fa-solid fa-user mb-2 text-2xl"></i>
-                                                <span class="text-sm font-semibold">Own Account</span>
-                                            </label>
-                                        </div>
+                        <div class="p-3 sm:p-5 space-y-3 sm:space-y-4">
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fa-solid fa-shapes mr-1"></i> Select Type
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <input type="radio" id="type-vendor" name="account_type" value="vendor" class="hidden peer" checked>
+                                        <label for="type-vendor" class="flex flex-col items-center justify-center p-3 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                            <i class="fa-solid fa-shop mb-1 text-xl"></i>
+                                            <span class="text-xs font-semibold">Vendor</span>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="type-own" name="account_type" value="own" class="hidden peer">
+                                        <label for="type-own" class="flex flex-col items-center justify-center p-3 text-gray-500 bg-white border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                            <i class="fa-solid fa-user mb-1 text-xl"></i>
+                                            <span class="text-xs font-semibold">Own</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Vendor section - visible by default -->
-                            <div id="vendorSection" class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
+
+                            <div id="vendorSection">
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                     <i class="fas fa-building mr-1"></i> Vendor
                                 </label>
                                 <?php include('form-selects/vendors.php') ?>
                             </div>
-                            
-                            <!-- Own Account section - hidden by default -->
-                            <div id="accountSection" class="mb-4 hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
+
+                            <div id="accountSection" class="hidden">
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                     <i class="fas fa-building mr-1"></i> Own Account
                                 </label>
                                 <?php include('form-selects/accounts.php') ?>
                             </div>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="fas fa-bullseye mr-1"></i> Purpose
-                                    </label>
-                                    <textarea type="text"
-                                        id="vendor_purpose"
-                                        placeholder="e.g., Hotel Booking, Air Ticket, Service Fee" rows="6"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"></textarea>
-                                </div>
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-bullseye mr-1"></i> Purpose
+                                </label>
+                                <textarea id="vendor_purpose" rows="4"
+                                    placeholder="e.g., Hotel Booking, Air Ticket"
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
+                            </div>
 
-                                <!-- QTY / RATE / AMOUNT - Auto Calculate -->
-                                <div class="qty-rate-group" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac;">
-                                    <p class="text-xs text-emerald-600 font-medium mb-2">
-                                        <i class="fas fa-calculator mr-1"></i>
-                                        যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
-                                    </p>
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <label class="block label-sm mb-1" style="color: #065f46;">QTY</label>
-                                            <input type="number" step="0.01" min="0" id="vendor_qty" placeholder="0"
-                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 text-sm calc-field">
-                                        </div>
-                                        <div>
-                                            <label class="block label-sm mb-1" style="color: #065f46;">Rate</label>
-                                            <input type="number" step="0.01" min="0" id="vendor_rate" placeholder="0.00"
-                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 text-sm calc-field">
-                                        </div>
-                                        <div>
-                                            <label class="block label-sm mb-1" style="color: #065f46;">Amount ৳</label>
-                                            <input type="number" step="0.01" min="0" id="vendor_amount" placeholder="0.00"
-                                                class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 text-sm calc-field">
-                                        </div>
+                            <div class="qty-rate-group" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac;">
+                                <p class="text-xs text-emerald-600 font-medium mb-2">
+                                    <i class="fas fa-calculator mr-1"></i> যেকোনো দুইটা দিলে তৃতীয়টা auto হবে
+                                </p>
+                                <div class="grid grid-cols-3 gap-1 sm:gap-2">
+                                    <div>
+                                        <label class="block label-sm mb-1" style="color: #065f46;">QTY</label>
+                                        <input type="number" step="0.01" min="0" id="vendor_qty" placeholder="0"
+                                            class="w-full px-2 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm calc-field">
+                                    </div>
+                                    <div>
+                                        <label class="block label-sm mb-1" style="color: #065f46;">Rate</label>
+                                        <input type="number" step="0.01" min="0" id="vendor_rate" placeholder="0.00"
+                                            class="w-full px-2 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm calc-field">
+                                    </div>
+                                    <div>
+                                        <label class="block label-sm mb-1" style="color: #065f46;">Amount ৳</label>
+                                        <input type="number" step="0.01" min="0" id="vendor_amount" placeholder="0.00"
+                                            class="w-full px-2 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm calc-field">
                                     </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        <i class="far fa-calendar mr-1"></i> Date
-                                    </label>
-                                    <input type="date"
-                                        id="vendor_date"
-                                        value="<?php echo date('Y-m-d'); ?>"
-                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                                </div>
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="far fa-calendar mr-1"></i> Date
+                                </label>
+                                <input type="date" id="vendor_date" value="<?php echo date('Y-m-d'); ?>"
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                            </div>
 
-                                <div class="grid grid-cols-2 gap-4">
-                                    <button onclick="refundTransaction('debit')"
-                                        class="w-full mt-2 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                        <i class="fas fa-plus-circle mr-2"></i> Refund
-                                    </button>
-                                    <button onclick="recordTransaction('credit')"
-                                        class="w-full mt-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center">
-                                        <i class="fas fa-plus-circle mr-2"></i> Record Credit
-                                    </button>
-                                </div>
+                            <div class="grid grid-cols-2 gap-2 sm:gap-4">
+                                <button onclick="refundTransaction('debit')"
+                                    class="w-full py-2 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all text-xs sm:text-sm flex items-center justify-center">
+                                    <i class="fas fa-undo mr-1 sm:mr-2"></i> Refund
+                                </button>
+                                <button onclick="recordTransaction('credit')"
+                                    class="w-full py-2 sm:py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all text-xs sm:text-sm flex items-center justify-center">
+                                    <i class="fas fa-plus mr-1 sm:mr-2"></i> Credit
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Financial Summary -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900">
+                <!-- ==================== FINANCIAL SUMMARY ==================== -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5">
+                    <div class="flex flex-wrap items-center justify-between mb-3 sm:mb-4 no-print">
+                        <h3 class="text-base sm:text-lg font-semibold text-gray-900">
                             <i class="fas fa-chart-line mr-2 text-blue-500"></i> Financial Summary
                         </h3>
                         <button onclick="reloadFinancialTable()"
-                            class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm flex items-center">
-                            <i class="fas fa-redo-alt mr-1"></i> Refresh
+                            class="px-2 sm:px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs sm:text-sm flex items-center">
+                            <i class="fas fa-redo-alt mr-1"></i> <span class="hidden xs:inline">Refresh</span>
                         </button>
                     </div>
 
-                    <div id="financialSummary" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <!-- Summary will be loaded here -->
+                    <!-- Print-only summary title -->
+                    <div class="print-only hidden text-center font-bold text-lg mb-4">
+                        Financial Summary
                     </div>
 
+                    <div id="financialSummary" class="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6"></div>
+
                     <!-- Transactions Table -->
-                    <div>
-                        <div class="overflow-x-auto rounded-lg border border-gray-200">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client/Vendor</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">QTY</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="finTableBody" class="bg-white divide-y divide-gray-200">
-                                    <!-- Transactions will be loaded here -->
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 -mx-1">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sm:table-header-group">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase hide-mobile">Note</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase hide-mobile">Client/Vendor</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase hide-mobile">QTY</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase hide-mobile">Rate</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase no-print">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Column: Stats and Info -->
-            <div class="space-y-6">
-                <!-- Task Info Card -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-5">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <!-- ==================== RIGHT COLUMN ==================== -->
+            <div class="space-y-4 sm:space-y-6">
+                <!-- Task Info -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
                         <i class="fas fa-info-circle mr-2 text-blue-500"></i> Task Information
                     </h3>
-
-                    <div class="space-y-3">
+                    <div class="space-y-2 text-sm">
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Task ID:</span>
-                            <span class="text-sm font-semibold text-gray-900" id="taskIdDisplay"></span>
+                            <span class="text-gray-600">Task ID:</span>
+                            <span class="font-semibold text-gray-900" id="taskIdDisplay"></span>
                         </div>
-                        
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Task Name:</span>
-                            <span class="text-sm font-semibold text-gray-900" id="taskNameDisplay"></span>
+                            <span class="text-gray-600">Task Name:</span>
+                            <span class="font-semibold text-gray-900" id="taskNameDisplay"></span>
                         </div>
-
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Category:</span>
-                            <span class="text-sm font-semibold" id="taskCategory"></span>
+                            <span class="text-gray-600">Category:</span>
+                            <span class="font-semibold" id="taskCategory"></span>
                         </div>
-
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Created:</span>
-                            <span class="text-sm text-gray-900" id="taskCreated"></span>
+                            <span class="text-gray-600">Created:</span>
+                            <span class="text-gray-900" id="taskCreated"></span>
                         </div>
-
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Last Updated:</span>
-                            <span class="text-sm text-gray-900" id="taskUpdated"></span>
+                            <span class="text-gray-600">Updated:</span>
+                            <span class="text-gray-900" id="taskUpdated"></span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Quick Stats -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-5">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <i class="fas fa-chart-bar mr-2 text-purple-500"></i> Quick Statistics
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-purple-500"></i> Statistics
                     </h3>
-
-                    <div class="space-y-4">
+                    <div class="space-y-3">
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-sm text-gray-600">Total Transactions</span>
-                                <span class="text-sm font-semibold text-gray-900" id="totalTransactions">0</span>
+                                <span class="text-xs sm:text-sm text-gray-600">Total Transactions</span>
+                                <span class="text-xs sm:text-sm font-semibold" id="totalTransactions">0</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
                                 <div id="transactionProgress" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
                             </div>
                         </div>
-
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-sm text-gray-600">Debit vs Credit Ratio</span>
-                                <span class="text-sm font-semibold text-gray-900" id="debitCreditRatio">0:0</span>
+                                <span class="text-xs sm:text-sm text-gray-600">Debit vs Credit</span>
+                                <span class="text-xs sm:text-sm font-semibold" id="debitCreditRatio">0:0</span>
                             </div>
                             <div class="flex h-2 rounded-full overflow-hidden">
                                 <div id="debitBar" class="bg-red-500" style="width: 50%"></div>
                                 <div id="creditBar" class="bg-green-500" style="width: 50%"></div>
                             </div>
                         </div>
-
-                        <div class="pt-4 border-t border-gray-100">
+                        <div class="pt-2 border-t">
                             <div class="text-center">
-                                <div class="text-2xl font-bold mb-1" id="netBalance">৳ 0.00</div>
-                                <div class="text-sm text-gray-600">Net Balance</div>
+                                <div class="text-xl sm:text-2xl font-bold mb-1" id="netBalance">৳ 0.00</div>
+                                <div class="text-xs text-gray-600">Net Balance</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Recent Activity -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-5">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5 no-print">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
                         <i class="fas fa-history mr-2 text-orange-500"></i> Recent Activity
                     </h3>
-
-                    <div id="recentActivity" class="space-y-3">
-                        <!-- Activity items will be loaded here -->
-                    </div>
+                    <div id="recentActivity" class="space-y-2"></div>
                 </div>
             </div>
+        </div>
+
+        <!-- Print Footer -->
+        <div class="print-footer">
+            <p>Generated from Task Management System | <?php echo date('Y-m-d H:i:s'); ?></p>
+            <p>Printed by: <?php echo $_SESSION['user_name'] ?? 'System'; ?></p>
         </div>
     </main>
-    
-    <!-- Edit Transaction Modal -->
-    <div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-900" id="editModalTitle">Edit Transaction</h3>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <form id="editTransactionForm" onsubmit="updateTransaction(event)">
-                <input type="hidden" id="edit_transaction_id">
-                <input type="hidden" id="edit_original_type">
-                <input type="hidden" id="edit_vendor_type" value="">
-                
-                <!-- Transaction Type Display -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
-                    <div id="edit_type_display" class="px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium"></div>
-                </div>
-                
-                <!-- Vendor/Account Selection Container (for credits only) -->
-                <div id="edit_selection_container" class="mb-4 hidden">
-                    <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Type</label>
-                        <div class="flex space-x-4">
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="edit_account_type" value="vendor" class="form-radio text-blue-600" onchange="toggleEditSelection()">
-                                <span class="ml-2">Vendor</span>
-                            </label>
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="edit_account_type" value="own" class="form-radio text-blue-600" onchange="toggleEditSelection()">
-                                <span class="ml-2">Own Account</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Vendor Search Container (will be populated dynamically) -->
-                    <div id="edit_vendor_container">
-                        <?php include('form-selects/vendors-edit.php') ?>
-                    </div>
-                    
-                    
-                    <!-- Account Search Container (will be populated dynamically) -->
-                    <div id="edit_account_container" class="hidden">
-                        <?php include('form-selects/accounts-edit.php') ?>
-                    </div>
-                </div>
-                
-                <!-- Purpose -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
-                    <textarea id="edit_purpose" rows="3" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required></textarea>
-                </div>
-                
-                <!-- QTY / RATE / AMOUNT - Edit Modal -->
-                <div class="mb-4 qty-rate-group">
-                    <p class="text-xs text-blue-600 font-medium mb-2">
-                        <i class="fas fa-calculator mr-1"></i>
-                        যেকোনো দুইটা দিলে তৃতীয়টা auto calculate হবে
-                    </p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="block label-sm mb-1">QTY</label>
-                            <input type="number" step="0.01" min="0" id="edit_qty" placeholder="0"
-                                class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field">
-                        </div>
-                        <div>
-                            <label class="block label-sm mb-1">Rate</label>
-                            <input type="number" step="0.01" min="0" id="edit_rate" placeholder="0.00"
-                                class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field">
-                        </div>
-                        <div>
-                            <label class="block label-sm mb-1">Amount ৳</label>
-                            <input type="number" step="0.01" min="0" id="edit_amount" placeholder="0.00"
-                                class="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm calc-field" required>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Date -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    <input type="datetime-local" id="edit_date"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required>
-                </div>
-                
-                <!-- Buttons -->
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="closeEditModal()"
-                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
-                        <i class="fas fa-save mr-2"></i> Update Transaction
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
 
-    <!-- Floating Quick Access Tab -->
-    <?php include '../elements/floating-menus.php'; ?>
-
-    <!-- Floating Action Button -->
-    <div class="floating-action">
+    <!-- ============================================================
+    FLOATING ACTION
+    ============================================================ -->
+    <div class="floating-action no-print">
         <button onclick="scrollToTop()"
-            class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center">
-            <i class="fas fa-arrow-up"></i>
+            class="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center">
+            <i class="fas fa-arrow-up text-sm sm:text-base"></i>
         </button>
     </div>
 
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
         const GET_CLIENT_API = "<?php echo $getClientsApi; ?>";
         const FINANCIAL_ENTRIES_STORE_API = "<?php echo $storeFinancialEntriesApi; ?>";
         const UPDATE_FINANCIAL_ENTRY_API = "<?php echo $ip_port; ?>api/financial_entries/update.php";
@@ -732,28 +1101,46 @@ try {
         let WORK_TITLE = '';
         let TASK_TITLE = '';
 
-        // DOM Elements
-        const taskMetaSection = document.getElementById('taskMetaSection');
-        const fileAttachments = document.getElementById('fileAttachments');
-        const financialSummary = document.getElementById('financialSummary');
-        const recentActivity = document.getElementById('recentActivity');
+        // ============================================================
+        // SIDEBAR TOGGLE
+        // ============================================================
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+        }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadTaskMetaData();
-            loadClientData();
-            loadFinancialData();
-            setupEventListeners();
-            setupQtyRateCalc();  // NEW: QTY/RATE/AMOUNT auto-calc
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('open')) {
+                    toggleSidebar();
+                }
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
         });
 
         // ============================================================
-        // QTY / RATE / AMOUNT AUTO-CALCULATE
-        // Logic: যেকোনো দুইটা field এ value দিলে তৃতীয়টা auto calculate হবে
-        // qty × rate = amount
-        // amount ÷ qty = rate
-        // amount ÷ rate = qty
-        // "last edited" field টা auto-calculate এর target হয় না
+        // PRINT FUNCTION
+        // ============================================================
+        function printPage() {
+            window.print();
+        }
+
+        // ============================================================
+        // QTY/RATE/AMOUNT AUTO-CALC
         // ============================================================
         function setupQtyRateCalc() {
             setupCalcGroup('client_qty', 'client_rate', 'client_amount');
@@ -775,10 +1162,8 @@ try {
                 const rate = parseFloat(rateEl.value) || null;
                 const amount = parseFloat(amountEl.value) || null;
 
-                // Remove previous highlight
                 [qtyEl, rateEl, amountEl].forEach(el => el.classList.remove('calc-result'));
 
-                // lastEdited টা auto-fill হবে না, বাকি দুইটা থেকে calculate
                 if (lastEdited !== 'amount' && qty !== null && rate !== null && qty > 0 && rate > 0) {
                     amountEl.value = (qty * rate).toFixed(2);
                     amountEl.classList.add('calc-result');
@@ -796,7 +1181,6 @@ try {
             amountEl.addEventListener('input', () => { lastEdited = 'amount'; smartCalc(); });
         }
 
-        // Build qty_rate JSON string
         function buildQtyRate(qtyId, rateId) {
             const qty = parseFloat(document.getElementById(qtyId)?.value) || null;
             const rate = parseFloat(document.getElementById(rateId)?.value) || null;
@@ -805,30 +1189,32 @@ try {
         }
 
         // ============================================================
-        // TASK META DATA - with proper error handling
+        // TASK META DATA
         // ============================================================
         async function loadTaskMetaData() {
             try {
                 const response = await fetch(GET_TASK_API);
                 const data = await response.json();
-        
+
                 if (data.success && data.task) {
                     task = data.task;
                     const category = task.category;
                     
-                    WORK_TITLE = task.work_title;
-                    TASK_TITLE = task.title;
+                    WORK_TITLE = task.work_title || '';
+                    TASK_TITLE = task.title || '';
                     let text = '';
                     let container = document.getElementById("client_purpose");
                     
                     try {
                         if (category == 1 && task.air_ticket_info) {
                             const raw = JSON.parse(task.air_ticket_info);
-                            if (raw && Array.isArray(raw) && raw.length > 0 && raw[0]) {
+                            if (raw && raw.length > 0 && raw[0]) {
                                 const purposeData = JSON.parse(raw[0]);
-                                if (purposeData && purposeData.purpose && Array.isArray(purposeData.purpose)) {
+                                if (purposeData?.purpose?.length) {
                                     text = purposeData.purpose.map(p => {
-                                        return `${p.route || ''}\n${(p.passengers || []).join(", ")}\n${p.travel_date || ''}\n${(p.others || []).join(", ")}`;
+                                        const passengers = p.passengers?.join(", ") || '';
+                                        const others = p.others?.join(", ") || '';
+                                        return `${p.route || ''}\n${passengers}\n${p.travel_date || ''}\n${others}`;
                                     }).join("\n\n");
                                 }
                             }
@@ -836,25 +1222,23 @@ try {
                         
                         if (category == 2 && task.hotel_info) {
                             const raw = JSON.parse(task.hotel_info);
-                            if (raw && Array.isArray(raw) && raw.length > 0 && raw[0]) {
+                            if (raw && raw.length > 0 && raw[0]) {
                                 const parseData = JSON.parse(raw[0]);
                                 if (parseData) {
-                                    text = `${parseData.hotel_name || ''},\n${parseData.hotel_city || ''}, ${parseData.hotel_country || ''}\n${(parseData.guest_names || []).join(" | ")}\nC/In: ${parseData.check_in_date || ''} | C/Out: ${parseData.check_out_date || ''} | ${parseData.no_of_nights || 0} Nights\n${parseData.room_info || ''} | ${parseData.meal_plan || ''} | ${parseData.total_rooms || 0} Room('s)`;
+                                    const guests = parseData.guest_names?.join(" | ") || '';
+                                    text = `${parseData.hotel_name || ''},\n${parseData.hotel_city || ''}, ${parseData.hotel_country || ''}\n${guests}\nC/In: ${parseData.check_in_date || ''} | C/Out: ${parseData.check_out_date || ''} | ${parseData.no_of_nights || 0} Nights\n${parseData.room_info || ''} | ${parseData.meal_plan || ''} | ${parseData.total_rooms || 0} Room('s)`;
                                 }
                             }
                         }
                     } catch (parseError) {
-                        console.warn('Error parsing task data:', parseError);
-                        text = ''; // এখানে খালি রাখবো
+                        console.warn('Error parsing task details:', parseError);
                     }
                     
-                    container.value = text;
-        
-                    // Update task info card
+                    container.value = text || 'No task details available';
+
                     document.getElementById('taskIdDisplay').textContent = task.sys_id || 'N/A';
                     document.getElementById('taskNameDisplay').textContent = task.title || 'N/A';
-        
-                    // Category
+
                     let categoryText = 'Unknown';
                     let categoryColor = 'gray';
                     if (task.category == 1) {
@@ -865,26 +1249,21 @@ try {
                         categoryColor = 'green';
                     }
                     document.getElementById('taskCategory').textContent = categoryText;
-                    document.getElementById('taskCategory').classList.add(`text-${categoryColor}-600`);
-        
-                    // Meta data
+                    document.getElementById('taskCategory').className = `text-sm font-semibold text-${categoryColor}-600`;
+
                     const meta = task.meta_data ? JSON.parse(task.meta_data) : {};
                     const created = meta.created_by_date || {};
                     const updatedArray = meta.updated_by_date || [];
                     const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
-        
+
                     document.getElementById('taskCreated').textContent = created.date || 'N/A';
                     document.getElementById('taskUpdated').textContent = lastUpdate ? lastUpdate.date : 'N/A';
-        
-                    // Update task meta section
+
                     updateTaskMetaSection(task, meta);
-        
-                    // Load files
                     loadTaskFiles(task);
                 }
             } catch (error) {
                 console.error('Error loading task data:', error);
-                // ইউজারকে দেখানোর জন্য
                 document.getElementById('client_purpose').value = 'Error loading task data';
             }
         }
@@ -895,92 +1274,106 @@ try {
             const lastUpdate = updatedArray.length > 0 ? updatedArray[updatedArray.length - 1] : null;
 
             taskMetaSection.innerHTML = `
-                <div class="stat-card bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 p-4 rounded-lg">
+                <div class="stat-card bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 p-3 sm:p-4 rounded-lg">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-blue-600 font-medium">Task ID</p>
-                            <p class="text-xl font-bold text-blue-900">${task.sys_id || 'N/A'}</p>
+                            <p class="text-xs text-blue-600 font-medium">Task ID</p>
+                            <p class="text-base sm:text-xl font-bold text-blue-900">${task.sys_id || 'N/A'}</p>
                         </div>
-                        <i class="fas fa-hashtag text-blue-400 text-2xl"></i>
+                        <i class="fas fa-hashtag text-blue-400 text-lg sm:text-2xl"></i>
                     </div>
                 </div>
-                
-                <div class="stat-card bg-gradient-to-r from-green-50 to-green-100 border-green-200 p-4 rounded-lg">
+                <div class="stat-card bg-gradient-to-r from-green-50 to-green-100 border-green-200 p-3 sm:p-4 rounded-lg">
                     <div>
-                        <p class="text-sm text-green-600 font-medium">Work Title</p>
-                        <p class="text-lg font-semibold text-green-900 truncate">${task.work_title || 'N/A'}</p>
+                        <p class="text-xs text-green-600 font-medium">Work Title</p>
+                        <p class="text-sm sm:text-lg font-semibold text-green-900 truncate">${task.work_title || 'N/A'}</p>
                     </div>
                 </div>
-                
-                <div class="stat-card bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 p-4 rounded-lg">
+                <div class="stat-card bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 p-3 sm:p-4 rounded-lg">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-purple-600 font-medium">Created By</p>
-                            <p class="text-lg font-semibold text-purple-900 capitalize">${created.user || 'System'}</p>
+                            <p class="text-xs text-purple-600 font-medium">Created By</p>
+                            <p class="text-sm sm:text-lg font-semibold text-purple-900 capitalize">${created.user || 'System'}</p>
                             <p class="text-xs text-purple-600">${created.date || ''}</p>
                         </div>
-                        <i class="fas fa-user-plus text-purple-400 text-2xl"></i>
+                        <i class="fas fa-user-plus text-purple-400 text-lg sm:text-2xl"></i>
                     </div>
                 </div>
-                
-                <div class="stat-card bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 p-4 rounded-lg">
+                <div class="stat-card bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 p-3 sm:p-4 rounded-lg">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-orange-600 font-medium">${lastUpdate ? 'Last Updated' : 'No Updates'}</p>
+                            <p class="text-xs text-orange-600 font-medium">${lastUpdate ? 'Last Updated' : 'No Updates'}</p>
                             ${lastUpdate ? `
-                                <p class="text-lg font-semibold text-orange-900 capitalize">${lastUpdate.user}</p>
+                                <p class="text-sm sm:text-lg font-semibold text-orange-900 capitalize">${lastUpdate.user}</p>
                                 <p class="text-xs text-orange-600">${lastUpdate.date}</p>
                             ` : `
-                                <p class="text-lg font-semibold text-orange-900">-</p>
+                                <p class="text-sm sm:text-lg font-semibold text-orange-900">-</p>
                             `}
                         </div>
-                        <i class="fas fa-sync-alt text-orange-400 text-2xl"></i>
+                        <i class="fas fa-sync-alt text-orange-400 text-lg sm:text-2xl"></i>
                     </div>
                 </div>
             `;
         }
-        
+
         function loadTaskFiles(task) {
             if (!task || !clientName || !currentClientId) {
+                fileAttachments.innerHTML = `
+                    <div class="text-center py-3 text-gray-500 text-sm">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Loading files...</p>
+                    </div>
+                `;
                 return;
             }
-    
+
             try {
-                const files = task.all_file_name ? JSON.parse(task.all_file_name) : [];
+                let files = [];
+                if (task.all_file_name) {
+                    try {
+                        files = JSON.parse(task.all_file_name);
+                        if (!Array.isArray(files)) files = [];
+                    } catch (e) {
+                        console.warn('Error parsing file names:', e);
+                        files = [];
+                    }
+                }
 
                 if (files.length > 0) {
-                    const filesHTML = files.map((file) => {
+                    const filesHTML = files.filter(file => file).map((file) => {
                         const fileName = file.split('/').pop();
                         const fileExt = fileName.split('.').pop().toLowerCase();
                         let icon = 'fas fa-file';
                         let color = 'gray';
 
-                        if (['pdf'].includes(fileExt)) {
-                            icon = 'fas fa-file-pdf';
-                            color = 'red';
-                        } else if (['doc', 'docx'].includes(fileExt)) {
-                            icon = 'fas fa-file-word';
-                            color = 'blue';
-                        } else if (['xls', 'xlsx'].includes(fileExt)) {
-                            icon = 'fas fa-file-excel';
-                            color = 'green';
-                        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
-                            icon = 'fas fa-file-image';
-                            color = 'purple';
-                        } else if (['zip', 'rar', '7z'].includes(fileExt)) {
-                            icon = 'fas fa-file-archive';
-                            color = 'yellow';
-                        } else if (['txt', 'csv', 'json'].includes(fileExt)) {
-                            icon = 'fas fa-file-alt';
-                            color = 'indigo';
+                        const iconMap = {
+                            'pdf': ['fas fa-file-pdf', 'red'],
+                            'doc': ['fas fa-file-word', 'blue'],
+                            'docx': ['fas fa-file-word', 'blue'],
+                            'xls': ['fas fa-file-excel', 'green'],
+                            'xlsx': ['fas fa-file-excel', 'green'],
+                            'jpg': ['fas fa-file-image', 'purple'],
+                            'jpeg': ['fas fa-file-image', 'purple'],
+                            'png': ['fas fa-file-image', 'purple'],
+                            'gif': ['fas fa-file-image', 'purple'],
+                            'webp': ['fas fa-file-image', 'purple'],
+                            'zip': ['fas fa-file-archive', 'yellow'],
+                            'rar': ['fas fa-file-archive', 'yellow'],
+                            '7z': ['fas fa-file-archive', 'yellow'],
+                            'txt': ['fas fa-file-alt', 'indigo'],
+                            'csv': ['fas fa-file-alt', 'indigo'],
+                            'json': ['fas fa-file-alt', 'indigo']
+                        };
+                        
+                        if (iconMap[fileExt]) {
+                            [icon, color] = iconMap[fileExt];
                         }
                         
-                        const cleanClientName = clientName.replace(/\s+/g, '');
-                        const cleanWorkTitle  = WORK_TITLE.replace(/\s+/g, '_');
-                        const cleanTaskTitle  = TASK_TITLE;
-
-                        const safeFilePath =
-                            `/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}+${cleanWorkTitle}/tasks/${TASK_ID}+${cleanTaskTitle}/` +
+                        const cleanClientName = (clientName || '').replace(/\s+/g, '');
+                        const cleanWorkTitle = (WORK_TITLE || '').replace(/\s+/g, '_');
+                        const cleanTaskTitle = TASK_TITLE || '';
+                        
+                        const safeFilePath = `/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}+${cleanWorkTitle}/tasks/${TASK_ID}+${cleanTaskTitle}/` + 
                             file.replace(/'/g, "\\'").replace(/"/g, '\\"');
                             
                         return `
@@ -988,41 +1381,43 @@ try {
                                  href="${safeFilePath}" target="_blank"
                                  title="${fileName}">
                                 <i class="${icon} text-${color}-500 mr-1"></i>
-                                <span class="truncate max-w-[150px]">${fileName}</span>
+                                <span class="truncate max-w-[100px] sm:max-w-[150px]">${fileName}</span>
                             </a>
                         `;
                     }).join('');
 
                     fileAttachments.innerHTML = `
                         <div class="flex items-center justify-between mb-2">
-                            <h4 class="text-sm font-medium text-gray-700">
+                            <h4 class="text-xs sm:text-sm font-medium text-gray-700">
                                 <i class="fas fa-paperclip mr-1"></i> Attached Files (${files.length})
                             </h4>
                         </div>
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex flex-wrap gap-1 sm:gap-2">
                             ${filesHTML}
                         </div>
                     `;
                 } else {
                     fileAttachments.innerHTML = `
-                        <div class="text-center py-4 text-gray-500">
-                            <i class="fas fa-file text-3xl mb-2"></i>
-                            <p>No files attached to this task</p>
+                        <div class="text-center py-3 text-gray-500 text-sm">
+                            <i class="fas fa-file text-2xl mb-2"></i>
+                            <p>No files attached</p>
                         </div>
                     `;
                 }
             } catch (error) {
                 console.error('Error loading files:', error);
                 fileAttachments.innerHTML = `
-                    <div class="text-center py-4 text-red-500">
-                        <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                    <div class="text-center py-3 text-red-500 text-sm">
+                        <i class="fas fa-exclamation-circle text-2xl mb-2"></i>
                         <p>Error loading files</p>
                     </div>
                 `;
             }
         }
-        
-        // Load Client Data
+
+        // ============================================================
+        // CLIENT DATA
+        // ============================================================
         async function loadClientData() {
             try {
                 const response = await fetch(GET_CLIENT_API);
@@ -1033,23 +1428,20 @@ try {
                     const work = data.work;
 
                     currentClientId = client.sys_id;
-
-                    clientName = `${client.name}`;
-                    const workName = work.title;
+                    clientName = client.name;
 
                     document.getElementById('clientWorkInfo').innerHTML = `
                         <div class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold mr-3">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold mr-2 sm:mr-3 text-sm">
                                 ${clientName.charAt(0)}
                             </div>
-                            <div>
-                                <div class="font-semibold text-gray-900">${clientName}</div>
-                                <div class="text-sm text-gray-600">
-                                    ${client.email ? JSON.parse(client.email).primary || 'No email' : 'No email'} | 
-                                    ${client.phone ? JSON.parse(client.phone).primary_no || 'No phone' : 'No phone'}
-                                </div>                                
-                                <div class="text-xs text-gray-500 mt-1">
-                                    Work: <span class="font-medium">${workName}</span>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-semibold text-gray-900 text-sm sm:text-base truncate">${clientName}</div>
+                                <div class="text-xs sm:text-sm text-gray-600 truncate">
+                                    ${client.email ? JSON.parse(client.email).primary || 'No email' : 'No email'}
+                                </div>
+                                <div class="text-xs text-gray-500 mt-0.5">
+                                    Work: <span class="font-medium">${work.title}</span>
                                 </div>
                             </div>
                         </div>
@@ -1063,30 +1455,17 @@ try {
                 console.error('Error loading client data:', error);
             }
         }
-        
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
         function extractIds(value) {
             if (!value || typeof value !== 'string') return null;
-            
             const parts = value.split('|').map(v => v.trim());
-            
-            if (parts.length < 2) {
-                const idMatch = value.match(/^(\d+)/);
-                if (idMatch) {
-                    return {
-                        sys_id: idMatch[1],
-                        name: value.substring(idMatch[1].length).trim()
-                    };
-                }
-                return null;
-            }
-            
-            return {
-                sys_id: parts[0] || null,
-                name: parts[1] || null,
-            };
+            if (parts.length < 2) return null;
+            return { sys_id: parts[0] || null, name: parts[1] || null };
         }
-        
-        // Toggle between vendor and account sections
+
         function setupTypeToggle() {
             const vendorRadio = document.getElementById('type-vendor');
             const ownRadio = document.getElementById('type-own');
@@ -1103,26 +1482,20 @@ try {
             vendorRadio.addEventListener('change', toggle);
             ownRadio.addEventListener('change', toggle);
         }
-        
+
         function buildDateTime(dateOnly) {
             const now = new Date();
-        
-            const time =
-                String(now.getHours()).padStart(2, '0') + ':' +
-                String(now.getMinutes()).padStart(2, '0') + ':' +
-                String(now.getSeconds()).padStart(2, '0');
-        
+            const time = String(now.getHours()).padStart(2,'0') + ':' +
+                         String(now.getMinutes()).padStart(2,'0') + ':' +
+                         String(now.getSeconds()).padStart(2,'0');
             return `${dateOnly} ${time}`;
         }
 
         // ============================================================
-        // RECORD TRANSACTION (UPDATED with qty_rate)
+        // RECORD / REFUND TRANSACTIONS
         // ============================================================
         async function recordTransaction(type) {
             try {
-                const workId = WORK_ID;
-                const taskId = TASK_ID;
-
                 if (type === 'debit') {
                     const purpose = document.getElementById('client_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('client_amount').value);
@@ -1134,27 +1507,23 @@ try {
                         showNotification('Client ID not found', 'error');
                         return;
                     }
-
                     if (!purpose || !amount || amount <= 0) {
                         showNotification('Please enter valid purpose and amount', 'error');
                         return;
                     }
 
-                    const transactionData = {
+                    await saveTransaction({
                         type: 'debit',
                         amount: amount,
                         purpose: purpose,
                         client_id: currentClientId,
-                        work_id: workId,
-                        task_id: taskId,
+                        work_id: WORK_ID,
+                        task_id: TASK_ID,
                         date: buildDateTime(date),
                         ref: ref,
                         qty_rate: qtyRate
-                    };
+                    }, 'Debit');
 
-                    await saveTransaction(transactionData, 'Debit');
-
-                    // Clear form
                     document.getElementById('client_purpose').value = '';
                     document.getElementById('client_amount').value = '';
                     document.getElementById('client_qty').value = '';
@@ -1206,8 +1575,8 @@ try {
                         amount: amount,
                         purpose: purpose,
                         vendor_type: vendorType === 'vendor' ? 0 : 1,
-                        work_id: workId,
-                        task_id: taskId,
+                        work_id: WORK_ID,
+                        task_id: TASK_ID,
                         date: buildDateTime(date),
                         qty_rate: qtyRate
                     };
@@ -1220,7 +1589,6 @@ try {
 
                     await saveTransaction(transactionData, 'Credit');
 
-                    // Clear form
                     document.getElementById('vendor_purpose').value = '';
                     document.getElementById('vendor_amount').value = '';
                     document.getElementById('vendor_qty').value = '';
@@ -1231,15 +1599,12 @@ try {
 
             } catch (error) {
                 console.error('Error recording transaction:', error);
-                showNotification('An error occurred while recording the transaction', 'error');
+                showNotification('An error occurred', 'error');
             }
         }
-        
+
         async function refundTransaction(type) {
             try {
-                const workId = WORK_ID;
-                const taskId = TASK_ID;
-
                 if (type === 'credit') {
                     const purpose = document.getElementById('client_purpose').value.trim();
                     const amount = parseFloat(document.getElementById('client_amount').value);
@@ -1247,31 +1612,23 @@ try {
                     const ref = document.getElementById('client_note').value;
                     const qtyRate = buildQtyRate('client_qty', 'client_rate');
 
-                    if (!currentClientId) {
-                        showNotification('Client ID not found', 'error');
-                        return;
-                    }
-
-                    if (!purpose || !amount || amount <= 0) {
+                    if (!currentClientId || !purpose || !amount || amount <= 0) {
                         showNotification('Please enter valid purpose and amount', 'error');
                         return;
                     }
 
-                    const transactionData = {
+                    await saveTransaction({
                         type: 'credit',
                         amount: amount,
                         purpose: purpose,
                         client_id: currentClientId,
-                        work_id: workId,
-                        task_id: taskId,
+                        work_id: WORK_ID,
+                        task_id: TASK_ID,
                         date: buildDateTime(date),
                         ref: ref,
                         qty_rate: qtyRate
-                    };
+                    }, 'Credit (Refund)');
 
-                    await saveTransaction(transactionData, 'Credit');
-
-                    // Clear form
                     document.getElementById('client_purpose').value = '';
                     document.getElementById('client_amount').value = '';
                     document.getElementById('client_qty').value = '';
@@ -1323,8 +1680,8 @@ try {
                         amount: amount,
                         purpose: purpose,
                         vendor_type: vendorType === 'vendor' ? 0 : 1,
-                        work_id: workId,
-                        task_id: taskId,
+                        work_id: WORK_ID,
+                        task_id: TASK_ID,
                         date: buildDateTime(date),
                         qty_rate: qtyRate
                     };
@@ -1335,9 +1692,8 @@ try {
                         transactionData.account_id = accountId;
                     }
 
-                    await saveTransaction(transactionData, 'Debit');
+                    await saveTransaction(transactionData, 'Debit (Refund)');
 
-                    // Clear form
                     document.getElementById('vendor_purpose').value = '';
                     document.getElementById('vendor_amount').value = '';
                     document.getElementById('vendor_qty').value = '';
@@ -1347,8 +1703,8 @@ try {
                 }
 
             } catch (error) {
-                console.error('Error recording transaction:', error);
-                showNotification('An error occurred while recording the transaction', 'error');
+                console.error('Error recording refund:', error);
+                showNotification('An error occurred', 'error');
             }
         }
 
@@ -1356,9 +1712,7 @@ try {
             try {
                 const response = await fetch(FINANCIAL_ENTRIES_STORE_API, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
@@ -1366,11 +1720,7 @@ try {
 
                 if (result.success) {
                     showNotification(`${type} transaction recorded successfully!`, 'success');
-
-                    // Add to recent activity
                     addRecentActivity(data);
-
-                    // Reload financial data
                     loadFinancialData();
                 } else {
                     showNotification('Error: ' + (result.message || 'Unknown error'), 'error');
@@ -1382,7 +1732,7 @@ try {
         }
 
         // ============================================================
-        // FINANCIAL DATA
+        // FINANCIAL DATA - FIXED FOR PRINT
         // ============================================================
         async function loadFinancialData() {
             try {
@@ -1402,75 +1752,56 @@ try {
 
         function renderFinTable(transactions) {
             const tableBody = document.getElementById('finTableBody');
+            const isMobile = window.innerWidth < 640 && !window.matchMedia('print').matches;
 
             if (transactions.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-gray-500">
-                            <i class="fas fa-wallet text-3xl mb-2 block"></i>
-                            <p class="text-lg">No transactions yet</p>
-                            <p class="text-sm mt-1">Record your first transaction above</p>
+                        <td colspan="9" class="px-4 py-6 text-center text-gray-500">
+                            <i class="fas fa-wallet text-2xl mb-2 block"></i>
+                            <p>No transactions yet</p>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            tableBody.innerHTML = transactions.map(transaction => {
-                const type = (transaction.type || '').toLowerCase();
+            // Desktop view - always show full table
+            tableBody.innerHTML = transactions.map(t => {
+                const type = (t.type || '').toLowerCase();
                 const isDebit = type === 'debit';
-                const isCredit = type === 'credit';
+                const typeBadge = isDebit ? 
+                    '<span class="type-badge type-debit">DEBIT</span>' : 
+                    '<span class="type-badge type-credit">CREDIT</span>';
+                const amtClass = isDebit ? 'amount-debit' : 'amount-credit';
+                const amtPrefix = isDebit ? '+' : '-';
 
-                const typeBadge = isDebit ?
-                    '<span class="type-badge type-debit">DEBIT</span>' :
-                    isCredit ?
-                    '<span class="type-badge type-credit">CREDIT</span>' :
-                    '<span class="type-badge">UNKNOWN</span>';
-
-                const amountClass = isDebit ? 'amount-debit' : 'amount-credit';
-                const amountPrefix = isDebit ? '+' : '-';
-
-                // Parse qty_rate
                 let qtyCell = '—', rateCell = '—';
-                if (transaction.qty_rate) {
+                if (t.qty_rate) {
                     try {
-                        const qr = typeof transaction.qty_rate === 'string' 
-                            ? JSON.parse(transaction.qty_rate) 
-                            : transaction.qty_rate;
+                        const qr = typeof t.qty_rate === 'string' ? JSON.parse(t.qty_rate) : t.qty_rate;
                         if (qr.qty) qtyCell = parseFloat(qr.qty).toFixed(2);
-                        if (qr.rate) rateCell = '৳' + parseFloat(qr.rate).toLocaleString('en-US', {minimumFractionDigits: 2});
+                        if (qr.rate) rateCell = '৳' + parseFloat(qr.rate).toFixed(2);
                     } catch(e) {}
                 }
 
                 return `
                     <tr class="transaction-row">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">${transaction.date || 'N/A'}</div>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">${t.date || 'N/A'}</td>
+                        <td class="px-3 py-3 text-sm font-medium text-gray-900">${t.purpose || 'No Data'}</td>
+                        <td class="px-3 py-3 text-sm text-gray-500 hide-mobile">${t.ref || '—'}</td>
+                        <td class="px-3 py-3 text-sm text-gray-900 hide-mobile">${t.user_name || 'N/A'}</td>
+                        <td class="px-3 py-3 whitespace-nowrap">${typeBadge}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-right text-gray-600 hide-mobile">${qtyCell}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-right text-gray-600 hide-mobile">${rateCell}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-right font-semibold ${amtClass}">
+                            ${amtPrefix} ৳${parseFloat(t.amount||0).toFixed(2)}
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-900">${transaction.purpose || 'No Data'}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${transaction.ref || 'Unknown'}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${transaction.user_name || 'N/A'}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600">${qtyCell}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600">${rateCell}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-semibold ${amountClass} text-right">
-                                ${amountPrefix} ৳${parseFloat(transaction.amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <button onclick="editTransaction(${transaction.id})" 
-                                    class="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg mr-2">
+                        <td class="px-3 py-3 whitespace-nowrap text-sm no-print">
+                            <button onclick="editTransaction(${t.id})" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg mr-1">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="deleteTransaction(${transaction.id})" 
-                                    class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg">
+                            <button onclick="deleteTransaction(${t.id})" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -1480,47 +1811,40 @@ try {
         }
 
         function updateFinancialSummary(transactions) {
-            const totalDebit = transactions
-                .filter(t => t.type.toLowerCase() === 'debit')
-                .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
-            const totalCredit = transactions
-                .filter(t => t.type.toLowerCase() === 'credit')
-                .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
+            const totalDebit = transactions.filter(t => t.type.toLowerCase() === 'debit')
+                .reduce((s,t) => s + parseFloat(t.amount||0), 0);
+            const totalCredit = transactions.filter(t => t.type.toLowerCase() === 'credit')
+                .reduce((s,t) => s + parseFloat(t.amount||0), 0);
             const netBalance = totalDebit - totalCredit;
-            const balanceClass = netBalance > 0 ? 'balance-positive' :
-                netBalance < 0 ? 'balance-negative' : 'balance-neutral';
+            const balClass = netBalance > 0 ? 'balance-positive' : netBalance < 0 ? 'balance-negative' : 'balance-neutral';
 
             financialSummary.innerHTML = `
-                <div class="summary-card p-4 rounded-lg">
-                    <div class="flex items-center justify-between mb-2">
+                <div class="summary-card p-3 rounded-lg">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-600">Total Debit</p>
-                            <p class="text-2xl font-bold text-green-600">৳${totalDebit.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+                            <p class="text-xs text-gray-600">Total Debit</p>
+                            <p class="text-base sm:text-xl font-bold text-green-600">৳${totalDebit.toFixed(2)}</p>
                         </div>
-                        <i class="fas fa-arrow-down text-green-500 text-xl"></i>
+                        <i class="fas fa-arrow-down text-green-500 text-lg"></i>
                     </div>
                 </div>
-                
-                <div class="summary-card p-4 rounded-lg">
-                    <div class="flex items-center justify-between mb-2">
+                <div class="summary-card p-3 rounded-lg">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-600">Total Credit</p>
-                            <p class="text-2xl font-bold text-red-600">৳${totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+                            <p class="text-xs text-gray-600">Total Credit</p>
+                            <p class="text-base sm:text-xl font-bold text-red-600">৳${totalCredit.toFixed(2)}</p>
                         </div>
-                        <i class="fas fa-arrow-up text-red-500 text-xl"></i>
+                        <i class="fas fa-arrow-up text-red-500 text-lg"></i>
                     </div>
                 </div>
-                
-                <div class="summary-card p-4 rounded-lg">
-                    <div class="flex items-center justify-between mb-2">
+                <div class="summary-card p-3 rounded-lg">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-600">Net Balance</p>
-                            <p class="text-2xl font-bold ${balanceClass}">৳${Math.abs(netBalance).toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
-                            <p class="text-xs ${balanceClass} mt-1">${netBalance >= 0 ? 'Profit' : 'Loss'}</p>
+                            <p class="text-xs text-gray-600">Net Balance</p>
+                            <p class="text-base sm:text-xl font-bold ${balClass}">৳${Math.abs(netBalance).toFixed(2)}</p>
+                            <p class="text-xs ${balClass} mt-0.5">${netBalance >= 0 ? 'Profit' : 'Loss'}</p>
                         </div>
-                        <i class="fas fa-balance-scale ${netBalance >= 0 ? 'text-green-500' : 'text-red-500'} text-xl"></i>
+                        <i class="fas fa-balance-scale ${netBalance>=0?'text-green-500':'text-red-500'} text-lg"></i>
                     </div>
                 </div>
             `;
@@ -1528,51 +1852,42 @@ try {
 
         function updateQuickStats(transactions) {
             document.getElementById('totalTransactions').textContent = transactions.length;
-
-            const progress = Math.min((transactions.length / 10) * 100, 100);
-            document.getElementById('transactionProgress').style.width = `${progress}%`;
-
-            const debitCount = transactions.filter(t => t.type.toLowerCase() === 'debit').length;
-            const creditCount = transactions.filter(t => t.type.toLowerCase() === 'credit').length;
-            document.getElementById('debitCreditRatio').textContent = `${debitCount}:${creditCount}`;
-
-            const total = debitCount + creditCount || 1;
-            document.getElementById('debitBar').style.width = `${(debitCount / total) * 100}%`;
-            document.getElementById('creditBar').style.width = `${(creditCount / total) * 100}%`;
-
-            const totalDebit = transactions
-                .filter(t => t.type.toLowerCase() === 'debit')
-                .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
-            const totalCredit = transactions
-                .filter(t => t.type.toLowerCase() === 'credit')
-                .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
-            const netBalance = totalDebit - totalCredit;
-            document.getElementById('netBalance').textContent = `৳${netBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            document.getElementById('netBalance').className = `text-2xl font-bold mb-1 ${netBalance > 0 ? 'text-green-600' : netBalance < 0 ? 'text-red-600' : 'text-gray-600'}`;
+            document.getElementById('transactionProgress').style.width = `${Math.min((transactions.length/10)*100,100)}%`;
+            
+            const dc = transactions.filter(t => t.type.toLowerCase() === 'debit').length;
+            const cc = transactions.filter(t => t.type.toLowerCase() === 'credit').length;
+            document.getElementById('debitCreditRatio').textContent = `${dc}:${cc}`;
+            
+            const total = dc + cc || 1;
+            document.getElementById('debitBar').style.width = `${(dc/total)*100}%`;
+            document.getElementById('creditBar').style.width = `${(cc/total)*100}%`;
+            
+            const td = transactions.filter(t => t.type.toLowerCase() === 'debit')
+                .reduce((s,t) => s + parseFloat(t.amount||0), 0);
+            const tc = transactions.filter(t => t.type.toLowerCase() === 'credit')
+                .reduce((s,t) => s + parseFloat(t.amount||0), 0);
+            const nb = td - tc;
+            
+            document.getElementById('netBalance').textContent = `৳${nb.toFixed(2)}`;
+            document.getElementById('netBalance').className = `text-xl sm:text-2xl font-bold mb-1 ${nb>0?'text-green-600':nb<0?'text-red-600':'text-gray-600'}`;
         }
 
         function addRecentActivity(transaction) {
             const now = new Date();
-            const timeString = now.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const type = transaction.type.toUpperCase();
-
+            const timeString = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            
             const activityItem = document.createElement('div');
-            activityItem.className = 'flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg';
+            activityItem.className = 'flex items-start space-x-2 p-2 hover:bg-gray-50 rounded-lg';
             activityItem.innerHTML = `
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 rounded-full ${transaction.type === 'debit' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center">
-                        <i class="fas fa-${transaction.type === 'debit' ? 'plus' : 'minus'} ${transaction.type === 'debit' ? 'text-green-600' : 'text-red-600'}"></i>
+                    <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full ${transaction.type==='debit'?'bg-green-100':'bg-red-100'} flex items-center justify-center">
+                        <i class="fas fa-${transaction.type==='debit'?'plus':'minus'} ${transaction.type==='debit'?'text-green-600':'text-red-600'} text-xs sm:text-sm"></i>
                     </div>
                 </div>
-                <div class="flex-1">
-                    <div class="text-sm font-medium text-gray-900">${type} Recorded</div>
-                    <div class="text-xs text-gray-500">${transaction.purpose}</div>
-                    <div class="text-xs text-gray-400 mt-1">৳${transaction.amount} • ${timeString}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs sm:text-sm font-medium text-gray-900">${transaction.type.toUpperCase()} Recorded</div>
+                    <div class="text-xs text-gray-500 truncate">${transaction.purpose}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">৳${transaction.amount} • ${timeString}</div>
                 </div>
             `;
 
@@ -1584,20 +1899,30 @@ try {
 
             const items = recentActivity.querySelectorAll('div.flex.items-start');
             if (items.length > 5) {
-                items[items.length - 1].remove();
+                items[items.length-1].remove();
             }
         }
 
+        // ============================================================
+        // NOTIFICATION
+        // ============================================================
         function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle'
+            };
+
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${
-                type === 'success' ? 'bg-green-500 text-white' :
-                type === 'error' ? 'bg-red-500 text-white' :
-                'bg-blue-500 text-white'
-            }`;
+            notification.className = `fixed top-20 right-2 sm:right-4 z-50 px-3 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg transform transition-all duration-300 ${colors[type] || colors.info} text-white text-xs sm:text-sm max-w-[90vw] sm:max-w-md`;
             notification.innerHTML = `
                 <div class="flex items-center">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
+                    <i class="fas ${icons[type] || icons.info} mr-2"></i>
                     <span>${message}</span>
                 </div>
             `;
@@ -1611,35 +1936,21 @@ try {
             }, 3000);
         }
 
+        // ============================================================
+        // EVENT LISTENERS
+        // ============================================================
         function setupEventListeners() {
             document.getElementById('client_amount').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') recordTransaction('debit');
             });
-
             document.getElementById('vendor_amount').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') recordTransaction('credit');
             });
-            
             setupTypeToggle();
         }
 
-        function scrollToTop() {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
-
-        function printPage() {
-            window.print();
-        }
-
-        function previewFile(filePath) {
-            alert('File preview would show: ' + filePath.split('/').pop());
-        }
-
         // ============================================================
-        // EDIT TRANSACTION (UPDATED with qty_rate)
+        // EDIT TRANSACTION
         // ============================================================
         async function editTransaction(id) {
             try {
@@ -1648,13 +1959,12 @@ try {
                     showNotification('Transaction not found', 'error');
                     return;
                 }
-        
+
                 document.getElementById('edit_transaction_id').value = transaction.id;
                 document.getElementById('edit_original_type').value = transaction.type;
                 document.getElementById('edit_purpose').value = transaction.purpose || '';
                 document.getElementById('edit_amount').value = transaction.amount;
                 
-                // Populate qty/rate from qty_rate JSON
                 document.getElementById('edit_qty').value = '';
                 document.getElementById('edit_rate').value = '';
                 if (transaction.qty_rate) {
@@ -1685,33 +1995,10 @@ try {
                     const isVendor = transaction.vendor_type == 0;
                     document.getElementById('edit_vendor_type').value = isVendor ? 'vendor' : 'own';
                     
-                    const vendorRadio = document.querySelector('input[name="edit_account_type"][value="vendor"]');
-                    const ownRadio = document.querySelector('input[name="edit_account_type"][value="own"]');
-                    
-                    if (isVendor) {
-                        vendorRadio.checked = true;
-                        ownRadio.checked = false;
-                    } else {
-                        vendorRadio.checked = false;
-                        ownRadio.checked = true;
-                    }
+                    document.querySelector('input[name="edit_account_type"][value="vendor"]').checked = isVendor;
+                    document.querySelector('input[name="edit_account_type"][value="own"]').checked = !isVendor;
                     
                     await loadEditSelectionContainers();
-                    
-                    if (isVendor && transaction.vendor_id) {
-                        const vendorName = transaction.vendor_name || 'Unknown Vendor';
-                        const vendorInput = document.getElementById('editVendorInput');
-                        if (vendorInput) {
-                            vendorInput.value = transaction.vendor_id + ' | ' + vendorName;
-                        }
-                    } else if (!isVendor && transaction.account_id) {
-                        const accountName = transaction.account_name || 'Unknown Account';
-                        const accountInput = document.getElementById('editAccountInput');
-                        if (accountInput) {
-                            accountInput.value = transaction.account_id + ' | ' + accountName;
-                        }
-                    }
-                    
                     toggleEditSelection();
                 } else {
                     selectionContainer.classList.add('hidden');
@@ -1724,54 +2011,37 @@ try {
                 showNotification('Error loading transaction details', 'error');
             }
         }
-        
+
         async function loadEditSelectionContainers() {
-            const vendorContainer = document.getElementById('edit_vendor_container');
-            const accountContainer = document.getElementById('edit_account_container');
+            const vc = document.getElementById('edit_vendor_container');
+            const ac = document.getElementById('edit_account_container');
             
-            if (vendorContainer.children.length === 0) {
-                const vendorResponse = await fetch('form-selects/vendors-edit.php');
-                const vendorHtml = await vendorResponse.text();
-                vendorContainer.innerHTML = vendorHtml;
-                
-                if (typeof loadEditVendors === 'function') {
-                    loadEditVendors();
-                }
+            if (vc.children.length === 0) {
+                const r = await fetch('form-selects/vendors-edit.php');
+                vc.innerHTML = await r.text();
+                if (typeof loadEditVendors === 'function') loadEditVendors();
             }
             
-            if (accountContainer.children.length === 0) {
-                const accountResponse = await fetch('form-selects/accounts-edit.php');
-                const accountHtml = await accountResponse.text();
-                accountContainer.innerHTML = accountHtml;
-                
-                if (typeof loadEditAccounts === 'function') {
-                    loadEditAccounts();
-                }
+            if (ac.children.length === 0) {
+                const r = await fetch('form-selects/accounts-edit.php');
+                ac.innerHTML = await r.text();
+                if (typeof loadEditAccounts === 'function') loadEditAccounts();
             }
         }
-        
+
         function toggleEditSelection() {
             const type = document.querySelector('input[name="edit_account_type"]:checked')?.value;
-            const vendorContainer = document.getElementById('edit_vendor_container');
-            const accountContainer = document.getElementById('edit_account_container');
+            document.getElementById('edit_vendor_container').classList.toggle('hidden', type !== 'vendor');
+            document.getElementById('edit_account_container').classList.toggle('hidden', type !== 'own');
             
-            if (type === 'vendor') {
-                vendorContainer.classList.remove('hidden');
-                accountContainer.classList.add('hidden');
-                
-                if (typeof setupEditVendorSearch === 'function') {
-                    setTimeout(() => setupEditVendorSearch(), 100);
-                }
-            } else if (type === 'own') {
-                vendorContainer.classList.add('hidden');
-                accountContainer.classList.remove('hidden');
-                
-                if (typeof setupEditAccountSearch === 'function') {
-                    setTimeout(() => setupEditAccountSearch(), 100);
-                }
+            if (type === 'vendor' && typeof setupEditVendorSearch === 'function') {
+                setTimeout(() => setupEditVendorSearch(), 100);
+            }
+            if (type === 'own' && typeof setupEditAccountSearch === 'function') {
+                setTimeout(() => setupEditAccountSearch(), 100);
             }
         }
-        
+
         async function updateTransaction(event) {
             event.preventDefault();
             
@@ -1826,9 +2096,7 @@ try {
                 
                 const response = await fetch(UPDATE_FINANCIAL_ENTRY_API, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updateData)
                 });
                 
@@ -1839,7 +2107,7 @@ try {
                     closeEditModal();
                     loadFinancialData();
                 } else {
-                    showNotification('Error: ' + (result.message || 'Failed to update transaction'), 'error');
+                    showNotification('Error: ' + (result.message || 'Failed to update'), 'error');
                 }
                 
             } catch (error) {
@@ -1847,23 +2115,44 @@ try {
                 showNotification('Network error occurred', 'error');
             }
         }
-        
+
         function closeEditModal() {
             document.getElementById('editModal').classList.add('hidden');
             document.getElementById('editTransactionForm').reset();
         }
-        
+
         function deleteTransaction(id) {
             if (confirm('Are you sure you want to delete this transaction?')) {
                 showNotification('Delete functionality coming soon', 'info');
             }
         }
 
+        // ============================================================
+        // MISC FUNCTIONS
+        // ============================================================
         function reloadFinancialTable() {
             loadFinancialData();
             showNotification('Data refreshed', 'success');
         }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTaskMetaData();
+            loadClientData();
+            loadFinancialData();
+            setupEventListeners();
+            setupQtyRateCalc();
+        });
     </script>
 </body>
-
 </html>

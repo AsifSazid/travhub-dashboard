@@ -638,6 +638,7 @@
         3: { label: 'Receive',  cls: 'bg-blue-100 text-blue-700' },
         4: { label: 'Payment',  cls: 'bg-orange-100 text-orange-700' },
         5: { label: 'Discount', cls: 'bg-yellow-100 text-yellow-700' },
+        6: { label: 'Advance',  cls: 'bg-indigo-100 text-indigo-700' },
     };
 
     function renderFinTable(displayList, calcList) {
@@ -1051,9 +1052,18 @@
         const discSection = document.getElementById('sv-pay-discountSection');
         const discHint    = document.getElementById('sv-pay-discountHint');
 
-        if (!banner || !discSection || selectedPurchaseIds.size === 0) {
-            banner?.classList.add('hidden');
-            discSection?.classList.add('hidden');
+        if (!banner || !discSection) return;
+
+        if (selectedPurchaseIds.size === 0) {
+            // Purchase select না করলে → Vendor Advance hint
+            if (paymentAmt > 0) {
+                banner.classList.remove('hidden');
+                banner.className = 'rounded-lg p-3 text-sm font-medium bg-indigo-50 border border-indigo-300 text-indigo-800';
+                banner.innerHTML = `<i class="fas fa-piggy-bank mr-1"></i> কোনো Purchase select করা হয়নি — এই <strong>৳${paymentAmt.toFixed(2)}</strong> Vendor কে <strong>Advance</strong> হিসেবে দেওয়া হবে`;
+            } else {
+                banner.classList.add('hidden');
+            }
+            discSection.classList.add('hidden');
             return;
         }
 
@@ -1260,7 +1270,7 @@
         document.getElementById('sv-btn-payment')?.addEventListener('click',  openPaymentModal);
         document.getElementById('sv-btn-refund')?.addEventListener('click',   openRefundModal);
         document.getElementById('sv-btn-discount')?.addEventListener('click', openDiscountModal);
-        document.getElementById('sv-addTrnxCard')?.addEventListener('click',  openPaymentModal);
+        document.getElementById('sv-addTrnxCard')?.addEventListener('click',  openPurchaseModal);
 
         // Payment: amount input → update UI
         document.getElementById('sv-pay-amount')?.addEventListener('input', updatePaymentUI);

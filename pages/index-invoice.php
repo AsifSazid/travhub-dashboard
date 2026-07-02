@@ -1,4 +1,6 @@
 <?php
+// pages/index-invoices.php
+
 include_once('./authenticate.php');
 // Get IP path
 $ip_port = @file_get_contents('../ippath.txt');
@@ -1401,29 +1403,95 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         }
 
         async function markAsPaid(invoiceId) {
-            if (confirm('Mark this invoice as paid?')) {
-                try {
-                    const response = await fetch(UPDATE_STATUS_API, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            invoice_id: invoiceId
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        alert('Invoice marked as paid!');
-                        await loadData(); // Reload data
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                } catch (error) {
-                    alert('Error: ' + error.message);
+            try {
+                // Step 1: Advance balance check
+                const checkRes = await fetch(UPDATE_STATUS_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: invoiceId, action: 'check_advance' })
+                });
+                const checkData = await checkRes.json();
+
+                // Invoice info from current list
+                const inv = invoices.find(i => i.invoice_no === invoiceId || i.sys_id === invoiceId);
+                const dueAmount = inv?.due_amount || checkData.due_amount || 0;
+                const advBalance = checkData.advance_balance || 0;
+
+                // Step 2: Build confirm message
+                let msg = `Invoice Due: ৳${dueAmount.toFixed(2)}`;
+                let useAdvance = false;
+                let paidAmount = dueAmount;
+                let action = 'full';
+
+                if (advBalance > 0) {
+                    const netDue = Math.max(0, dueAmount - advBalance);
+                    const useAdv = confirm(
+                        `${msg}
+Client এর Advance Balance: ৳${advBalance.toFixed(2)}
+
+` +
+                        `Advance থেকে pay করবো? (OK = Yes, Cancel = No)
+` +
+                        `Advance use করলে বাকি due: ৳${netDue.toFixed(2)}`
+                    );
+                    useAdvance = useAdv;
                 }
+
+                // Step 3: Partial or Full?
+                const isPartial = confirm(
+                    `Full payment (৳${dueAmount.toFixed(2)}) mark করবো?
+
+` +
+                    `OK = Full Payment
+Cancel = Partial Payment enter করবো`
+                );
+
+                if (!isPartial) {
+                    const partialInput = prompt(
+                        `Partial payment amount enter করুন (Due: ৳${dueAmount.toFixed(2)}):`,
+                        ''
+                    );
+                    if (!partialInput) return;
+                    paidAmount = parseFloat(partialInput);
+                    if (isNaN(paidAmount) || paidAmount <= 0) {
+                        alert('Invalid amount');
+                        return;
+                    }
+                    action = 'partial';
+                } else {
+                    action = 'full';
+                    paidAmount = dueAmount;
+                }
+
+                // Step 4: Execute
+                const res = await fetch(UPDATE_STATUS_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        invoice_id:  invoiceId,
+                        action:      action,
+                        paid_amount: paidAmount,
+                        use_advance: useAdvance,
+                        particular:  'Invoice Payment: ' + invoiceId
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    let msg = data.message;
+                    if (data.advance_used > 0)
+                        msg += `
+Advance used: ৳${data.advance_used.toFixed(2)}`;
+                    if (data.overpayment > 0)
+                        msg += `
+Advance balance created: ৳${data.overpayment.toFixed(2)}`;
+                    alert(msg);
+                    await loadData();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
             }
         }
 

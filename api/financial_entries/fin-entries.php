@@ -20,6 +20,8 @@ $filterType        = $_GET['type']         ?? null;
 $filterRelatedType = isset($_GET['related_type']) ? (int)$_GET['related_type'] : null;
 $filterIsPaid      = isset($_GET['is_paid'])      ? (int)$_GET['is_paid']      : null;
 $filterIsPartial   = isset($_GET['is_partial'])   ? (int)$_GET['is_partial']   : null;
+$filterIsInvoiced  = isset($_GET['is_invoiced'])  ? (int)$_GET['is_invoiced']  : null;
+$filterTaskId      = $_GET['task_id']      ?? null; // task_sys_id filter
 
 try {
     /* ================= BUILD QUERY ================= */
@@ -44,6 +46,16 @@ try {
     if ($filterIsPartial !== null) {
         $conditions[] = "is_partial = :is_partial";
         $params[':is_partial'] = $filterIsPartial;
+    }
+
+    if ($filterIsInvoiced !== null) {
+        $conditions[] = "is_invoiced = :is_invoiced";
+        $params[':is_invoiced'] = $filterIsInvoiced;
+    }
+
+    if (!empty($filterTaskId)) {
+        $conditions[] = "task_sys_id = :task_sys_id";
+        $params[':task_sys_id'] = $filterTaskId;
     }
 
     $where = implode(' AND ', $conditions);

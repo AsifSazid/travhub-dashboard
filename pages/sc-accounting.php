@@ -531,6 +531,7 @@
         3: { label: 'Receive',  cls: 'bg-green-100 text-green-700' },
         4: { label: 'Payment',  cls: 'bg-orange-100 text-orange-700' },
         5: { label: 'Discount', cls: 'bg-yellow-100 text-yellow-700' },
+        6: { label: 'Advance',  cls: 'bg-indigo-100 text-indigo-700' },
     };
 
     // ==================== UTILITIES ====================
@@ -948,7 +949,14 @@
         if (!banner || !discSection) return;
 
         if (selectedSaleIds.size === 0) {
-            banner.classList.add('hidden');
+            // Sale select না করলে → Advance hint
+            if (receiveAmt > 0) {
+                banner.classList.remove('hidden');
+                banner.className = 'rounded-lg p-3 text-sm font-medium bg-indigo-50 border border-indigo-300 text-indigo-800';
+                banner.innerHTML = `<i class="fas fa-piggy-bank mr-1"></i> কোনো Sale select করা হয়নি — এই <strong>৳${receiveAmt.toFixed(2)}</strong> <strong>Advance</strong> হিসেবে save হবে`;
+            } else {
+                banner.classList.add('hidden');
+            }
             discSection.classList.add('hidden');
             return;
         }

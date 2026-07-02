@@ -1,4 +1,5 @@
 <?php
+// pages/create-invoice.php
 
 include_once('./authenticate.php');
 // Get IP path
@@ -895,6 +896,32 @@ $base_ip_path = trim($ip_port, "/");
                             </div>
                         </div>
 
+                        <!-- Advance Balance Banner — client select হলে auto show -->
+                        <div id="advanceBanner" class="hidden form-card bg-indigo-50 border border-indigo-200 p-4 mb-0">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-piggy-bank text-indigo-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-indigo-800">Client এর Advance Balance আছে!</p>
+                                        <p class="text-xs text-indigo-600 mt-0.5">
+                                            Available: <strong id="advanceBalanceDisplay">৳0.00</strong>
+                                            &nbsp;·&nbsp; Invoice Due: <strong id="advanceDueDisplay">৳0.00</strong>
+                                            &nbsp;·&nbsp; After Advance: <strong id="advanceNetDisplay">৳0.00</strong>
+                                        </p>
+                                    </div>
+                                </div>
+                                <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                                    <input type="checkbox" id="useAdvanceCheck" name="use_advance" value="1"
+                                        class="w-4 h-4 text-indigo-600 rounded"
+                                        onchange="toggleAdvanceUse()">
+                                    <span class="text-sm font-medium text-indigo-700">Advance থেকে Pay করবো</span>
+                                </label>
+                            </div>
+                            <input type="hidden" id="advanceAmountInput" name="advance_amount" value="0">
+                        </div>
+
                         <!-- Work Items -->
                         <div class="form-card">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -1171,6 +1198,75 @@ $base_ip_path = trim($ip_port, "/");
             };
         }
     
+        /* ========== ADVANCE BALANCE CHECK ========== */
+        let advanceBalance = 0;
+
+        async function checkClientAdvance(clientId) {
+            const banner = document.getElementById('advanceBanner');
+            if (!clientId) { banner?.classList.add('hidden'); return; }
+
+            try {
+                // client এর advance entries (credit, related_type=6, is_paid=0) sum
+                const r    = await fetch(`${IP_PATH}/api/financial_entries/fin-entries.php?id=${clientId}&type=credit&related_type=6&is_paid=0`);
+                const data = await r.json();
+                if (!data.success) return;
+
+                advanceBalance = (data.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+
+                if (advanceBalance > 0.01) {
+                    banner.classList.remove('hidden');
+                    updateAdvanceDisplay();
+                } else {
+                    banner.classList.add('hidden');
+                    advanceBalance = 0;
+                }
+            } catch(e) {
+                console.error('Advance check failed:', e);
+            }
+        }
+
+        function updateAdvanceDisplay() {
+            const totalAmt = parseFloat(document.getElementById('total_amount')?.value) || 0;
+            const netDue   = Math.max(0, totalAmt - advanceBalance);
+            const advUsed  = Math.min(advanceBalance, totalAmt);
+            const useAdv   = document.getElementById('useAdvanceCheck')?.checked;
+
+            const balEl    = document.getElementById('advanceBalanceDisplay');
+            const dueDisp  = document.getElementById('advanceDueDisplay');
+            const netDisp  = document.getElementById('advanceNetDisplay');
+
+            if (balEl)   balEl.textContent  = '৳' + advanceBalance.toFixed(2);
+            if (dueDisp) dueDisp.textContent = '৳' + totalAmt.toFixed(2);
+            if (netDisp) netDisp.textContent = useAdv ? '৳' + netDue.toFixed(2) : '৳' + totalAmt.toFixed(2);
+
+            const advInput = document.getElementById('advanceAmountInput');
+            const paidEl   = document.getElementById('paid_amount');
+            const dueEl    = document.getElementById('due_amount');
+
+            if (useAdv) {
+                if (advInput) advInput.value = advUsed.toFixed(2);
+                if (paidEl)   paidEl.value   = advUsed.toFixed(2);
+                if (dueEl)    dueEl.value    = netDue.toFixed(2);
+            } else {
+                if (advInput) advInput.value = '0';
+                if (paidEl)   paidEl.value   = '0';
+                // due = total — calculateDue() handle করবে
+                if (typeof calculateDue === 'function') calculateDue();
+            }
+        }
+
+        function toggleAdvanceUse() {
+            updateAdvanceDisplay();
+            calculateTotal(); // recalculate
+        }
+
+        // Client select হলে advance check
+        registerForClientChanges((clientId) => {
+            checkClientAdvance(clientId);
+        });
+
+        // Total amount change এ advance update — calculateTotal এ already hook করা আছে
+
         /* ========== 1. FETCH INVOICE NUMBER FROM API ========== */
         async function fetchInvoiceNumberFromAPI() {
             try {
@@ -1926,16 +2022,19 @@ $base_ip_path = trim($ip_port, "/");
         /* ========== 9. TASK GROUP MANAGEMENT ========== */
         async function loadFinancialData(taskId) {
             try {
-                const response = await fetch(`${GET_FINANCIAL_STATEMENT_API}?client_id=${globalClientState.clientId}&task_id=${taskId}`);
+                // sale entries: debit, related_type=1 — সব আনি, is_invoiced badge দেখাবে
+                const url = `${GET_FINANCIAL_STATEMENT_API}?id=${globalClientState.clientId}&task_id=${taskId}&type=debit&related_type=1`;
+                const response = await fetch(url);
                 const data = await response.json();
-                
-                console.log('Financial statements for task', taskId, ':', data.stmt);
-        
-                if (data.success && data.stmt && Array.isArray(data.stmt)) {
-                    return data.stmt; // পুরো অ্যারে রিটার্ন করুন
-                } else {
-                    return []; // খালি অ্যারে রিটার্ন করুন
+
+                if (data.success && data.finStmts && Array.isArray(data.finStmts)) {
+                    // শুধু type=debit, related_type=1 enforce করি — is_invoiced সব আসবে
+                    return data.finStmts.filter(e =>
+                        (e.type || '').toLowerCase() === 'debit' &&
+                        parseInt(e.related_type) === 1
+                    );
                 }
+                return [];
             } catch (error) {
                 console.error('Error loading financial data:', error);
                 return [];
@@ -1975,7 +2074,7 @@ $base_ip_path = trim($ip_port, "/");
                            value="${task.sys_id}"
                            class="task-checkbox mr-2"
                            data-task-data='${JSON.stringify(task)}'>
-                    <label for="task_${task.sys_id}_${groupId}" class="text-sm cursor-pointer">
+                    <label for="task_${task.sys_id}_${groupId}" class="text-sm cursor-pointer flex-1">
                         <div class="flex items-center">
                             <span class="font-medium">${task.title || 'No Title'}</span>
                         </div>
@@ -2011,91 +2110,77 @@ $base_ip_path = trim($ip_port, "/");
                         }
                     }, 0);
                     
-                    // প্রতিটি ফিনান্সিয়াল স্টেটমেন্ট দেখান
+                    // Sale entries — readonly preview (select করা যাবে না)
+                    // Task checkbox select হলে সব entries একসাথে invoice এ যাবে
+                    const saleTotal = financialStatements.reduce((s,e) => s+(parseFloat(e.amount)||0), 0);
+
                     financialStatements.forEach((stmt, index) => {
                         const amount = parseFloat(stmt.amount) || 0;
-                        const isCredit = stmt.type === 'credit';
-                        const amountClass = isCredit ? 'text-red-600' : 'text-green-600';
-                        const amountSign = isCredit ? '-' : '+';
-                        const typeBadge = isCredit ? 
-                            `<span class="ml-1 text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded">Credit</span>` : 
-                            `<span class="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">Debit</span>`;
-                        
+                        let qtyRate = null;
+                        try { qtyRate = stmt.qty_rate ? (typeof stmt.qty_rate === 'string' ? JSON.parse(stmt.qty_rate) : stmt.qty_rate) : null; } catch(e) {}
+                        const qty  = qtyRate?.qty  || 1;
+                        const rate = qtyRate?.rate || amount;
+                        const isInvoiced = parseInt(stmt.is_invoiced || 0) === 1;
+
                         html += `
-                            <div class="financial-item mb-1 p-2 bg-gray-50 rounded ${isCredit ? 'border-l-2 border-red-400' : 'border-l-2 border-green-400'}">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="font-medium">#${index + 1}</span>
-                                        ${typeBadge}
-                                    </div>
-                                    <span class="${amountClass} font-medium">
-                                        ${amountSign}৳ ${amount.toFixed(2)}
-                                    </span>
+                            <div class="financial-item mb-1 p-2 rounded border-l-2 relative ${isInvoiced ? 'bg-purple-50 border-purple-300' : 'bg-green-50 border-green-400'}">
+                                ${isInvoiced ? `<span class="absolute top-1 right-1 text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded-bl-md rounded-tr-md font-medium">Invoiced</span>` : ''}
+                                <div class="flex justify-between items-center mb-0.5 ${isInvoiced ? 'pr-20' : ''}">
+                                    <span class="text-xs font-medium ${isInvoiced ? 'text-purple-600' : 'text-green-700'}">Sale #${index + 1}</span>
+                                    <span class="${isInvoiced ? 'text-purple-600' : 'text-green-700'} font-semibold text-sm">৳${amount.toFixed(2)}</span>
                                 </div>
-                                <div class="text-gray-600 text-xs mt-1">
-                                    <span class="font-medium">Purpose:</span> ${stmt.purpose || 'N/A'}
-                                </div>
-                                <div class="text-gray-500 text-xs mt-1">
-                                    <span class="font-medium">Type:</span> ${stmt.type || 'N/A'}
+                                <div class="text-xs text-gray-600">${stmt.purpose || 'N/A'}</div>
+                                <div class="flex gap-3 text-xs text-gray-400 mt-0.5">
+                                    <span>QTY: <b class="text-gray-600">${qty}</b></span>
+                                    <span>Rate: <b class="text-gray-600">৳${parseFloat(rate).toFixed(2)}</b></span>
+                                    <span>${stmt.sys_id}</span>
                                 </div>
                             </div>
                         `;
                     });
-                    
-                    // মোট যোগ করুন
-                    const totalClass = totalAmount >= 0 ? 'text-green-700' : 'text-red-700';
-                    const totalSign = totalAmount >= 0 ? '' : '-';
-                    
+
                     html += `
-                        <div class="mt-2 pt-2 border-t border-gray-300">
-                            <div class="flex justify-between font-semibold">
-                                <span>Net Total:</span>
-                                <span class="${totalClass}">
-                                    ${totalSign}৳ ${Math.abs(totalAmount).toFixed(2)}
-                                </span>
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                ${financialStatements.length} statement(s) • 
-                                Credit: -৳, Debit: +৳
+                        <div class="mt-1 pt-1 border-t border-gray-200">
+                            <div class="flex justify-between text-xs font-semibold text-green-700">
+                                <span>${financialStatements.length} sale entry(s)</span>
+                                <span>৳${saleTotal.toFixed(2)}</span>
                             </div>
                         </div>
                     `;
-                    
+
                     finInfoDiv.innerHTML = html;
-                    
-                    // টাস্ক ডেটা আপডেট করুন
+
+                    // Task data update — task select হলে সব entries একসাথে যাবে
                     if (financialStatements.length > 0) {
-                        // নেট টোটাল রেট হিসেবে সেট করুন
-                        task.rate = Math.abs(totalAmount);
-                        task.netTotal = totalAmount; // আসল টোটাল (নেগেটিভ হতে পারে)
-                        
-                        // purpose গুলো একত্রিত করুন
-                        const purposes = financialStatements.map(s => s.purpose).filter(p => p);
-                        task.purpose = purposes.length > 0 ? purposes.join(', ') : '';
-                        
-                        // টাইপ অনুযায়ী লেবেল তৈরি করুন
-                        const debitCount = financialStatements.filter(s => s.type === 'debit').length;
-                        const creditCount = financialStatements.filter(s => s.type === 'credit').length;
-                        
-                        let typeLabel = '';
-                        if (debitCount > 0 && creditCount > 0) {
-                            typeLabel = ` (${debitCount} debit, ${creditCount} credit)`;
-                        } else if (debitCount > 0) {
-                            typeLabel = ` (${debitCount} debit)`;
-                        } else if (creditCount > 0) {
-                            typeLabel = ` (${creditCount} credit)`;
-                        }
-                        
-                        task.typeLabel = typeLabel;
-                        task.financialStatements = financialStatements;
-                        task.totalAmount = totalAmount;
-                        
-                        // টাস্ক ডেটা আপডেট করুন
-                        const checkbox = checkboxDiv.querySelector('.task-checkbox');
+                        // is_invoiced=1 entries skip — শুধু uninvoiced entries invoice এ যাবে
+                        const uninvoicedEntries = financialStatements.filter(s => parseInt(s.is_invoiced || 0) === 0);
+                        task.saleEntries = uninvoicedEntries.map(s => {
+                            let qr = null;
+                            try { qr = s.qty_rate ? (typeof s.qty_rate==='string'?JSON.parse(s.qty_rate):s.qty_rate) : null; } catch(e) {}
+                            return {
+                                sys_id  : s.sys_id,
+                                purpose : s.purpose || '',
+                                amount  : parseFloat(s.amount) || 0,
+                                qty     : qr?.qty  || 1,
+                                rate    : qr?.rate || parseFloat(s.amount) || 0,
+                            };
+                        });
+                        task.totalAmount = uninvoicedEntries.reduce((s,e) => s+(parseFloat(e.amount)||0), 0);
+                        task.financialStatements = financialStatements; // সব (badge এর জন্য)
+
+                        const checkbox   = checkboxDiv.querySelector('.task-checkbox');
                         checkbox.dataset.taskData = JSON.stringify(task);
+
+                        // সব entries invoiced হলে checkbox disable করি
+                        const allInvoiced = financialStatements.every(s => parseInt(s.is_invoiced || 0) === 1);
+                        if (allInvoiced) {
+                            checkbox.disabled = true;
+                            checkbox.closest('.task-checkbox-container').style.opacity = '0.5';
+                            checkbox.closest('.task-checkbox-container').style.cursor = 'not-allowed';
+                        }
                     }
                 });
-                
+
                 checkboxDiv.querySelector('.task-checkbox')
                     .addEventListener('change', () => {
                         handleTaskSelection(workItemId, groupId);
@@ -2169,236 +2254,118 @@ $base_ip_path = trim($ip_port, "/");
     
         /* ========== 11. GENERATE WORK ITEMS FROM TASKS ========== */
         /* ========== MODIFIED: generateWorkItemsFromTasks ========== */
+        /* ========== MODIFIED: generateWorkItemsFromTasks ========== */
+        // এখন প্রতিটা sale entry → আলাদা invoice item
+        // fe_sys_id[] hidden field হিসেবে submit হবে → store.php তে financial_entry_ids save হবে
         function generateWorkItemsFromTasks(workItemElement) {
             const workItemId = workItemElement.dataset.workItemId;
             const state = workItemStates.get(workItemId);
             const systemContainer = workItemElement.querySelector('.system-work-container');
             const generatedContainer = systemContainer.querySelector('.generated-items-list');
-            
-            // Clear existing generated items
+
             generatedContainer.innerHTML = '';
-            
-            // Collect all selected tasks from all groups
+
+            // সব selected tasks collect
             const allTasks = [];
             let globalIndex = 0;
             state.taskGroups.forEach((tasks, groupId) => {
                 tasks.forEach(task => {
-                    allTasks.push({
-                        ...task,
-                        groupId,
-                        globalIndex: globalIndex++
-                    });
+                    allTasks.push({ ...task, groupId, globalIndex: globalIndex++ });
                 });
             });
-            
-            // If no tasks selected, show message
+
             if (allTasks.length === 0) {
                 generatedContainer.innerHTML = `
                     <div class="text-center py-6 text-gray-500">
                         <i class="fas fa-inbox text-3xl mb-3"></i>
                         <p>No tasks selected. Select tasks above to generate work items.</p>
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
-            
-            // Generate form inputs for each task
+
+            // প্রতিটা task এর প্রতিটা saleEntry → আলাদা invoice item
             allTasks.forEach(task => {
-                const taskData = task.data;
-                
-                // টাস্ক ডেটা থেকে ফিনান্সিয়াল স্টেটমেন্ট পান
-                const financialStatements = taskData.financialStatements || [];
-                const totalAmount = taskData.totalAmount || 0; // নেট টোটাল (পজিটিভ/নেগেটিভ হতে পারে)
-                const netAmount = Math.abs(totalAmount); // ইনভয়েসের জন্য পরম মান
-                
-                // যদি একাধিক ফিনান্সিয়াল স্টেটমেন্ট থাকে, তাহলে বিশেষভাবে দেখান
-                let details = '';
-                if (financialStatements.length > 1) {
-                    details = `Multiple financial statements:\n`;
-                    financialStatements.forEach((stmt, idx) => {
-                        const sign = stmt.type === 'credit' ? '-' : '+';
-                        details += `${idx + 1}. ${stmt.purpose || 'N/A'} -> (${sign})${parseFloat(stmt.amount).toFixed(2)} (${stmt.type})\n`;
-                    });
-                    const finalSign = totalAmount >= 0 ? '' : '-';
-                    details += `Net Total: ${finalSign}৳${netAmount.toFixed(2)}`;
-                } else if (financialStatements.length === 1) {
-                    const stmt = financialStatements[0];
-                    details = `${stmt.purpose || ''}`;
-                } else {
-                    details = taskData.purpose || '';
+                const taskData    = task.data;
+                const saleEntries = taskData.saleEntries || [];
+
+                if (saleEntries.length === 0) {
+                    // sale entry নেই এমন task — skip (shouldn't happen with new filter)
+                    return;
                 }
-                
-                // টাইপ লেবেল
-                const debitCount = financialStatements.filter(s => s.type === 'debit').length;
-                const creditCount = financialStatements.filter(s => s.type === 'credit').length;
-                
-                let typeIndicator = '';
-                if (debitCount > 0 && creditCount > 0) {
-                    typeIndicator = `<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Mixed (${debitCount}D/${creditCount}C)</span>`;
-                } else if (debitCount > 0) {
-                    typeIndicator = `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Debit (${debitCount})</span>`;
-                } else if (creditCount > 0) {
-                    typeIndicator = `<span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">Credit (${creditCount})</span>`;
-                }
-                
-                // টোটালের জন্য ক্লাস নির্ধারণ
-                const totalClass = totalAmount >= 0 ? 'text-green-700' : 'text-red-700';
-                const totalSign = totalAmount >= 0 ? '' : '-';
-                
-                // Create the work item form element
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'generated-item bg-white border rounded-lg p-4 mb-3';
-                itemDiv.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h5 class="font-medium text-gray-800">${taskData.title || ''}</h5>
-                            ${typeIndicator}
-                        </div>
-                        <div class="${totalClass} font-bold text-lg">
-                            ${totalSign}৳<span class="total-amount">${netAmount.toFixed(2)}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                        <div class="form-group">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                            <input type="text" 
-                                   name="work_title[]"
-                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
-                                   value="${taskData.title || ''}"
-                                   data-generated="true"
-                                   data-task-id="${task.id}">
-                        </div>
-                        <div class="form-group">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                            <input type="number" 
-                                   name="work_qty[]"
-                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
-                                   value="1"
-                                   data-generated="true">
-                        </div>
-                        <div class="form-group">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Rate (Net)</label>
-                            <input type="number" 
-                                   name="work_rate[]"
-                                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
-                                   value="${netAmount}"
-                                   data-generated="true"
-                                   step="0.01">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Details</label>
-                        <textarea name="work_particular[]"
-                                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm generated-input"
-                                  rows="3"
-                                  data-generated="true">${details}</textarea>
-                    </div>
-                    
-                    <!-- যদি একাধিক ফিনান্সিয়াল স্টেটমেন্ট থাকে -->
-                    ${financialStatements.length > 0 ? `
-                        <div class="multiple-financials bg-gray-50 p-3 rounded-lg mb-3">
-                            <h6 class="font-medium text-sm text-gray-700 mb-2">Financial Statements Details:</h6>
-                            <div class="space-y-2 max-h-40 overflow-y-auto">
-                                ${financialStatements.map((stmt, idx) => {
-                                    const amount = parseFloat(stmt.amount) || 0;
-                                    const isCredit = stmt.type === 'credit';
-                                    const amountClass = isCredit ? 'text-red-600' : 'text-green-600';
-                                    const amountSign = isCredit ? '-' : '+';
-                                    const typeBadge = isCredit ? 
-                                        'bg-red-100 text-red-800' : 
-                                        'bg-green-100 text-green-800';
-                                    
-                                    return `
-                                        <div class="bg-white p-2 rounded border ${isCredit ? 'border-l-2 border-red-300' : 'border-l-2 border-green-300'}">
-                                            <div class="flex justify-between items-center">
-                                                <div>
-                                                    <span class="text-sm font-medium">#${idx + 1}</span>
-                                                    <span class="ml-2 text-xs ${typeBadge} px-2 py-0.5 rounded">${stmt.type || 'N/A'}</span>
-                                                </div>
-                                                <span class="text-sm ${amountClass} font-medium">
-                                                    (${amountSign}) ${amount.toFixed(2)}
-                                                </span>
-                                            </div>
-                                            <div class="text-xs text-gray-600 mt-1">
-                                                ${stmt.purpose ? `<div><span class="font-medium">Purpose:</span> ${stmt.purpose}</div>` : ''}
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-gray-300">
-                                <div class="flex justify-between text-sm">
-                                    <div>
-                                        <span class="font-medium">Summary:</span>
-                                        <span class="ml-2">Debit: ${debitCount} | Credit: ${creditCount}</span>
-                                    </div>
-                                    <div class="${totalClass} font-semibold">
-                                        Net: ${totalSign} ${netAmount.toFixed(2)}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="flex justify-between items-center text-sm text-gray-600">
-                        <div>
-                            From: <span class="font-medium">${state.selectedWork?.data?.title || 'System Work'}</span>
-                            <span class="ml-2 text-xs bg-gray-200 px-2 py-1 rounded">
-                                ${financialStatements.length} statement(s)
+
+                // Task header
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'text-xs font-semibold text-gray-500 mb-1 mt-2 px-1';
+                headerDiv.textContent = `Task: ${taskData.title || ''}`;
+                generatedContainer.appendChild(headerDiv);
+
+                saleEntries.forEach((entry, idx) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'generated-item bg-white border border-green-200 rounded-lg p-4 mb-3';
+                    itemDiv.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded">
+                                Sale #${idx + 1} · ${entry.sys_id}
                             </span>
+                            <span class="text-green-700 font-bold text-lg">৳<span class="total-amount">${entry.amount.toFixed(2)}</span></span>
                         </div>
-                        <div class="${totalClass} font-medium">
-                            Net Total: ${totalSign}৳<span class="calculated-amount">${netAmount.toFixed(2)}</span>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                            <div class="md:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Title</label>
+                                <input type="text" name="work_title[]"
+                                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                    value="${entry.purpose}">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">QTY</label>
+                                <input type="number" name="work_qty[]"
+                                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm work-qty-gen"
+                                    value="${entry.qty}" min="0.01" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Rate</label>
+                                <input type="number" name="work_rate[]"
+                                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm work-rate-gen"
+                                    value="${entry.rate}" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
+                                <input type="number" name="amount[]"
+                                    class="w-full border border-green-300 bg-green-50 rounded px-3 py-2 text-sm font-semibold text-green-700 work-amount-gen"
+                                    value="${entry.amount.toFixed(2)}" step="0.01" readonly>
+                            </div>
                         </div>
-                    </div>
-                    <input type="hidden" 
-                           name="amount[]" 
-                           value="${netAmount}"
-                           data-generated="true"
-                           class="generated-input">
-                `;
-                
-                generatedContainer.appendChild(itemDiv);
-                
-                // Add event listener for rate changes
-                const item = itemDiv;
-                
-                const rateInput   = item.querySelector('[name="work_rate[]"]');
-                const qtyInput    = item.querySelector('[name="work_qty[]"]');
-                const amountSpan  = item.querySelector('.calculated-amount');
-                const totalAmountSpan = item.querySelector('.total-amount');
-                const amountInput = item.querySelector('[name="amount[]"]');
-                
-                const handler = function () {
-                    const rate = parseFloat(rateInput.value) || 0;
-                    const qty  = parseFloat(qtyInput.value) || 0;
-                    const amount = rate * qty; // সরাসরি গুণফল
-                
-                    const formatted = amount.toFixed(2);
-                    amountSpan.textContent = formatted;
-                    totalAmountSpan.textContent = formatted;
-                    amountInput.value = formatted;
-                    
-                    // কালার আপডেট লজিক
-                    if (amount < 0) {
-                        item.querySelector('.text-lg').classList.replace('text-green-700', 'text-red-700');
-                    } else {
-                        item.querySelector('.text-lg').classList.replace('text-red-700', 'text-green-700');
-                    }
-                
-                    calculateTotal();
-                };
-                
-                rateInput.addEventListener('input', handler);
-                qtyInput.addEventListener('input', handler);
-                
-                // Initial calculation
-                handler();
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Particular</label>
+                            <textarea name="work_particular[]" rows="2"
+                                class="w-full border border-gray-300 rounded px-3 py-2 text-sm">${entry.purpose}</textarea>
+                        </div>
+                        <!-- Hidden: financial_entry sys_id — store.php এ financial_entry_ids তে যাবে -->
+                        <input type="hidden" name="fe_sys_id[]" value="${entry.sys_id}">
+                    `;
+
+                    generatedContainer.appendChild(itemDiv);
+
+                    // qty × rate = amount live calc
+                    const qtyInput    = itemDiv.querySelector('.work-qty-gen');
+                    const rateInput   = itemDiv.querySelector('.work-rate-gen');
+                    const amountInput = itemDiv.querySelector('.work-amount-gen');
+                    const totalSpan   = itemDiv.querySelector('.total-amount');
+
+                    const recalc = () => {
+                        const qty    = parseFloat(qtyInput.value)  || 0;
+                        const rate   = parseFloat(rateInput.value) || 0;
+                        const amount = (qty * rate).toFixed(2);
+                        amountInput.value     = amount;
+                        if (totalSpan) totalSpan.textContent = amount;
+                        calculateTotal();
+                    };
+
+                    qtyInput.addEventListener('input', recalc);
+                    rateInput.addEventListener('input', recalc);
+                });
             });
-            
-            // Update the main totals
+
             calculateTotal();
         }
     
@@ -2653,6 +2620,8 @@ $base_ip_path = trim($ip_port, "/");
             });
             document.getElementById('total_amount').value = total.toFixed(2);
             calculateDue();
+            // Advance display update — total change হলে net due recalculate
+            if (typeof updateAdvanceDisplay === 'function') updateAdvanceDisplay();
         }
     
         function calculateDue() {
