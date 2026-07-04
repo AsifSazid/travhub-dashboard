@@ -307,7 +307,7 @@ try {
         ':date'          => $transactionDate,
         ':purpose'       => $payPurpose,
         ':related_type'  => $payRelatedType,
-        ':is_paid'       => $isAdvance ? 0 : $paymentPaid, // advance is_paid=0 (এখনো use হয়নি)
+        ':is_paid'       => $paymentPaid, // advance সবসময় is_paid=1 — bank transaction complete
         ':is_partial'    => $paymentPartial,
         ':is_discounted' => $paymentDiscounted,
         ':amount'        => $paymentAmount,

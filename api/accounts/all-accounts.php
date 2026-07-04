@@ -1,5 +1,5 @@
 <?php
-
+// api/accounts/all-accounts.php
 require '../../server/db_connection.php';
 
 header('Content-Type: application/json'); // Tell the client this is JSON

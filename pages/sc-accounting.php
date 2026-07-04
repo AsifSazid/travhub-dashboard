@@ -9,27 +9,42 @@
 -->
 
 <!-- ==================== SUMMARY CARDS ==================== -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 m-8">
-    <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 m-8">
+    <div onclick="filterTable('all')" id="card-all"
+        class="stat-card group bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="cl-total-trnx" class="font-semibold text-purple-800">--</p>
         <p class="text-xs text-purple-600 mt-1">Total Trnx</p>
     </div>
-    <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div onclick="filterTable('credit')" id="card-credit"
+        class="stat-card group bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="cl-total-credit" class="font-semibold text-green-800">--</p>
         <p class="text-xs text-green-600 mt-1">Total Credit</p>
     </div>
-    <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div onclick="filterTable('debit')" id="card-debit"
+        class="stat-card group bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="cl-total-debit" class="font-semibold text-red-800">--</p>
         <p class="text-xs text-red-600 mt-1">Total Debit</p>
     </div>
-    <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div onclick="filterTable('outstanding')" id="card-outstanding"
+        class="stat-card group bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="cl-total-outstanding" class="font-semibold text-yellow-800">--</p>
-        <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
+        <p class="text-xs text-yellow-600 mt-1">Outstanding</p>
+    </div>
+    <div onclick="filterTable('advance')" id="card-advance"
+        class="stat-card group bg-gradient-to-br from-indigo-50 to-indigo-100 border-2 border-indigo-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+        <p id="cl-advance-balance" class="font-semibold text-indigo-800">--</p>
+        <p class="text-xs text-indigo-600 mt-1">Advance Balance</p>
     </div>
     <div id="cl-addTrnxCard"
-        class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+        class="stat-card group bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p class="font-semibold text-blue-800">+ Add New Trnx</p>
     </div>
+</div>
+<!-- Active filter label -->
+<div id="activeFilterBar" class="hidden mx-8 -mt-4 mb-2 flex items-center gap-2">
+    <span class="text-xs text-gray-500">Filtering:</span>
+    <span id="activeFilterLabel" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"></span>
+    <button onclick="filterTable('all')" class="text-xs text-blue-500 hover:underline ml-1">Reset</button>
 </div>
 
 <!-- ==================== FLOATING BUTTONS ==================== -->
@@ -532,6 +547,7 @@
         4: { label: 'Payment',  cls: 'bg-orange-100 text-orange-700' },
         5: { label: 'Discount', cls: 'bg-yellow-100 text-yellow-700' },
         6: { label: 'Advance',  cls: 'bg-indigo-100 text-indigo-700' },
+        7: { label: 'Baksheesh', cls: 'bg-pink-100 text-pink-700' },
     };
 
     // ==================== UTILITIES ====================
@@ -664,17 +680,103 @@
     }
 
     function updateSummary(list) {
-        let credit = 0, debit = 0, total = 0;
+        let credit = 0, debit = 0;
+        // সব entries count
         list.forEach(e => {
             const amt = Number(e.amount) || 0;
-            total += amt;
-            if ((e.type || '').toLowerCase() === 'debit') debit += amt;
+            const t   = (e.type || '').toLowerCase();
+            if (t === 'debit') debit += amt;
             else credit += amt;
         });
         setEl('cl-total-trnx', list.length);
         setEl('cl-total-credit', credit.toFixed(2));
         setEl('cl-total-debit', debit.toFixed(2));
         setEl('cl-total-outstanding', (debit - credit).toFixed(2));
+
+        // Advance balance — আলাদা API call
+        loadAdvanceBalance();
+    }
+
+    /* ===== Advance Balance ===== */
+    async function loadAdvanceBalance() {
+        try {
+            // Balance = SUM(credit rt=6) - SUM(debit rt=6)
+            const [crRes, drRes] = await Promise.all([
+                fetch(`${FIN_API}&type=credit&related_type=6`),
+                fetch(`${FIN_API}&type=debit&related_type=6`)
+            ]);
+            const crData = await crRes.json();
+            const drData = await drRes.json();
+
+            const totalIn  = (crData.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+            const totalOut = (drData.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+            const balance  = totalIn - totalOut;
+
+            setEl('cl-advance-balance', balance.toFixed(2));
+        } catch(e) {
+            setEl('cl-advance-balance', '0.00');
+        }
+    }
+
+    /* ===== Card Filter — same table এ data change ===== */
+    let currentFilter = 'all';
+
+    // onclick attribute থেকে call করতে global expose করি
+    window.filterTable = function filterTable(filterType) {
+        currentFilter = filterType;
+
+        // Card highlight
+        const cardMap = {
+            'all'        : 'card-all',
+            'credit'     : 'card-credit',
+            'debit'      : 'card-debit',
+            'outstanding': 'card-outstanding',
+            'advance'    : 'card-advance',
+        };
+        Object.values(cardMap).forEach(id => {
+            const el = getEl(id);
+            if (el) el.style.boxShadow = '';
+        });
+        const activeCard = getEl(cardMap[filterType]);
+        if (activeCard) activeCard.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.5)';
+
+        // Filter label
+        const labelMap = {
+            'all'        : 'সব Transactions',
+            'credit'     : 'Credit only',
+            'debit'      : 'Debit only',
+            'outstanding': 'Outstanding (Sale + Receive)',
+            'advance'    : 'Advance Statement',
+        };
+        const filterBar = getEl('activeFilterBar');
+        const filterLabel = getEl('activeFilterLabel');
+        if (filterType === 'all') {
+            filterBar?.classList.add('hidden');
+        } else {
+            filterBar?.classList.remove('hidden');
+            if (filterLabel) filterLabel.textContent = labelMap[filterType] || filterType;
+        }
+
+        // Filter originalFinStmts (IIFE এর ভেতরের variable)
+        let filtered;
+        switch(filterType) {
+            case 'credit':
+                filtered = originalFinStmts.filter(e => (e.type||'').toLowerCase() === 'credit');
+                break;
+            case 'debit':
+                filtered = originalFinStmts.filter(e => (e.type||'').toLowerCase() === 'debit');
+                break;
+            case 'outstanding':
+                filtered = originalFinStmts; // সব entries
+                break;
+            case 'advance':
+                filtered = originalFinStmts.filter(e => parseInt(e.related_type ?? -1) === 6);
+                break;
+            default:
+                filtered = originalFinStmts;
+        }
+
+        renderFinTable(filtered.slice(0, PAGE_SIZE), filtered);
     }
 
     function renderFinTable(displayList, calcList) {
@@ -701,7 +803,9 @@
         sorted.forEach(e => {
             const amt = Number(e.amount) || 0;
             const t   = (e.type || '').toLowerCase();
-            // Client: debit=sale (owed বাড়ে), credit=receive/refund/discount (owed কমে)
+            const rt  = parseInt(e.related_type ?? -1);
+
+            // সব entries — debit বাড়ে, credit কমে
             cum += t === 'debit' ? amt : -amt;
             runMap.set(e.id, cum);
         });
@@ -753,11 +857,12 @@
             tbody.appendChild(tr);
         });
 
-        // Tfoot: Credit, Debit, Outstanding আলাদা
+        // সব entries count
         let totalCredit = 0, totalDebit = 0;
         calcList.forEach(e => {
             const a = Number(e.amount) || 0;
-            if ((e.type || '').toLowerCase() === 'credit') totalCredit += a;
+            const t = (e.type || '').toLowerCase();
+            if (t === 'credit') totalCredit += a;
             else totalDebit += a;
         });
 

@@ -444,30 +444,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Client advance থেকে invoice payment করলে advance entries mark করি
         $advanceUsed = 0;
         if ($use_advance && $advance_amount > 0) {
-            // Client এর unpaid advance entries (credit, rt=6, is_paid=0) oldest first
+            // Client এর advance entries (credit, rt=6) — oldest first
+            // is_paid সবসময় 1 (bank transaction), তাই filter নেই
+            // balance = SUM(credit rt=6) - SUM(debit rt=6)
             $advStmt = $pdo->prepare("
                 SELECT sys_id, amount FROM financial_entries
                 WHERE user_sys_id = :cid
                 AND user_type = 'client'
                 AND type = 'credit'
                 AND related_type = 6
-                AND is_paid = 0
                 ORDER BY date ASC, id ASC
             ");
             $advStmt->execute([':cid' => $client_sys_id]);
             $advEntries = $advStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $remaining = $advance_amount;
+            // Already consumed = SUM(debit rt=6)
+            $usedStmt = $pdo->prepare("
+                SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+                WHERE user_sys_id = :cid
+                AND user_type = 'client'
+                AND type = 'debit'
+                AND related_type = 6
+            ");
+            $usedStmt->execute([':cid' => $client_sys_id]);
+            $alreadyUsed    = (float)$usedStmt->fetchColumn();
+            $totalAdvCredit = array_sum(array_column($advEntries, 'amount'));
+            $netAvailable   = max(0, $totalAdvCredit - $alreadyUsed);
+
+            // advance_amount — net available এর বেশি নেওয়া যাবে না
+            $toConsume     = min($advance_amount, $netAvailable);
+            $remaining     = $toConsume;
+            $overpaidAmount= max(0, $advance_amount - $total_amount);
+
             foreach ($advEntries as $adv) {
                 if ($remaining <= 0) break;
                 $useAmt = min((float)$adv['amount'], $remaining);
 
-                // Advance entry mark as paid
-                $pdo->prepare("UPDATE financial_entries SET is_paid = 1 WHERE sys_id = ?")
-                    ->execute([$adv['sys_id']]);
-
-                // Advance used এর debit entry insert (advance consumed)
-                $advConsumeIds = generateIDs('financial_entries');
+                // Advance used এর debit entry insert
+                $advConsumeIds  = generateIDs('financial_entries');
                 $advConsumeMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
                 $pdo->prepare("
                     INSERT INTO financial_entries
@@ -480,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $client_sys_id, $client_name,
                     'Advance Used: Invoice ' . $invoice_no,
                     $useAmt,
-                    $adv['sys_id'], // ref = original advance entry
+                    $adv['sys_id'],
                     $advConsumeMeta
                 ]);
 
@@ -488,15 +502,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $remaining   -= $useAmt;
             }
 
-            // paid_amount আর due_amount update (advance use করলে)
+            // paid_amount আর due_amount update
             if ($advanceUsed > 0.01) {
-                $paid_amount = $advanceUsed;
-                $due_amount  = max(0, $total_amount - $advanceUsed);
+                // Overpayment হলে paid = total (cap), due = 0
+                $paid_amount = min($advanceUsed, $total_amount);
+                $due_amount  = max(0, $total_amount - $paid_amount);
                 $pdo->prepare("
                     UPDATE invoices
-                    SET paid_amount = ?, due_amount = ?
+                    SET paid_amount = ?, due_amount = ?,
+                        status = ?
                     WHERE sys_id = ?
-                ")->execute([$paid_amount, $due_amount, $invoice_no]);
+                ")->execute([
+                    $paid_amount,
+                    $due_amount,
+                    $due_amount <= 0 ? 1 : 2,
+                    $invoice_no
+                ]);
+
+                // ===== Receive entry (rt=3) — advance দিয়ে payment হলে =====
+                // Outstanding এ দেখাবে — sale এর বিপরীতে টাকা এসেছে
+                $rcvIds  = generateIDs('financial_entries');
+                $rcvMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+                $rcvRef  = !empty($financial_entry_ids) ? json_encode($financial_entry_ids) : $invoice_no;
+
+                $pdo->prepare("
+                    INSERT INTO financial_entries
+                    (uuid, sys_id, user_sys_id, user_name, user_type,
+                     date, purpose, type, related_type,
+                     is_paid, is_partial, is_discounted,
+                     amount, ref, meta_data)
+                    VALUES
+                    (?, ?, ?, ?, 'client',
+                     NOW(), ?, 'credit', 3,
+                     1, 0, 0,
+                     ?, ?, ?)
+                ")->execute([
+                    $rcvIds['uuid'],
+                    $rcvIds['sys_id'],
+                    $client_sys_id,
+                    $client_name,
+                    'Received via Advance: Invoice ' . $invoice_no,
+                    $paid_amount,
+                    $rcvRef,
+                    $rcvMeta
+                ]);
+
+                // Linked sale entries is_paid=1
+                if (!empty($financial_entry_ids)) {
+                    $ph = implode(',', array_fill(0, count($financial_entry_ids), '?'));
+                    $pdo->prepare("UPDATE financial_entries SET is_paid = 1 WHERE sys_id IN ($ph)")
+                        ->execute($financial_entry_ids);
+                }
+
+
+                // ===== Baksheesh (rt=7) — advance থেকে বেশি নেওয়া হলে =====
+                $baksheeshAmount = $advanceUsed - $total_amount;
+                if ($baksheeshAmount > 0.01) {
+                    $bkIds  = generateIDs('financial_entries');
+                    $bkMeta = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+
+                    $pdo->prepare("
+                        INSERT INTO financial_entries
+                        (uuid, sys_id, user_sys_id, user_name, user_type,
+                         date, purpose, type, related_type,
+                         is_paid, is_partial, is_discounted,
+                         amount, ref, meta_data)
+                        VALUES
+                        (?, ?, ?, ?, 'client',
+                         NOW(), ?, 'credit', 7,
+                         1, 0, 0,
+                         ?, ?, ?)
+                    ")->execute([
+                        $bkIds['uuid'],
+                        $bkIds['sys_id'],
+                        $client_sys_id,
+                        $client_name,
+                        'Baksheesh from Invoice: ' . $invoice_no,
+                        $baksheeshAmount,
+                        $invoice_no,   // ref = invoice sys_id — কোন invoice থেকে এসেছে
+                        $bkMeta
+                    ]);
+                }
             }
         }
 

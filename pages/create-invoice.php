@@ -896,30 +896,107 @@ $base_ip_path = trim($ip_port, "/");
                             </div>
                         </div>
 
-                        <!-- Advance Balance Banner — client select হলে auto show -->
-                        <div id="advanceBanner" class="hidden form-card bg-indigo-50 border border-indigo-200 p-4 mb-0">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-piggy-bank text-indigo-600"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-indigo-800">Client এর Advance Balance আছে!</p>
-                                        <p class="text-xs text-indigo-600 mt-0.5">
-                                            Available: <strong id="advanceBalanceDisplay">৳0.00</strong>
-                                            &nbsp;·&nbsp; Invoice Due: <strong id="advanceDueDisplay">৳0.00</strong>
-                                            &nbsp;·&nbsp; After Advance: <strong id="advanceNetDisplay">৳0.00</strong>
-                                        </p>
+                        <!-- Advance Balance Banner — client select হলে সবসময় দেখাবে -->
+                        <div id="advanceBanner" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-4">
+
+                            <!-- Header -->
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-piggy-bank text-indigo-600"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-indigo-800">Client Advance Balance</p>
+                                    <p class="text-xs text-indigo-500">
+                                        Available: <strong id="advanceBalanceDisplay">৳0.00</strong>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Balance = 0: Add advance button -->
+                            <div id="advNoBalanceSection">
+                                <button type="button" onclick="openAddAdvanceForm()"
+                                    class="w-full py-2 px-4 border-2 border-dashed border-indigo-300 rounded-lg text-sm text-indigo-600 hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
+                                    <i class="fas fa-plus-circle"></i> Advance Balance Add করুন
+                                </button>
+                            </div>
+
+                            <!-- Balance > 0: Use advance section -->
+                            <div id="advHasBalanceSection" class="hidden">
+                                <label class="flex items-center gap-2 cursor-pointer mb-3">
+                                    <input type="checkbox" id="useAdvanceCheck" class="w-4 h-4 text-indigo-600 rounded">
+                                    <span class="text-sm font-semibold text-indigo-700">Invoice এ Advance Use করবো</span>
+                                </label>
+
+                                <!-- Amount + summary — checkbox check হলে দেখাবে -->
+                                <div id="advanceUseSection" class="hidden border-t border-indigo-200 pt-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-indigo-700 mb-1">
+                                                Use Amount <span class="text-indigo-400">(max: <span id="advanceMaxDisplay">৳0</span>)</span>
+                                            </label>
+                                            <input type="number" id="advanceUseAmount" step="0.01" min="0"
+                                                placeholder="0.00"
+                                                class="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 bg-white font-semibold">
+                                        </div>
+                                        <div class="flex flex-col justify-center bg-white rounded-lg border border-indigo-100 p-3 text-center">
+                                            <p class="text-xs text-gray-400">Invoice Total</p>
+                                            <p class="text-base font-bold text-gray-800" id="advTotalDisplay">৳0.00</p>
+                                            <p class="text-xs text-indigo-600 mt-1">Used: <span id="advUsedDisplay">৳0.00</span></p>
+                                        </div>
+                                        <div class="flex flex-col justify-center bg-green-50 rounded-lg border border-green-200 p-3 text-center">
+                                            <p class="text-xs text-gray-400">Remaining Due</p>
+                                            <p class="text-xl font-bold text-green-700" id="advNetDueDisplay">৳0.00</p>
+                                        </div>
                                     </div>
                                 </div>
-                                <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                                    <input type="checkbox" id="useAdvanceCheck" name="use_advance" value="1"
-                                        class="w-4 h-4 text-indigo-600 rounded"
-                                        onchange="toggleAdvanceUse()">
-                                    <span class="text-sm font-medium text-indigo-700">Advance থেকে Pay করবো</span>
-                                </label>
                             </div>
-                            <input type="hidden" id="advanceAmountInput" name="advance_amount" value="0">
+
+                            <!-- Add Advance Inline Form — button click হলে দেখাবে -->
+                            <div id="addAdvanceForm" class="hidden border-t border-indigo-200 pt-3 mt-3">
+                                <p class="text-xs font-semibold text-indigo-700 mb-2">
+                                    <i class="fas fa-plus-circle mr-1"></i> Advance Balance Add
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Amount ৳</label>
+                                        <input type="number" id="advAddAmount" step="0.01" min="0.01"
+                                            placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Date</label>
+                                        <input type="date" id="advAddDate"
+                                            value="<?php echo date('Y-m-d'); ?>"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Deposit Account</label>
+                                        <select id="advAddAccount"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400">
+                                            <option value="">-- Select Account --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Particular</label>
+                                        <input type="text" id="advAddParticular"
+                                            placeholder="Advance payment note..."
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400">
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button type="button" onclick="saveAdvanceBalance()"
+                                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg flex items-center gap-2">
+                                        <i class="fas fa-save"></i> Save Advance
+                                    </button>
+                                    <button type="button" onclick="closeAddAdvanceForm()"
+                                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="use_advance" id="useAdvanceHidden" value="0">
+                            <input type="hidden" name="advance_amount" id="advanceAmountInput" value="0">
                         </div>
 
                         <!-- Work Items -->
@@ -1198,74 +1275,254 @@ $base_ip_path = trim($ip_port, "/");
             };
         }
     
-        /* ========== ADVANCE BALANCE CHECK ========== */
+        /* ========== ADVANCE BALANCE SYSTEM ========== */
         let advanceBalance = 0;
 
+        // Client select হলে call হবে — balance থাকলেও না থাকলেও banner দেখাবে
         async function checkClientAdvance(clientId) {
             const banner = document.getElementById('advanceBanner');
-            if (!clientId) { banner?.classList.add('hidden'); return; }
+            if (!clientId) {
+                if (banner) banner.classList.add('hidden');
+                advanceBalance = 0;
+                return;
+            }
 
             try {
-                // client এর advance entries (credit, related_type=6, is_paid=0) sum
-                const r    = await fetch(`${IP_PATH}/api/financial_entries/fin-entries.php?id=${clientId}&type=credit&related_type=6&is_paid=0`);
-                const data = await r.json();
-                if (!data.success) return;
+                // Balance = SUM(credit rt=6) - SUM(debit rt=6)
+                const [crRes, drRes] = await Promise.all([
+                    fetch(`${IP_PATH}/api/financial_entries/fin-entries.php?id=${clientId}&type=credit&related_type=6`),
+                    fetch(`${IP_PATH}/api/financial_entries/fin-entries.php?id=${clientId}&type=debit&related_type=6`)
+                ]);
+                const crData = await crRes.json();
+                const drData = await drRes.json();
+                if (!crData.success) return;
 
-                advanceBalance = (data.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+                const totalIn  = (crData.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+                const totalOut = (drData.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+                advanceBalance = Math.max(0, totalIn - totalOut);
 
-                if (advanceBalance > 0.01) {
-                    banner.classList.remove('hidden');
-                    updateAdvanceDisplay();
-                } else {
-                    banner.classList.add('hidden');
-                    advanceBalance = 0;
-                }
+                // Balance যাই হোক — banner দেখাবে
+                if (banner) banner.classList.remove('hidden');
+                renderAdvanceBannerState();
+                loadAdvanceAccounts(); // account dropdown load
+
             } catch(e) {
                 console.error('Advance check failed:', e);
             }
         }
 
-        function updateAdvanceDisplay() {
-            const totalAmt = parseFloat(document.getElementById('total_amount')?.value) || 0;
-            const netDue   = Math.max(0, totalAmt - advanceBalance);
-            const advUsed  = Math.min(advanceBalance, totalAmt);
-            const useAdv   = document.getElementById('useAdvanceCheck')?.checked;
+        // Balance অনুযায়ী banner state render করে
+        function renderAdvanceBannerState() {
+            const balEl        = document.getElementById('advanceBalanceDisplay');
+            const noBalSection = document.getElementById('advNoBalanceSection');
+            const hasBalSection= document.getElementById('advHasBalanceSection');
 
-            const balEl    = document.getElementById('advanceBalanceDisplay');
-            const dueDisp  = document.getElementById('advanceDueDisplay');
-            const netDisp  = document.getElementById('advanceNetDisplay');
+            if (balEl) balEl.textContent = '৳' + advanceBalance.toFixed(2);
 
-            if (balEl)   balEl.textContent  = '৳' + advanceBalance.toFixed(2);
-            if (dueDisp) dueDisp.textContent = '৳' + totalAmt.toFixed(2);
-            if (netDisp) netDisp.textContent = useAdv ? '৳' + netDue.toFixed(2) : '৳' + totalAmt.toFixed(2);
-
-            const advInput = document.getElementById('advanceAmountInput');
-            const paidEl   = document.getElementById('paid_amount');
-            const dueEl    = document.getElementById('due_amount');
-
-            if (useAdv) {
-                if (advInput) advInput.value = advUsed.toFixed(2);
-                if (paidEl)   paidEl.value   = advUsed.toFixed(2);
-                if (dueEl)    dueEl.value    = netDue.toFixed(2);
+            if (advanceBalance > 0.01) {
+                // Balance আছে — use section দেখাবে
+                if (noBalSection)  noBalSection.classList.add('hidden');
+                if (hasBalSection) hasBalSection.classList.remove('hidden');
+                updateAdvanceDisplay();
             } else {
-                if (advInput) advInput.value = '0';
-                if (paidEl)   paidEl.value   = '0';
-                // due = total — calculateDue() handle করবে
+                // Balance নেই — add button দেখাবে
+                if (noBalSection)  noBalSection.classList.remove('hidden');
+                if (hasBalSection) hasBalSection.classList.add('hidden');
+                // Checkbox uncheck করি
+                const cb = document.getElementById('useAdvanceCheck');
+                if (cb) cb.checked = false;
+                document.getElementById('advanceUseSection')?.classList.add('hidden');
+                // Hidden fields reset
+                document.getElementById('useAdvanceHidden').value  = '0';
+                document.getElementById('advanceAmountInput').value = '0';
+                const paidEl = document.getElementById('paid_amount');
+                if (paidEl) paidEl.value = '0';
                 if (typeof calculateDue === 'function') calculateDue();
             }
         }
 
-        function toggleAdvanceUse() {
-            updateAdvanceDisplay();
-            calculateTotal(); // recalculate
+        // Advance use amount / checkbox change হলে call হয়
+        function updateAdvanceDisplay() {
+            const totalAmt  = parseFloat(document.getElementById('total_amount')?.value) || 0;
+            // max = advance balance (total এর বেশিও দিতে পারবে — overpayment allowed)
+            const maxUse    = advanceBalance;
+            const useAdv    = document.getElementById('useAdvanceCheck')?.checked;
+            const useInputEl= document.getElementById('advanceUseAmount');
+            let   useInput  = parseFloat(useInputEl?.value) || 0;
+            // Enforce max = advanceBalance only
+            if (useInput > maxUse) {
+                useInput = maxUse;
+                if (useInputEl) useInputEl.value = maxUse.toFixed(2);
+            }
+            const advUsed  = useAdv ? (useInput > 0 ? useInput : maxUse) : 0;
+            // Due = total - advUsed, কিন্তু 0 এর নিচে যাবে না
+            // Overpayment হলে due = 0, invoice fully paid
+            const netDue   = Math.max(0, totalAmt - advUsed);
+            const overpaid = Math.max(0, advUsed - totalAmt);
+
+            // Display update
+            const maxEl      = document.getElementById('advanceMaxDisplay');
+            const totalDisp  = document.getElementById('advTotalDisplay');
+            const usedDisp   = document.getElementById('advUsedDisplay');
+            const netDueDisp = document.getElementById('advNetDueDisplay');
+
+            if (maxEl)      maxEl.textContent      = '৳' + maxUse.toFixed(2);
+            if (totalDisp)  totalDisp.textContent  = '৳' + totalAmt.toFixed(2);
+            if (usedDisp)   usedDisp.textContent   = '৳' + advUsed.toFixed(2);
+            if (netDueDisp) {
+                if (overpaid > 0.01) {
+                    netDueDisp.textContent = '৳0.00';
+                    netDueDisp.title       = `Overpaid ৳${overpaid.toFixed(2)} — advance থেকে কাটা হবে`;
+                } else {
+                    netDueDisp.textContent = '৳' + netDue.toFixed(2);
+                    netDueDisp.title       = '';
+                }
+            }
+            // Overpaid info
+            let overpaidEl = document.getElementById('advOverpaidInfo');
+            if (!overpaidEl) {
+                overpaidEl = document.createElement('p');
+                overpaidEl.id        = 'advOverpaidInfo';
+                overpaidEl.className = 'text-xs text-orange-600 mt-2 font-medium';
+                document.getElementById('advanceUseSection')?.appendChild(overpaidEl);
+            }
+            overpaidEl.textContent = overpaid > 0.01
+                ? `⚠ ৳${overpaid.toFixed(2)} বেশি advance থেকে কাটা হবে — invoice fully paid, বাড়তি টাকা Baksheesh হিসেবে record হবে`
+                : '';
+
+            // Hidden fields
+            const hiddenUse = document.getElementById('useAdvanceHidden');
+            const advInput  = document.getElementById('advanceAmountInput');
+            const paidEl    = document.getElementById('paid_amount');
+            const dueEl     = document.getElementById('due_amount');
+
+            if (useAdv && advUsed > 0) {
+                if (hiddenUse) hiddenUse.value = '1';
+                if (advInput)  advInput.value  = advUsed.toFixed(2);
+                if (paidEl)    paidEl.value    = advUsed.toFixed(2);
+                if (dueEl)     dueEl.value     = netDue.toFixed(2);
+                // due display সরাসরি update
+                const dueDisplay = document.getElementById('due_amount_display');
+                if (dueDisplay) {
+                    dueDisplay.innerText = netDue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                    dueDisplay.style.color = netDue <= 0 ? '#16a34a' : '';
+                }
+            } else {
+                if (hiddenUse) hiddenUse.value = '0';
+                if (advInput)  advInput.value  = '0';
+                if (paidEl)    paidEl.value    = '0';
+                if (typeof calculateDue === 'function') calculateDue();
+            }
         }
+
+        /* ===== Add Advance Form ===== */
+        function openAddAdvanceForm() {
+            document.getElementById('addAdvanceForm')?.classList.remove('hidden');
+        }
+
+        function closeAddAdvanceForm() {
+            document.getElementById('addAdvanceForm')?.classList.add('hidden');
+            document.getElementById('advAddAmount').value     = '';
+            document.getElementById('advAddParticular').value = '';
+        }
+
+        async function loadAdvanceAccounts() {
+            const sel = document.getElementById('advAddAccount');
+            if (!sel || sel.options.length > 1) return; // already loaded
+            try {
+                const r    = await fetch(`${IP_PATH}/api/accounts/all-accounts.php`);
+                const data = await r.json();
+                (data.accounts || []).forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value       = acc.sys_id;
+                    opt.textContent = acc.acc_name;
+                    sel.appendChild(opt);
+                });
+            } catch(e) { console.error('Account load failed:', e); }
+        }
+
+        async function saveAdvanceBalance() {
+            const amount     = parseFloat(document.getElementById('advAddAmount')?.value);
+            const date       = document.getElementById('advAddDate')?.value;
+            const accountSel = document.getElementById('advAddAccount');
+            const accountId  = accountSel?.value;
+            const accountName= accountSel?.options[accountSel.selectedIndex]?.text || '';
+            const particular = document.getElementById('advAddParticular')?.value || 'Advance Payment';
+            const clientId   = globalClientState?.clientId;
+            const clientName = globalClientState?.clientName || '';
+
+            if (!amount || amount <= 0) { alert('Amount দিন'); return; }
+            if (!clientId) { alert('Client select করুন'); return; }
+            if (!accountId) { alert('Deposit Account select করুন'); return; }
+
+            const btn = document.querySelector('#addAdvanceForm button');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'; }
+
+            try {
+                // cl-ac-receive-store.php এ post করবো — no sale selection = advance
+                const payload = {
+                    clientId        : clientId,
+                    clientName      : clientName,
+                    amount          : amount,
+                    transactionDate : date + ' ' + new Date().toTimeString().slice(0,8),
+                    particular      : particular,
+                    transferMethod  : 'Cash',
+                    selectedSaleIds : [],   // empty = advance (rt=6)
+                    withDiscount    : false,
+                    discountAmount  : 0,
+                    isHistorical    : 0,
+                    accountId       : accountId,
+                    accountName     : accountName,
+                };
+
+                const r    = await fetch(`${IP_PATH}/api/clients/cl-ac-receive-store.php`, {
+                    method : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body   : JSON.stringify(payload)
+                });
+                const data = await r.json();
+
+                if (data.success) {
+                    closeAddAdvanceForm();
+                    // Balance reload
+                    await checkClientAdvance(clientId);
+                } else {
+                    alert('Error: ' + (data.message || 'Failed'));
+                }
+            } catch(e) {
+                alert('Network error');
+                console.error(e);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save Advance'; }
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Checkbox toggle
+            document.getElementById('useAdvanceCheck')?.addEventListener('change', function() {
+                const section = document.getElementById('advanceUseSection');
+                if (section) section.classList.toggle('hidden', !this.checked);
+                if (this.checked) {
+                    // Default = max usable
+                    const totalAmt = parseFloat(document.getElementById('total_amount')?.value) || 0;
+                    const maxUse   = Math.min(advanceBalance, totalAmt);
+                    const input    = document.getElementById('advanceUseAmount');
+                    if (input && !input.value) input.value = maxUse.toFixed(2);
+                }
+                updateAdvanceDisplay();
+            });
+
+            // Amount input live update
+            document.getElementById('advanceUseAmount')?.addEventListener('input', () => {
+                updateAdvanceDisplay();
+            });
+        });
 
         // Client select হলে advance check
         registerForClientChanges((clientId) => {
             checkClientAdvance(clientId);
         });
-
-        // Total amount change এ advance update — calculateTotal এ already hook করা আছে
 
         /* ========== 1. FETCH INVOICE NUMBER FROM API ========== */
         async function fetchInvoiceNumberFromAPI() {

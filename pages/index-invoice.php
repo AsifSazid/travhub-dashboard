@@ -1182,6 +1182,11 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                                     <i class="fas fa-paper-plane mr-2"></i>
                                     <span>Send</span>
                                 </button>
+                                <button class="share-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
+                                        onclick="shareInvoicePdf('${invoice.invoice_no}')">
+                                    <i class="fas fa-share-alt mr-2"></i>
+                                    <span>Share PDF</span>
+                                </button>
                                 ${invoice.status !== 'paid' ? `
                                     <button class="mark-paid-btn bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
                                             onclick="markAsPaid('${invoice.invoice_no}')">
@@ -1402,98 +1407,267 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             }
         }
 
+        /* ===== MARK AS PAID MODAL ===== */
+        let mapCurrentInvoiceId = null;
+        let mapAdvanceBalance    = 0;
+        let mapDueAmount         = 0;
+
         async function markAsPaid(invoiceId) {
+            mapCurrentInvoiceId = invoiceId;
+
+            // Invoice info
+            const inv = invoices.find(i => i.invoice_no === invoiceId || i.sys_id === invoiceId);
+            mapDueAmount = parseFloat(inv?.due_amount || 0);
+
+            // Modal show
+            const modal = document.getElementById('markAsPaidModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Set invoice info
+            document.getElementById('mapInvoiceNo').textContent = 'Invoice #' + invoiceId;
+            document.getElementById('mapDueAmount').textContent = '৳' + mapDueAmount.toFixed(2);
+            document.getElementById('mapCashAmount').value = mapDueAmount.toFixed(2);
+            document.getElementById('mapParticular').value = 'Invoice Payment: ' + invoiceId;
+
+            // Reset
+            document.getElementById('mapUseAdvance').checked = false;
+            document.getElementById('mapAdvanceInputSection').classList.add('hidden');
+            document.getElementById('mapAdvanceSection').classList.add('hidden');
+
+            // Load accounts
+            await loadMapAccounts();
+
+            // Check advance balance
             try {
-                // Step 1: Advance balance check
-                const checkRes = await fetch(UPDATE_STATUS_API, {
+                const r = await fetch(UPDATE_STATUS_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ invoice_id: invoiceId, action: 'check_advance' })
                 });
-                const checkData = await checkRes.json();
+                const data = await r.json();
+                mapAdvanceBalance = parseFloat(data.advance_balance || 0);
 
-                // Invoice info from current list
-                const inv = invoices.find(i => i.invoice_no === invoiceId || i.sys_id === invoiceId);
-                const dueAmount = inv?.due_amount || checkData.due_amount || 0;
-                const advBalance = checkData.advance_balance || 0;
-
-                // Step 2: Build confirm message
-                let msg = `Invoice Due: ৳${dueAmount.toFixed(2)}`;
-                let useAdvance = false;
-                let paidAmount = dueAmount;
-                let action = 'full';
-
-                if (advBalance > 0) {
-                    const netDue = Math.max(0, dueAmount - advBalance);
-                    const useAdv = confirm(
-                        `${msg}
-Client এর Advance Balance: ৳${advBalance.toFixed(2)}
-
-` +
-                        `Advance থেকে pay করবো? (OK = Yes, Cancel = No)
-` +
-                        `Advance use করলে বাকি due: ৳${netDue.toFixed(2)}`
-                    );
-                    useAdvance = useAdv;
+                if (mapAdvanceBalance > 0) {
+                    document.getElementById('mapAdvanceSection').classList.remove('hidden');
+                    document.getElementById('mapAdvanceBalance').textContent = '৳' + mapAdvanceBalance.toFixed(2);
+                    const maxUse = Math.min(mapAdvanceBalance, mapDueAmount);
+                    document.getElementById('mapAdvanceMax').textContent = '৳' + maxUse.toFixed(2);
                 }
+            } catch(e) {
+                console.error('Advance check failed:', e);
+            }
 
-                // Step 3: Partial or Full?
-                const isPartial = confirm(
-                    `Full payment (৳${dueAmount.toFixed(2)}) mark করবো?
+            updateMapSummary();
+        }
 
-` +
-                    `OK = Full Payment
-Cancel = Partial Payment enter করবো`
-                );
+        async function loadMapAccounts() {
+            const sel = document.getElementById('mapAccount');
+            if (sel.options.length > 1) return;
+            try {
+                const r    = await fetch(`${IP_PATH}/api/accounts/all-accounts.php`);
+                const data = await r.json();
+                (data.accounts || []).forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value       = acc.sys_id;
+                    opt.dataset.name= acc.acc_name;
+                    opt.textContent = acc.acc_name;
+                    sel.appendChild(opt);
+                });
+            } catch(e) {}
+        }
 
-                if (!isPartial) {
-                    const partialInput = prompt(
-                        `Partial payment amount enter করুন (Due: ৳${dueAmount.toFixed(2)}):`,
-                        ''
-                    );
-                    if (!partialInput) return;
-                    paidAmount = parseFloat(partialInput);
-                    if (isNaN(paidAmount) || paidAmount <= 0) {
-                        alert('Invalid amount');
-                        return;
-                    }
-                    action = 'partial';
-                } else {
-                    action = 'full';
-                    paidAmount = dueAmount;
+        function updateMapSummary() {
+            const useAdv     = document.getElementById('mapUseAdvance').checked;
+            const advInput   = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
+            const cashInput  = parseFloat(document.getElementById('mapCashAmount').value)    || 0;
+            const maxAdvUse  = Math.min(mapAdvanceBalance, mapDueAmount);
+            const advUsed    = useAdv ? Math.min(advInput || maxAdvUse, mapAdvanceBalance) : 0;
+            const totalPaid  = advUsed + cashInput;
+            const remaining  = Math.max(0, mapDueAmount - totalPaid);
+            const baksheesh  = Math.max(0, totalPaid - mapDueAmount);
+
+            document.getElementById('mapSumAdvance').textContent  = '৳' + advUsed.toFixed(2);
+            document.getElementById('mapSumCash').textContent     = '৳' + cashInput.toFixed(2);
+            document.getElementById('mapSumTotal').textContent    = '৳' + totalPaid.toFixed(2);
+            document.getElementById('mapSumRemaining').textContent= '৳' + remaining.toFixed(2);
+
+            const bkWarn = document.getElementById('mapBaksheeshWarning');
+            const bkAmt  = document.getElementById('mapBaksheeshAmt');
+            if (baksheesh > 0.01) {
+                bkWarn.classList.remove('hidden');
+                bkAmt.textContent = '৳' + baksheesh.toFixed(2);
+            } else {
+                bkWarn.classList.add('hidden');
+            }
+
+            // Submit button color
+            const btn = document.getElementById('mapSubmitBtn');
+            if (remaining > 0.01) {
+                btn.textContent = ''; btn.innerHTML = '<i class="fas fa-check mr-1"></i> Partial Payment';
+                btn.className = btn.className.replace('bg-green-600 hover:bg-green-700', 'bg-orange-500 hover:bg-orange-600');
+            } else {
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Mark as Paid';
+                btn.className = btn.className.replace('bg-orange-500 hover:bg-orange-600', 'bg-green-600 hover:bg-green-700');
+            }
+        }
+
+        // Event listeners for summary live update
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('mapUseAdvance')?.addEventListener('change', function() {
+                const sec = document.getElementById('mapAdvanceInputSection');
+                sec.classList.toggle('hidden', !this.checked);
+                if (this.checked) {
+                    const maxUse = Math.min(mapAdvanceBalance, mapDueAmount);
+                    const cashEl = document.getElementById('mapCashAmount');
+                    document.getElementById('mapAdvanceAmount').value = maxUse.toFixed(2);
+                    // Cash = due - advance
+                    if (cashEl) cashEl.value = Math.max(0, mapDueAmount - maxUse).toFixed(2);
                 }
+                updateMapSummary();
+            });
+            document.getElementById('mapAdvanceAmount')?.addEventListener('input', () => {
+                // Cash auto-adjust
+                const advVal  = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
+                const maxAdv  = Math.min(mapAdvanceBalance, mapDueAmount);
+                const clamped = Math.min(advVal, maxAdv);
+                const cashEl  = document.getElementById('mapCashAmount');
+                if (cashEl) cashEl.value = Math.max(0, mapDueAmount - clamped).toFixed(2);
+                updateMapSummary();
+            });
+            document.getElementById('mapCashAmount')?.addEventListener('input', updateMapSummary);
+        });
 
-                // Step 4: Execute
+        function closeMarkAsPaidModal() {
+            const modal = document.getElementById('markAsPaidModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function submitMarkAsPaid() {
+            const useAdv    = document.getElementById('mapUseAdvance').checked;
+            const advInput  = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
+            const cashInput = parseFloat(document.getElementById('mapCashAmount').value)    || 0;
+            const accountSel= document.getElementById('mapAccount');
+            const accountId = accountSel?.value || '';
+            const accountName = accountSel?.options[accountSel.selectedIndex]?.dataset.name || '';
+            const date      = document.getElementById('mapDate').value;
+            const particular= document.getElementById('mapParticular').value || ('Invoice Payment: ' + mapCurrentInvoiceId);
+
+            const maxAdvUse = Math.min(mapAdvanceBalance, mapDueAmount);
+            const advUsed   = useAdv ? Math.min(advInput || maxAdvUse, mapAdvanceBalance) : 0;
+            const totalPaid = advUsed + cashInput;
+
+            if (totalPaid <= 0) { alert('Amount দিন'); return; }
+            if (cashInput > 0 && !accountId) { alert('Deposit Account select করুন'); return; }
+
+            const btn = document.getElementById('mapSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...';
+
+            try {
                 const res = await fetch(UPDATE_STATUS_API, {
-                    method: 'POST',
+                    method : 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        invoice_id:  invoiceId,
-                        action:      action,
-                        paid_amount: paidAmount,
-                        use_advance: useAdvance,
-                        particular:  'Invoice Payment: ' + invoiceId
+                    body   : JSON.stringify({
+                        invoice_id   : mapCurrentInvoiceId,
+                        action       : 'pay',
+                        cash_amount  : cashInput,
+                        use_advance  : useAdv ? 1 : 0,
+                        advance_amount: advUsed,
+                        account_id   : accountId,
+                        account_name : accountName,
+                        date         : date + ' ' + new Date().toTimeString().slice(0,8),
+                        particular   : particular,
                     })
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    let msg = data.message;
-                    if (data.advance_used > 0)
-                        msg += `
-Advance used: ৳${data.advance_used.toFixed(2)}`;
-                    if (data.overpayment > 0)
-                        msg += `
-Advance balance created: ৳${data.overpayment.toFixed(2)}`;
-                    alert(msg);
+                    closeMarkAsPaidModal();
                     await loadData();
+                    // Toast notification
+                    showToast(data.message || 'Payment recorded', 'success');
                 } else {
-                    alert('Error: ' + data.message);
+                    alert('Error: ' + (data.message || 'Failed'));
                 }
-            } catch (error) {
-                alert('Error: ' + error.message);
+            } catch(e) {
+                alert('Network error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Mark as Paid';
             }
         }
+
+        /* ===== Share Invoice PDF ===== */
+        async function shareInvoicePdf(invoiceNo) {
+            const pdfUrl = `${IP_PATH}/pages/print-invoice.php?id=${invoiceNo}`;
+
+            // HTTPS না থাকলে Web Share API কাজ করবে না — direct open
+            const isHttps = location.protocol === 'https:';
+            if (!isHttps) {
+                window.open(pdfUrl, '_blank');
+                showToast('PDF opened in new tab (Share needs HTTPS)', 'info');
+                return;
+            }
+
+            const btn = document.querySelector(`button[onclick="shareInvoicePdf('${invoiceNo}')"]`);
+            const originalHtml = btn?.innerHTML;
+            if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i><span>Loading...</span>';
+
+            try {
+                const response = await fetch(pdfUrl, { credentials: 'include' });
+
+                const contentType = response.headers.get('Content-Type') || '';
+                if (!response.ok || !contentType.includes('application/pdf')) {
+                    window.open(pdfUrl, '_blank');
+                    showToast('PDF opened in new tab', 'info');
+                    return;
+                }
+
+                const blob = await response.blob();
+                const file = new File([blob], `Invoice-${invoiceNo}.pdf`, { type: 'application/pdf' });
+
+                // Share API check
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: `Invoice ${invoiceNo}`,
+                        text : `Invoice ${invoiceNo} from TravHub Global Limited`,
+                        files: [file]
+                    });
+                } else {
+                    // Fallback — download
+                    const url = URL.createObjectURL(blob);
+                    const a   = document.createElement('a');
+                    a.href     = url;
+                    a.download = `Invoice-${invoiceNo}.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('PDF downloaded', 'success');
+                }
+            } catch(e) {
+                if (e.name !== 'AbortError') {
+                    window.open(pdfUrl, '_blank');
+                }
+            } finally {
+                if (btn && originalHtml) btn.innerHTML = originalHtml;
+            }
+        }
+
+
+        function showToast(msg, type='success') {
+            const t = document.createElement('div');
+            t.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium
+                ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+            t.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>${msg}`;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        // Backdrop click
+        document.getElementById('markAsPaidModal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeMarkAsPaidModal();
+        });
 
         // Handle window resize for responsive charts
         let resizeTimeout;
@@ -1506,5 +1680,121 @@ Advance balance created: ৳${data.overpayment.toFixed(2)}`;
             }, 250);
         });
     </script>
+<!-- ==================== MARK AS PAID MODAL ==================== -->
+<div id="markAsPaidModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-5 border-b border-gray-100">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">
+                    <i class="fas fa-check-circle text-green-500 mr-2"></i> Mark as Paid
+                </h3>
+                <p class="text-xs text-gray-500 mt-0.5" id="mapInvoiceNo">Invoice #</p>
+            </div>
+            <button onclick="closeMarkAsPaidModal()"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+            <!-- Due Info -->
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-orange-600">Invoice Due</p>
+                    <p id="mapDueAmount" class="text-2xl font-bold text-orange-700">৳0.00</p>
+                </div>
+                <i class="fas fa-file-invoice-dollar text-orange-300 text-3xl"></i>
+            </div>
+
+            <!-- Advance Section -->
+            <div id="mapAdvanceSection" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-xs text-indigo-600">Client Advance Balance</p>
+                        <p id="mapAdvanceBalance" class="text-lg font-bold text-indigo-700">৳0.00</p>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="mapUseAdvance" class="w-4 h-4 text-indigo-600 rounded">
+                        <span class="text-sm font-semibold text-indigo-700">Use Advance</span>
+                    </label>
+                </div>
+                <div id="mapAdvanceInputSection" class="hidden">
+                    <label class="block text-xs text-indigo-600 mb-1">
+                        Use Amount <span class="text-indigo-400">(max: <span id="mapAdvanceMax">৳0</span>)</span>
+                    </label>
+                    <input type="number" id="mapAdvanceAmount" step="0.01" min="0" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 bg-white font-semibold">
+                </div>
+            </div>
+
+            <!-- Cash Payment -->
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Cash/Cheque Amount</label>
+                        <input type="number" id="mapCashAmount" step="0.01" min="0" placeholder="0.00"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                        <input type="date" id="mapDate" value="<?php echo date('Y-m-d'); ?>"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Deposit Account</label>
+                    <select id="mapAccount"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
+                        <option value="">-- Select Account --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Particular</label>
+                    <input type="text" id="mapParticular" placeholder="Payment note..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div id="mapSummary" class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Advance Used:</span>
+                    <span id="mapSumAdvance" class="font-medium text-indigo-600">৳0.00</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Cash/Cheque:</span>
+                    <span id="mapSumCash" class="font-medium text-green-600">৳0.00</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-200 pt-2">
+                    <span class="font-semibold text-gray-700">Total Payment:</span>
+                    <span id="mapSumTotal" class="font-bold text-gray-900">৳0.00</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Remaining Due:</span>
+                    <span id="mapSumRemaining" class="font-bold text-orange-600">৳0.00</span>
+                </div>
+                <!-- Baksheesh warning -->
+                <div id="mapBaksheeshWarning" class="hidden text-xs text-pink-600 bg-pink-50 rounded p-2 mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <span id="mapBaksheeshAmt"></span> বাড়তি — Baksheesh হিসেবে record হবে
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end gap-3 p-5 border-t border-gray-100">
+            <button onclick="closeMarkAsPaidModal()"
+                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg">
+                Cancel
+            </button>
+            <button onclick="submitMarkAsPaid()" id="mapSubmitBtn"
+                class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg flex items-center gap-2">
+                <i class="fas fa-check"></i> Mark as Paid
+            </button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

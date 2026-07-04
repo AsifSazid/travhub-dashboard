@@ -231,6 +231,7 @@ try {
         'total_amount' => $invoice['total_amount'] ?? 0,
         'paid_amount' => $invoice['paid_amount'] ?? 0,
         'due_amount' => $invoice['due_amount'] ?? 0,
+        'status' => (int)($invoice['status'] ?? 0), // 1=paid
         'total_amount_in_words' => $invoice['total_amount_in_words'] ?? '',
 
         // Vendor data from JSON
@@ -295,6 +296,59 @@ ob_start();
             font-size: 12px;
         }
 
+        /* PAID Stamp — rubber stamp style, mPDF fixed position */
+        .paid-stamp-wrap {
+            position: fixed;
+            top: 38%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-20deg);
+            z-index: 1000;
+            pointer-events: none;
+            text-align: center;
+            border: 4px solid rgba(22, 163, 74, 0.55);
+            border-radius: 8px;
+            padding: 10px 28px 12px 28px;
+            background: transparent;
+            min-width: 220px;
+        }
+        .paid-stamp-company {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: rgba(22, 163, 74, 0.60);
+            text-transform: uppercase;
+            border-bottom: 2px solid rgba(22, 163, 74, 0.35);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+        .paid-stamp-main {
+            font-family: Arial, sans-serif;
+            font-size: 52px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            color: rgba(22, 163, 74, 0.55);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .paid-stamp-check {
+            font-size: 40px;
+            vertical-align: middle;
+            margin-right: 4px;
+            color: rgba(22, 163, 74, 0.55);
+        }
+        .paid-stamp-address {
+            font-family: Arial, sans-serif;
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: rgba(22, 163, 74, 0.55);
+            text-transform: uppercase;
+            border-top: 2px solid rgba(22, 163, 74, 0.35);
+            padding-top: 6px;
+            margin-top: 4px;
+        }
+
         @page {
             header: page-header;
             footer: page-footer;
@@ -334,12 +388,26 @@ ob_start();
 
 <body>
 
+    <?php if (($form_data['status'] ?? 0) == 1): ?>
+    <div class="paid-stamp-wrap">
+        <div class="paid-stamp-company">TRAVHUB GLOBAL LIMITED</div>
+        <div class="paid-stamp-main"><span class="paid-stamp-check">&#10003;</span>PAID</div>
+        <div class="paid-stamp-address">H01, R06, S03, Uttara, Dhaka-1230</div>
+    </div>
+    <?php endif; ?>
+
     <!-- === FIXED HEADER === -->
     <htmlpageheader name="page-header">
         <table class="no-border">
             <tr>
                 <td colspan="3" style="text-align: right; border:none;">
-                    <h1 style="margin: 0px;" class="title">INVOICE</h1>
+                    <h1 style="margin: 0px;" class="title">
+                        <?php if (($form_data['status'] ?? 0) == 1): ?>
+                            RECEIPT
+                        <?php else: ?>
+                            INVOICE
+                        <?php endif; ?>
+                    </h1>
                 </td>
             </tr>
             <tr>

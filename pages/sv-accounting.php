@@ -1,41 +1,41 @@
-<!--
-    PATH: /vendors/sv-accounting.php
-    
-    Vendor Accounting — 4 transaction types:
-    🟢 Purchase  (vendor+credit, related_type=2) — no bank touch
-    🔴 Payment   (vendor+debit,  related_type=4) — bank withdraw
-    🟣 Refund    (vendor+debit,  related_type=0) — conditional bank credit
-    🟠 Discount  (vendor+debit,  related_type=5) — no bank touch
-    
-    Cross/Cancel button fix:
-      - HTML inline onclick বাদ দেওয়া হয়েছে
-      - JS থেকে addEventListener দিয়ে bind করা হয়েছে
-      - IIFE wrap করা আছে
--->
-
-<!-- ==================== SUMMARY CARDS ==================== -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 m-8">
-    <div class="group bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 m-8">
+    <div onclick="svFilterTable('all')" id="sv-card-all"
+        class="group bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="sv-total-trnx" class="font-semibold text-purple-800">--</p>
         <p class="text-xs text-purple-600 mt-1">Total Trnx</p>
     </div>
-    <div class="group bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:border-green-400 hover:from-green-100 hover:to-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div onclick="svFilterTable('credit')" id="sv-card-credit"
+        class="group bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="sv-total-credit" class="font-semibold text-green-800">--</p>
         <p class="text-xs text-green-600 mt-1">Total Credit (Purchase)</p>
     </div>
-    <div class="group bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:border-red-400 hover:from-red-100 hover:to-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div onclick="svFilterTable('debit')" id="sv-card-debit"
+        class="group bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="sv-total-debit" class="font-semibold text-red-800">--</p>
         <p class="text-xs text-red-600 mt-1">Total Debit (Payment)</p>
     </div>
-    <div class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 hover:border-yellow-400 hover:from-yellow-100 hover:to-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div onclick="svFilterTable('outstanding')" id="sv-card-outstanding"
+        class="group bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p id="sv-total-outstanding" class="font-semibold text-yellow-800">--</p>
-        <p class="text-xs text-yellow-600 mt-1">Total Outstanding</p>
+        <p class="text-xs text-yellow-600 mt-1">Outstanding</p>
     </div>
-    <div class="group bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
-         id="sv-addTrnxCard">
+    <div onclick="svFilterTable('advance')" id="sv-card-advance"
+        class="group bg-gradient-to-br from-indigo-50 to-indigo-100 border-2 border-indigo-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+        <p id="sv-advance-balance" class="font-semibold text-indigo-800">--</p>
+        <p class="text-xs text-indigo-600 mt-1">Advance Balance</p>
+    </div>
+    <div id="sv-addTrnxCard"
+        class="group bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
         <p class="font-semibold text-blue-800">+ Add New Trnx</p>
     </div>
 </div>
+<!-- Active filter label -->
+<div id="sv-activeFilterBar" class="hidden mx-8 -mt-4 mb-2 flex items-center gap-2">
+    <span class="text-xs text-gray-500">Filtering:</span>
+    <span id="sv-activeFilterLabel" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"></span>
+    <button onclick="svFilterTable('all')" class="text-xs text-blue-500 hover:underline ml-1">Reset</button>
+</div>
+
 
 <!-- ==================== FLOATING ACTION BUTTONS ==================== -->
 <div class="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-40">
@@ -620,16 +620,98 @@
 
     function updateSummary(list) {
         let credit = 0, debit = 0;
+        // সব entries count
         list.forEach(e => {
             const amt = Number(e.amount) || 0;
-            if ((e.type || '').toLowerCase() === 'credit') credit += amt;
+            const t   = (e.type || '').toLowerCase();
+            if (t === 'credit') credit += amt;
             else debit += amt;
         });
         setEl('sv-total-trnx', list.length);
         setEl('sv-total-credit', credit.toFixed(2));
         setEl('sv-total-debit', debit.toFixed(2));
         setEl('sv-total-outstanding', (credit - debit).toFixed(2));
+        loadSvAdvanceBalance();
     }
+
+    /* ===== Vendor Advance Balance ===== */
+    async function loadSvAdvanceBalance() {
+        try {
+            // Balance = SUM(debit rt=6) - SUM(credit rt=6)
+            // Vendor advance: debit=দিয়েছি, credit=ফেরত/use হয়েছে
+            const [drRes, crRes] = await Promise.all([
+                fetch(`${FIN_API}&type=debit&related_type=6`),
+                fetch(`${FIN_API}&type=credit&related_type=6`)
+            ]);
+            const drData = await drRes.json();
+            const crData = await crRes.json();
+
+            const totalOut = (drData.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+            const totalBack= (crData.finStmts || []).reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+            const balance  = Math.max(0, totalOut - totalBack);
+
+            setEl('sv-advance-balance', balance.toFixed(2));
+        } catch(e) {
+            setEl('sv-advance-balance', '0.00');
+        }
+    }
+
+    /* ===== Card Filter ===== */
+    let svCurrentFilter = 'all';
+
+    window.svFilterTable = function(filterType) {
+        svCurrentFilter = filterType;
+
+        const cardMap = {
+            'all'        : 'sv-card-all',
+            'credit'     : 'sv-card-credit',
+            'debit'      : 'sv-card-debit',
+            'outstanding': 'sv-card-outstanding',
+            'advance'    : 'sv-card-advance',
+        };
+        Object.values(cardMap).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.boxShadow = '';
+        });
+        const activeCard = document.getElementById(cardMap[filterType]);
+        if (activeCard) activeCard.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.5)';
+
+        const labelMap = {
+            'all'        : 'সব Transactions',
+            'credit'     : 'Credit (Purchase) only',
+            'debit'      : 'Debit (Payment) only',
+            'outstanding': 'Outstanding (Purchase + Payment)',
+            'advance'    : 'Advance Statement',
+        };
+        const filterBar   = document.getElementById('sv-activeFilterBar');
+        const filterLabel = document.getElementById('sv-activeFilterLabel');
+        if (filterType === 'all') {
+            filterBar?.classList.add('hidden');
+        } else {
+            filterBar?.classList.remove('hidden');
+            if (filterLabel) filterLabel.textContent = labelMap[filterType] || filterType;
+        }
+
+        let filtered;
+        switch(filterType) {
+            case 'credit':
+                filtered = originalFinStmts.filter(e => (e.type||'').toLowerCase() === 'credit');
+                break;
+            case 'debit':
+                filtered = originalFinStmts.filter(e => (e.type||'').toLowerCase() === 'debit');
+                break;
+            case 'outstanding':
+                filtered = originalFinStmts; // সব entries
+                break;
+            case 'advance':
+                filtered = originalFinStmts.filter(e => parseInt(e.related_type ?? -1) === 6);
+                break;
+            default:
+                filtered = originalFinStmts;
+        }
+
+        renderFinTable(filtered.slice(0, PAGE_SIZE), filtered);
+    };
 
     const RT_BADGE = {
         0: { label: 'Refund',   cls: 'bg-purple-100 text-purple-700' },
@@ -639,6 +721,7 @@
         4: { label: 'Payment',  cls: 'bg-orange-100 text-orange-700' },
         5: { label: 'Discount', cls: 'bg-yellow-100 text-yellow-700' },
         6: { label: 'Advance',  cls: 'bg-indigo-100 text-indigo-700' },
+        7: { label: 'Baksheesh', cls: 'bg-pink-100 text-pink-700' },
     };
 
     function renderFinTable(displayList, calcList) {
@@ -667,6 +750,8 @@
         sorted.forEach(e => {
             const amt = Number(e.amount) || 0;
             const t   = (e.type || '').toLowerCase();
+            const rt  = parseInt(e.related_type ?? -1);
+            // সব entries — credit বাড়ে, debit কমে
             if (t === 'credit') cum += amt;
             else cum -= amt;
             runMap.set(e.id, cum);
@@ -724,11 +809,12 @@
             finTableBody.appendChild(tr);
         });
 
-        // Tfoot: Credit, Debit, Outstanding আলাদা
+        // সব entries count
         let totalCredit = 0, totalDebit = 0;
         calcList.forEach(e => {
             const a = Number(e.amount) || 0;
-            if ((e.type || '').toLowerCase() === 'credit') totalCredit += a;
+            const t = (e.type || '').toLowerCase();
+            if (t === 'credit') totalCredit += a;
             else totalDebit += a;
         });
         const creditEl = document.getElementById('sv-total-credit');
