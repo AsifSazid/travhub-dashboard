@@ -5,7 +5,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$clientId = $_GET['client_id'];
+$clientId = $_GET['id'] ?? $_GET['client_id'] ?? null;
 
 
 // $showClientApi = $ip_port . "api/clients/show.php";

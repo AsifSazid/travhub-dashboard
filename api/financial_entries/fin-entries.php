@@ -10,6 +10,7 @@ header('Content-Type: application/json');
 
 $userId = $_GET['id'] ?? '';
 
+
 if (empty($userId)) {
     echo json_encode(['success' => false, 'message' => 'User ID is required']);
     exit;

@@ -348,6 +348,21 @@ ob_start();
             padding-top: 6px;
             margin-top: 4px;
         }
+                
+        .stamp-warning-wrap {
+            border-color: #ff9d6e !important; /* rgba(255, 95, 21, 0.55) এর হেক্স রূপ */
+        }
+        .stamp-warning-company {
+            color: #ffa375 !important;
+            border-bottom-color: #ffcaaf !important;
+        }
+        .stamp-warning-main, .stamp-warning-check {
+            color: #ff9d6e !important;
+        }
+        .stamp-warning-address {
+            color: #ff9d6e !important;
+            border-top-color: #ffcaaf !important;
+        }
 
         @page {
             header: page-header;
@@ -396,6 +411,14 @@ ob_start();
     </div>
     <?php endif; ?>
 
+    <?php if (($form_data['status'] ?? 0) == 2): ?>
+    <div class="paid-stamp-wrap stamp-warning-wrap">
+        <div class="paid-stamp-company stamp-warning-company">TRAVHUB GLOBAL LIMITED</div>
+        <div class="paid-stamp-main stamp-warning-main"><span class="paid-stamp-check stamp-warning-check">&#10003;</span>P. PAID</div>
+        <div class="paid-stamp-address stamp-warning-address">H01, R06, S03, Uttara, Dhaka-1230</div>
+    </div>
+    <?php endif; ?>
+
     <!-- === FIXED HEADER === -->
     <htmlpageheader name="page-header">
         <table class="no-border">
@@ -404,6 +427,8 @@ ob_start();
                     <h1 style="margin: 0px;" class="title">
                         <?php if (($form_data['status'] ?? 0) == 1): ?>
                             RECEIPT
+                        <?php elseif ($form_data['status'] === 2): ?>
+                            RECEIPT (P)
                         <?php else: ?>
                             INVOICE
                         <?php endif; ?>

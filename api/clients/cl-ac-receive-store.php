@@ -283,8 +283,13 @@ try {
     $receiveRef      = !empty($selectedSaleIds) ? json_encode($selectedSaleIds) : $stmtSysId;
     // Advance হলে related_type=6, regular receive হলে related_type=3
     $receiveRelatedType = $isAdvance ? 6 : 3;
-    // Advance purpose prefix
     $receivePurpose  = $isAdvance ? ('Advance: ' . $particular) : $particular;
+
+    // Receive entry amount = sale amount পর্যন্তই (overpayment বাদ)
+    // Bank এ full amount যাবে, কিন্তু financial_entries এ শুধু sale clear amount
+    $receiveEntryAmount = $hasSelection
+        ? min($receiveAmount, $totalRemainingAmount)  // sale এর remaining পর্যন্ত
+        : $receiveAmount;                              // advance/general = full amount
 
     $pdo->prepare("
         INSERT INTO financial_entries
@@ -305,10 +310,10 @@ try {
         ':date'          => $transactionDate,
         ':purpose'       => $receivePurpose,
         ':related_type'  => $receiveRelatedType,
-        ':is_paid'       => $receivePaid, // advance সবসময় is_paid=1 — bank transaction complete
+        ':is_paid'       => $receivePaid,
         ':is_partial'    => $receivePartial,
         ':is_discounted' => $receiveDiscounted,
-        ':amount'        => $receiveAmount,
+        ':amount'        => $receiveEntryAmount,  // sale amount পর্যন্তই
         ':ref'           => $receiveRef,
         ':meta'          => $receiveMeta
     ]);

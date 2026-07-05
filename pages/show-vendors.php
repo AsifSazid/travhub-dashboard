@@ -267,7 +267,7 @@ $getVendor = $ip_port . "api/vendors/get-vendor.php?vid=$vendorId";
 
             // Initialize first tab as active
             if (tabButtons.length > 0) {
-                const firstTabId = tabButtons[0].getAttribute('data-tab');
+                const firstTabId = tabButtons[3].getAttribute('data-tab');
                 switchTab(firstTabId);
             }
         });

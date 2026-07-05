@@ -307,10 +307,14 @@ try {
         ':date'          => $transactionDate,
         ':purpose'       => $payPurpose,
         ':related_type'  => $payRelatedType,
-        ':is_paid'       => $paymentPaid, // advance সবসময় is_paid=1 — bank transaction complete
+        ':is_paid'       => $paymentPaid,
         ':is_partial'    => $paymentPartial,
         ':is_discounted' => $paymentDiscounted,
-        ':amount'        => $paymentAmount,
+        // Payment entry amount = purchase amount পর্যন্তই (overpayment বাদ)
+        // Bank থেকে full amount ই withdraw হবে, কিন্তু financial_entries এ purchase clear amount
+        ':amount'        => $hasSelection
+            ? min($paymentAmount, $totalRemainingAmount)
+            : $paymentAmount,
         ':ref'           => $payRef,
         ':meta'          => $payMeta
     ]);

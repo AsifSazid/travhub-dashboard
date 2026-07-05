@@ -519,7 +519,7 @@
 
     const IP_PATH      = `<?php echo $ip_port; ?>`;
     const CLIENT_ID    = "<?php echo isset($clientId) ? $clientId : ''; ?>";
-    const FIN_API      = `${IP_PATH}/api/financial_entries/fin-entries.php?id=${CLIENT_ID}`;
+    const FIN_API      = `<?php echo $getClientFinEntriesApi; ?>`;
     const FETCH_STMT   = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
     const FIN_ENTRIES  = `${IP_PATH}/api/financial_entries/fin-entries.php`;
     const API_RECEIVE  = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
