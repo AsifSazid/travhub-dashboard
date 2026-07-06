@@ -1512,6 +1512,34 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             }
         }
 
+        // Payment method toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.map-method-label').forEach(label => {
+                label.addEventListener('click', () => {
+                    document.querySelectorAll('.map-method-label').forEach(l => {
+                        l.className = l.className.replace('border-green-500 bg-green-50 text-green-700','border-gray-200 text-gray-500');
+                    });
+                    label.className = label.className.replace('border-gray-200 text-gray-500','border-green-500 bg-green-50 text-green-700');
+                    const method = label.dataset.val;
+                    const isInstr = ['cheque','bftn-eft'].includes(method);
+                    document.getElementById('mapAccountSection')?.classList.remove('hidden');
+                    // instrument হলেও account দেখাবে — clear হলে এই account এ deposit হবে
+                    const accLabel = document.querySelector('#mapAccountSection label');
+                    if (accLabel) {
+                        accLabel.textContent = isInstr
+                            ? 'Deposit Account (Instrument clear হলে)'
+                            : 'Deposit Account';
+                    }
+                    document.getElementById('mapChequeFields')?.classList.toggle('hidden', method !== 'cheque');
+                    document.getElementById('mapBftnFields')?.classList.toggle('hidden', method !== 'bftn-eft');
+                });
+            });
+        });
+
+        function getMapMethod() {
+            return document.querySelector('input[name="mapPayMethod"]:checked')?.value || 'cash';
+        }
+
         // Event listeners for summary live update
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('mapUseAdvance')?.addEventListener('change', function() {
@@ -1545,48 +1573,90 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         }
 
         async function submitMarkAsPaid() {
-            const useAdv    = document.getElementById('mapUseAdvance').checked;
-            const advInput  = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
-            const cashInput = parseFloat(document.getElementById('mapCashAmount').value)    || 0;
-            const accountSel= document.getElementById('mapAccount');
-            const accountId = accountSel?.value || '';
+            const useAdv      = document.getElementById('mapUseAdvance').checked;
+            const advInput    = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
+            const cashInput   = parseFloat(document.getElementById('mapCashAmount').value)    || 0;
+            const accountSel  = document.getElementById('mapAccount');
+            const accountId   = accountSel?.value || '';
             const accountName = accountSel?.options[accountSel.selectedIndex]?.dataset.name || '';
-            const date      = document.getElementById('mapDate').value;
-            const particular= document.getElementById('mapParticular').value || ('Invoice Payment: ' + mapCurrentInvoiceId);
+            const date        = document.getElementById('mapDate').value;
+            const particular  = document.getElementById('mapParticular').value || ('Invoice Payment: ' + mapCurrentInvoiceId);
+            const method      = getMapMethod();
+            const isInstrument= ['cheque','bftn-eft'].includes(method);
+            const withDiscount= document.getElementById('mapWithDiscount')?.checked || false;
+            const discAmount  = parseFloat(document.getElementById('mapDiscountAmount')?.value) || 0;
+            const discPart    = document.getElementById('mapDiscountParticular')?.value || '';
 
             const maxAdvUse = Math.min(mapAdvanceBalance, mapDueAmount);
             const advUsed   = useAdv ? Math.min(advInput || maxAdvUse, mapAdvanceBalance) : 0;
-            const totalPaid = advUsed + cashInput;
+            const totalPaid = advUsed + cashInput + (withDiscount ? discAmount : 0);
 
             if (totalPaid <= 0) { alert('Amount দিন'); return; }
-            if (cashInput > 0 && !accountId) { alert('Deposit Account select করুন'); return; }
+            if (!isInstrument && cashInput > 0 && !accountId) { alert('Deposit Account select করুন'); return; }
+            if (isInstrument && !accountId) { alert('Deposit Account select করুন (instrument clear হলে এখানে জমা হবে)'); return; }
+
+            // Overpayment check
+            let overpaymentAction = 'advance';
+            if (cashInput + advUsed > mapDueAmount + 0.009) {
+                const overpay = (cashInput + advUsed - mapDueAmount).toFixed(2);
+                const choice  = await showMapOverpayModal(overpay);
+                if (choice === null) return;
+                overpaymentAction = choice;
+            }
 
             const btn = document.getElementById('mapSubmitBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...';
 
             try {
-                const res = await fetch(UPDATE_STATUS_API, {
-                    method : 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body   : JSON.stringify({
-                        invoice_id   : mapCurrentInvoiceId,
-                        action       : 'pay',
-                        cash_amount  : cashInput,
-                        use_advance  : useAdv ? 1 : 0,
-                        advance_amount: advUsed,
-                        account_id   : accountId,
-                        account_name : accountName,
-                        date         : date + ' ' + new Date().toTimeString().slice(0,8),
-                        particular   : particular,
-                    })
+                const payload = {
+                    invoice_id        : mapCurrentInvoiceId,
+                    action            : 'pay',
+                    cash_amount       : cashInput,
+                    use_advance       : useAdv ? 1 : 0,
+                    advance_amount    : advUsed,
+                    account_id        : accountId,
+                    account_name      : accountName,
+                    date              : date + ' ' + new Date().toTimeString().slice(0,8),
+                    particular        : particular,
+                    transfer_method   : method,
+                    overpayment_action: overpaymentAction,
+                    with_discount     : withDiscount,
+                    discount_amount   : withDiscount ? discAmount : 0,
+                    discount_particular: withDiscount ? discPart : '',
+                };
+                // Cheque fields
+                if (method === 'cheque') {
+                    payload.chequeNo          = document.getElementById('mapChequeNo')?.value;
+                    payload.chequeDate        = document.getElementById('mapChequeDate')?.value;
+                    payload.chequeAccountName = document.getElementById('mapChequeAccName')?.value;
+                    payload.bankName          = document.getElementById('mapChequeBankName')?.value;
+                }
+                if (method === 'bftn-eft') {
+                    payload.bftnNo          = document.getElementById('mapBftnNo')?.value;
+                    payload.bftnDate        = document.getElementById('mapBftnDate')?.value;
+                    payload.bftnAccountName = document.getElementById('mapBftnAccName')?.value;
+                    payload.eftBankName     = document.getElementById('mapBftnBankName')?.value;
+                }
+
+                const res  = await fetch(UPDATE_STATUS_API, {
+                    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
                 });
                 const data = await res.json();
 
                 if (data.success) {
+                    // File upload
+                    const files = document.getElementById('mapFiles')?.files;
+                    if (files && files.length > 0) {
+                        const fd = new FormData();
+                        fd.append('entity_type', 'invoice');
+                        fd.append('entity_id',   mapCurrentInvoiceId);
+                        fd.append('entity_name', invoices.find(i=>i.invoice_no===mapCurrentInvoiceId)?.client_name || 'client');
+                        for (const f of files) fd.append('files[]', f);
+                        fetch(`${IP_PATH}/api/finance/upload-file.php`, { method:'POST', body:fd });
+                    }
                     closeMarkAsPaidModal();
                     await loadData();
-                    // Toast notification
                     showToast(data.message || 'Payment recorded', 'success');
                 } else {
                     alert('Error: ' + (data.message || 'Failed'));
@@ -1597,6 +1667,41 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check mr-1"></i> Mark as Paid';
             }
+        }
+
+        function showMapOverpayModal(overpayAmt) {
+            return new Promise(resolve => {
+                const existing = document.getElementById('mapOverpayModal');
+                if (existing) existing.remove();
+                const modal = document.createElement('div');
+                modal.id = 'mapOverpayModal';
+                modal.className = 'fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                        <h3 class="text-base font-bold text-gray-900 mb-2">
+                            <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Overpayment
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-4">৳${overpayAmt} বাড়তি। এটা কী হিসেবে রাখবো?</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="document.getElementById('mapOverpayModal').dataset.choice='advance'"
+                                class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
+                                <i class="fas fa-piggy-bank mr-1"></i> Advance
+                            </button>
+                            <button onclick="document.getElementById('mapOverpayModal').dataset.choice='baksheesh'"
+                                class="py-2.5 px-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl text-sm">
+                                <i class="fas fa-gift mr-1"></i> Baksheesh
+                            </button>
+                        </div>
+                        <button onclick="document.getElementById('mapOverpayModal').dataset.choice='cancel'"
+                            class="w-full mt-3 py-2 text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>`;
+                document.body.appendChild(modal);
+                const observer = new MutationObserver(() => {
+                    const choice = modal.dataset.choice;
+                    if (choice) { observer.disconnect(); modal.remove(); resolve(choice==='cancel'?null:choice); }
+                });
+                observer.observe(modal, { attributes: true });
+            });
         }
 
         /* ===== Share Invoice PDF ===== */
@@ -1728,11 +1833,59 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 </div>
             </div>
 
-            <!-- Cash Payment -->
+            <!-- Payment Method -->
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-2">Payment Method</label>
+                <div class="grid grid-cols-5 gap-1.5">
+                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-green-500 bg-green-50 text-green-700 rounded-lg cursor-pointer" data-val="cash">
+                        <input type="radio" name="mapPayMethod" value="cash" class="hidden" checked>
+                        <i class="fas fa-money-bill-wave mb-0.5 text-sm"></i>
+                        <span class="text-xs font-semibold">Cash</span>
+                    </label>
+                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="mfs">
+                        <input type="radio" name="mapPayMethod" value="mfs" class="hidden">
+                        <i class="fas fa-mobile-alt mb-0.5 text-sm"></i>
+                        <span class="text-xs font-semibold">MFS</span>
+                    </label>
+                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="npsb">
+                        <input type="radio" name="mapPayMethod" value="npsb" class="hidden">
+                        <i class="fas fa-network-wired mb-0.5 text-sm"></i>
+                        <span class="text-xs font-semibold">NPSB</span>
+                    </label>
+                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="cheque">
+                        <input type="radio" name="mapPayMethod" value="cheque" class="hidden">
+                        <i class="fas fa-file-alt mb-0.5 text-sm"></i>
+                        <span class="text-xs font-semibold">Cheque</span>
+                    </label>
+                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="bftn-eft">
+                        <input type="radio" name="mapPayMethod" value="bftn-eft" class="hidden">
+                        <i class="fas fa-university mb-0.5 text-sm"></i>
+                        <span class="text-xs font-semibold">BFTN</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Cheque fields -->
+            <div id="mapChequeFields" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
+                <div><label class="text-gray-600">Cheque No</label><input type="text" id="mapChequeNo" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div><label class="text-gray-600">Date</label><input type="date" id="mapChequeDate" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div><label class="text-gray-600">Account Name</label><input type="text" id="mapChequeAccName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div><label class="text-gray-600">Bank</label><input type="text" id="mapChequeBankName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+            </div>
+
+            <!-- BFTN fields -->
+            <div id="mapBftnFields" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
+                <div><label class="text-gray-600">Ref No</label><input type="text" id="mapBftnNo" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div><label class="text-gray-600">Date</label><input type="date" id="mapBftnDate" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div><label class="text-gray-600">Account Name</label><input type="text" id="mapBftnAccName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div><label class="text-gray-600">Bank</label><input type="text" id="mapBftnBankName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+            </div>
+
+            <!-- Amount / Date / Account -->
             <div class="space-y-3">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Cash/Cheque Amount</label>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
                         <input type="number" id="mapCashAmount" step="0.01" min="0" placeholder="0.00"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
                     </div>
@@ -1742,12 +1895,33 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
                     </div>
                 </div>
-                <div>
+                <div id="mapAccountSection">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Deposit Account</label>
                     <select id="mapAccount"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
                         <option value="">-- Select Account --</option>
                     </select>
+                </div>
+                <!-- Discount -->
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="mapWithDiscount" class="w-3.5 h-3.5 text-orange-500 rounded" onchange="document.getElementById('mapDiscountFields').classList.toggle('hidden',!this.checked);updateMapSummary()">
+                        <span class="text-xs font-medium text-orange-700">Discount দিয়ে close করবো</span>
+                    </label>
+                    <div id="mapDiscountFields" class="hidden grid grid-cols-2 gap-2 mt-2">
+                        <div><label class="text-xs text-gray-600">Amount</label>
+                            <input type="number" id="mapDiscountAmount" step="0.01" placeholder="0.00" oninput="updateMapSummary()" class="w-full px-2 py-1.5 border border-orange-300 rounded text-sm mt-1"></div>
+                        <div><label class="text-xs text-gray-600">Reason</label>
+                            <input type="text" id="mapDiscountParticular" placeholder="Reason" class="w-full px-2 py-1.5 border border-orange-300 rounded text-sm mt-1"></div>
+                    </div>
+                </div>
+                <!-- File Upload -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                        <i class="fas fa-paperclip mr-1"></i> Attach Files
+                    </label>
+                    <input type="file" id="mapFiles" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        class="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-green-50 file:text-green-700">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Particular</label>

@@ -7,6 +7,8 @@ if (empty($ip_port)) {
 
 $clientId = $_GET['id'] ?? $_GET['client_id'] ?? null;
 
+$sys_user = $authUser;
+
 
 // $showClientApi = $ip_port . "api/clients/show.php";
 $getClientsWorksApi = $ip_port . "api/com_works/client-works.php?client_id=$clientId";
@@ -24,7 +26,7 @@ $getClient = $ip_port . "api/clients/get-client.php?cid=$clientId";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete Work Entry</title>
+    <title>Client Profile</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

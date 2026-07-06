@@ -118,6 +118,7 @@
                     <th class="px-6 py-3 text-right text-xs font-medium text-green-600 uppercase">Credit</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-red-600 uppercase">Debit</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstanding</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                 </tr>
             </thead>
             <tbody id="cl-finTableBody" class="bg-white divide-y divide-gray-200 text-left"></tbody>
@@ -157,23 +158,52 @@
         </div>
         <div class="mt-4 space-y-4">
 
-            <!-- Step 1: Unpaid Sales List -->
+            <!-- Step 1: Tabs — Sale / Invoice / General -->
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div class="flex justify-between items-center mb-2">
-                    <h4 class="text-sm font-semibold text-gray-700">
-                        <i class="fas fa-list-check mr-1 text-blue-600"></i>
-                        Unpaid / Partial Sales
-                        <span class="text-xs text-gray-400 font-normal ml-1">(কোন কাজের payment আসছে select করো)</span>
-                    </h4>
-                    <button id="cl-rcv-selectAll" class="text-xs text-blue-600 hover:underline">Select All</button>
+                <!-- Tab buttons -->
+                <div class="flex gap-2 mb-3">
+                    <button onclick="clRcvSetTab('sale')" id="cl-rcv-tab-sale"
+                        class="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-blue-500 bg-blue-50 text-blue-700">
+                        <i class="fas fa-list mr-1"></i> Sale Entries
+                    </button>
+                    <button onclick="clRcvSetTab('invoice')" id="cl-rcv-tab-invoice"
+                        class="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-gray-200 text-gray-500">
+                        <i class="fas fa-file-invoice mr-1"></i> Invoice
+                    </button>
+                    <button onclick="clRcvSetTab('general')" id="cl-rcv-tab-general"
+                        class="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-gray-200 text-gray-500">
+                        <i class="fas fa-coins mr-1"></i> General/Advance
+                    </button>
                 </div>
-                <div id="cl-rcv-saleList" class="space-y-2 max-h-48 overflow-y-auto">
-                    <p class="text-xs text-gray-400 text-center py-4">Loading unpaid sales...</p>
+
+                <!-- Sale tab -->
+                <div id="cl-rcv-panel-sale">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-medium text-gray-600">Unpaid / Partial Sales</span>
+                        <button id="cl-rcv-selectAll" class="text-xs text-blue-600 hover:underline">Select All</button>
+                    </div>
+                    <div id="cl-rcv-saleList" class="space-y-2 max-h-48 overflow-y-auto">
+                        <p class="text-xs text-gray-400 text-center py-4">Loading unpaid sales...</p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t flex justify-between">
+                        <span class="text-xs text-gray-500">Selected Total:</span>
+                        <span id="cl-rcv-selectedTotal" class="text-sm font-bold text-blue-700">0.00</span>
+                    </div>
                 </div>
-                <!-- Selected total -->
-                <div class="mt-3 pt-3 border-t flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Selected Total:</span>
-                    <span id="cl-rcv-selectedTotal" class="text-sm font-bold text-blue-700">0.00</span>
+
+                <!-- Invoice tab -->
+                <div id="cl-rcv-panel-invoice" class="hidden">
+                    <div id="cl-rcv-invoiceList" class="space-y-2 max-h-48 overflow-y-auto">
+                        <p class="text-xs text-gray-400 text-center py-4">Loading invoices...</p>
+                    </div>
+                </div>
+
+                <!-- General/Advance tab -->
+                <div id="cl-rcv-panel-general" class="hidden">
+                    <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-700">
+                        <i class="fas fa-piggy-bank mr-1"></i>
+                        কোনো sale বা invoice select না করে receive করলে <strong>Advance</strong> হিসেবে save হবে।
+                    </div>
                 </div>
             </div>
 
@@ -213,7 +243,8 @@
                     <select id="cl-rcv-method"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
                         <option value="cash">Cash</option>
-                        <option value="npsb-rtgs">NPSB/RTGS</option>
+                        <option value="mfs">MFS</option>
+                        <option value="npsb">NPSB</option>
                         <option value="cheque">Cheque</option>
                         <option value="bftn-eft">BFTN/EFT</option>
                     </select>
@@ -260,6 +291,16 @@
             <div id="cl-rcv-statusBanner" class="hidden rounded-lg p-3 text-sm font-medium"></div>
 
             <!-- Discount-to-close section -->
+            <!-- File Upload -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <i class="fas fa-paperclip mr-1"></i> Attach Files (optional)
+                </label>
+                <input type="file" id="cl-rcv-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    class="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <p class="text-xs text-gray-400 mt-1">Multiple files allowed. Max 10MB each.</p>
+            </div>
+
             <div id="cl-rcv-discountSection" class="hidden bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-3">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="cl-rcv-withDiscount" class="w-4 h-4 text-orange-500 rounded">
@@ -332,17 +373,37 @@
                     <input type="number" step="0.01" min="0" id="cl-sale-sellingPrice" placeholder="0.00"
                         class="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500">
                 </div>
+                <!-- Vendor/Account toggle — Required -->
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        <i class="fas fa-user-tie mr-1"></i> Vendor
-                        <span class="text-xs text-gray-400">(Optional)</span>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user-tie mr-1"></i> From (Vendor / Own Account) <span class="text-red-500">*</span>
                     </label>
-                    <?php include('form-selects/vendors.php') ?>
+                    <div class="flex gap-3 mb-2">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm font-medium">
+                            <input type="radio" name="cl-sale-from-type" value="vendor" checked
+                                onchange="clSaleToggleFromType('vendor')" class="text-red-500">
+                            Vendor
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm font-medium">
+                            <input type="radio" name="cl-sale-from-type" value="account"
+                                onchange="clSaleToggleFromType('account')" class="text-red-500">
+                            Own Account
+                        </label>
+                    </div>
+                    <div id="cl-sale-vendor-wrap">
+                        <?php include('form-selects/vendors.php') ?>
+                    </div>
+                    <div id="cl-sale-account-wrap" class="hidden">
+                        <select id="cl-sale-accountSelect"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                         <i class="fas fa-taka-sign mr-1 text-blue-600"></i> Purchase Price
-                        <span class="text-xs text-gray-400">(Vendor cost)</span>
+                        <span class="text-xs text-gray-400">(Cost)</span>
                     </label>
                     <input type="number" step="0.01" min="0" id="cl-sale-purchasePrice" placeholder="0.00"
                         class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -433,7 +494,7 @@
                         <select id="cl-ref-method"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                             <option value="cash">Cash</option>
-                            <option value="npsb-rtgs">NPSB/RTGS</option>
+                            <option value="npsb">NPSB</option>
                             <option value="cheque">Cheque</option>
                             <option value="bftn-eft">BFTN/EFT</option>
                         </select>
@@ -519,7 +580,8 @@
 
     const IP_PATH      = `<?php echo $ip_port; ?>`;
     const CLIENT_ID    = "<?php echo isset($clientId) ? $clientId : ''; ?>";
-    const FIN_API      = `<?php echo $getClientFinEntriesApi; ?>`;
+    const SYS_USER_NAME    = "<?php echo isset($sys_user) ? $sys_user : ''; ?>";
+    const FIN_API      = `${IP_PATH}/api/financial_entries/fin-entries.php?id=${CLIENT_ID}`;
     const FETCH_STMT   = `${IP_PATH}/api/accounts/fetch_account_statement_api.php`;
     const FIN_ENTRIES  = `${IP_PATH}/api/financial_entries/fin-entries.php`;
     const API_RECEIVE  = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
@@ -549,6 +611,12 @@
         6: { label: 'Advance',  cls: 'bg-indigo-100 text-indigo-700' },
         7: { label: 'Baksheesh', cls: 'bg-pink-100 text-pink-700' },
     };
+    
+    // ==================== FUNCTIONS ====================
+    window.receiveSaleAmount = receiveSaleAmount;
+    window.toggleSaleReceiveFields = toggleSaleReceiveFields;
+    window.updateSaleReceiveSummary = updateSaleReceiveSummary;
+    window.submitSaleReceive = submitSaleReceive;
 
     // ==================== UTILITIES ====================
     function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
@@ -834,7 +902,27 @@
             if (e.is_partial == 1)    statusBadges += `<span class="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 mr-1">Partial</span>`;
             if (e.is_discounted == 1) statusBadges += `<span class="px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-700 mr-1">Disc.</span>`;
             if (!statusBadges && type === 'debit') statusBadges = `<span class="px-1.5 py-0.5 rounded text-xs bg-yellow-100 text-yellow-700">Unpaid</span>`;
-
+            
+            // টেবিল রেন্ডার ফাংশনের receiveBtn অংশ:
+            let receiveBtn = '';
+            if (e.is_paid == 0 && type === 'debit' && rt == 1) {
+                // সঠিকভাবে escape করুন
+                const sysId = e.sys_id || '';
+                const amount = parseFloat(e.amount) || 0;
+                const purpose = (e.purpose || 'Sale')
+                    .replace(/\\/g, '\\\\')  // backslash escape
+                    .replace(/'/g, "\\'")    // single quote escape
+                    .replace(/"/g, '&quot;') // double quote escape
+                    .replace(/\n/g, ' ')     // newline remove
+                    .replace(/\r/g, ' ');    // carriage return remove
+                
+                // sys_id কে string হিসেবে পাঠান
+                receiveBtn = `<button onclick="receiveSaleAmount('${sysId}', ${amount}, '${purpose}')" 
+                    class="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
+                    <i class="fas fa-hand-holding-usd mr-1"></i> Receive
+                </button>`;
+            }
+            
             // Credit/Debit আলাদা column
             const creditAmt = type === 'credit' ? amt : null;
             const debitAmt  = type === 'debit'  ? amt : null;
@@ -853,7 +941,10 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-red-600">
                     ${debitAmt !== null ? debitAmt.toFixed(2) : '<span class="text-gray-300">—</span>'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right ${runBal > 0 ? 'text-orange-600' : runBal < 0 ? 'text-green-600' : 'text-gray-500'}">
-                    ${runBal.toFixed(2)}</td>`;
+                    ${runBal.toFixed(2)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    ${receiveBtn}
+                </td>`;
             tbody.appendChild(tr);
         });
 
@@ -936,6 +1027,338 @@
             spinner?.classList.add('hidden');
             btn.disabled = false;
         }, 300);
+    }
+    
+    
+    // ==================== SALE RECEIVE MODAL ====================
+    function receiveSaleAmount(saleId, saleAmount, salePurpose) {
+        const IP_PATH = `<?php echo $ip_port; ?>`;
+        const API_RECEIVE = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
+        const CLIENT_ID = "<?php echo isset($clientId) ? $clientId : ''; ?>";
+        const clientName = "<?php echo isset($clientName) ? $clientName : ''; ?>";
+    
+        // Sale তথ্য সংরক্ষণ
+        const saleData = {
+            id: saleId || '',
+            amount: parseFloat(saleAmount) || 0,
+            purpose: salePurpose || 'Sale'
+        };
+    
+        // মডেল HTML তৈরি
+        const modalHtml = `
+            <div id="cl-saleReceiveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+                    <div class="flex justify-between items-center pb-3 border-b">
+                        <h3 class="text-xl font-semibold text-gray-900">
+                            <i class="fas fa-plus-circle text-green-600 mr-2"></i>
+                            Receive Sale Payment — <span class="text-green-700">${saleData.purpose}</span>
+                        </h3>
+                        <button class="cl-modal-close text-gray-400 hover:text-gray-600" data-modal="cl-saleReceiveModal">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    <div class="mt-4 space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Total Amount:</span>
+                                <span class="text-lg font-bold text-blue-700">৳${saleData.amount.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-sm text-gray-600">Received Amount:</span>
+                                <span id="cl-sr-receivedDisplay" class="text-sm font-semibold text-green-600">৳0.00</span>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-sm text-gray-600">Remaining:</span>
+                                <span id="cl-sr-remainingDisplay" class="text-sm font-semibold text-orange-600">৳${saleData.amount.toFixed(2)}</span>
+                            </div>
+                        </div>
+    
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-calendar-alt mr-1"></i> Receive Date
+                                </label>
+                                <input type="date" id="cl-sr-date" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-taka-sign mr-1"></i> Receive Amount
+                                </label>
+                                <input type="number" step="0.01" min="0" id="cl-sr-amount" 
+                                    placeholder="0.00" value="${saleData.amount.toFixed(2)}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    oninput="updateSaleReceiveSummary(${saleData.amount})">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-wallet mr-1"></i> Deposit To Account
+                                </label>
+                                <select id="cl-sr-accountSelect"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                                    <option value="">-- Select Account --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-money-check-alt mr-1"></i> Payment Method
+                                </label>
+                                <select id="cl-sr-method"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    onchange="toggleSaleReceiveFields()">
+                                    <option value="cash">Cash</option>
+                                    <option value="mfs">MFS</option>
+                                    <option value="npsb">NPSB</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="bftn-eft">BFTN/EFT</option>
+                                </select>
+                            </div>
+                        </div>
+    
+                        <!-- Cheque Details -->
+                        <div id="cl-sr-cheque" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-3 rounded-lg">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Cheque No</label>
+                                <input type="text" id="cl-sr-cheque-no" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Cheque number">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Cheque Date</label>
+                                <input type="date" id="cl-sr-cheque-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                                <input type="text" id="cl-sr-cheque-acc" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Account name">
+                            </div>
+                            <div class="md:col-span-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                                <input type="text" id="cl-sr-cheque-bank" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Bank name">
+                            </div>
+                        </div>
+    
+                        <!-- BFTN Details -->
+                        <div id="cl-sr-bftn" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-3 rounded-lg">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                                <input type="text" id="cl-sr-bftn-acc" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Account name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                                <input type="text" id="cl-sr-bftn-bank" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Bank name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Date</label>
+                                <input type="date" id="cl-sr-bftn-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+    
+                        <!-- Particular -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                <i class="fas fa-file-alt mr-1"></i> Particular
+                            </label>
+                            <textarea id="cl-sr-particular" rows="2" placeholder="Transaction description"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">Payment received for ${saleData.purpose} by ${SYS_USER_NAME}</textarea>
+                        </div>
+    
+                        <!-- File Upload -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">
+                                <i class="fas fa-paperclip mr-1"></i> Attach Files (optional)
+                            </label>
+                            <input type="file" id="cl-sr-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                class="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <p class="text-xs text-gray-400 mt-1">Multiple files allowed. Max 10MB each.</p>
+                        </div>
+    
+                        <div class="flex justify-end gap-3 pt-3 border-t">
+                            <button class="cl-modal-close px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" data-modal="cl-saleReceiveModal">
+                                <i class="fas fa-times mr-1"></i> Cancel
+                            </button>
+                            <button id="cl-sr-saveBtn" onclick="submitSaleReceive('${saleData.id}', ${saleData.amount})"
+                                class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    
+        // পুরানো মডেল রিমুভ
+        const existingModal = document.getElementById('cl-saleReceiveModal');
+        if (existingModal) existingModal.remove();
+    
+        // নতুন মডেল যোগ
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+        // Modal close event listeners
+        document.querySelectorAll('#cl-saleReceiveModal .cl-modal-close').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('cl-saleReceiveModal').classList.add('hidden');
+            });
+        });
+    
+        // আজকের তারিখ সেট
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('cl-sr-date').value = today;
+        document.getElementById('cl-sr-date').max = today;
+    
+        // অ্যাকাউন্ট লোড
+        loadSaleReceiveAccounts();
+    
+        // মডেল খোলা
+        document.getElementById('cl-saleReceiveModal').classList.remove('hidden');
+    
+        // initial summary update
+        updateSaleReceiveSummary(saleData.amount);
+    }
+    
+    // ==================== SALE RECEIVE HELPER FUNCTIONS ====================
+    
+    function toggleSaleReceiveFields() {
+        const method = document.getElementById('cl-sr-method')?.value;
+        const chequeEl = document.getElementById('cl-sr-cheque');
+        const bftnEl = document.getElementById('cl-sr-bftn');
+        
+        if (chequeEl) chequeEl.classList.toggle('hidden', method !== 'cheque');
+        if (bftnEl) bftnEl.classList.toggle('hidden', method !== 'bftn-eft');
+    }
+    
+    function updateSaleReceiveSummary(totalAmount) {
+        const amountEl = document.getElementById('cl-sr-amount');
+        if (!amountEl) return;
+        
+        const receiveAmt = parseFloat(amountEl.value) || 0;
+        const remaining = totalAmount - receiveAmt;
+    
+        const receivedDisplay = document.getElementById('cl-sr-receivedDisplay');
+        const remainingDisplay = document.getElementById('cl-sr-remainingDisplay');
+        
+        if (receivedDisplay) receivedDisplay.textContent = `৳${receiveAmt.toFixed(2)}`;
+        if (remainingDisplay) {
+            remainingDisplay.textContent = `৳${Math.max(remaining, 0).toFixed(2)}`;
+            remainingDisplay.className = remaining <= 0 ? 'text-sm font-semibold text-green-600' : 'text-sm font-semibold text-orange-600';
+        }
+    }
+    
+    async function loadSaleReceiveAccounts() {
+        const IP_PATH = `<?php echo $ip_port; ?>`;
+        try {
+            const response = await fetch(`${IP_PATH}/api/accounts/all-accounts.php`);
+            const data = await response.json();
+            const select = document.getElementById('cl-sr-accountSelect');
+            if (select && data.accounts) {
+                data.accounts.forEach(acc => {
+                    const option = document.createElement('option');
+                    option.value = acc.sys_id;
+                    option.textContent = acc.acc_name || acc.name || acc.sys_id;
+                    select.appendChild(option);
+                });
+            }
+        } catch(e) {
+            console.error('Error loading accounts:', e);
+        }
+    }
+    
+    async function submitSaleReceive(saleId, totalAmount) {
+        const IP_PATH = `<?php echo $ip_port; ?>`;
+        const API_RECEIVE = `${IP_PATH}/api/clients/cl-ac-receive-store.php`;
+        const CLIENT_ID = "<?php echo isset($clientId) ? $clientId : ''; ?>";
+        const clientName = "<?php echo isset($clientName) ? $clientName : ''; ?>";
+    
+        const date = document.getElementById('cl-sr-date')?.value;
+        const receiveAmt = parseFloat(document.getElementById('cl-sr-amount')?.value) || 0;
+        const method = document.getElementById('cl-sr-method')?.value;
+        const accountSelect = document.getElementById('cl-sr-accountSelect');
+        const accountId = accountSelect?.value;
+        const accountName = accountSelect?.options[accountSelect.selectedIndex]?.text || '';
+        const particular = document.getElementById('cl-sr-particular')?.value.trim();
+        const files = document.getElementById('cl-sr-files')?.files;
+    
+        // Validation
+        if (!date) return alert('Please select a date');
+        if (receiveAmt <= 0) return alert('Please enter a valid receive amount');
+        if (receiveAmt > totalAmount) {
+            if (!confirm(`You are receiving ${receiveAmt.toFixed(2)} but total amount is ${totalAmount.toFixed(2)}. Continue?`)) {
+                return;
+            }
+        }
+        if (!accountId) return alert('Please select an account');
+        if (!particular) return alert('Please enter particular');
+    
+        // Build payload
+        const payload = {
+            clientId: CLIENT_ID,
+            clientName: clientName,
+            amount: receiveAmt,
+            particular: particular,
+            transactionDate: date + ' ' + new Date().toTimeString().split(' ')[0],
+            accountId: accountId,
+            accountName: accountName,
+            transferMethod: method,
+            isHistorical: 0,
+            selectedSaleIds: [saleId],
+            overpayment_action: receiveAmt > totalAmount ? 'advance' : 'full',
+            withDiscount: false,
+            discountAmount: 0,
+            discountParticular: ''
+        };
+    
+        // Cheque details
+        if (method === 'cheque') {
+            payload.chequeNo = document.getElementById('cl-sr-cheque-no')?.value;
+            payload.chequeDate = document.getElementById('cl-sr-cheque-date')?.value;
+            payload.chequeAccountName = document.getElementById('cl-sr-cheque-acc')?.value;
+            payload.bankName = document.getElementById('cl-sr-cheque-bank')?.value;
+        } else if (method === 'bftn-eft') {
+            payload.bftnAccountName = document.getElementById('cl-sr-bftn-acc')?.value;
+            payload.eftBankName = document.getElementById('cl-sr-bftn-bank')?.value;
+            payload.bftnDate = document.getElementById('cl-sr-bftn-date')?.value;
+        }
+    
+        // Save button loading
+        const btn = document.getElementById('cl-sr-saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+    
+        try {
+            const response = await fetch(API_RECEIVE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+    
+            if (result.success) {
+                // File upload
+                if (files && files.length > 0 && result.data?.receive_entry_ids?.length > 0) {
+                    const fd = new FormData();
+                    fd.append('entity_type', 'receive');
+                    fd.append('entity_id', result.data.receive_entry_ids[0]);
+                    fd.append('entity_name', clientName);
+                    for (const f of files) {
+                        fd.append('files[]', f);
+                    }
+                    try {
+                        await fetch(`${IP_PATH}/api/finance/upload-file.php`, { method: 'POST', body: fd });
+                    } catch(e) {
+                        console.error('File upload failed:', e);
+                    }
+                }
+    
+                alert('Payment received successfully!');
+                document.getElementById('cl-saleReceiveModal')?.classList.add('hidden');
+                location.reload();
+            } else {
+                alert(result.message || 'Failed to save payment');
+            }
+        } catch(e) {
+            alert('Network error. Please try again.');
+            console.error(e);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save';
+        }
     }
 
 
@@ -1087,6 +1510,9 @@
         }
     }
 
+    let clRcvCurrentTab = 'sale';
+    let clRcvSelectedInvoice = null;
+
     async function openReceiveModal() {
         setEl('cl-rcv-clientName', clientName);
         setToday('cl-rcv-date');
@@ -1101,14 +1527,77 @@
         getEl('cl-rcv-discountFields')?.classList.add('hidden');
         getEl('cl-rcv-withDiscount') && (getEl('cl-rcv-withDiscount').checked = false);
         selectedSaleIds.clear();
+        clRcvSelectedInvoice = null;
         setEl('cl-rcv-selectedTotal', '0.00');
 
-        // Account options load — await করা জরুরি, না হলে modal open এর আগে load হবে না
-        await loadAccountsFromAPI();
+        // Tab reset to sale
+        clRcvSetTab('sale');
 
+        await loadAccountsFromAPI();
         openModal('cl-receiveModal');
         loadUnpaidSales();
     }
+
+    window.clRcvSetTab = function(tab) {
+        clRcvCurrentTab = tab;
+        ['sale','invoice','general'].forEach(t => {
+            getEl(`cl-rcv-panel-${t}`)?.classList.toggle('hidden', t !== tab);
+            const btn = getEl(`cl-rcv-tab-${t}`);
+            if (btn) {
+                btn.className = t === tab
+                    ? 'flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-blue-500 bg-blue-50 text-blue-700'
+                    : 'flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-gray-200 text-gray-500';
+            }
+        });
+        if (tab === 'invoice') loadRcvInvoices();
+        if (tab === 'sale') loadUnpaidSales();
+    };
+
+    async function loadRcvInvoices() {
+        const listEl = getEl('cl-rcv-invoiceList');
+        if (!listEl) return;
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">Loading...</p>';
+        try {
+            const r    = await fetch(`${IP_PATH}/api/invoices/all-invoices.php?client_id=${CLIENT_ID}&unpaid_only=1`);
+            const data = await r.json();
+            const invs = data.invoices || [];
+            if (!invs.length) {
+                listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">কোনো unpaid invoice নেই</p>';
+                return;
+            }
+            listEl.innerHTML = invs.map(inv => {
+                const statusCls = inv.status === 'partial'
+                    ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700';
+                return `<div class="flex items-center gap-2 p-2 border-2 border-gray-200 hover:border-blue-400 rounded-lg cursor-pointer rcv-inv-row transition-colors"
+                            onclick="clRcvSelectInvoice(this,'${inv.invoice_no}',${inv.due_amount})">
+                    <input type="radio" name="clRcvInvSel" class="flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-semibold text-gray-800">${inv.invoice_no}</div>
+                        <div class="text-xs text-gray-400">${inv.invoice_date} · Total ৳${inv.total_amount.toFixed(2)}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <div class="text-sm font-bold text-red-600">৳${inv.due_amount.toFixed(2)}</div>
+                        <span class="text-xs px-1.5 py-0.5 rounded ${statusCls}">${inv.status}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            listEl.innerHTML = '<p class="text-xs text-red-400 text-center py-2">Load failed</p>';
+        }
+    }
+
+    window.clRcvSelectInvoice = function(el, invNo, due) {
+        document.querySelectorAll('.rcv-inv-row').forEach(d => {
+            d.classList.remove('border-blue-400','bg-blue-50');
+            d.classList.add('border-gray-200');
+        });
+        el.classList.remove('border-gray-200');
+        el.classList.add('border-blue-400','bg-blue-50');
+        el.querySelector('input[type=radio]').checked = true;
+        clRcvSelectedInvoice = { invoice_no: invNo, due_amount: due };
+        const amtEl = getEl('cl-rcv-amount');
+        if (amtEl) { amtEl.value = parseFloat(due).toFixed(2); updateReceiveUI(); }
+    };
 
     async function loadAccountsFromAPI() {
         // Receive modal + Refund modal দুইটাতেই একসাথে populate করি
@@ -1117,23 +1606,35 @@
 
     async function submitReceive() {
         const date       = getEl('cl-rcv-date')?.value;
-        const amount     = getEl('cl-rcv-amount')?.value;
+        const amount     = parseFloat(getEl('cl-rcv-amount')?.value) || 0;
         const method     = getEl('cl-rcv-method')?.value;
         const particular = getEl('cl-rcv-particular')?.value.trim();
         const accEl      = getEl('cl-rcv-accountSelect');
         const accParts   = accEl?.value?.split('|').map(v => v.trim()) || [];
         const accountId  = accParts[0] || '';
         const accountName= accParts[1] || '';
-        const withDiscount  = getEl('cl-rcv-withDiscount')?.checked || false;
-        const discountAmount= getEl('cl-rcv-discountAmount')?.value || 0;
+        const withDiscount   = getEl('cl-rcv-withDiscount')?.checked || false;
+        const discountAmount = parseFloat(getEl('cl-rcv-discountAmount')?.value) || 0;
         const discountParticular = getEl('cl-rcv-discountParticular')?.value.trim() || '';
+        const isInstrument = ['cheque','bftn-eft'].includes(method);
 
-        if (!date)                              return alert('Please select a date');
-        if (!validateAmount(amount, 'amount'))  return;
-        if (!accountId)                         return alert('Please select an account');
-        if (!particular)                        return alert('Please enter particular');
-        if (withDiscount && (!discountAmount || parseFloat(discountAmount) <= 0))
-            return alert('Please enter discount amount');
+        if (!date)          return alert('Please select a date');
+        if (amount <= 0)    return alert('Amount দিন');
+        if (!isInstrument && !accountId) return alert('Please select an account');
+        if (!particular)    return alert('Please enter particular');
+
+        // Overpayment check — sale mode এ বেশি দিলে ask করবো
+        let overpaymentAction = 'advance';
+        if (clRcvCurrentTab === 'sale' && selectedSaleIds.size > 0) {
+            let selTotal = 0;
+            unpaidSales.forEach(s => { if (selectedSaleIds.has(s.sys_id)) selTotal += parseFloat(s.remaining_amount ?? s.amount) || 0; });
+            if (amount > selTotal + 0.009) {
+                const overpay = (amount - selTotal).toFixed(2);
+                const choice  = await showOverpayModal(overpay);
+                if (choice === null) return; // cancelled
+                overpaymentAction = choice;
+            }
+        }
 
         const payload = {
             clientId:           CLIENT_ID,
@@ -1145,7 +1646,9 @@
             accountName,
             transferMethod:     method,
             isHistorical:       0,
-            selectedSaleIds:    [...selectedSaleIds],
+            selectedSaleIds:    clRcvCurrentTab === 'sale' ? [...selectedSaleIds] : [],
+            invoice_id:         clRcvCurrentTab === 'invoice' ? clRcvSelectedInvoice?.invoice_no : null,
+            overpayment_action: overpaymentAction,
             withDiscount,
             discountAmount:     withDiscount ? discountAmount : 0,
             discountParticular: withDiscount ? discountParticular : ''
@@ -1166,11 +1669,17 @@
         try {
             const res = await postJSON(API_RECEIVE, payload);
             if (res.success) {
-                const msg = res.is_historical   ? 'ঐতিহাসিক entry সংরক্ষিত হয়েছে'
-                          : res.is_partial      ? 'Partial payment recorded!'
-                          : res.is_discounted   ? 'Payment + Discount recorded!'
-                          : 'Payment received successfully!';
-                alert(msg);
+                // File upload if any
+                const files = getEl('cl-rcv-files')?.files;
+                if (files && files.length > 0 && res.data?.receive_entry_ids?.length > 0) {
+                    const fd = new FormData();
+                    fd.append('entity_type', 'receive');
+                    fd.append('entity_id',   res.data.receive_entry_ids[0]);
+                    fd.append('entity_name', clientName);
+                    for (const f of files) fd.append('files[]', f);
+                    fetch(`${IP_PATH}/api/finance/upload-file.php`, { method:'POST', body:fd });
+                }
+                alert(res.message || 'Payment received successfully!');
                 closeModal('cl-receiveModal');
                 location.reload();
             } else {
@@ -1180,19 +1689,89 @@
         finally { setBtnLoading('cl-rcv-saveBtn', false); }
     }
 
+    // Overpayment choice modal
+    function showOverpayModal(overpayAmt) {
+        return new Promise(resolve => {
+            const existing = document.getElementById('clOverpayModal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'clOverpayModal';
+            modal.className = 'fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                    <h3 class="text-base font-bold text-gray-900 mb-2">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Overpayment
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">
+                        ৳${overpayAmt} বাড়তি দেওয়া হচ্ছে। এটা কী হিসেবে রাখবো?
+                    </p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="document.getElementById('clOverpayModal').dataset.choice='advance'"
+                            class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
+                            <i class="fas fa-piggy-bank mr-1"></i> Advance
+                        </button>
+                        <button onclick="document.getElementById('clOverpayModal').dataset.choice='baksheesh'"
+                            class="py-2.5 px-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl text-sm">
+                            <i class="fas fa-gift mr-1"></i> Baksheesh
+                        </button>
+                    </div>
+                    <button onclick="document.getElementById('clOverpayModal').dataset.choice='cancel'"
+                        class="w-full mt-3 py-2 text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                </div>`;
+
+            document.body.appendChild(modal);
+
+            const observer = new MutationObserver(() => {
+                const choice = modal.dataset.choice;
+                if (choice) {
+                    observer.disconnect();
+                    modal.remove();
+                    resolve(choice === 'cancel' ? null : choice);
+                }
+            });
+            observer.observe(modal, { attributes: true });
+        });
+    }
+
 
     // ==================== SALE MODAL ====================
     function openSaleModal() {
         setEl('cl-sale-clientName', clientName);
         setToday('cl-sale-date');
-        getEl('cl-sale-sellingPrice').value = '';
+        getEl('cl-sale-sellingPrice').value  = '';
         getEl('cl-sale-purchasePrice').value = '';
         setEl('cl-sale-profit', '0.00');
-        getEl('cl-sale-particular').value = '';
+        getEl('cl-sale-particular').value    = '';
         getEl('cl-sale-vendorParticular').value = '';
         getEl('cl-sale-vendorParticularWrapper')?.classList.add('hidden');
         if (typeof vendorInput !== 'undefined' && vendorInput) vendorInput.value = '';
+        // Reset from type to vendor
+        const vendorRadio = document.querySelector('input[name="cl-sale-from-type"][value="vendor"]');
+        if (vendorRadio) { vendorRadio.checked = true; clSaleToggleFromType('vendor'); }
+        // Populate account select
+        clSaleLoadAccounts();
         openModal('cl-saleModal');
+    }
+
+    window.clSaleToggleFromType = function(type) {
+        document.getElementById('cl-sale-vendor-wrap')?.classList.toggle('hidden', type !== 'vendor');
+        document.getElementById('cl-sale-account-wrap')?.classList.toggle('hidden', type !== 'account');
+        getEl('cl-sale-vendorParticularWrapper')?.classList.toggle('hidden', type !== 'vendor');
+    };
+
+    async function clSaleLoadAccounts() {
+        const sel = document.getElementById('cl-sale-accountSelect');
+        if (!sel || sel.options.length > 1) return;
+        try {
+            const r = await fetch(`${IP_PATH}/api/accounts/all-accounts.php`);
+            const d = await r.json();
+            (d.accounts||[]).forEach(a => {
+                const o = document.createElement('option');
+                o.value = a.sys_id; o.dataset.name = a.acc_name; o.textContent = a.acc_name;
+                sel.appendChild(o);
+            });
+        } catch(e) {}
     }
 
     function updateProfitPreview() {
@@ -1212,9 +1791,26 @@
         const purchasePrice = getEl('cl-sale-purchasePrice')?.value;
         const particular    = getEl('cl-sale-particular')?.value.trim();
         const vendorParticular = getEl('cl-sale-vendorParticular')?.value.trim();
-        const vendor = (typeof vendorInput !== 'undefined' && vendorInput?.value)
-            ? (() => { const p = vendorInput.value.split('|').map(v=>v.trim()); return {sys_id:p[0],name:p[1]}; })()
-            : null;
+        const fromType      = document.querySelector('input[name="cl-sale-from-type"]:checked')?.value || 'vendor';
+
+        // From: Vendor or Own Account
+        let fromRef = null; // "Name || SysID" format
+        let vendor  = null;
+        let accountFromId = null, accountFromName = null;
+
+        if (fromType === 'vendor') {
+            vendor = (typeof vendorInput !== 'undefined' && vendorInput?.value)
+                ? (() => { const p = vendorInput.value.split('|').map(v=>v.trim()); return {sys_id:p[0],name:p[1]}; })()
+                : null;
+            if (!vendor?.sys_id) return alert('Vendor select করুন (Required)');
+            fromRef = `${vendor.name} || ${vendor.sys_id}`;
+        } else {
+            const accSel = document.getElementById('cl-sale-accountSelect');
+            accountFromId   = accSel?.value;
+            accountFromName = accSel?.options[accSel.selectedIndex]?.dataset.name || '';
+            if (!accountFromId) return alert('Account select করুন (Required)');
+            fromRef = `${accountFromName} || ${accountFromId}`;
+        }
 
         if (!date)                                     return alert('Please select a date');
         if (!validateAmount(sellingPrice, 'Selling Price')) return;
@@ -1222,18 +1818,23 @@
 
         setBtnLoading('cl-sale-saveBtn', true);
         try {
+            // Client sale entry — ref তে vendor/account info ("Name || SysID")
             const r1 = await postJSON(API_SALE, {
                 clientId: CLIENT_ID, clientName, sellingPrice, particular,
-                transactionDate: buildDateTime(date)
+                transactionDate: buildDateTime(date),
+                ref: fromRef  // কোথা থেকে কিনে sell করা হচ্ছে
             });
             if (!r1.success) { alert(r1.message || 'Client sale failed'); return; }
 
-            if (vendor?.sys_id && purchasePrice && parseFloat(purchasePrice) > 0) {
+            // Vendor purchase entry — ref তে client info
+            if (fromType === 'vendor' && vendor?.sys_id && purchasePrice && parseFloat(purchasePrice) > 0) {
+                const clientRef = `${clientName} || ${CLIENT_ID}`;
                 const r2 = await postJSON(API_PURCHASE, {
                     vendorId: vendor.sys_id, vendorName: vendor.name,
                     purchasePrice,
                     particular: vendorParticular || particular,
-                    transactionDate: buildDateTime(date)
+                    transactionDate: buildDateTime(date),
+                    ref: clientRef  // কার জন্য কেনা হচ্ছে
                 });
                 if (!r2.success) {
                     alert(`Client sale saved, কিন্তু Vendor purchase failed: ${r2.message || 'Unknown'}`);
@@ -1355,6 +1956,15 @@
         getEl('cl-rcv-method')?.addEventListener('change', function() {
             getEl('cl-rcv-cheque')?.classList.toggle('hidden', this.value !== 'cheque');
             getEl('cl-rcv-bftn')?.classList.toggle('hidden',   this.value !== 'bftn-eft');
+            // Instrument হলে account label update
+            const isInstr = ['cheque','bftn-eft'].includes(this.value);
+            const accWrap = getEl('cl-rcv-accountSelect')?.closest('div');
+            if (accWrap) {
+                const lbl = accWrap.querySelector('label');
+                if (lbl) lbl.innerHTML = isInstr
+                    ? '<i class="fas fa-wallet mr-1"></i> Deposit Account <span class="text-xs text-orange-500">(Instrument clear হলে জমা হবে)</span>'
+                    : '<i class="fas fa-wallet mr-1"></i> Deposit To Account';
+            }
         });
 
         // Receive: account → opening date

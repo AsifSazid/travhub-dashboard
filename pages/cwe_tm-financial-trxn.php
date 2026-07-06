@@ -1512,6 +1512,22 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         return;
                     }
 
+                    // ref তে vendor/account info যোগ ("Name || SysID")
+                    let saleFromRef = ref || '';
+                    const vendorTypeForRef = document.querySelector('input[name="account_type"]:checked')?.value;
+                    if (vendorTypeForRef === 'vendor') {
+                        const vVal = document.getElementById('vendorInput')?.value;
+                        if (vVal) {
+                            const vd = extractIds(vVal);
+                            if (vd?.sys_id) saleFromRef = `${vd.name || ''} || ${vd.sys_id}`;
+                        }
+                    } else if (vendorTypeForRef === 'own') {
+                        const aVal = document.getElementById('accountInput')?.value;
+                        if (aVal) {
+                            const ad = extractIds(aVal);
+                            if (ad?.sys_id) saleFromRef = `${ad.name || ''} || ${ad.sys_id}`;
+                        }
+                    }
                     await saveTransaction({
                         type: 'debit',
                         amount: amount,
@@ -1520,7 +1536,7 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         work_id: WORK_ID,
                         task_id: TASK_ID,
                         date: buildDateTime(date),
-                        ref: ref,
+                        ref: saleFromRef,
                         qty_rate: qtyRate
                     }, 'Debit');
 
@@ -1570,6 +1586,11 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         return;
                     }
 
+                    // ref তে client info যোগ ("Name || SysID")
+                    const clientRefForPurchase = clientName
+                        ? `${clientName} || ${currentClientId}`
+                        : currentClientId;
+
                     const transactionData = {
                         type: 'credit',
                         amount: amount,
@@ -1578,7 +1599,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         work_id: WORK_ID,
                         task_id: TASK_ID,
                         date: buildDateTime(date),
-                        qty_rate: qtyRate
+                        qty_rate: qtyRate,
+                        ref: clientRefForPurchase
                     };
 
                     if (vendorType === 'vendor' && vendorId) {
@@ -1617,6 +1639,16 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         return;
                     }
 
+                    // Refund ref — vendor/account info
+                    let refundFromRef = ref || '';
+                    const vTypeRefund = document.querySelector('input[name="account_type"]:checked')?.value;
+                    if (vTypeRefund === 'vendor') {
+                        const vVal = document.getElementById('vendorInput')?.value;
+                        if (vVal) { const vd = extractIds(vVal); if (vd?.sys_id) refundFromRef = `${vd.name||''} || ${vd.sys_id}`; }
+                    } else if (vTypeRefund === 'own') {
+                        const aVal = document.getElementById('accountInput')?.value;
+                        if (aVal) { const ad = extractIds(aVal); if (ad?.sys_id) refundFromRef = `${ad.name||''} || ${ad.sys_id}`; }
+                    }
                     await saveTransaction({
                         type: 'credit',
                         amount: amount,
@@ -1625,7 +1657,7 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         work_id: WORK_ID,
                         task_id: TASK_ID,
                         date: buildDateTime(date),
-                        ref: ref,
+                        ref: refundFromRef,
                         qty_rate: qtyRate
                     }, 'Credit (Refund)');
 
@@ -1675,6 +1707,11 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         return;
                     }
 
+                    // Refund ref — client info
+                    const clientRefForRefund = clientName
+                        ? `${clientName} || ${currentClientId}`
+                        : currentClientId;
+
                     const transactionData = {
                         type: 'debit',
                         amount: amount,
@@ -1683,7 +1720,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                         work_id: WORK_ID,
                         task_id: TASK_ID,
                         date: buildDateTime(date),
-                        qty_rate: qtyRate
+                        qty_rate: qtyRate,
+                        ref: clientRefForRefund
                     };
 
                     if (vendorType === 'vendor' && vendorId) {

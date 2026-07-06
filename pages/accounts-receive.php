@@ -19,9 +19,8 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
 <?php include '../elements/preview-model.php'; ?>
 
 <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-5xl mx-auto">
 
-    <!-- Page Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">
             <i class="fas fa-arrow-down text-green-500 mr-2"></i>Receive Payment
@@ -31,24 +30,63 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- ===== LEFT: Form ===== -->
+        <!-- LEFT FORM -->
         <div class="lg:col-span-2 space-y-4">
 
-            <!-- Client Select -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <!-- ===== WAY SELECT ===== -->
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs font-semibold text-gray-500 mb-3">RECEIVE VIA</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="setWay('invoice')" id="way-invoice"
+                        class="way-btn py-2.5 px-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-500 hover:border-blue-400 transition-colors">
+                        <i class="fas fa-file-invoice mr-2"></i>Invoice Select
+                    </button>
+                    <button onclick="setWay('client')" id="way-client"
+                        class="way-btn py-2.5 px-4 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-700 text-sm font-semibold transition-colors">
+                        <i class="fas fa-user mr-2"></i>Client Select
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== INVOICE WAY ===== -->
+            <div id="panel-invoice" class="hidden bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-user mr-1 text-blue-500"></i> Client
+                    <i class="fas fa-file-invoice text-blue-500 mr-1"></i> Invoice Search
                 </h3>
                 <div class="relative">
-                    <input type="text" id="clientSearch" placeholder="Client name বা ID দিয়ে search করুন..."
+                    <input type="text" id="invoiceSearch" placeholder="Invoice no বা Client name search..."
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 pr-10" autocomplete="off">
-                    <button id="clientResetBtn" onclick="resetClient()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors">
+                    <button id="invoiceResetBtn" onclick="resetInvoice()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                    <div id="invoiceDropdown" class="absolute z-30 w-full bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-52 overflow-y-auto mt-1"></div>
+                </div>
+                <div id="invoiceInfo" class="hidden mt-3 p-3 bg-blue-50 rounded-lg text-sm flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-blue-800">
+                        <i class="fas fa-file-invoice text-blue-400"></i>
+                        <span id="invoiceInfoText"></span>
+                    </div>
+                    <button onclick="resetInvoice()" class="text-xs text-blue-400 hover:text-red-500 flex-shrink-0">
+                        <i class="fas fa-times mr-1"></i>Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== CLIENT WAY ===== -->
+            <div id="panel-client" class="bg-white rounded-xl border border-gray-200 p-5">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-user text-blue-500 mr-1"></i> Client
+                </h3>
+                <div class="relative">
+                    <input type="text" id="clientSearch" placeholder="Client name বা ID search..."
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 pr-10" autocomplete="off">
+                    <button id="clientResetBtn" onclick="resetClient()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
                         <i class="fas fa-times-circle"></i>
                     </button>
                     <div id="clientDropdown" class="absolute z-30 w-full bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-52 overflow-y-auto mt-1"></div>
                 </div>
-                <div id="clientInfo" class="hidden mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
+                <div id="clientInfo" class="hidden mt-3 p-3 bg-blue-50 rounded-lg text-sm flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-blue-800">
                         <i class="fas fa-user-circle text-blue-400"></i>
                         <span id="clientInfoText"></span>
                     </div>
@@ -58,57 +96,55 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
                 </div>
             </div>
 
-            <!-- Mode Tabs -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <!-- ===== SELECTION MODE (Sale/Invoice/Advance) — client way তে দেখাবে ===== -->
+            <div id="selectionPanel" class="hidden bg-white rounded-xl border border-gray-200 p-5">
                 <div class="flex gap-2 mb-4">
-                    <button onclick="setMode('sale')" id="tab-sale"
-                        class="mode-tab flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 border-blue-500 bg-blue-50 text-blue-700">
+                    <button onclick="setMode('sale')" id="mode-sale"
+                        class="mode-btn flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-blue-500 bg-blue-50 text-blue-700">
                         <i class="fas fa-list mr-1"></i> Sale Entries
                     </button>
-                    <button onclick="setMode('invoice')" id="tab-invoice"
-                        class="mode-tab flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 border-gray-200 text-gray-500 hover:border-gray-300">
-                        <i class="fas fa-file-invoice mr-1"></i> Invoice
-                    </button>
-                    <button onclick="setMode('general')" id="tab-general"
-                        class="mode-tab flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 border-gray-200 text-gray-500 hover:border-gray-300">
-                        <i class="fas fa-coins mr-1"></i> General / Advance
+                    <button onclick="setMode('advance')" id="mode-advance"
+                        class="mode-btn flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 border-gray-200 text-gray-500">
+                        <i class="fas fa-piggy-bank mr-1"></i> Advance Only
                     </button>
                 </div>
 
-                <!-- Sale Entries Mode -->
-                <div id="mode-sale">
+                <!-- Sale list -->
+                <div id="sale-panel">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-medium text-gray-500">Unpaid / Partial Sales</span>
+                        <span class="text-xs text-gray-500">Unpaid / Partial Sales</span>
                         <button onclick="selectAllSales()" class="text-xs text-blue-500 hover:underline">Select All</button>
                     </div>
-                    <div id="saleList" class="space-y-2 mb-3 max-h-64 overflow-y-auto">
+                    <div id="saleList" class="space-y-2 max-h-56 overflow-y-auto">
                         <p class="text-xs text-gray-400 text-center py-4">Client select করুন</p>
                     </div>
-                    <div class="flex justify-between text-sm font-semibold text-gray-700 border-t pt-2">
-                        <span>Selected Remaining Total:</span>
+                    <div class="flex justify-between text-xs font-semibold text-gray-600 border-t pt-2 mt-2">
+                        <span>Selected Remaining:</span>
                         <span id="saleSelectedTotal" class="text-blue-600">৳0.00</span>
                     </div>
                 </div>
 
-                <!-- Invoice Mode -->
-                <div id="mode-invoice" class="hidden">
-                    <p class="text-xs text-gray-500 mb-2">Unpaid / Partial Invoices</p>
-                    <div id="invoiceList" class="space-y-2 max-h-64 overflow-y-auto">
-                        <p class="text-xs text-gray-400 text-center py-4">Client select করুন</p>
-                    </div>
-                </div>
-
-                <!-- General Mode -->
-                <div id="mode-general" class="hidden">
+                <!-- Advance only -->
+                <div id="advance-panel" class="hidden">
                     <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-700">
                         <i class="fas fa-piggy-bank mr-1"></i>
-                        কোনো sale বা invoice select না করে receive করলে <strong>Advance</strong> হিসেবে save হবে।
-                        পরে invoice বা sale clear করতে ব্যবহার করা যাবে।
+                        Client এর জন্য <strong>Advance</strong> হিসেবে save হবে। পরে sale/invoice clear করতে ব্যবহার করা যাবে।
                     </div>
                 </div>
             </div>
 
-            <!-- Amount & Date -->
+            <!-- ===== Invoice way তে linked sale entries দেখাবে ===== -->
+            <div id="invoiceSalePanel" class="hidden bg-white rounded-xl border border-gray-200 p-5">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-gray-600">Invoice Linked Sale Entries</span>
+                    <span id="invoiceDueBadge" class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold"></span>
+                </div>
+                <div id="invoiceSaleList" class="space-y-2 max-h-52 overflow-y-auto">
+                    <p class="text-xs text-gray-400 text-center py-3">Invoice select করুন</p>
+                </div>
+            </div>
+
+            <!-- ===== AMOUNT & PAYMENT ===== -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -127,31 +163,41 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
                 <!-- Payment Method -->
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-2">Payment Method</label>
-                    <div class="grid grid-cols-4 gap-2" id="methodGrid">
-                        <label class="method-label flex flex-col items-center p-2.5 border-2 border-green-500 bg-green-50 text-green-700 rounded-lg cursor-pointer" data-val="cash">
-                            <input type="radio" name="payMethod" value="cash" class="hidden" checked>
-                            <i class="fas fa-money-bill-wave text-xl mb-1"></i>
+                    <div class="grid grid-cols-5 gap-1.5">
+                        <label class="method-label flex flex-col items-center p-2 border-2 border-green-500 bg-green-50 text-green-700 rounded-lg cursor-pointer" data-val="cash">
+                            <input type="radio" name="rcvMethod" value="cash" class="hidden" checked>
+                            <i class="fas fa-money-bill-wave text-lg mb-0.5"></i>
                             <span class="text-xs font-semibold">Cash</span>
                         </label>
-                        <label class="method-label flex flex-col items-center p-2.5 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer hover:border-gray-300" data-val="mfs">
-                            <input type="radio" name="payMethod" value="mfs" class="hidden">
-                            <i class="fas fa-mobile-alt text-xl mb-1"></i>
+                        <label class="method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="mfs">
+                            <input type="radio" name="rcvMethod" value="mfs" class="hidden">
+                            <i class="fas fa-mobile-alt text-lg mb-0.5"></i>
                             <span class="text-xs font-semibold">MFS</span>
                         </label>
-                        <label class="method-label flex flex-col items-center p-2.5 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer hover:border-gray-300" data-val="cheque">
-                            <input type="radio" name="payMethod" value="cheque" class="hidden">
-                            <i class="fas fa-file-alt text-xl mb-1"></i>
+                        <label class="method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="npsb">
+                            <input type="radio" name="rcvMethod" value="npsb" class="hidden">
+                            <i class="fas fa-network-wired text-lg mb-0.5"></i>
+                            <span class="text-xs font-semibold">NPSB</span>
+                        </label>
+                        <label class="method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="cheque">
+                            <input type="radio" name="rcvMethod" value="cheque" class="hidden">
+                            <i class="fas fa-file-alt text-lg mb-0.5"></i>
                             <span class="text-xs font-semibold">Cheque</span>
                         </label>
-                        <label class="method-label flex flex-col items-center p-2.5 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer hover:border-gray-300" data-val="bftn-eft">
-                            <input type="radio" name="payMethod" value="bftn-eft" class="hidden">
-                            <i class="fas fa-university text-xl mb-1"></i>
-                            <span class="text-xs font-semibold">BFTN/EFT</span>
+                        <label class="method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="bftn-eft">
+                            <input type="radio" name="rcvMethod" value="bftn-eft" class="hidden">
+                            <i class="fas fa-university text-lg mb-0.5"></i>
+                            <span class="text-xs font-semibold">BFTN</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- Deposit Account — cash/mfs তে দেখাবে -->
+                <!-- Instrument warning -->
+                <div id="instrumentWarn" class="hidden text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                    <i class="fas fa-clock mr-1"></i> Instrument pending — bank balance এখনই update হবে না
+                </div>
+
+                <!-- Deposit Account -->
                 <div id="accountSection">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Deposit To Account</label>
                     <select id="depositAccount" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
@@ -160,59 +206,54 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
                 </div>
 
                 <!-- Cheque Fields -->
-                <div id="chequeFields" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-                    <p class="text-xs font-semibold text-yellow-700">
-                        <i class="fas fa-clock mr-1"></i> Cheque — Pending Clearance (bank balance এখনই update হবে না)
-                    </p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Cheque No</label>
-                            <input type="text" id="chequeNo" placeholder="Cheque number"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Cheque Date</label>
-                            <input type="date" id="chequeDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Account Name</label>
-                            <input type="text" id="chequeAccountName" placeholder="Account holder"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Bank Name</label>
-                            <input type="text" id="chequeBankName" placeholder="Bank name"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
+                <div id="chequeFields" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-3 grid grid-cols-2 gap-3">
+                    <div><label class="text-xs text-gray-600">Cheque No</label>
+                        <input type="text" id="chequeNo" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                    <div><label class="text-xs text-gray-600">Cheque Date</label>
+                        <input type="date" id="chequeDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                    <div><label class="text-xs text-gray-600">Account Name</label>
+                        <input type="text" id="chequeAccountName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                    <div><label class="text-xs text-gray-600">Bank Name</label>
+                        <input type="text" id="chequeBankName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                </div>
+
+                <!-- BFTN Fields -->
+                <div id="bftnFields" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 grid grid-cols-2 gap-3">
+                    <div><label class="text-xs text-gray-600">Reference No</label>
+                        <input type="text" id="bftnNo" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                    <div><label class="text-xs text-gray-600">Date</label>
+                        <input type="date" id="bftnDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                    <div><label class="text-xs text-gray-600">Account Name</label>
+                        <input type="text" id="bftnAccountName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                    <div><label class="text-xs text-gray-600">Bank Name</label>
+                        <input type="text" id="bftnBankName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mt-1"></div>
+                </div>
+
+                <!-- Discount -->
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="withDiscount" class="w-4 h-4 text-orange-500 rounded"
+                            onchange="document.getElementById('discountFields').classList.toggle('hidden',!this.checked)">
+                        <span class="text-xs font-semibold text-orange-700">Discount দিয়ে close করবো</span>
+                    </label>
+                    <div id="discountFields" class="hidden grid grid-cols-2 gap-3 mt-2">
+                        <div><label class="text-xs text-gray-600">Discount Amount</label>
+                            <input type="number" id="discountAmount" step="0.01" placeholder="0.00"
+                                class="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm mt-1" oninput="updateSummary()"></div>
+                        <div><label class="text-xs text-gray-600">Reason</label>
+                            <input type="text" id="discountParticular" placeholder="Reason for discount"
+                                class="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm mt-1"></div>
                     </div>
                 </div>
 
-                <!-- BFTN/EFT Fields -->
-                <div id="bftnFields" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                    <p class="text-xs font-semibold text-blue-700">
-                        <i class="fas fa-clock mr-1"></i> BFTN/EFT — Pending Clearance (bank balance এখনই update হবে না)
-                    </p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Reference No</label>
-                            <input type="text" id="bftnNo" placeholder="Reference number"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Date</label>
-                            <input type="date" id="bftnDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Account Name</label>
-                            <input type="text" id="bftnAccountName" placeholder="Account holder"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Bank Name</label>
-                            <input type="text" id="bftnBankName" placeholder="Bank name"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        </div>
-                    </div>
+                <!-- File Upload -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                        <i class="fas fa-paperclip mr-1"></i> Attach Files (optional)
+                    </label>
+                    <input type="file" id="receiveFiles" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        class="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                    <p class="text-xs text-gray-400 mt-1">Multiple files. Max 10MB each.</p>
                 </div>
 
                 <!-- Particular -->
@@ -223,14 +264,13 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
                 </div>
             </div>
 
-            <!-- Submit -->
             <button onclick="submitReceive()" id="submitBtn"
                 class="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-base">
                 <i class="fas fa-check-circle"></i> Save Receive
             </button>
         </div>
 
-        <!-- ===== RIGHT: Summary ===== -->
+        <!-- RIGHT SUMMARY -->
         <div class="space-y-4">
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">
@@ -238,43 +278,40 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
                 </h3>
                 <div class="space-y-3 text-sm">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Client</span>
-                        <span id="sumClient" class="font-medium text-gray-800 text-right max-w-[150px] truncate">—</span>
+                        <span class="text-gray-400">Via</span>
+                        <span id="sumWay" class="font-medium">Client Select</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Mode</span>
-                        <span id="sumMode" class="font-medium text-gray-800">Sale Entries</span>
+                        <span class="text-gray-400">Client</span>
+                        <span id="sumClient" class="font-medium text-right max-w-[150px] truncate">—</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Method</span>
-                        <span id="sumMethod" class="font-medium text-gray-800">Cash</span>
+                        <span class="text-gray-400">Mode</span>
+                        <span id="sumMode" class="font-medium">Sale Entries</span>
                     </div>
-                    <div class="border-t pt-3">
-                        <div class="flex justify-between">
-                            <span class="font-semibold text-gray-700">Amount</span>
-                            <span id="sumAmount" class="font-bold text-green-600 text-xl">৳0.00</span>
-                        </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Method</span>
+                        <span id="sumMethod" class="font-medium">Cash</span>
+                    </div>
+                    <div class="border-t pt-3 flex justify-between">
+                        <span class="font-semibold text-gray-700">Amount</span>
+                        <span id="sumAmount" class="font-bold text-green-600 text-xl">৳0.00</span>
+                    </div>
+                    <div id="sumDiscountRow" class="hidden flex justify-between text-xs">
+                        <span class="text-orange-500">Discount</span>
+                        <span id="sumDiscount" class="text-orange-500 font-medium">৳0.00</span>
                     </div>
                     <div id="sumOverpayWrap" class="hidden p-2 bg-orange-50 rounded-lg">
-                        <div class="flex justify-between text-xs">
-                            <span class="text-orange-600">Overpayment → Baksheesh</span>
-                            <span id="sumOverpay" class="text-orange-600 font-semibold">৳0.00</span>
-                        </div>
+                        <p class="text-xs text-orange-600 font-medium" id="sumOverpay"></p>
                     </div>
                     <div id="sumAdvanceWrap" class="hidden p-2 bg-indigo-50 rounded-lg">
                         <p class="text-xs text-indigo-600">
                             <i class="fas fa-piggy-bank mr-1"></i> Advance হিসেবে save হবে
                         </p>
                     </div>
-                    <div id="sumInstrumentWrap" class="hidden p-2 bg-yellow-50 rounded-lg">
-                        <p class="text-xs text-yellow-700">
-                            <i class="fas fa-clock mr-1"></i> Instrument pending — bank balance এখনই update হবে না
-                        </p>
-                    </div>
                 </div>
             </div>
 
-            <!-- Recent -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">
                     <i class="fas fa-history mr-1 text-gray-400"></i> Recent
@@ -289,55 +326,106 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
 </main>
 
 <script>
-const IP         = '<?php echo $ip_port; ?>';
-const RECEIVE_API= `${IP}/api/clients/cl-ac-receive-store.php`;
-const FIN_API    = `${IP}/api/financial_entries/fin-entries.php`;
-const INV_API    = `${IP}/api/invoices/all-invoices.php`;
-const ACC_API    = `${IP}/api/accounts/all-accounts.php`;
-const CLIENT_API = `${IP}/api/clients/all-clients.php`;
+const IP          = '<?php echo $ip_port; ?>';
+const RECEIVE_API = `${IP}/api/clients/cl-ac-receive-store.php`;
+const FIN_API     = `${IP}/api/financial_entries/fin-entries.php`;
+const INV_API     = `${IP}/api/invoices/all-invoices.php`;
+const ACC_API     = `${IP}/api/accounts/all-accounts.php`;
+const CLIENT_API  = `${IP}/api/clients/all-clients.php`;
+const UPLOAD_API  = `${IP}/api/finance/upload-file.php`;
 
+let currentWay      = 'client';  // 'invoice' | 'client'
+let currentMode     = 'sale';    // 'sale' | 'advance'
 let selectedClient  = null;
-let selectedSaleIds = new Set();
 let selectedInvoice = null;
-let currentMode     = 'sale';
+let selectedSaleIds = new Set();
 let saleEntries     = [];
+let clients         = [];
 
-/* ===== Init ===== */
+/* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
     loadAccounts();
     setupMethodToggle();
-    document.getElementById('receiveAmount').addEventListener('input', updateSummary);
     setupClientSearch();
+    setupInvoiceSearch();
+    document.getElementById('receiveAmount').addEventListener('input', updateSummary);
+    // default: client way
+    setWay('client');
 });
 
-/* ===== Accounts ===== */
+/* ===== ACCOUNTS ===== */
 async function loadAccounts() {
-    const r    = await fetch(ACC_API);
-    const data = await r.json();
-    const sel  = document.getElementById('depositAccount');
-    (data.accounts || []).forEach(a => {
-        const opt = document.createElement('option');
-        opt.value        = a.sys_id;
-        opt.dataset.name = a.acc_name;
-        opt.textContent  = a.acc_name;
-        sel.appendChild(opt);
+    const r = await fetch(ACC_API);
+    const d = await r.json();
+    const sel = document.getElementById('depositAccount');
+    (d.accounts||[]).forEach(a => {
+        const o = document.createElement('option');
+        o.value = a.sys_id; o.dataset.name = a.acc_name; o.textContent = a.acc_name;
+        sel.appendChild(o);
     });
 }
 
-/* ===== Client Search ===== */
+/* ===== WAY SELECT ===== */
+function setWay(way) {
+    currentWay = way;
+    ['invoice','client'].forEach(w => {
+        const btn = document.getElementById(`way-${w}`);
+        const panel = document.getElementById(`panel-${w}`);
+        if (w === way) {
+            btn?.classList.add('border-blue-500','bg-blue-50','text-blue-700');
+            btn?.classList.remove('border-gray-200','text-gray-500');
+            panel?.classList.remove('hidden');
+        } else {
+            btn?.classList.remove('border-blue-500','bg-blue-50','text-blue-700');
+            btn?.classList.add('border-gray-200','text-gray-500');
+            panel?.classList.add('hidden');
+        }
+    });
+    // Show/hide panels
+    document.getElementById('selectionPanel')?.classList.toggle('hidden', way !== 'client');
+    document.getElementById('invoiceSalePanel')?.classList.toggle('hidden', way !== 'invoice');
+    document.getElementById('sumWay').textContent = way === 'invoice' ? 'Invoice Select' : 'Client Select';
+    // Reset
+    if (way === 'invoice') { resetClient(); }
+    if (way === 'client')  { resetInvoice(); }
+    updateSummary();
+}
+
+/* ===== MODE (sale / advance) ===== */
+function setMode(mode) {
+    currentMode = mode;
+    ['sale','advance'].forEach(m => {
+        const btn = document.getElementById(`mode-${m}`);
+        const panel = document.getElementById(`${m}-panel`);
+        if (m === mode) {
+            btn?.classList.add('border-blue-500','bg-blue-50','text-blue-700');
+            btn?.classList.remove('border-gray-200','text-gray-500');
+            panel?.classList.remove('hidden');
+        } else {
+            btn?.classList.remove('border-blue-500','bg-blue-50','text-blue-700');
+            btn?.classList.add('border-gray-200','text-gray-500');
+            panel?.classList.add('hidden');
+        }
+    });
+    document.getElementById('sumMode').textContent = mode === 'sale' ? 'Sale Entries' : 'Advance Only';
+    document.getElementById('sumAdvanceWrap')?.classList.toggle('hidden', mode !== 'advance');
+    if (mode === 'sale' && selectedClient) loadSaleEntries();
+    updateSummary();
+}
+
+/* ===== CLIENT SEARCH ===== */
 function setupClientSearch() {
     const input = document.getElementById('clientSearch');
     const dd    = document.getElementById('clientDropdown');
-    let clients = [];
-    fetch(CLIENT_API).then(r => r.json()).then(d => { clients = d.clients || []; });
+    fetch(CLIENT_API).then(r=>r.json()).then(d=>{ clients = d.clients||[]; });
 
     input.addEventListener('input', () => {
         const q = input.value.trim().toLowerCase();
         dd.innerHTML = '';
         if (!q) { dd.classList.add('hidden'); return; }
         const hits = clients.filter(c =>
-            (c.name||'').toLowerCase().includes(q) || (c.sys_id||'').toLowerCase().includes(q)
-        ).slice(0, 8);
+            (c.name||'').toLowerCase().includes(q)||(c.sys_id||'').toLowerCase().includes(q)
+        ).slice(0,8);
         if (!hits.length) { dd.classList.add('hidden'); return; }
         hits.forEach(c => {
             const div = document.createElement('div');
@@ -349,7 +437,7 @@ function setupClientSearch() {
         dd.classList.remove('hidden');
     });
     document.addEventListener('click', e => {
-        if (!input.contains(e.target) && !dd.contains(e.target)) dd.classList.add('hidden');
+        if (!input.contains(e.target)&&!dd.contains(e.target)) dd.classList.add('hidden');
     });
 }
 
@@ -357,70 +445,143 @@ function selectClient(c) {
     selectedClient = c;
     document.getElementById('clientSearch').value = c.name;
     document.getElementById('clientDropdown').classList.add('hidden');
-    // Phone parse — JSON string হতে পারে
+    // Phone parse
     let phone = '';
     try {
-        const ph = typeof c.phone === 'string' ? JSON.parse(c.phone) : c.phone;
+        const ph = typeof c.phone==='string' ? JSON.parse(c.phone) : c.phone;
         phone = ph?.primary_no || ph?.primary || '';
-    } catch(e) { phone = c.phone || ''; }
+    } catch(e) { phone = c.phone||''; }
     document.getElementById('clientInfoText').innerHTML =
-        `<span class="font-semibold">${c.name}</span>
-         <span class="text-blue-500 mx-1">·</span>
-         <span class="text-blue-600">${c.sys_id}</span>
-         ${phone ? `<span class="text-blue-500 mx-1">·</span><span>${phone}</span>` : ''}`;
+        `<span class="font-semibold">${c.name}</span> · <span class="text-blue-600">${c.sys_id}</span>`
+        + (phone ? ` · <span>${phone}</span>` : '');
     document.getElementById('clientInfo').classList.remove('hidden');
     document.getElementById('clientResetBtn').classList.remove('hidden');
+    document.getElementById('selectionPanel').classList.remove('hidden');
     document.getElementById('sumClient').textContent = c.name;
-    loadModeData();
+    if (currentMode === 'sale') loadSaleEntries();
+    updateSummary();
 }
 
 function resetClient() {
     selectedClient = null;
     selectedSaleIds.clear();
-    selectedInvoice = null;
+    saleEntries = [];
     document.getElementById('clientSearch').value = '';
     document.getElementById('clientInfo').classList.add('hidden');
     document.getElementById('clientResetBtn').classList.add('hidden');
-    document.getElementById('sumClient').textContent = '—';
+    document.getElementById('selectionPanel').classList.add('hidden');
     document.getElementById('saleList').innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Client select করুন</p>';
-    document.getElementById('invoiceList').innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Client select করুন</p>';
     document.getElementById('saleSelectedTotal').textContent = '৳0.00';
+    document.getElementById('sumClient').textContent = '—';
     document.getElementById('receiveAmount').value = '';
     updateSummary();
 }
 
-/* ===== Mode ===== */
-function setMode(mode) {
-    currentMode = mode;
-    ['sale','invoice','general'].forEach(m => {
-        document.getElementById(`mode-${m}`).classList.toggle('hidden', m !== mode);
-        const tab = document.getElementById(`tab-${m}`);
-        tab.className = m === mode
-            ? 'mode-tab flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 border-blue-500 bg-blue-50 text-blue-700'
-            : 'mode-tab flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 border-gray-200 text-gray-500 hover:border-gray-300';
+/* ===== INVOICE SEARCH ===== */
+function setupInvoiceSearch() {
+    const input = document.getElementById('invoiceSearch');
+    const dd    = document.getElementById('invoiceDropdown');
+    let invoices = [];
+
+    input.addEventListener('focus', async () => {
+        if (!invoices.length) {
+            const r = await fetch(`${INV_API}?unpaid_only=1`);
+            const d = await r.json();
+            invoices = d.invoices || [];
+        }
     });
-    const modeNames = { sale: 'Sale Entries', invoice: 'Invoice', general: 'General / Advance' };
-    document.getElementById('sumMode').textContent = modeNames[mode];
-    document.getElementById('sumAdvanceWrap').classList.toggle('hidden', mode !== 'general');
-    selectedSaleIds.clear();
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        dd.innerHTML = '';
+        if (!q) { dd.classList.add('hidden'); return; }
+        const hits = invoices.filter(i =>
+            (i.invoice_no||'').toLowerCase().includes(q) ||
+            (i.client_name||'').toLowerCase().includes(q)
+        ).slice(0,8);
+        if (!hits.length) { dd.classList.add('hidden'); return; }
+        hits.forEach(inv => {
+            const div = document.createElement('div');
+            div.className = 'px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm border-b last:border-0';
+            div.innerHTML = `
+                <div class="flex justify-between">
+                    <span class="font-medium">${inv.invoice_no}</span>
+                    <span class="text-red-600 font-semibold">৳${parseFloat(inv.due_amount).toFixed(2)}</span>
+                </div>
+                <div class="text-xs text-gray-400">${inv.client_name} · ${inv.invoice_date}</div>`;
+            div.onclick = () => selectInvoice(inv);
+            dd.appendChild(div);
+        });
+        dd.classList.remove('hidden');
+    });
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target)&&!dd.contains(e.target)) dd.classList.add('hidden');
+    });
+}
+
+async function selectInvoice(inv) {
+    selectedInvoice = inv;
+    selectedClient  = { sys_id: inv.client_sys_id, name: inv.client_name };
+    document.getElementById('invoiceSearch').value = inv.invoice_no;
+    document.getElementById('invoiceDropdown').classList.add('hidden');
+    document.getElementById('invoiceInfoText').textContent =
+        `${inv.invoice_no} · ${inv.client_name} · Due ৳${parseFloat(inv.due_amount).toFixed(2)}`;
+    document.getElementById('invoiceInfo').classList.remove('hidden');
+    document.getElementById('invoiceResetBtn').classList.remove('hidden');
+    document.getElementById('sumClient').textContent = inv.client_name;
+    document.getElementById('invoiceDueBadge').textContent = `Due ৳${parseFloat(inv.due_amount).toFixed(2)}`;
+    // Amount auto-fill
+    document.getElementById('receiveAmount').value = parseFloat(inv.due_amount).toFixed(2);
+    // Load linked sale entries
+    await loadInvoiceSaleEntries(inv);
+    updateSummary();
+}
+
+async function loadInvoiceSaleEntries(inv) {
+    const listEl = document.getElementById('invoiceSaleList');
+    listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">Loading...</p>';
+    if (!inv.financial_entry_ids || !inv.financial_entry_ids.length) {
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No linked entries</p>';
+        return;
+    }
+    // Sale entries render
+    const entries = inv.items || [];
+    if (!entries.length) {
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No sale entries</p>';
+        return;
+    }
+    listEl.innerHTML = entries.map(e => `
+        <div class="flex justify-between items-center p-2 bg-gray-50 border border-gray-200 rounded-lg">
+            <div class="text-xs">
+                <div class="font-medium text-gray-800">${e.description||'Service'}</div>
+                <div class="text-gray-400">Qty: ${e.quantity} · Rate: ৳${e.unit_price}</div>
+            </div>
+            <div class="text-sm font-bold text-gray-700">৳${e.total.toFixed(2)}</div>
+        </div>`).join('');
+}
+
+function resetInvoice() {
     selectedInvoice = null;
-    loadModeData();
+    document.getElementById('invoiceSearch').value = '';
+    document.getElementById('invoiceInfo').classList.add('hidden');
+    document.getElementById('invoiceResetBtn').classList.add('hidden');
+    document.getElementById('invoiceSaleList').innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Invoice select করুন</p>';
+    document.getElementById('invoiceDueBadge').textContent = '';
+    document.getElementById('receiveAmount').value = '';
+    document.getElementById('sumClient').textContent = '—';
+    selectedClient = null;
+    updateSummary();
 }
 
-async function loadModeData() {
-    if (!selectedClient) return;
-    if (currentMode === 'sale')    await loadSaleEntries();
-    if (currentMode === 'invoice') await loadInvoices();
-}
-
-/* ===== Sale Entries ===== */
+/* ===== SALE ENTRIES ===== */
 async function loadSaleEntries() {
-    const r    = await fetch(`${FIN_API}?id=${selectedClient.sys_id}&type=debit&related_type=1&is_paid=0`);
-    const data = await r.json();
-    saleEntries = (data.finStmts || []).filter(e =>
-        (e.type||'').toLowerCase() === 'debit' &&
-        parseInt(e.related_type) === 1 &&
-        parseInt(e.is_paid||0) === 0
+    if (!selectedClient) return;
+    const listEl = document.getElementById('saleList');
+    listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Loading...</p>';
+    const r = await fetch(`${FIN_API}?id=${selectedClient.sys_id}&type=debit&related_type=1&is_paid=0`);
+    const d = await r.json();
+    saleEntries = (d.finStmts||[]).filter(e =>
+        (e.type||'').toLowerCase()==='debit' && parseInt(e.related_type)===1 && parseInt(e.is_paid||0)===0
     );
     selectedSaleIds.clear();
     renderSaleList();
@@ -430,33 +591,28 @@ function renderSaleList() {
     const el = document.getElementById('saleList');
     if (!saleEntries.length) {
         el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">কোনো unpaid sale নেই</p>';
-        updateSaleTotal();
-        return;
+        updateSaleTotal(); return;
     }
     el.innerHTML = saleEntries.map(e => {
-        const amt       = parseFloat(e.amount) || 0;
-        const remaining = parseFloat(e.remaining_amount ?? amt);
-        const received  = parseFloat(e.received_amount || 0);
-        const pct       = amt > 0 ? Math.min((received/amt)*100,100) : 0;
-        const checked   = selectedSaleIds.has(e.sys_id);
-        const partialBadge = e.is_partial == 1
-            ? `<span class="text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded ml-1">Partial</span>` : '';
-        const progressBar = received > 0 ? `
-            <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
-                <div class="bg-green-500 h-1 rounded-full" style="width:${pct}%"></div>
-            </div>
-            <p class="text-xs text-gray-400 mt-0.5">Received: ${received.toFixed(2)} · Remaining: <b class="text-orange-600">${remaining.toFixed(2)}</b></p>` : '';
-
+        const amt  = parseFloat(e.amount)||0;
+        const rem  = parseFloat(e.remaining_amount??amt);
+        const rcv  = parseFloat(e.received_amount||0);
+        const pct  = amt>0?Math.min((rcv/amt)*100,100):0;
+        const chk  = selectedSaleIds.has(e.sys_id);
+        const pb   = e.is_partial==1?`<span class="text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded ml-1">Partial</span>`:'';
+        const bar  = rcv>0?`<div class="w-full bg-gray-200 rounded-full h-1 mt-1"><div class="bg-green-500 h-1 rounded-full" style="width:${pct}%"></div></div>
+            <p class="text-xs text-gray-400 mt-0.5">Received: ${rcv.toFixed(2)} · Rem: <b class="text-orange-600">${rem.toFixed(2)}</b></p>`:''
+        ;
         return `<div class="flex items-start gap-2 p-2 border-2 rounded-lg cursor-pointer transition-colors
-                ${checked ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-gray-300'}"
-                onclick="toggleSale('${e.sys_id}')">
-            <input type="checkbox" class="mt-0.5 flex-shrink-0 w-4 h-4" ${checked?'checked':''} onclick="event.stopPropagation();toggleSale('${e.sys_id}')">
+            ${chk?'border-green-400 bg-green-50':'border-gray-200 hover:border-gray-300'}"
+            onclick="toggleSale('${e.sys_id}')">
+            <input type="checkbox" class="mt-0.5 flex-shrink-0 w-4 h-4" ${chk?'checked':''} onclick="event.stopPropagation();toggleSale('${e.sys_id}')">
             <div class="flex-1 min-w-0">
-                <div class="text-xs font-medium text-gray-800 truncate">${e.purpose||'N/A'}${partialBadge}</div>
+                <div class="text-xs font-medium text-gray-800 truncate">${e.purpose||'N/A'}${pb}</div>
                 <div class="text-xs text-gray-400">${(e.date||'').substring(0,10)}${e.work_title?' · '+e.work_title:''}</div>
-                ${progressBar}
+                ${bar}
             </div>
-            <div class="text-sm font-bold text-red-600 flex-shrink-0">৳${remaining.toFixed(2)}</div>
+            <div class="text-sm font-bold text-red-600 flex-shrink-0">৳${rem.toFixed(2)}</div>
         </div>`;
     }).join('');
     updateSaleTotal();
@@ -469,163 +625,172 @@ function toggleSale(id) {
 }
 
 function selectAllSales() {
-    if (selectedSaleIds.size === saleEntries.length) selectedSaleIds.clear();
-    else saleEntries.forEach(e => selectedSaleIds.add(e.sys_id));
+    if (selectedSaleIds.size===saleEntries.length) selectedSaleIds.clear();
+    else saleEntries.forEach(e=>selectedSaleIds.add(e.sys_id));
     renderSaleList();
 }
 
 function updateSaleTotal() {
     let total = 0;
     saleEntries.forEach(e => {
-        if (selectedSaleIds.has(e.sys_id))
-            total += parseFloat(e.remaining_amount ?? e.amount) || 0;
+        if (selectedSaleIds.has(e.sys_id)) total += parseFloat(e.remaining_amount??e.amount)||0;
     });
-    document.getElementById('saleSelectedTotal').textContent = '৳' + total.toFixed(2);
-    if (total > 0 && !document.getElementById('receiveAmount').value) {
-        document.getElementById('receiveAmount').value = total.toFixed(2);
-    }
+    document.getElementById('saleSelectedTotal').textContent = '৳'+total.toFixed(2);
+    const amtEl = document.getElementById('receiveAmount');
+    if (total>0 && !amtEl.value) amtEl.value = total.toFixed(2);
     updateSummary();
 }
 
-/* ===== Invoices ===== */
-async function loadInvoices() {
-    const r    = await fetch(`${INV_API}?client_id=${selectedClient.sys_id}&unpaid_only=1`);
-    const data = await r.json();
-    const invs = data.invoices || [];
-    const el   = document.getElementById('invoiceList');
-    selectedInvoice = null;
-
-    if (!invs.length) {
-        el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">কোনো unpaid invoice নেই</p>';
-        return;
-    }
-    el.innerHTML = invs.map(inv => {
-        const statusCls = inv.status === 'partial'
-            ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700';
-        return `<div class="flex items-center gap-2 p-2.5 border-2 border-gray-200 hover:border-blue-400 rounded-lg cursor-pointer invoice-row transition-colors"
-                    onclick="selectInvoice(this,'${inv.invoice_no}',${inv.due_amount})">
-            <input type="radio" name="invSel" class="flex-shrink-0">
-            <div class="flex-1 min-w-0">
-                <div class="text-xs font-semibold text-gray-800">${inv.invoice_no}</div>
-                <div class="text-xs text-gray-400">${inv.invoice_date} · Total ৳${inv.total_amount.toFixed(2)}</div>
-            </div>
-            <div class="text-right flex-shrink-0">
-                <div class="text-sm font-bold text-red-600">৳${inv.due_amount.toFixed(2)}</div>
-                <span class="text-xs px-1.5 py-0.5 rounded ${statusCls}">${inv.status}</span>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function selectInvoice(el, invNo, due) {
-    document.querySelectorAll('.invoice-row').forEach(d => {
-        d.classList.remove('border-blue-400','bg-blue-50');
-        d.classList.add('border-gray-200');
-    });
-    el.classList.remove('border-gray-200');
-    el.classList.add('border-blue-400','bg-blue-50');
-    el.querySelector('input[type=radio]').checked = true;
-    selectedInvoice = { invoice_no: invNo, due_amount: due };
-    document.getElementById('receiveAmount').value = parseFloat(due).toFixed(2);
-    updateSummary();
-}
-
-/* ===== Payment Method ===== */
+/* ===== PAYMENT METHOD ===== */
 function setupMethodToggle() {
     document.querySelectorAll('.method-label').forEach(label => {
         label.addEventListener('click', () => {
             document.querySelectorAll('.method-label').forEach(l => {
-                l.className = l.className
-                    .replace('border-green-500 bg-green-50 text-green-700','border-gray-200 text-gray-500');
+                l.className = l.className.replace('border-green-500 bg-green-50 text-green-700','border-gray-200 text-gray-500');
             });
-            label.className = label.className
-                .replace('border-gray-200 text-gray-500','border-green-500 bg-green-50 text-green-700');
-
+            label.className = label.className.replace('border-gray-200 text-gray-500','border-green-500 bg-green-50 text-green-700');
             const method = label.dataset.val;
-            const isInstrument = ['cheque','bftn-eft'].includes(method);
-
-            document.getElementById('accountSection').classList.toggle('hidden', isInstrument);
-            document.getElementById('chequeFields').classList.toggle('hidden', method !== 'cheque');
-            document.getElementById('bftnFields').classList.toggle('hidden', method !== 'bftn-eft');
+            const isInstr = ['cheque','bftn-eft'].includes(method);
+            document.getElementById('accountSection').classList.toggle('hidden', isInstr);
+            document.getElementById('chequeFields').classList.toggle('hidden', method!=='cheque');
+            document.getElementById('bftnFields').classList.toggle('hidden', method!=='bftn-eft');
+            document.getElementById('instrumentWarn').classList.toggle('hidden', !isInstr);
             document.getElementById('sumMethod').textContent = label.querySelector('span').textContent;
-            document.getElementById('sumInstrumentWrap').classList.toggle('hidden', !isInstrument);
-
             updateSummary();
         });
     });
 }
 
-function getSelectedMethod() {
-    return document.querySelector('input[name="payMethod"]:checked')?.value || 'cash';
+function getMethod() {
+    return document.querySelector('input[name="rcvMethod"]:checked')?.value||'cash';
 }
 
-/* ===== Summary ===== */
+/* ===== SUMMARY ===== */
 function updateSummary() {
-    const amt = parseFloat(document.getElementById('receiveAmount').value) || 0;
-    document.getElementById('sumAmount').textContent = '৳' + amt.toFixed(2);
+    const amt = parseFloat(document.getElementById('receiveAmount').value)||0;
+    document.getElementById('sumAmount').textContent = '৳'+amt.toFixed(2);
 
-    if (currentMode === 'sale' && selectedSaleIds.size > 0) {
+    // Overpayment check (sale mode)
+    const overpayWrap = document.getElementById('sumOverpayWrap');
+    if (currentWay==='client' && currentMode==='sale' && selectedSaleIds.size>0) {
         let selTotal = 0;
-        saleEntries.forEach(e => {
-            if (selectedSaleIds.has(e.sys_id))
-                selTotal += parseFloat(e.remaining_amount ?? e.amount) || 0;
-        });
-        const overpay = Math.max(0, amt - selTotal);
-        document.getElementById('sumOverpayWrap').classList.toggle('hidden', overpay < 0.01);
-        document.getElementById('sumOverpay').textContent = '৳' + overpay.toFixed(2);
-        const hint = document.getElementById('amountHint');
-        hint.textContent = overpay > 0.01 ? `৳${overpay.toFixed(2)} বাড়তি — Baksheesh হবে` : '';
-        hint.classList.toggle('hidden', overpay < 0.01);
+        saleEntries.forEach(e=>{ if(selectedSaleIds.has(e.sys_id)) selTotal+=parseFloat(e.remaining_amount??e.amount)||0; });
+        const disc    = document.getElementById('withDiscount')?.checked ? (parseFloat(document.getElementById('discountAmount')?.value)||0) : 0;
+        const overpay = Math.max(0, amt - selTotal - disc);
+        overpayWrap.classList.toggle('hidden', overpay<0.01);
+        document.getElementById('sumOverpay').textContent = overpay>0.01 ? `⚠ ৳${overpay.toFixed(2)} বাড়তি — Advance বা Baksheesh choose করতে হবে` : '';
     } else {
-        document.getElementById('sumOverpayWrap').classList.add('hidden');
-        document.getElementById('amountHint').classList.add('hidden');
+        overpayWrap.classList.add('hidden');
     }
+
+    // Discount
+    const withDisc = document.getElementById('withDiscount')?.checked;
+    const discAmt  = withDisc ? (parseFloat(document.getElementById('discountAmount')?.value)||0) : 0;
+    document.getElementById('sumDiscountRow')?.classList.toggle('hidden', !withDisc||discAmt<=0);
+    if (withDisc && discAmt>0) document.getElementById('sumDiscount').textContent = '৳'+discAmt.toFixed(2);
+
+    // Advance
+    const isAdvance = currentWay==='client' && currentMode==='advance';
+    document.getElementById('sumAdvanceWrap')?.classList.toggle('hidden', !isAdvance);
 }
 
-/* ===== Submit ===== */
-async function submitReceive() {
-    if (!selectedClient) { showToast('Client select করুন', 'error'); return; }
+/* ===== OVERPAYMENT MODAL ===== */
+function showOverpayModal(overpayAmt) {
+    return new Promise(resolve => {
+        const existing = document.getElementById('overpayModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'overpayModal';
+        modal.className = 'fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <h3 class="text-base font-bold text-gray-900 mb-2">
+                    <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Overpayment
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">৳${overpayAmt} বাড়তি দেওয়া হচ্ছে। এটা কী হিসেবে রাখবো?</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="document.getElementById('overpayModal').dataset.choice='advance'"
+                        class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
+                        <i class="fas fa-piggy-bank mr-1"></i> Advance
+                    </button>
+                    <button onclick="document.getElementById('overpayModal').dataset.choice='baksheesh'"
+                        class="py-2.5 px-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl text-sm">
+                        <i class="fas fa-gift mr-1"></i> Baksheesh
+                    </button>
+                </div>
+                <button onclick="document.getElementById('overpayModal').dataset.choice='cancel'"
+                    class="w-full mt-3 py-2 text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            </div>`;
+        document.body.appendChild(modal);
+        const obs = new MutationObserver(() => {
+            const choice = modal.dataset.choice;
+            if (choice) { obs.disconnect(); modal.remove(); resolve(choice==='cancel'?null:choice); }
+        });
+        obs.observe(modal, { attributes: true });
+    });
+}
 
-    const amount     = parseFloat(document.getElementById('receiveAmount').value);
+/* ===== SUBMIT ===== */
+async function submitReceive() {
+    const amount     = parseFloat(document.getElementById('receiveAmount').value)||0;
     const date       = document.getElementById('receiveDate').value;
-    const method     = getSelectedMethod();
-    const particular = document.getElementById('particular').value || 'Payment Received';
+    const method     = getMethod();
+    const particular = document.getElementById('particular').value||'Payment Received';
     const accSel     = document.getElementById('depositAccount');
     const accountId  = accSel.value;
-    const accountName= accSel.options[accSel.selectedIndex]?.dataset.name || '';
+    const accountName= accSel.options[accSel.selectedIndex]?.dataset.name||'';
+    const isInstr    = ['cheque','bftn-eft'].includes(method);
+    const withDiscount = document.getElementById('withDiscount')?.checked||false;
+    const discountAmount = parseFloat(document.getElementById('discountAmount')?.value)||0;
+    const discountParticular = document.getElementById('discountParticular')?.value||'';
 
-    if (!amount || amount <= 0) { showToast('Amount দিন', 'error'); return; }
-    if (!['cheque','bftn-eft'].includes(method) && !accountId) {
-        showToast('Deposit account select করুন', 'error'); return;
+    if (amount<=0) { showToast('Amount দিন','error'); return; }
+    if (!isInstr && !accountId) { showToast('Deposit account select করুন','error'); return; }
+
+    // Invoice way validation
+    if (currentWay==='invoice' && !selectedInvoice) { showToast('Invoice select করুন','error'); return; }
+    // Client way validation
+    if (currentWay==='client' && !selectedClient) { showToast('Client select করুন','error'); return; }
+
+    // Overpayment check
+    let overpaymentAction = 'advance';
+    if (currentWay==='client' && currentMode==='sale' && selectedSaleIds.size>0) {
+        let selTotal = 0;
+        saleEntries.forEach(e=>{ if(selectedSaleIds.has(e.sys_id)) selTotal+=parseFloat(e.remaining_amount??e.amount)||0; });
+        const disc = withDiscount ? discountAmount : 0;
+        const overpay = amount - selTotal - disc;
+        if (overpay > 0.009) {
+            const choice = await showOverpayModal(overpay.toFixed(2));
+            if (choice===null) return;
+            overpaymentAction = choice;
+        }
     }
 
     const payload = {
-        clientId       : selectedClient.sys_id,
-        clientName     : selectedClient.name,
-        amount         : amount,
-        transactionDate: date + ' ' + new Date().toTimeString().slice(0,8),
-        particular     : particular,
-        transferMethod : method,
-        accountId      : accountId,
-        accountName    : accountName,
-        isHistorical   : 0,
-        selectedSaleIds: currentMode === 'sale' ? [...selectedSaleIds] : [],
-        withDiscount   : false,
-        discountAmount : 0,
+        clientId          : selectedClient?.sys_id,
+        clientName        : selectedClient?.name,
+        amount,
+        transactionDate   : date+' '+new Date().toTimeString().slice(0,8),
+        particular,
+        transferMethod    : method,
+        accountId,
+        accountName,
+        isHistorical      : 0,
+        selectedSaleIds   : (currentWay==='client' && currentMode==='sale') ? [...selectedSaleIds] : [],
+        invoice_id        : currentWay==='invoice' ? selectedInvoice?.invoice_no : null,
+        overpayment_action: overpaymentAction,
+        withDiscount,
+        discountAmount    : withDiscount ? discountAmount : 0,
+        discountParticular: withDiscount ? discountParticular : '',
     };
 
-    if (currentMode === 'invoice' && selectedInvoice) {
-        payload.invoice_id  = selectedInvoice.invoice_no;
-        payload.selectedSaleIds = []; // invoice mode এ sale select নেই
-    }
-
-    if (method === 'cheque') {
+    if (method==='cheque') {
         payload.chequeNo          = document.getElementById('chequeNo').value;
         payload.chequeDate        = document.getElementById('chequeDate').value;
         payload.chequeAccountName = document.getElementById('chequeAccountName').value;
         payload.bankName          = document.getElementById('chequeBankName').value;
     }
-    if (method === 'bftn-eft') {
+    if (method==='bftn-eft') {
         payload.bftnNo          = document.getElementById('bftnNo').value;
         payload.bftnDate        = document.getElementById('bftnDate').value;
         payload.bftnAccountName = document.getElementById('bftnAccountName').value;
@@ -638,28 +803,35 @@ async function submitReceive() {
 
     try {
         const r    = await fetch(RECEIVE_API, {
-            method : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body   : JSON.stringify(payload)
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
         });
         const data = await r.json();
-
         if (data.success) {
-            showToast(data.message || 'Receive recorded!', 'success');
-            addRecent(selectedClient.name, amount, method);
+            // File upload
+            const files = document.getElementById('receiveFiles')?.files;
+            if (files && files.length>0 && data.data?.receive_entry_ids?.length>0) {
+                const fd = new FormData();
+                fd.append('entity_type', currentWay==='invoice' ? 'invoice' : 'receive');
+                fd.append('entity_id',   currentWay==='invoice' ? selectedInvoice.invoice_no : data.data.receive_entry_ids[0]);
+                fd.append('entity_name', selectedClient?.name||'');
+                for (const f of files) fd.append('files[]', f);
+                fetch(UPLOAD_API, { method:'POST', body:fd });
+            }
+            showToast(data.message||'Receive recorded!','success');
+            addRecent(selectedClient?.name||'', amount, method);
             // Reset form
-            selectedSaleIds.clear();
-            selectedInvoice = null;
             document.getElementById('receiveAmount').value = '';
             document.getElementById('particular').value    = '';
+            document.getElementById('withDiscount').checked = false;
+            document.getElementById('discountFields').classList.add('hidden');
+            selectedSaleIds.clear();
+            if (currentWay==='client' && currentMode==='sale' && selectedClient) await loadSaleEntries();
             updateSummary();
-            if (currentMode === 'sale') await loadSaleEntries();
-            if (currentMode === 'invoice') await loadInvoices();
         } else {
-            showToast('Error: ' + (data.message || 'Failed'), 'error');
+            showToast('Error: '+(data.message||'Failed'),'error');
         }
     } catch(e) {
-        showToast('Network error: ' + e.message, 'error');
+        showToast('Network error: '+e.message,'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Save Receive';
@@ -667,10 +839,9 @@ async function submitReceive() {
 }
 
 function addRecent(client, amount, method) {
-    const el   = document.getElementById('recentList');
-    const p    = el.querySelector('p');
-    if (p) p.remove();
-    const div  = document.createElement('div');
+    const el = document.getElementById('recentList');
+    const p  = el.querySelector('p'); if (p) p.remove();
+    const div = document.createElement('div');
     div.className = 'flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-100';
     div.innerHTML = `
         <div>
@@ -679,17 +850,16 @@ function addRecent(client, amount, method) {
         </div>
         <div class="text-sm font-bold text-green-600">৳${parseFloat(amount).toFixed(2)}</div>`;
     el.insertBefore(div, el.firstChild);
-    // Max 5
-    while (el.children.length > 5) el.removeChild(el.lastChild);
+    while (el.children.length>5) el.removeChild(el.lastChild);
 }
 
 function showToast(msg, type='success') {
     const t = document.createElement('div');
     t.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium flex items-center gap-2
-        ${type==='success' ? 'bg-green-600' : 'bg-red-600'}`;
+        ${type==='success'?'bg-green-600':'bg-red-600'}`;
     t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i>${msg}`;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+    setTimeout(()=>t.remove(), 4000);
 }
 </script>
 </body>

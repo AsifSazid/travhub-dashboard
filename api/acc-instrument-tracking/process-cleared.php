@@ -7,6 +7,7 @@ date_default_timezone_set('Asia/Dhaka');
 require '../../server/db_connection.php';
 require '../../server/generate_meta_data.php';
 require '../../server/uuid_with_system_id_generator.php';
+require '../../server/finance_helpers.php';
 
 header('Content-Type: application/json');
 
@@ -33,7 +34,7 @@ try {
     // Get instrument data with status check
     $instrumentStmt = $pdo->prepare("
         SELECT meta_data, related_from, related_to, account_name, bank_name, payment_to,
-               instrument_date, remarks, status, amount 
+               instrument_date, remarks, status, amount, finance_data
         FROM ac_instrument_tracking 
         WHERE sys_id = ? AND status != 'cleared'
         FOR UPDATE
@@ -493,102 +494,117 @@ try {
     }
     // ============ LOGIC-02: CREDIT TRANSACTIONS (Receive from Client/Vendor) ============
     elseif ($trnxType === 'credit') {
-        
-        // First: Financial entry (LOGIC-02: receive from client/vendor)
-        $financialUUIDs = generateIDs('financial_entries');
-        
-        // Determine user type
-        // $userType = 'client';
-        // if ($relatedType === 'vendor' || strpos(strtolower($toAccountName), 'vendor') !== false) {
-        //     $userType = 'vendor';
-        // }
-        
-        $financialStmt = $pdo->prepare("
-            INSERT INTO financial_entries (
-                uuid, sys_id,
-                user_sys_id, user_name, user_type,
-                date, purpose, type, amount, ref,
-                meta_data
-            ) VALUES (
-                :uuid, :sys_id,
-                :user_sys_id, :user_name, :user_type,
-                :date, :purpose, :type, :amount, :ref,
-                :meta_data
-            )
-        ");
-        
-        $financialStmt->execute([
-            ':uuid' => $financialUUIDs['uuid'],
-            ':sys_id' => $financialUUIDs['sys_id'],
-            ':user_sys_id' => $fromAccountId,
-            ':user_name' => $fromAccountName,
-            ':user_type' => $paymentTo,
-            ':date' => $transactionDate,
-            ':purpose' => $particular,
-            ':type' => 'credit', // Received from client/vendor
-            ':amount' => $amount,
-            ':ref' => 'Instrument Receive',
-            ':meta_data' => $transactionMetaData
-        ]);
-        
-        $transactionId = $financialUUIDs['sys_id'];
-        
-        // Second: Bank account update (to account - where money is deposited)
-        $toAccStmt = $pdo->prepare("
-            SELECT balance, sys_id 
-            FROM ac_banking 
-            WHERE sys_id = ?
-            FOR UPDATE
-        ");
+
+        // 1. Bank account update (to account — money deposit)
+        $toAccStmt = $pdo->prepare("SELECT balance, sys_id FROM ac_banking WHERE sys_id = ? FOR UPDATE");
         $toAccStmt->execute([$toAccountId]);
         $bankAccount = $toAccStmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$bankAccount) {
-            throw new Exception('Bank account not found: ' . $toAccountId);
-        }
-        
-        // Update bank balance
+        if (!$bankAccount) throw new Exception('Bank account not found: ' . $toAccountId);
+
         $newBalance = $bankAccount['balance'] + $amount;
-        
-        $updateStmt = $pdo->prepare("
-            UPDATE ac_banking 
-            SET balance = :balance 
-            WHERE sys_id = :id
-        ");
-        $updateStmt->execute([
-            ':balance' => $newBalance,
-            ':id'      => $toAccountId
-        ]);
-        
-        // Bank statement entry
+        $pdo->prepare("UPDATE ac_banking SET balance = ? WHERE sys_id = ?")->execute([$newBalance, $toAccountId]);
+
+        // 2. Bank statement insert
         $stmtUUIDs = generateIDs('ac_banking_stmts');
-        
-        $stmtInsert = $pdo->prepare("
+        $pdo->prepare("
             INSERT INTO ac_banking_stmts
-            (
-                uuid, sys_id, ledger_db_id, name, date, particular,
-                withdraw, deposit, balance, transfer_method, meta_data
-            )
-            VALUES
-            (
-                :uuid, :sys_id, :ledger_db_id, :name, :date, :particular,
-                :withdraw, :deposit, :balance, :transfer_method, :meta_data
-            )
-        ");
-        
-        $stmtInsert->execute([
-            ':uuid' => $stmtUUIDs['uuid'],
-            ':sys_id' => $stmtUUIDs['sys_id'],
-            ':ledger_db_id' => $toAccountId,
-            ':name' => $toAccountName,
-            ':date' => $transactionDate,
-            ':particular' => $particular,
-            ':withdraw' => 0,
-            ':deposit' => $amount,
-            ':balance' => $newBalance,
-            ':transfer_method' => $instrumentType,
-            ':meta_data' => $transactionMetaData
+            (uuid, sys_id, ledger_db_id, name, date, particular,
+             withdraw, deposit, balance, transfer_method, meta_data)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+        ")->execute([
+            $stmtUUIDs['uuid'], $stmtUUIDs['sys_id'],
+            $toAccountId, $toAccountName, $transactionDate, $particular,
+            $amount, $newBalance, $instrumentType, $transactionMetaData
         ]);
+        $transactionId = $stmtUUIDs['sys_id'];
+
+        // 3. Client receive — sale entries clear করি
+        if ($paymentTo === 'client') {
+            // finance_data column থেকে নিই
+            $financeData = json_decode($instrument['finance_data'] ?? '{}', true) ?: [];
+            $clientId        = trim($fromAccountId);
+            $clientName      = trim($fromAccountName);
+            $selectedSaleIds = $financeData['selected_sale_ids'] ?? [];
+            $invoiceId       = $financeData['invoice_id']        ?? null;
+            $overpayAction   = $financeData['overpayment_action'] ?? 'advance';
+
+            // Invoice mode → sale ids নিই
+            if ($invoiceId && empty($selectedSaleIds)) {
+                $invR = $pdo->prepare("SELECT financial_entry_ids FROM invoices WHERE sys_id = ?");
+                $invR->execute([$invoiceId]);
+                $inv = $invR->fetch(PDO::FETCH_ASSOC);
+                if ($inv && !empty($inv['financial_entry_ids'])) {
+                    $selectedSaleIds = json_decode($inv['financial_entry_ids'], true) ?: [];
+                }
+            }
+
+            if (!empty($selectedSaleIds)) {
+                // Total remaining calculate
+                $totalRemaining = 0;
+                $ph  = implode(',', array_fill(0, count($selectedSaleIds), '?'));
+                $sr  = $pdo->prepare("SELECT sys_id, amount, is_paid, is_partial, ref FROM financial_entries WHERE sys_id IN ($ph)");
+                $sr->execute(array_values($selectedSaleIds));
+                foreach ($sr->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $totalRemaining += getSaleRemaining($pdo, $row);
+                }
+
+                // Sale-wise receive entries via helper (FIFO)
+                $clearAmt  = min($amount, $totalRemaining);
+                $rcvResult = applyPaymentToSales(
+                    $pdo, $selectedSaleIds, $clearAmt,
+                    $clientId, $clientName, $transactionDate, $particular, $userName
+                );
+
+                // Overpayment check
+                $overpayAmt = max(0, $amount - $totalRemaining);
+                if ($overpayAmt > 0.009) {
+                    handleOverpayment(
+                        $pdo, $overpayAction, $overpayAmt,
+                        'client', $clientId, $clientName,
+                        $transactionDate, $sysId, $userName
+                    );
+                }
+
+                // transactionId = first receive entry sys_id
+                if (!empty($rcvResult['receive_entry_ids'])) {
+                    $transactionId = $rcvResult['receive_entry_ids'][0];
+                }
+
+            } else {
+                // No sale selection → Advance (rt=6)
+                $advIds  = generateIDsSafe('financial_entries');
+                $advMeta = buildMetaData(null, $userName);
+                $pdo->prepare("
+                    INSERT INTO financial_entries
+                    (uuid, sys_id, user_sys_id, user_name, user_type,
+                     date, purpose, type, related_type,
+                     is_paid, is_partial, is_discounted, amount, ref, meta_data)
+                    VALUES (?, ?, ?, ?, 'client', ?, ?, 'credit', 6, 1, 0, 0, ?, ?, ?)
+                ")->execute([
+                    $advIds['uuid'], $advIds['sys_id'],
+                    $clientId, $clientName,
+                    $transactionDate, 'Advance (Instrument Cleared): ' . $particular,
+                    $amount, $sysId, $advMeta
+                ]);
+                $transactionId = $advIds['sys_id'];
+            }
+
+        } else {
+            // Non-client (vendor বা other) — general financial entry
+            $financialUUIDs = generateIDs('financial_entries');
+            $pdo->prepare("
+                INSERT INTO financial_entries (
+                    uuid, sys_id, user_sys_id, user_name, user_type,
+                    date, purpose, type, amount, ref, meta_data
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'credit', ?, ?, ?)
+            ")->execute([
+                $financialUUIDs['uuid'], $financialUUIDs['sys_id'],
+                $fromAccountId, $fromAccountName, $paymentTo,
+                $transactionDate, $particular,
+                $amount, 'Instrument Cleared: ' . $sysId, $transactionMetaData
+            ]);
+            $transactionId = $financialUUIDs['sys_id'];
+        }
     }
     else {
         throw new Exception('Invalid transaction type');

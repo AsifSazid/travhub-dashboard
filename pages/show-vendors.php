@@ -5,7 +5,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$vendorId = $_GET['vendor_id'];
+$vendorId = $_GET['vendor_id'] ?? $_GET['id'] ?? NULL;
 
 $getVendorFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$vendorId";
 $getVendor = $ip_port . "api/vendors/get-vendor.php?vid=$vendorId";
@@ -18,7 +18,7 @@ $getVendor = $ip_port . "api/vendors/get-vendor.php?vid=$vendorId";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete Work Entry</title>
+    <title>Vendor Profile</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

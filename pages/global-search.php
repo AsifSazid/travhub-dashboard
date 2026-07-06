@@ -208,6 +208,17 @@ const MODULES = [
         status: (r) => r.status,
     },
     {
+        key:   'vendors',
+        label: 'Vendors',
+        icon:  'fa-user-tie',
+        color: 'text-yellow-500',
+        badge: 'bg-yellow-100 text-yellow-700',
+        link:  (r) => `show-vendors.php?id=${r.sys_id}`,
+        title: (r) => r.name || r.sys_id,
+        meta:  (r) => [r.sys_id].filter(Boolean),
+        status: (r) => r.status,
+    },
+    {
         key:   'travelers',
         label: 'Travelers',
         icon:  'fa-passport',

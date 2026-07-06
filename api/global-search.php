@@ -172,6 +172,28 @@ try {
             }
             break;
 
+        case 'vendors':
+            $s = $pdo->prepare("
+                SELECT sys_id, name, type, phone, email, status
+                FROM vendors
+                WHERE
+                    sys_id    LIKE ?
+                 OR name      LIKE ?
+                 OR type      LIKE ?
+                 OR phone     LIKE ?
+                 OR email     LIKE ?
+                ORDER BY id DESC LIMIT 30
+            ");
+            $s->execute(array_fill(0, 5, $like));
+            foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                // Flatten phone JSON → readable string
+                $ph = json_decode($r['phone'] ?? '{}', true);
+                $r['phone_flat'] = is_array($ph) ? implode(', ', array_filter(array_values($ph))) : ($r['phone'] ?? '');
+                unset($r['phone'], $r['email']);
+                $rows[] = $r;
+            }
+            break;
+
         /* ── Travelers ───────────────────────────────────────── */
         case 'travelers':
             $s = $pdo->prepare("

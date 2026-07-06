@@ -169,15 +169,57 @@
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-taka-sign mr-1"></i> Purchase Amount</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-taka-sign mr-1 text-green-600"></i> Purchase Amount
+                        <span class="text-xs text-gray-400">(Vendor cost)</span>
+                    </label>
                     <input type="number" step="0.01" min="0" id="sv-pur-amount" placeholder="0.00"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        class="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        oninput="svPurUpdateProfit()">
+                </div>
+                <!-- Client — Required -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-user mr-1 text-blue-500"></i> Client (কার জন্য কেনা হচ্ছে) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" id="sv-pur-clientSearch" placeholder="Client name বা ID search..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400" autocomplete="off">
+                        <div id="sv-pur-clientDropdown" class="absolute z-30 w-full bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-44 overflow-y-auto mt-1"></div>
+                    </div>
+                    <div id="sv-pur-clientInfo" class="hidden mt-1 text-xs text-blue-700 bg-blue-50 rounded p-1.5"></div>
+                </div>
+                <!-- Selling Price -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-taka-sign mr-1 text-red-600"></i> Selling Price
+                        <span class="text-xs text-gray-400">(Client charge)</span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="sv-pur-sellingPrice" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        oninput="svPurUpdateProfit()">
+                </div>
+                <!-- Profit -->
+                <div class="flex items-end pb-1">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3 w-full text-center">
+                        <p class="text-xs text-gray-500">Profit</p>
+                        <p id="sv-pur-profit" class="text-lg font-bold text-green-700">0.00</p>
+                    </div>
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-file-alt mr-1"></i> Particular</label>
-                <textarea id="sv-pur-particular" rows="3" placeholder="Service/product description"
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-file-alt mr-1"></i> Particular (Vendor)
+                </label>
+                <textarea id="sv-pur-particular" rows="2" placeholder="Service/product description for vendor"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
+            </div>
+            <div id="sv-pur-clientParticularWrap" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-file-alt mr-1 text-blue-500"></i> Particular (Client)
+                </label>
+                <textarea id="sv-pur-clientParticular" rows="2" placeholder="Service description for client"
+                    class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
             </div>
             <div class="flex justify-end gap-3 pt-3 border-t">
                 <button class="sv-modal-close px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" data-modal="sv-purchaseModal">
@@ -263,7 +305,8 @@
                     <select id="sv-pay-method"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                         <option value="cash">Cash</option>
-                        <option value="npsb-rtgs">NPSB/RTGS</option>
+                        <option value="mfs">MFS</option>
+                        <option value="npsb">NPSB</option>
                         <option value="cheque">Cheque</option>
                         <option value="bftn-eft">BFTN/EFT</option>
                     </select>
@@ -335,6 +378,35 @@
                             class="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-400 text-sm">
                     </div>
                 </div>
+            </div>
+
+            <!-- Vendor Advance use -->
+            <div id="sv-pay-advanceSection" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-indigo-700"><i class="fas fa-piggy-bank mr-1"></i> Vendor Advance Balance</p>
+                        <p class="text-xs text-indigo-500">Available: <strong id="sv-pay-advBalance">৳0.00</strong></p>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="sv-pay-useAdvance" class="w-4 h-4 text-indigo-600 rounded" onchange="svToggleAdvanceUse()">
+                        <span class="text-xs font-semibold text-indigo-700">Use Advance</span>
+                    </label>
+                </div>
+                <div id="sv-pay-advanceInputWrap" class="hidden">
+                    <label class="block text-xs text-indigo-600 mb-1">Use Amount (max: <span id="sv-pay-advMax">৳0</span>)</label>
+                    <input type="number" id="sv-pay-advanceAmount" step="0.01" min="0" placeholder="0.00"
+                        class="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 bg-white">
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <i class="fas fa-paperclip mr-1"></i> Attach Files (optional)
+                </label>
+                <input type="file" id="sv-pay-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    class="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+                <p class="text-xs text-gray-400 mt-1">Multiple files allowed. Max 10MB each.</p>
             </div>
 
             <div>
@@ -995,37 +1067,120 @@
 
 
     // ==================== PURCHASE MODAL ====================
+    let svPurSelectedClient = null;
+
     function openPurchaseModal() {
         setEl('sv-pur-vendorName', vendorName);
         setToday('sv-pur-date');
-        document.getElementById('sv-pur-amount').value = '';
-        document.getElementById('sv-pur-particular').value = '';
+        document.getElementById('sv-pur-amount').value       = '';
+        document.getElementById('sv-pur-sellingPrice').value = '';
+        document.getElementById('sv-pur-particular').value   = '';
+        document.getElementById('sv-pur-clientParticular').value = '';
+        document.getElementById('sv-pur-clientSearch').value = '';
+        document.getElementById('sv-pur-clientInfo').classList.add('hidden');
+        document.getElementById('sv-pur-clientParticularWrap')?.classList.add('hidden');
+        document.getElementById('sv-pur-profit').textContent = '0.00';
+        svPurSelectedClient = null;
+        // Setup client search
+        svPurSetupClientSearch();
         openModal('sv-purchaseModal');
     }
 
+    function svPurSetupClientSearch() {
+        const input = document.getElementById('sv-pur-clientSearch');
+        const dd    = document.getElementById('sv-pur-clientDropdown');
+        if (input._setupDone) return;
+        input._setupDone = true;
+        let clients = [];
+        fetch(`${IP_PATH}/api/clients/all-clients.php`).then(r=>r.json()).then(d=>{ clients=d.clients||[]; });
+        input.addEventListener('input', () => {
+            const q = input.value.trim().toLowerCase();
+            dd.innerHTML = '';
+            if (!q) { dd.classList.add('hidden'); return; }
+            const hits = clients.filter(c =>
+                (c.name||'').toLowerCase().includes(q)||(c.sys_id||'').toLowerCase().includes(q)
+            ).slice(0,8);
+            if (!hits.length) { dd.classList.add('hidden'); return; }
+            hits.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b last:border-0';
+                div.innerHTML = `<div class="font-medium">${c.name}</div><div class="text-xs text-gray-400">${c.sys_id}</div>`;
+                div.onclick = () => {
+                    svPurSelectedClient = c;
+                    input.value = c.name;
+                    dd.classList.add('hidden');
+                    document.getElementById('sv-pur-clientInfo').textContent = `${c.name} · ${c.sys_id}`;
+                    document.getElementById('sv-pur-clientInfo').classList.remove('hidden');
+                    document.getElementById('sv-pur-clientParticularWrap')?.classList.remove('hidden');
+                };
+                dd.appendChild(div);
+            });
+            dd.classList.remove('hidden');
+        });
+        document.addEventListener('click', e => {
+            if (!input.contains(e.target)&&!dd.contains(e.target)) dd.classList.add('hidden');
+        });
+    }
+
+    function svPurUpdateProfit() {
+        const sell = parseFloat(document.getElementById('sv-pur-sellingPrice')?.value)||0;
+        const buy  = parseFloat(document.getElementById('sv-pur-amount')?.value)||0;
+        const profit = sell - buy;
+        const el = document.getElementById('sv-pur-profit');
+        if (el) {
+            el.textContent = profit.toFixed(2);
+            el.className = `text-lg font-bold ${profit>=0?'text-green-700':'text-red-700'}`;
+        }
+    }
+
     async function submitPurchase() {
-        const date       = document.getElementById('sv-pur-date')?.value;
-        const amount     = document.getElementById('sv-pur-amount')?.value;
-        const particular = document.getElementById('sv-pur-particular')?.value.trim();
+        const date          = document.getElementById('sv-pur-date')?.value;
+        const amount        = document.getElementById('sv-pur-amount')?.value;
+        const sellingPrice  = document.getElementById('sv-pur-sellingPrice')?.value;
+        const particular    = document.getElementById('sv-pur-particular')?.value.trim();
+        const clientParticular = document.getElementById('sv-pur-clientParticular')?.value.trim();
 
         if (!date)                                    return alert('Please select a date');
         if (!validateAmount(amount, 'Purchase Amount')) return;
-        if (!particular)                              return alert('Please enter particular');
+        if (!particular)                              return alert('Vendor এর জন্য particular দিন');
+        if (!svPurSelectedClient)                     return alert('Client select করুন (Required)');
+
+        // ref format: "Name || SysID"
+        const clientRef = `${svPurSelectedClient.name} || ${svPurSelectedClient.sys_id}`;
+        const vendorRef = `${vendorName} || ${VENDOR_ID}`;
 
         setBtnLoading('sv-pur-saveBtn', true);
         try {
+            // Vendor purchase entry — ref তে client info
             const res = await postJSON(API_PURCHASE, {
                 vendorId:        VENDOR_ID,
                 vendorName:      vendorName,
                 purchasePrice:   amount,
                 particular,
-                transactionDate: buildDateTime(date)
+                transactionDate: buildDateTime(date),
+                ref:             clientRef  // কার জন্য কেনা
             });
-            if (res.success) {
-                alert('Purchase recorded successfully!');
-                closeModal('sv-purchaseModal');
-                location.reload();
-            } else { alert(res.message || 'Failed'); }
+            if (!res.success) { alert(res.message || 'Purchase failed'); return; }
+
+            // Client sale entry — ref তে vendor info (selling price থাকলে)
+            if (svPurSelectedClient && sellingPrice && parseFloat(sellingPrice) > 0) {
+                const r2 = await postJSON(API_SALE, {
+                    clientId:        svPurSelectedClient.sys_id,
+                    clientName:      svPurSelectedClient.name,
+                    sellingPrice,
+                    particular:      clientParticular || particular,
+                    transactionDate: buildDateTime(date),
+                    ref:             vendorRef  // কোথা থেকে কেনা হয়েছে
+                });
+                if (!r2.success) {
+                    alert(`Vendor purchase saved, কিন্তু Client sale failed: ${r2.message||'Unknown'}`);
+                    closeModal('sv-purchaseModal'); location.reload(); return;
+                }
+            }
+
+            alert('Purchase recorded successfully!');
+            closeModal('sv-purchaseModal');
+            location.reload();
         } catch(e) { alert('Network error.'); }
         finally { setBtnLoading('sv-pur-saveBtn', false); }
     }
@@ -1172,6 +1327,8 @@
         }
     }
 
+    let svPayAdvanceBalance = 0;
+
     async function openPaymentModal() {
         setEl('sv-pay-vendorName', vendorName);
         setToday('sv-pay-date');
@@ -1184,48 +1341,102 @@
         document.getElementById('sv-pay-statusBanner')?.classList.add('hidden');
         document.getElementById('sv-pay-discountSection')?.classList.add('hidden');
         document.getElementById('sv-pay-discountFields')?.classList.add('hidden');
+        document.getElementById('sv-pay-advanceSection')?.classList.add('hidden');
+        document.getElementById('sv-pay-useAdvance') && (document.getElementById('sv-pay-useAdvance').checked = false);
+        document.getElementById('sv-pay-advanceInputWrap')?.classList.add('hidden');
         const discCb = document.getElementById('sv-pay-withDiscount');
         if (discCb) discCb.checked = false;
         selectedPurchaseIds.clear();
+        svPayAdvanceBalance = 0;
         if (document.getElementById('sv-pay-selectedTotal'))
             document.getElementById('sv-pay-selectedTotal').textContent = '0.00';
 
         await syncAccountOptions('sv-pay-accountSelect', 'sv-ref-accountSelect');
         openModal('sv-paymentModal');
         loadUnpaidPurchases();
+        loadSvVendorAdvance();
     }
 
-    async function submitPayment() {
-        const date          = document.getElementById('sv-pay-date')?.value;
-        const amount        = document.getElementById('sv-pay-amount')?.value;
-        const particular    = document.getElementById('sv-pay-particular')?.value.trim();
-        const method        = document.getElementById('sv-pay-method')?.value;
-        const acc           = getAccountValue('sv-pay-accountSelect');
-        const withDiscount  = document.getElementById('sv-pay-withDiscount')?.checked || false;
-        const discountAmount= document.getElementById('sv-pay-discountAmount')?.value || 0;
-        const discountParticular = document.getElementById('sv-pay-discountParticular')?.value.trim() || '';
+    async function loadSvVendorAdvance() {
+        try {
+            const [drRes, crRes] = await Promise.all([
+                fetch(`${FIN_API}&type=debit&related_type=6`),
+                fetch(`${FIN_API}&type=credit&related_type=6`)
+            ]);
+            const drData = await drRes.json();
+            const crData = await crRes.json();
+            const totalOut  = (drData.finStmts||[]).reduce((s,e)=>s+parseFloat(e.amount||0),0);
+            const totalBack = (crData.finStmts||[]).reduce((s,e)=>s+parseFloat(e.amount||0),0);
+            svPayAdvanceBalance = Math.max(0, totalOut - totalBack);
+            if (svPayAdvanceBalance > 0.01) {
+                document.getElementById('sv-pay-advanceSection')?.classList.remove('hidden');
+                document.getElementById('sv-pay-advBalance').textContent = '৳'+svPayAdvanceBalance.toFixed(2);
+            }
+        } catch(e) {}
+    }
 
-        if (!date)                                    return alert('Please select a date');
-        if (!validateAmount(amount, 'Payment Amount')) return;
-        if (!acc?.sys_id)                             return alert('Please select an account');
-        if (!particular)                              return alert('Please enter particular');
-        if (withDiscount && (!discountAmount || parseFloat(discountAmount) <= 0))
-            return alert('Please enter discount amount');
+    window.svToggleAdvanceUse = function() {
+        const cb   = document.getElementById('sv-pay-useAdvance');
+        const wrap = document.getElementById('sv-pay-advanceInputWrap');
+        wrap?.classList.toggle('hidden', !cb?.checked);
+        if (cb?.checked) {
+            const payAmt = parseFloat(document.getElementById('sv-pay-amount')?.value)||0;
+            const maxUse = Math.min(svPayAdvanceBalance, payAmt||svPayAdvanceBalance);
+            document.getElementById('sv-pay-advMax').textContent = '৳'+maxUse.toFixed(2);
+            const inp = document.getElementById('sv-pay-advanceAmount');
+            if (inp && !inp.value) inp.value = maxUse.toFixed(2);
+        }
+    };
+
+    async function submitPayment() {
+        const date             = document.getElementById('sv-pay-date')?.value;
+        const amount           = parseFloat(document.getElementById('sv-pay-amount')?.value)||0;
+        const particular       = document.getElementById('sv-pay-particular')?.value.trim();
+        const method           = document.getElementById('sv-pay-method')?.value;
+        const acc              = getAccountValue('sv-pay-accountSelect');
+        const withDiscount     = document.getElementById('sv-pay-withDiscount')?.checked || false;
+        const discountAmount   = parseFloat(document.getElementById('sv-pay-discountAmount')?.value)||0;
+        const discountParticular = document.getElementById('sv-pay-discountParticular')?.value.trim()||'';
+        const useAdvance       = document.getElementById('sv-pay-useAdvance')?.checked || false;
+        const advanceAmount    = parseFloat(document.getElementById('sv-pay-advanceAmount')?.value)||0;
+        const isInstrument     = ['cheque','bftn-eft'].includes(method);
+
+        if (!date)                return alert('Please select a date');
+        if (amount <= 0)          return alert('Amount দিন');
+        if (!isInstrument && !acc?.sys_id) return alert('Please select an account');
+        if (!particular)          return alert('Please enter particular');
+
+        // Overpayment check
+        let overpaymentAction = 'advance';
+        if (selectedPurchaseIds.size > 0) {
+            let selTotal = 0;
+            unpaidPurchases.forEach(p => { if (selectedPurchaseIds.has(p.sys_id)) selTotal += parseFloat(p.remaining_amount ?? p.amount)||0; });
+            const totalCoverage = amount + (useAdvance ? advanceAmount : 0);
+            if (totalCoverage > selTotal + 0.009) {
+                const overpay = (totalCoverage - selTotal).toFixed(2);
+                const choice  = await showSvOverpayModal(overpay);
+                if (choice === null) return;
+                overpaymentAction = choice;
+            }
+        }
 
         const payload = {
-            vendorId:           VENDOR_ID,
-            vendorName:         vendorName,
+            vendorId:            VENDOR_ID,
+            vendorName:          vendorName,
             amount,
             particular,
-            transactionDate:    buildDateTime(date),
-            accountId:          acc.sys_id,
-            accountName:        acc.name,
-            transferMethod:     method,
-            isHistorical:       0,
+            transactionDate:     buildDateTime(date),
+            accountId:           acc?.sys_id||'',
+            accountName:         acc?.name||'',
+            transferMethod:      method,
+            isHistorical:        0,
             selectedPurchaseIds: [...selectedPurchaseIds],
+            overpayment_action:  overpaymentAction,
+            use_vendor_advance:  useAdvance,
+            vendor_advance_amount: useAdvance ? advanceAmount : 0,
             withDiscount,
-            discountAmount:     withDiscount ? discountAmount : 0,
-            discountParticular: withDiscount ? discountParticular : ''
+            discountAmount:      withDiscount ? discountAmount : 0,
+            discountParticular:  withDiscount ? discountParticular : ''
         };
 
         if (method === 'cheque') {
@@ -1243,16 +1454,57 @@
         try {
             const res = await postJSON(API_PAYMENT, payload);
             if (res.success) {
-                const msg = res.is_historical  ? 'ঐতিহাসিক entry সংরক্ষিত হয়েছে'
-                          : res.is_partial     ? 'Partial payment recorded!'
-                          : res.is_discounted  ? 'Payment + Discount recorded!'
-                          : 'Payment recorded successfully!';
-                alert(msg);
+                // File upload
+                const files = document.getElementById('sv-pay-files')?.files;
+                if (files && files.length > 0 && res.data?.payment_entry_ids?.length > 0) {
+                    const fd = new FormData();
+                    fd.append('entity_type', 'payment');
+                    fd.append('entity_id',   res.data.payment_entry_ids[0]);
+                    fd.append('entity_name', vendorName);
+                    for (const f of files) fd.append('files[]', f);
+                    fetch(`${IP_PATH}/api/finance/upload-file.php`, { method:'POST', body:fd });
+                }
+                alert(res.message || 'Payment recorded successfully!');
                 closeModal('sv-paymentModal');
                 location.reload();
             } else { alert(res.message || 'Failed'); }
         } catch(e) { alert('Network error.'); }
         finally { setBtnLoading('sv-pay-saveBtn', false); }
+    }
+
+    function showSvOverpayModal(overpayAmt) {
+        return new Promise(resolve => {
+            const existing = document.getElementById('svOverpayModal');
+            if (existing) existing.remove();
+            const modal = document.createElement('div');
+            modal.id = 'svOverpayModal';
+            modal.className = 'fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                    <h3 class="text-base font-bold text-gray-900 mb-2">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Overpayment
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">৳${overpayAmt} বাড়তি দেওয়া হচ্ছে। এটা কী হিসেবে রাখবো?</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="document.getElementById('svOverpayModal').dataset.choice='advance'"
+                            class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
+                            <i class="fas fa-piggy-bank mr-1"></i> Vendor Advance
+                        </button>
+                        <button onclick="document.getElementById('svOverpayModal').dataset.choice='baksheesh'"
+                            class="py-2.5 px-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl text-sm">
+                            <i class="fas fa-gift mr-1"></i> Baksheesh
+                        </button>
+                    </div>
+                    <button onclick="document.getElementById('svOverpayModal').dataset.choice='cancel'"
+                        class="w-full mt-3 py-2 text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                </div>`;
+            document.body.appendChild(modal);
+            const observer = new MutationObserver(() => {
+                const choice = modal.dataset.choice;
+                if (choice) { observer.disconnect(); modal.remove(); resolve(choice==='cancel'?null:choice); }
+            });
+            observer.observe(modal, { attributes: true });
+        });
     }
 
 

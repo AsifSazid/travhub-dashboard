@@ -896,8 +896,31 @@ $base_ip_path = trim($ip_port, "/");
                             </div>
                         </div>
 
+                        <!-- Work Items -->
+                        <div class="form-card">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <i class="fas fa-tasks"></i> Work Items
+                                </h3>
+                                <button type="button" class="btn-outline py-2.5 px-4 flex items-center gap-2"
+                                        onclick="addWorkItem()">
+                                    <i class="fas fa-plus-circle"></i> Add Work Item
+                                </button>
+                            </div>
+                            
+                            <div id="work_items"></div>
+                            
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <div></div>
+                                <button type="button" class="btn-outline py-2.5 px-4 flex items-center gap-2"
+                                        onclick="addWorkItem()">
+                                    <i class="fas fa-plus-circle"></i> Add Work Item
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Advance Balance Banner — client select হলে সবসময় দেখাবে -->
-                        <div id="advanceBanner" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-4">
+                        <div id="advanceBanner" class="form-card hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5">
 
                             <!-- Header -->
                             <div class="flex items-center gap-3 mb-3">
@@ -997,29 +1020,6 @@ $base_ip_path = trim($ip_port, "/");
 
                             <input type="hidden" name="use_advance" id="useAdvanceHidden" value="0">
                             <input type="hidden" name="advance_amount" id="advanceAmountInput" value="0">
-                        </div>
-
-                        <!-- Work Items -->
-                        <div class="form-card">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                    <i class="fas fa-tasks"></i> Work Items
-                                </h3>
-                                <button type="button" class="btn-outline py-2.5 px-4 flex items-center gap-2"
-                                        onclick="addWorkItem()">
-                                    <i class="fas fa-plus-circle"></i> Add Work Item
-                                </button>
-                            </div>
-                            
-                            <div id="work_items"></div>
-                            
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                <div></div>
-                                <button type="button" class="btn-outline py-2.5 px-4 flex items-center gap-2"
-                                        onclick="addWorkItem()">
-                                    <i class="fas fa-plus-circle"></i> Add Work Item
-                                </button>
-                            </div>
                         </div>
 
                         <!-- Total Calculation -->
@@ -2374,23 +2374,60 @@ $base_ip_path = trim($ip_port, "/");
                     financialStatements.forEach((stmt, index) => {
                         const amount = parseFloat(stmt.amount) || 0;
                         let qtyRate = null;
-                        try { qtyRate = stmt.qty_rate ? (typeof stmt.qty_rate === 'string' ? JSON.parse(stmt.qty_rate) : stmt.qty_rate) : null; } catch(e) {}
+                        try { 
+                            qtyRate = stmt.qty_rate ? (typeof stmt.qty_rate === 'string' ? JSON.parse(stmt.qty_rate) : stmt.qty_rate) : null; 
+                        } catch(e) {}
+                        
                         const qty  = qtyRate?.qty  || 1;
                         const rate = qtyRate?.rate || amount;
                         const isInvoiced = parseInt(stmt.is_invoiced || 0) === 1;
-
+                        const isPaid = parseInt(stmt.is_paid || 0) === 1;
+                    
+                        // 1. Determine status configuration dynamically
+                        let cardClasses = 'bg-green-50 border-green-400';
+                        let textClasses = 'text-green-700';
+                        let badgeHtml = '';
+                        let hasBadge = false;
+                    
+                        if (isPaid && isInvoiced) {
+                            // ১. দুটিই সত্য হলে এই লাল কার্ডটি আগে চেক হবে
+                            cardClasses = 'bg-red-50 border-red-300';
+                            textClasses = 'text-red-600';
+                            badgeHtml = `<span class="absolute top-1 right-1 text-xs bg-red-600 text-white px-2 py-0.5 rounded-bl-md rounded-tr-md font-medium">Invoiced & Paid</span>`;
+                            hasBadge = true;
+                        } else if (isPaid) {
+                            // ২. শুধুমাত্র পেইড হলে কমলা কার্ড
+                            cardClasses = 'bg-orange-50 border-orange-300';
+                            textClasses = 'text-orange-600';
+                            badgeHtml = `<span class="absolute top-1 right-1 text-xs bg-orange-600 text-white px-1.5 py-0.5 rounded-bl-md rounded-tr-md font-medium">Paid</span>`;
+                            hasBadge = true;
+                        } else if (isInvoiced) {
+                            // ৩. শুধুমাত্র ইনভয়েসড হলে বেগুনি কার্ড
+                            cardClasses = 'bg-purple-50 border-purple-300';
+                            textClasses = 'text-purple-600';
+                            badgeHtml = `<span class="absolute top-1 right-1 text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded-bl-md rounded-tr-md font-medium">Invoiced</span>`;
+                            hasBadge = true;
+                        } else {
+                            // ৪. কোনোটিই না হলে (ডিফল্ট সবুজ কার্ড)
+                            cardClasses = 'bg-green-50 border-green-400';
+                            textClasses = 'text-green-700';
+                            badgeHtml = '';
+                            hasBadge = false;
+                        }
+                    
+                        // 2. Append HTML clean and safely
                         html += `
-                            <div class="financial-item mb-1 p-2 rounded border-l-2 relative ${isInvoiced ? 'bg-purple-50 border-purple-300' : 'bg-green-50 border-green-400'}">
-                                ${isInvoiced ? `<span class="absolute top-1 right-1 text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded-bl-md rounded-tr-md font-medium">Invoiced</span>` : ''}
-                                <div class="flex justify-between items-center mb-0.5 ${isInvoiced ? 'pr-20' : ''}">
-                                    <span class="text-xs font-medium ${isInvoiced ? 'text-purple-600' : 'text-green-700'}">Sale #${index + 1}</span>
-                                    <span class="${isInvoiced ? 'text-purple-600' : 'text-green-700'} font-semibold text-sm">৳${amount.toFixed(2)}</span>
+                            <div class="financial-item mb-1 p-2 rounded border-l-2 relative ${cardClasses}">
+                                ${badgeHtml}
+                                <div class="flex justify-between items-center mb-0.5 ${hasBadge ? 'pr-28' : ''}">
+                                    <span class="text-xs font-medium ${textClasses}">Sale #${index + 1}</span>
+                                    <span class="${textClasses} font-semibold text-sm">৳${amount.toFixed(2)}</span>
                                 </div>
                                 <div class="text-xs text-gray-600">${stmt.purpose || 'N/A'}</div>
                                 <div class="flex gap-3 text-xs text-gray-400 mt-0.5">
                                     <span>QTY: <b class="text-gray-600">${qty}</b></span>
                                     <span>Rate: <b class="text-gray-600">৳${parseFloat(rate).toFixed(2)}</b></span>
-                                    <span>${stmt.sys_id}</span>
+                                    <span>${stmt.sys_id || ''}</span>
                                 </div>
                             </div>
                         `;
