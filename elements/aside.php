@@ -145,6 +145,18 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </button>
 
                 <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <a href="report-profit.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-profit.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-money-bill-trend-up mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Profit</span>
+                    </a>
+                    <a href="report-cashflow.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-cashflow.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-water mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">CashFlow</span>
+                    </a>
                     <a href="report-payment.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-payment.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
@@ -168,12 +180,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                        <?= $currentPage == 'report-purchase.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-square-check mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Purchase</span>
-                    </a>
-                    <a href="report-profit.php"
-                        class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'report-profit.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                        <i class="fa-solid fa-money-bill-trend-up mr-3"></i>
-                        <span class="sidebar-text transition-all duration-300">Profit</span>
                     </a>
                     <a href="report-ac_payable.php"
                         class="flex items-center p-3 rounded-lg 

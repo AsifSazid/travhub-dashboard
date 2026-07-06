@@ -74,7 +74,6 @@ function handleList(PDO $pdo, bool $isExport): void
           AND fe.related_type IN (2,4,5)
           {$whereSql}
         GROUP BY fe.user_sys_id, fe.user_name
-        HAVING payable_balance != 0
         ORDER BY payable_balance DESC
     ";
 
