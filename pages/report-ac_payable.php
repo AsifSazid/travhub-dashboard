@@ -91,6 +91,10 @@ $base_ip_path = trim($ip_port, "/");
                 <input type="date" id="f_date_to" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
               </div>
               <div>
+                <label class="text-xs text-gray-500">Quick Month</label>
+                <input type="month" id="f_month" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              </div>
+              <div>
                 <label class="text-xs text-gray-500">Search Vendor</label>
                 <input type="text" id="f_search" placeholder="Vendor name / sys_id" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
               </div>
@@ -171,6 +175,17 @@ $base_ip_path = trim($ip_port, "/");
       });
 
       function bindEvents() {
+        // Month quick select
+        const monthEl = document.getElementById('f_month');
+        if (monthEl) {
+          monthEl.addEventListener('change', function() {
+            if (!this.value) return;
+            const [y, m] = this.value.split('-');
+            const last = new Date(y, m, 0).getDate();
+            document.getElementById('f_date_from').value = `${y}-${m}-01`;
+            document.getElementById('f_date_to').value   = `${y}-${m}-${String(last).padStart(2,'0')}`;
+          });
+        }
         document.getElementById('applyFilter').addEventListener('click', () => { state.page = 1; fetchData(); });
         document.getElementById('clearFilter').addEventListener('click', () => {
           document.getElementById('f_date_from').value = '';
@@ -303,6 +318,53 @@ $base_ip_path = trim($ip_port, "/");
         return isNaN(dt) ? d : dt.toLocaleDateString('en-GB');
       }
 
+
+      function getActiveFilters() {
+        const filters = [];
+        const from = document.getElementById('f_date_from')?.value;
+        const to   = document.getElementById('f_date_to')?.value;
+        const search = document.getElementById('f_search')?.value;
+        const month  = document.getElementById('f_month')?.value;
+        if (from)   filters.push({ label: 'From', value: from });
+        if (to)     filters.push({ label: 'To', value: to });
+        if (month)  filters.push({ label: 'Month', value: month });
+        if (search) filters.push({ label: 'Search', value: search });
+        const amtMin = document.getElementById('f_amount_min')?.value;
+        const amtMax = document.getElementById('f_amount_max')?.value;
+        if (amtMin) filters.push({ label: 'Min Amount', value: amtMin });
+        if (amtMax) filters.push({ label: 'Max Amount', value: amtMax });
+        // Multi-selects
+        ['f_client','f_vendor','f_work','f_task'].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const sel = [...el.selectedOptions].map(o => o.text);
+          if (sel.length) filters.push({ label: el.previousElementSibling?.textContent || id, value: sel.join(', ') });
+        });
+        const paid = document.getElementById('f_is_paid')?.value;
+        if (paid !== '' && paid !== undefined) filters.push({ label: 'Paid', value: paid === '1' ? 'Yes' : 'No' });
+        return filters;
+      }
+
+      function updateFilterBar() {
+        const filters = getActiveFilters();
+        const bar  = document.getElementById('activeFilterBar');
+        const tags = document.getElementById('filterTags');
+        if (!bar || !tags) return;
+        if (!filters.length) { bar.classList.add('hidden'); tags.innerHTML = ''; return; }
+        bar.classList.remove('hidden');
+        tags.innerHTML = filters.map(f =>
+          `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+            <span class="font-medium">${f.label}:</span> ${f.value}
+          </span>`
+        ).join('');
+      }
+
+      function getFilterSummaryText() {
+        const filters = getActiveFilters();
+        if (!filters.length) return 'No filters applied';
+        return 'Filters: ' + filters.map(f => `${f.label}: ${f.value}`).join(' | ');
+      }
+
       async function runExport(type, scope) {
         const params = buildParams('export', scope === 'all');
         document.getElementById('exportMenu').classList.add('hidden');
@@ -332,12 +394,29 @@ $base_ip_path = trim($ip_port, "/");
       }
 
       function exportCSV(rows, filenameBase) {
+        // Filter summary row যোগ করি
+        const filterRow = [{ 'Filter': getFilterSummaryText() }];
+        const wsSummary = XLSX.utils.json_to_sheet(filterRow);
+        const wsData    = XLSX.utils.json_to_sheet(rows);
+        // Combine: summary + blank + data
+        const csvSummary = XLSX.utils.sheet_to_csv(wsSummary);
+        const csvData    = XLSX.utils.sheet_to_csv(wsData);
+        const csv = csvSummary + '\n' + csvData;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        downloadBlob(blob, `${filenameBase}.csv`);
+      }
+      function exportCSV_ORIG(rows, filenameBase) {
         const ws = XLSX.utils.json_to_sheet(rows);
         const csv = XLSX.utils.sheet_to_csv(ws);
         downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `${filenameBase}.csv`);
       }
       function exportXLSX(rows, filenameBase) {
-        const ws = XLSX.utils.json_to_sheet(rows);
+        // Filter summary যোগ করি — প্রথম ২ row
+        const filterText = getFilterSummaryText();
+        const ws = XLSX.utils.json_to_sheet([]);
+        XLSX.utils.sheet_add_aoa(ws, [[filterText], ['']], { origin: 'A1' });
+        XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });
+        ws['A1'].s = { font: { italic: true, color: { rgb: '6B7280' } } };
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Payable');
         XLSX.writeFile(wb, `${filenameBase}.xlsx`);
