@@ -24,6 +24,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        /* ===== BASE STYLES ===== */
         .invoice-card {
             transition: all 0.3s ease;
             border-left: 4px solid transparent;
@@ -41,6 +42,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             border-radius: 9999px;
             font-weight: 600;
             letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
         .status-pending {
@@ -117,6 +119,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         .action-btn {
             transition: all 0.2s ease;
             border: 1px solid transparent;
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
         }
 
         .action-btn:hover {
@@ -124,6 +128,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
+        /* ===== MODAL OVERLAY ===== */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -138,6 +143,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
+            padding: 1rem;
         }
 
         .modal-overlay.active {
@@ -148,7 +154,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         .modal-content {
             background: white;
             border-radius: 0.75rem;
-            width: 90%;
+            width: 100%;
             max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
@@ -160,7 +166,151 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             transform: translateY(0);
         }
 
-        /* Skeleton Loader Styles */
+        /* ===== MARK AS PAID MODAL ===== */
+        #markAsPaidModal {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        #markAsPaidModal.flex {
+            display: flex;
+        }
+
+        #markAsPaidModal .modal-box {
+            background: white;
+            border-radius: 1.25rem;
+            width: 100%;
+            max-width: 560px;
+            max-height: 95vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* ===== RESPONSIVE GRID FOR ACTION BUTTONS ===== */
+        .action-grid {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .action-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .action-grid .full-width {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .action-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .action-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.4rem;
+            }
+            .action-btn {
+                font-size: 0.7rem;
+                padding: 0.4rem 0.5rem;
+            }
+            .action-btn i {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* ===== RESPONSIVE STATS CARDS ===== */
+        .stats-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        @media (min-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 767px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+            .stats-grid .stat-card {
+                padding: 0.75rem !important;
+            }
+            .stats-grid .stat-card .stat-icon {
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                font-size: 0.9rem !important;
+            }
+            .stats-grid .stat-card .stat-value {
+                font-size: 1rem !important;
+            }
+            .stats-grid .stat-card .stat-label {
+                font-size: 0.65rem !important;
+            }
+        }
+
+        /* ===== FILTERS RESPONSIVE ===== */
+        .filters-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        @media (min-width: 1024px) {
+            .filters-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .filters-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 767px) {
+            .filters-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 480px) {
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Skeleton Loader ===== */
         .skeleton-loader {
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
@@ -178,36 +328,222 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             margin-bottom: 1rem;
         }
 
-        .skeleton-text {
-            height: 1rem;
-            margin-bottom: 0.75rem;
-            border-radius: 0.25rem;
+        /* ===== Modal Responsive ===== */
+        #markAsPaidModal .modal-box {
+            padding: 1.5rem;
         }
 
-        .skeleton-button {
-            height: 2.5rem;
-            width: 100%;
+        #markAsPaidModal .modal-box .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.25rem;
+            gap: 1rem;
+        }
+
+        #markAsPaidModal .modal-box .modal-header h3 {
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 480px) {
+            #markAsPaidModal .modal-box {
+                padding: 1rem;
+                border-radius: 1rem;
+                max-height: 98vh;
+            }
+            #markAsPaidModal .modal-box .modal-header h3 {
+                font-size: 0.95rem;
+            }
+            #markAsPaidModal .modal-box .modal-header .close-btn {
+                width: 2rem;
+                height: 2rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* ===== Payment Method Grid ===== */
+        .payment-method-grid {
+            display: grid;
+            gap: 0.4rem;
+        }
+
+        @media (min-width: 640px) {
+            .payment-method-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+        @media (max-width: 639px) {
+            .payment-method-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 400px) {
+            .payment-method-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .payment-method-grid .map-method-label {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.7rem;
+            text-align: center;
             border-radius: 0.5rem;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        /* Chart Container */
+        .payment-method-grid .map-method-label i {
+            font-size: 1rem;
+        }
+        .payment-method-grid .map-method-label span {
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+
+        /* ===== Invoice List Responsive ===== */
+        .invoice-card .invoice-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .invoice-card {
+                padding: 1rem !important;
+            }
+            .invoice-card .invoice-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+            }
+            .invoice-card .invoice-amount-section {
+                width: 100%;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+            }
+            .invoice-card .payment-summary {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            .invoice-card .invoice-actions {
+                width: 100%;
+                margin-top: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .invoice-card .payment-summary {
+                grid-template-columns: 1fr !important;
+            }
+            .invoice-card .payment-summary .summary-item {
+                padding: 0.4rem 0.6rem !important;
+            }
+            .invoice-card .payment-summary .summary-item .label {
+                font-size: 0.6rem !important;
+            }
+            .invoice-card .payment-summary .summary-item .value {
+                font-size: 0.8rem !important;
+            }
+        }
+
+        /* ===== Chart Responsive ===== */
+        .charts-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 1023px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 280px;
             width: 100%;
         }
 
-        /* Infinite Scroll Loader */
+        @media (max-width: 480px) {
+            .chart-container {
+                height: 220px;
+            }
+        }
+
+        /* ===== Preview Modal ===== */
+        .preview-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .preview-modal.active {
+            display: flex;
+        }
+
+        .preview-modal .preview-content {
+            background: white;
+            border-radius: 0.75rem;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        @media (max-width: 480px) {
+            .preview-modal .preview-content {
+                padding: 1rem;
+                max-width: 100%;
+                margin: 1rem;
+                border-radius: 0.5rem;
+            }
+        }
+
+        /* ===== Scrollbar Styling ===== */
+        #markAsPaidModal .modal-box::-webkit-scrollbar {
+            width: 4px;
+        }
+        #markAsPaidModal .modal-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+        #markAsPaidModal .modal-box::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 8px;
+        }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        .empty-state-icon {
+            font-size: 3.5rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+
+        /* ===== Infinite Loader ===== */
         .infinite-loader {
             text-align: center;
             padding: 2rem;
             display: none;
         }
-
         .infinite-loader.active {
             display: block;
         }
-
         .loader-spinner {
             display: inline-block;
             width: 40px;
@@ -217,27 +553,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             border-top-color: #10b981;
             animation: spin 1s ease-in-out infinite;
         }
-
         @keyframes spin {
             to { transform: rotate(360deg); }
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 4rem 1rem;
-        }
-
-        .empty-state-icon {
-            font-size: 4rem;
-            color: #d1d5db;
-            margin-bottom: 1rem;
-        }
-        
-        .relative.h-64 canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
         }
     </style>
 </head>
@@ -265,41 +582,37 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
     </div>
 
     <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 transition-all duration-300 h-full">
-        <div class="p-4 md:p-6 h-full">
+    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:mt-16 transition-all duration-300 h-full">
+        <div class="p-3 md:p-6 h-full">
             <!-- Header -->
-            <div class="mb-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="mb-4 md:mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Invoice Management</h1>
-                        <p class="text-gray-600 mt-2">Manage and track all invoices in one place</p>
+                        <h1 class="text-xl md:text-3xl font-bold text-gray-800">Invoice Management</h1>
+                        <p class="text-sm text-gray-600 mt-1">Manage and track all invoices in one place</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button id="refresh-btn" class="bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center border border-gray-300">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button id="refresh-btn" class="bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-3 md:px-4 rounded-lg transition duration-300 flex items-center border border-gray-300 text-sm">
+                            <i class="fas fa-sync-alt mr-1 md:mr-2"></i> <span class="hidden sm:inline">Refresh</span>
                         </button>
-                        <a href="create-invoice.php" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2.5 px-5 rounded-lg transition duration-300 flex items-center shadow">
-                            <i class="fas fa-plus mr-2"></i> Create Invoice
+                        <a href="create-invoice.php" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2 px-3 md:px-5 rounded-lg transition duration-300 flex items-center shadow text-sm">
+                            <i class="fas fa-plus mr-1 md:mr-2"></i> <span class="hidden sm:inline">Create Invoice</span>
                         </a>
                     </div>
                 </div>
             </div>
 
             <!-- Charts Section -->
-            <div id="chartsSection" class="mb-6">
-                <!-- Charts will be loaded here -->
-            </div>
+            <div id="chartsSection" class="mb-4 md:mb-6"></div>
 
             <!-- Stats Cards -->
-            <div id="statsCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <!-- Stats will be loaded here -->
-            </div>
+            <div id="statsCards" class="stats-grid mb-4 md:mb-6"></div>
 
             <!-- Filters -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6 border border-gray-200">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl shadow-sm p-4 md:p-5 mb-4 md:mb-6 border border-gray-200">
+                <div class="filters-grid">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
                         <select id="filter-status" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
                             <option value="">All Status</option>
                             <option value="pending">Pending</option>
@@ -308,9 +621,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             <option value="overdue">Overdue</option>
                         </select>
                     </div>
-
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
                         <select id="filter-date" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
                             <option value="">All Time</option>
                             <option value="today">Today</option>
@@ -319,14 +631,12 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             <option value="quarter">This Quarter</option>
                         </select>
                     </div>
-
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Client</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Client</label>
                         <input type="text" id="filter-client" placeholder="Search client..." class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
                     </div>
-
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Invoice No.</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Invoice No.</label>
                         <input type="text" id="filter-invoice-no" placeholder="Invoice number..." class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
                     </div>
                 </div>
@@ -334,14 +644,16 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
 
             <!-- Invoices List -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-5 border-b border-gray-200 bg-gray-50">
-                    <h3 class="text-lg font-semibold text-gray-800">All Invoices</h3>
-                    <div class="text-sm text-gray-600 mt-1">
-                        Showing <span id="showing-count">0</span> of <span id="total-count">0</span> invoices
+                <div class="p-4 md:p-5 border-b border-gray-200 bg-gray-50">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="text-lg font-semibold text-gray-800">All Invoices</h3>
+                        <div class="text-sm text-gray-600">
+                            Showing <span id="showing-count">0</span> of <span id="total-count">0</span> invoices
+                        </div>
                     </div>
                 </div>
 
-                <div id="invoices-container" class="p-4 min-h-[400px]">
+                <div id="invoices-container" class="p-3 md:p-4 min-h-[400px]">
                     <!-- Skeleton Loaders -->
                     <div id="skeleton-loaders" class="space-y-4">
                         <?php for($i = 0; $i < 5; $i++): ?>
@@ -355,8 +667,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             <i class="fas fa-file-invoice"></i>
                         </div>
                         <h4 class="text-xl font-semibold text-gray-600 mb-2">No invoices found</h4>
-                        <p class="text-gray-500 mb-6 max-w-md mx-auto">Start by creating your first invoice for visa applications or services.</p>
-                        <a href="create-invoice.php" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2.5 px-6 rounded-lg transition duration-300 inline-flex items-center">
+                        <p class="text-gray-500 mb-6 max-w-md mx-auto text-sm">Start by creating your first invoice for visa applications or services.</p>
+                        <a href="create-invoice.php" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2.5 px-6 rounded-lg transition duration-300 inline-flex items-center text-sm">
                             <i class="fas fa-plus mr-2"></i> Create First Invoice
                         </a>
                     </div>
@@ -367,25 +679,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 <!-- Infinite Scroll Loader -->
                 <div id="infinite-loader" class="infinite-loader">
                     <div class="loader-spinner"></div>
-                    <p class="text-gray-500 mt-2">Loading more invoices...</p>
-                </div>
-            </div>
-
-            <!-- Pagination (Alternative to Infinite Scroll) -->
-            <div id="pagination" class="mt-6 hidden">
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-600">
-                        Page <span id="current-page">1</span> of <span id="total-pages">1</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button id="prev-page" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Previous
-                        </button>
-                        <div id="page-numbers" class="flex gap-1"></div>
-                        <button id="next-page" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Next
-                        </button>
-                    </div>
+                    <p class="text-gray-500 mt-2 text-sm">Loading more invoices...</p>
                 </div>
             </div>
         </div>
@@ -394,14 +688,14 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
     <!-- Send Invoice Modal -->
     <div id="sendModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="p-6 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-800">Send Invoice</h3>
+            <div class="p-4 md:p-6 border-b border-gray-200">
+                <h3 class="text-lg md:text-xl font-bold text-gray-800">Send Invoice</h3>
             </div>
-            <div class="p-6" id="sendModalContent">
+            <div class="p-4 md:p-6" id="sendModalContent">
                 <!-- Content loaded dynamically -->
             </div>
-            <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-                <button onclick="closeSendModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 px-6 rounded-lg transition duration-300">
+            <div class="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+                <button onclick="closeSendModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 md:px-6 rounded-lg transition duration-300 text-sm">
                     Cancel
                 </button>
             </div>
@@ -417,8 +711,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         const API_URL = "<?php echo $allInvoice; ?>";
         const UPDATE_STATUS_API = `${IP_PATH}/api/invoices/update-invoice-status.php`;
         const ITEMS_PER_PAGE = 10;
-        const INFINITE_SCROLL_THRESHOLD = 100; // pixels from bottom
-        const DEBOUNCE_DELAY = 300; // milliseconds
+        const INFINITE_SCROLL_THRESHOLD = 100;
+        const DEBOUNCE_DELAY = 300;
 
         // State management
         let invoices = [];
@@ -427,7 +721,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         let isLoading = false;
         let hasMore = true;
         let searchTimeout;
-        let isInfiniteScroll = true; // Toggle between pagination and infinite scroll
+        let isInfiniteScroll = true;
 
         // DOM Elements
         const elements = {
@@ -435,7 +729,6 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             skeleton: document.getElementById('skeleton-loaders'),
             emptyState: document.getElementById('empty-state'),
             infiniteLoader: document.getElementById('infinite-loader'),
-            pagination: document.getElementById('pagination'),
             showingCount: document.getElementById('showing-count'),
             totalCount: document.getElementById('total-count'),
             chartsSection: document.getElementById('chartsSection'),
@@ -457,28 +750,16 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
 
         // Setup event listeners
         function initializeEventListeners() {
-            // Filter listeners with debouncing
             elements.filters.status.addEventListener('change', () => debouncedFilter());
             elements.filters.date.addEventListener('change', () => debouncedFilter());
             elements.filters.client.addEventListener('input', () => debouncedFilter());
             elements.filters.invoiceNo.addEventListener('input', () => debouncedFilter());
 
-            // Refresh button
             document.getElementById('refresh-btn').addEventListener('click', async () => {
                 await loadData();
             });
-
-            // Toggle between infinite scroll and pagination (optional)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'p') {
-                    isInfiniteScroll = !isInfiniteScroll;
-                    alert(`Switched to ${isInfiniteScroll ? 'Infinite Scroll' : 'Pagination'}`);
-                    renderInvoices();
-                }
-            });
         }
 
-        // Debounce function for search/filter
         function debouncedFilter() {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
@@ -508,7 +789,6 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             }
         }
 
-        // Show skeleton loaders
         function showSkeleton() {
             elements.skeleton.style.display = 'block';
             elements.container.innerHTML = '';
@@ -516,12 +796,10 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             elements.emptyState.style.display = 'none';
         }
 
-        // Hide skeleton loaders
         function hideSkeleton() {
             elements.skeleton.style.display = 'none';
         }
 
-        // Filter invoices based on criteria
         function filterInvoices() {
             const statusFilter = elements.filters.status.value;
             const dateFilter = elements.filters.date.value;
@@ -529,153 +807,113 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             const invoiceNoFilter = elements.filters.invoiceNo.value.toLowerCase();
 
             filteredInvoices = invoices.filter(invoice => {
-                // Status filter
                 if (statusFilter && invoice.status !== statusFilter) return false;
-
-                // Date filter
                 if (dateFilter) {
                     const invoiceDate = new Date(invoice.created_at);
                     const now = new Date();
                     const startDate = new Date();
-
                     switch (dateFilter) {
-                        case 'today':
-                            startDate.setHours(0, 0, 0, 0);
-                            break;
-                        case 'week':
-                            startDate.setDate(now.getDate() - 7);
-                            break;
-                        case 'month':
-                            startDate.setMonth(now.getMonth() - 1);
-                            break;
-                        case 'quarter':
-                            startDate.setMonth(now.getMonth() - 3);
-                            break;
+                        case 'today': startDate.setHours(0,0,0,0); break;
+                        case 'week': startDate.setDate(now.getDate() - 7); break;
+                        case 'month': startDate.setMonth(now.getMonth() - 1); break;
+                        case 'quarter': startDate.setMonth(now.getMonth() - 3); break;
                     }
-
                     if (invoiceDate < startDate) return false;
                 }
-
-                // Client filter
-                if (clientFilter && !invoice.client_name.toLowerCase().includes(clientFilter)) {
-                    return false;
-                }
-
-                // Invoice number filter
-                if (invoiceNoFilter && !invoice.invoice_no.toLowerCase().includes(invoiceNoFilter)) {
-                    return false;
-                }
-
+                if (clientFilter && !invoice.client_name.toLowerCase().includes(clientFilter)) return false;
+                if (invoiceNoFilter && !invoice.invoice_no.toLowerCase().includes(invoiceNoFilter)) return false;
                 return true;
             });
-
             updateStats();
         }
 
-        // Update statistics
         function updateStats() {
             const totalInvoices = filteredInvoices.length;
             const totalRevenue = filteredInvoices.reduce((sum, inv) => sum + inv.total_amount, 0);
-            
-            // Calculate PENDING AMOUNT (sum of due_amount for pending and partial invoices)
             const pendingAmount = filteredInvoices
                 .filter(inv => ['pending', 'partial'].includes(inv.status))
                 .reduce((sum, inv) => sum + inv.due_amount, 0);
-            
-            // Calculate OVERDUE AMOUNT (sum of due_amount for overdue invoices)
             const overdueAmount = filteredInvoices
                 .filter(inv => inv.status === 'overdue')
                 .reduce((sum, inv) => sum + inv.due_amount, 0);
-            
-            // Calculate PAID AMOUNT
             const paidAmount = filteredInvoices.reduce((sum, inv) => sum + inv.paid_amount, 0);
             
-            // Format currency function
             const formatCurrency = (amount) => {
-                return `৳${amount.toLocaleString('en-IN', { 
-                    minimumFractionDigits: 2, 
-                    maximumFractionDigits: 2 
-                })}`;
+                return `৳${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             };
         
             elements.statsCards.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+                <div class="stat-card bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-200 hover:shadow-md transition-shadow">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-file-invoice text-blue-600 text-xl"></i>
+                        <div class="stat-icon w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg flex items-center justify-center mr-3 md:mr-4">
+                            <i class="fas fa-file-invoice text-blue-600 text-lg md:text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">Total Invoices</p>
-                            <h3 class="text-2xl font-bold text-gray-800">${totalInvoices}</h3>
+                            <p class="stat-label text-xs text-gray-500 font-medium">Total Invoices</p>
+                            <h3 class="stat-value text-xl md:text-2xl font-bold text-gray-800">${totalInvoices}</h3>
                         </div>
                     </div>
-                    <div class="mt-3 text-sm text-gray-600">
+                    <div class="mt-2 text-xs md:text-sm text-gray-600">
                         <i class="fas fa-money-bill-wave mr-1"></i>
                         Total Value: ${formatCurrency(totalRevenue)}
                     </div>
                 </div>
         
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+                <div class="stat-card bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-200 hover:shadow-md transition-shadow">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-money-bill-wave text-green-600 text-xl"></i>
+                        <div class="stat-icon w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-3 md:mr-4">
+                            <i class="fas fa-money-bill-wave text-green-600 text-lg md:text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">Total Revenue</p>
-                            <h3 class="text-2xl font-bold text-gray-800">
-                                ${formatCurrency(totalRevenue)}
-                            </h3>
+                            <p class="stat-label text-xs text-gray-500 font-medium">Total Revenue</p>
+                            <h3 class="stat-value text-xl md:text-2xl font-bold text-gray-800">${formatCurrency(totalRevenue)}</h3>
                         </div>
                     </div>
-                    <div class="mt-3 text-sm text-gray-600">
+                    <div class="mt-2 text-xs md:text-sm text-gray-600">
                         <i class="fas fa-check-circle mr-1"></i>
                         Paid: ${formatCurrency(paidAmount)}
                     </div>
                 </div>
         
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+                <div class="stat-card bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-200 hover:shadow-md transition-shadow">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gradient-to-r from-amber-100 to-amber-200 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-clock text-amber-600 text-xl"></i>
+                        <div class="stat-icon w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-amber-100 to-amber-200 rounded-lg flex items-center justify-center mr-3 md:mr-4">
+                            <i class="fas fa-clock text-amber-600 text-lg md:text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">Pending Amount</p>
-                            <h3 class="text-2xl font-bold text-gray-800">
-                                ${formatCurrency(pendingAmount)}
-                            </h3>
+                            <p class="stat-label text-xs text-gray-500 font-medium">Pending Amount</p>
+                            <h3 class="stat-value text-xl md:text-2xl font-bold text-gray-800">${formatCurrency(pendingAmount)}</h3>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Pending Invoices:</span>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-xs md:text-sm">
+                            <span class="text-gray-600">Pending:</span>
                             <span class="font-medium">${filteredInvoices.filter(inv => inv.status === 'pending').length}</span>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Partial Invoices:</span>
+                        <div class="flex justify-between text-xs md:text-sm">
+                            <span class="text-gray-600">Partial:</span>
                             <span class="font-medium">${filteredInvoices.filter(inv => inv.status === 'partial').length}</span>
                         </div>
                     </div>
                 </div>
         
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow">
+                <div class="stat-card bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-200 hover:shadow-md transition-shadow">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gradient-to-r from-red-100 to-red-200 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                        <div class="stat-icon w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-red-100 to-red-200 rounded-lg flex items-center justify-center mr-3 md:mr-4">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-lg md:text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">Overdue Amount</p>
-                            <h3 class="text-2xl font-bold text-gray-800">
-                                ${formatCurrency(overdueAmount)}
-                            </h3>
+                            <p class="stat-label text-xs text-gray-500 font-medium">Overdue Amount</p>
+                            <h3 class="stat-value text-xl md:text-2xl font-bold text-gray-800">${formatCurrency(overdueAmount)}</h3>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Overdue Invoices:</span>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-xs md:text-sm">
+                            <span class="text-gray-600">Overdue:</span>
                             <span class="font-medium">${filteredInvoices.filter(inv => inv.status === 'overdue').length}</span>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Due Date Passed:</span>
+                        <div class="flex justify-between text-xs md:text-sm">
+                            <span class="text-gray-600">Due Passed:</span>
                             <span class="font-medium">${filteredInvoices.filter(inv => {
                                 const dueDate = new Date(inv.due_date);
                                 const today = new Date();
@@ -686,16 +924,13 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 </div>
             `;
         
-            elements.showingCount.textContent = Math.min(totalInvoices, currentPage * ITEMS_PER_PAGE);
-            elements.totalCount.textContent = totalInvoices;
+            elements.showingCount.textContent = Math.min(filteredInvoices.length, currentPage * ITEMS_PER_PAGE);
+            elements.totalCount.textContent = filteredInvoices.length;
         }
 
-        // Render charts
-        // Improved renderCharts function with actual visual charts
         function renderCharts() {
             if (invoices.length === 0) return;
         
-            // Calculate data properly
             const statusData = invoices.reduce((acc, invoice) => {
                 acc[invoice.status] = (acc[invoice.status] || 0) + 1;
                 return acc;
@@ -704,15 +939,12 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             const monthlyData = invoices.reduce((acc, invoice) => {
                 const date = new Date(invoice.created_at);
                 const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-                if (!acc[monthYear]) {
-                    acc[monthYear] = { revenue: 0, count: 0 };
-                }
+                if (!acc[monthYear]) acc[monthYear] = { revenue: 0, count: 0 };
                 acc[monthYear].revenue += invoice.total_amount;
                 acc[monthYear].count += 1;
                 return acc;
             }, {});
         
-            // Get last 6 months correctly
             const last6Months = [];
             const now = new Date();
             for (let i = 5; i >= 0; i--) {
@@ -720,122 +952,109 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 last6Months.push(`${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`);
             }
         
-            // Create actual chart containers
             elements.chartsSection.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Invoice Analytics</h3>
+                <div class="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-200">
+                    <h3 class="text-base md:text-lg font-semibold text-gray-800 mb-4 md:mb-6">Invoice Analytics</h3>
                     
-                    <!-- Stats summary row -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-gradient-to-r from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+                        <div class="bg-gradient-to-r from-amber-50 to-amber-100 p-3 md:p-4 rounded-lg border border-amber-200">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-clock text-amber-600"></i>
+                                <div class="w-8 h-8 md:w-10 md:h-10 bg-amber-100 rounded-full flex items-center justify-center mr-2 md:mr-3">
+                                    <i class="fas fa-clock text-amber-600 text-sm md:text-base"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-amber-800">Pending</p>
-                                    <p class="text-xl font-bold text-amber-900">${statusData.pending || 0}</p>
+                                    <p class="text-xs text-amber-800">Pending</p>
+                                    <p class="text-lg md:text-xl font-bold text-amber-900">${statusData.pending || 0}</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
+                        <div class="bg-gradient-to-r from-red-50 to-red-100 p-3 md:p-4 rounded-lg border border-red-200">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                                <div class="w-8 h-8 md:w-10 md:h-10 bg-red-100 rounded-full flex items-center justify-center mr-2 md:mr-3">
+                                    <i class="fas fa-exclamation-triangle text-red-600 text-sm md:text-base"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-red-800">Overdue</p>
-                                    <p class="text-xl font-bold text-red-900">${statusData.overdue || 0}</p>
+                                    <p class="text-xs text-red-800">Overdue</p>
+                                    <p class="text-lg md:text-xl font-bold text-red-900">${statusData.overdue || 0}</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                        <div class="bg-gradient-to-r from-purple-50 to-purple-100 p-3 md:p-4 rounded-lg border border-purple-200">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-chart-pie text-purple-600"></i>
+                                <div class="w-8 h-8 md:w-10 md:h-10 bg-purple-100 rounded-full flex items-center justify-center mr-2 md:mr-3">
+                                    <i class="fas fa-chart-pie text-purple-600 text-sm md:text-base"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-purple-800">Partial</p>
-                                    <p class="text-xl font-bold text-purple-900">${statusData.partial || 0}</p>
+                                    <p class="text-xs text-purple-800">Partial</p>
+                                    <p class="text-lg md:text-xl font-bold text-purple-900">${statusData.partial || 0}</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                        <div class="bg-gradient-to-r from-green-50 to-green-100 p-3 md:p-4 rounded-lg border border-green-200">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-check-circle text-green-600"></i>
+                                <div class="w-8 h-8 md:w-10 md:h-10 bg-green-100 rounded-full flex items-center justify-center mr-2 md:mr-3">
+                                    <i class="fas fa-check-circle text-green-600 text-sm md:text-base"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-green-800">Paid</p>
-                                    <p class="text-xl font-bold text-green-900">${statusData.paid || 0}</p>
+                                    <p class="text-xs text-green-800">Paid</p>
+                                    <p class="text-lg md:text-xl font-bold text-green-900">${statusData.paid || 0}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Charts row -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Pie Chart Container -->
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="font-medium text-gray-700">Status Distribution</h4>
-                                <span class="text-sm text-gray-500">Total: ${invoices.length}</span>
+                    <div class="charts-grid">
+                        <div class="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200">
+                            <div class="flex justify-between items-center mb-3 md:mb-4">
+                                <h4 class="font-medium text-gray-700 text-sm md:text-base">Status Distribution</h4>
+                                <span class="text-xs text-gray-500">Total: ${invoices.length}</span>
                             </div>
-                            <div class="relative h-64">
+                            <div class="chart-container">
                                 <canvas id="statusChart"></canvas>
                             </div>
-                            <div class="mt-4 grid grid-cols-2 gap-2" id="statusLegend"></div>
+                            <div class="mt-3 md:mt-4 grid grid-cols-2 gap-1 md:gap-2" id="statusLegend"></div>
                         </div>
                         
-                        <!-- Bar Chart Container -->
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="font-medium text-gray-700">Monthly Revenue</h4>
-                                <span class="text-sm text-gray-500">Last 6 months</span>
+                        <div class="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200">
+                            <div class="flex justify-between items-center mb-3 md:mb-4">
+                                <h4 class="font-medium text-gray-700 text-sm md:text-base">Monthly Revenue</h4>
+                                <span class="text-xs text-gray-500">Last 6 months</span>
                             </div>
-                            <div class="relative h-64">
+                            <div class="chart-container">
                                 <canvas id="revenueChart"></canvas>
                             </div>
-                            <div class="mt-4 text-center text-sm text-gray-500">
-                                <i class="fas fa-info-circle mr-1"></i> Hover over bars for details
+                            <div class="mt-2 text-center text-xs text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i> Hover for details
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         
-            // Create actual charts after DOM is updated
             setTimeout(() => {
                 createActualStatusChart(statusData);
                 createActualRevenueChart(monthlyData, last6Months);
             }, 100);
         }
-        
-        // Create actual pie chart
+
         function createActualStatusChart(statusData) {
             const canvas = document.getElementById('statusChart');
-            
             if (!canvas) return;
             
             const ctx = canvas.getContext('2d');
-            const width = canvas.width = canvas.offsetWidth;
-            const height = canvas.height = canvas.offsetHeight;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const width = canvas.width = rect.width || 300;
+            const height = canvas.height = Math.min(rect.height || 250, 280);
             
-            // Clear canvas
             ctx.clearRect(0, 0, width, height);
             
-            // Colors with proper contrast
-            const colors = {
-                pending: '#f59e0b', // Orange
-                paid: '#10b981',    // Green
-                overdue: '#ef4444', // Red
-                partial: '#8b5cf6'  // Purple
-            };
-            
+            const colors = { pending: '#f59e0b', paid: '#10b981', overdue: '#ef4444', partial: '#8b5cf6' };
             const total = Object.values(statusData).reduce((a, b) => a + b, 0);
+            if (total === 0) return;
+            
             const centerX = width / 2;
             const centerY = height / 2;
             const radius = Math.min(width, height) / 2 - 20;
@@ -843,105 +1062,90 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             let startAngle = 0;
             const entries = Object.entries(statusData);
             
-            // Draw pie slices
-            entries.forEach(([status, count], index) => {
+            entries.forEach(([status, count]) => {
                 const sliceAngle = (count / total) * 2 * Math.PI;
-                
-                // Draw slice
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
                 ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
                 ctx.closePath();
-                ctx.fillStyle = colors[status];
+                ctx.fillStyle = colors[status] || '#9ca3af';
                 ctx.fill();
-                
-                // Add border
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
-                // Draw percentage in the slice
                 const midAngle = startAngle + sliceAngle / 2;
                 const textRadius = radius * 0.5;
                 const textX = centerX + Math.cos(midAngle) * textRadius;
                 const textY = centerY + Math.sin(midAngle) * textRadius;
                 
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`${((count / total) * 100).toFixed(0)}%`, textX, textY);
-                
+                if (sliceAngle > 0.3) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${((count / total) * 100).toFixed(0)}%`, textX, textY);
+                }
                 startAngle += sliceAngle;
             });
             
-            // Draw center circle with total
             ctx.beginPath();
-            ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, radius * 0.25, 0, Math.PI * 2);
             ctx.fillStyle = '#f8fafc';
             ctx.fill();
-            
             ctx.fillStyle = '#374151';
-            ctx.font = 'bold 14px Arial';
+            ctx.font = 'bold 10px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('Total', centerX, centerY - 10);
-            ctx.font = 'bold 20px Arial';
+            ctx.fillText('Total', centerX, centerY - 8);
+            ctx.font = 'bold 16px Arial';
             ctx.fillText(total.toString(), centerX, centerY + 10);
             
-            // Update legend
             const legendContainer = document.getElementById('statusLegend');
             if (legendContainer) {
                 let legendHTML = '';
                 entries.forEach(([status, count]) => {
                     const percentage = ((count / total) * 100).toFixed(1);
                     legendHTML += `
-                        <div class="flex items-center p-2 bg-white rounded border">
-                            <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${colors[status]}"></div>
-                            <span class="text-sm font-medium text-gray-700 capitalize">${status}</span>
-                            <span class="ml-auto text-sm text-gray-600">${count} (${percentage}%)</span>
+                        <div class="flex items-center p-1 md:p-2 bg-white rounded border text-xs md:text-sm">
+                            <div class="w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2" style="background-color: ${colors[status] || '#9ca3af'}"></div>
+                            <span class="font-medium text-gray-700 capitalize">${status}</span>
+                            <span class="ml-auto text-gray-600">${count} (${percentage}%)</span>
                         </div>
                     `;
                 });
                 legendContainer.innerHTML = legendHTML;
             }
         }
-        
-        // Create actual bar chart
+
         function createActualRevenueChart(monthlyData, months) {
             const canvas = document.getElementById('revenueChart');
             if (!canvas) return;
             
             const ctx = canvas.getContext('2d');
-            const width = canvas.width = canvas.offsetWidth;
-            const height = canvas.height = canvas.offsetHeight;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const width = canvas.width = rect.width || 300;
+            const height = canvas.height = Math.min(rect.height || 250, 280);
             
-            // Clear canvas
             ctx.clearRect(0, 0, width, height);
             
-            // Setup chart area
-            const padding = { top: 30, right: 20, bottom: 40, left: 50 };
+            const padding = { top: 25, right: 15, bottom: 35, left: 40 };
             const chartWidth = width - padding.left - padding.right;
             const chartHeight = height - padding.top - padding.bottom;
             
-            // Prepare data
             const data = months.map(month => monthlyData[month]?.revenue || 0);
-            const maxRevenue = Math.max(...data, 1000); // Min 1000 for better scale
+            const maxRevenue = Math.max(...data, 1000);
             
-            // Format month labels
             const monthLabels = months.map(month => {
                 const [year, monthNum] = month.split('-');
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                return `${monthNames[parseInt(monthNum) - 1]} '${year.toString().slice(-2)}`;
+                const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return `${monthNames[parseInt(monthNum) - 1]}'${year.toString().slice(-2)}`;
             });
             
-            // Draw grid
             ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 0.5;
             
-            // Horizontal grid lines
-            const gridLines = 5;
+            const gridLines = 4;
             for (let i = 0; i <= gridLines; i++) {
                 const y = padding.top + chartHeight * (1 - i / gridLines);
                 ctx.beginPath();
@@ -949,104 +1153,68 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 ctx.lineTo(width - padding.right, y);
                 ctx.stroke();
                 
-                // Y-axis labels
                 ctx.fillStyle = '#6b7280';
-                ctx.font = '10px Arial';
+                ctx.font = '8px Arial';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                
                 const value = (maxRevenue * i / gridLines);
-                let label;
-                if (value >= 1000000) {
-                    label = `৳${(value / 1000000).toFixed(1)}M`;
-                } else if (value >= 1000) {
-                    label = `৳${(value / 1000).toFixed(0)}K`;
-                } else {
-                    label = `৳${value.toFixed(0)}`;
-                }
-                
-                ctx.fillText(label, padding.left - 10, y);
+                let label = value >= 1000000 ? `৳${(value/1000000).toFixed(1)}M` : 
+                           value >= 1000 ? `৳${(value/1000).toFixed(0)}K` : `৳${value.toFixed(0)}`;
+                ctx.fillText(label, padding.left - 5, y);
             }
             
-            // Calculate bar positions
-            const barWidth = chartWidth / months.length * 0.7;
-            const barSpacing = chartWidth / months.length * 0.3;
+            const barWidth = chartWidth / months.length * 0.6;
+            const barSpacing = chartWidth / months.length * 0.4;
             
-            // Draw bars
             data.forEach((revenue, index) => {
                 if (revenue <= 0) return;
-                
                 const x = padding.left + (index * (barWidth + barSpacing)) + barSpacing / 2;
                 const barHeight = chartHeight * (revenue / maxRevenue);
                 const y = padding.top + chartHeight - barHeight;
                 
-                // Create gradient for bar
                 const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
                 gradient.addColorStop(0, '#10b981');
                 gradient.addColorStop(1, '#059669');
                 
-                // Draw bar
                 ctx.fillStyle = gradient;
-                ctx.fillRect(x, y, barWidth, barHeight);
-                
-                // Draw rounded top
+                const rounded = Math.min(4, barWidth / 4);
                 ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + barWidth, y);
+                ctx.moveTo(x, y + rounded);
+                ctx.quadraticCurveTo(x, y, x + rounded, y);
+                ctx.lineTo(x + barWidth - rounded, y);
+                ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + rounded);
                 ctx.lineTo(x + barWidth, y + barHeight);
                 ctx.lineTo(x, y + barHeight);
                 ctx.closePath();
-                ctx.fillStyle = gradient;
                 ctx.fill();
                 
-                // Draw value on top if enough space
-                if (barHeight > 20) {
+                if (barHeight > 15) {
                     ctx.fillStyle = '#374151';
-                    ctx.font = 'bold 10px Arial';
+                    ctx.font = 'bold 7px Arial';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
-                    
-                    let displayValue;
-                    if (revenue >= 1000000) {
-                        displayValue = `৳${(revenue / 1000000).toFixed(1)}M`;
-                    } else if (revenue >= 1000) {
-                        displayValue = `৳${(revenue / 1000).toFixed(0)}K`;
-                    } else {
-                        displayValue = `৳${revenue.toFixed(0)}`;
-                    }
-                    
-                    ctx.fillText(displayValue, x + barWidth / 2, y - 5);
+                    let displayValue = revenue >= 1000000 ? `৳${(revenue/1000000).toFixed(1)}M` :
+                                      revenue >= 1000 ? `৳${(revenue/1000).toFixed(0)}K` : `৳${revenue.toFixed(0)}`;
+                    ctx.fillText(displayValue, x + barWidth / 2, y - 3);
                 }
-            });
-            
-            // Draw month labels
-            data.forEach((revenue, index) => {
-                const x = padding.left + (index * (barWidth + barSpacing)) + barSpacing / 2 + barWidth / 2;
-                const y = height - padding.bottom + 15;
                 
+                const xLabel = padding.left + (index * (barWidth + barSpacing)) + barSpacing / 2 + barWidth / 2;
+                const yLabel = height - padding.bottom + 10;
                 ctx.fillStyle = '#6b7280';
-                ctx.font = '11px Arial';
+                ctx.font = '8px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
-                ctx.fillText(monthLabels[index], x, y);
+                ctx.fillText(monthLabels[index], xLabel, yLabel);
             });
-            
-            // Draw chart title
-            ctx.fillStyle = '#374151';
-            ctx.font = 'bold 12px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.fillText('Revenue Overview (BDT)', width / 2, 10);
         }
 
-        // Render invoices with proper infinite scroll
         function renderInvoices() {
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
             const endIndex = startIndex + ITEMS_PER_PAGE;
             const pageInvoices = filteredInvoices.slice(startIndex, endIndex);
         
             if (pageInvoices.length === 0) {
-                if (currentPage === 1) { // Only show empty state on first page
+                if (currentPage === 1) {
                     elements.emptyState.style.display = 'block';
                     elements.container.innerHTML = '';
                     elements.container.appendChild(elements.emptyState);
@@ -1061,32 +1229,30 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             pageInvoices.forEach(invoice => {
                 const createdDate = new Date(invoice.created_at);
                 const dueDate = new Date(invoice.due_date);
-                const now = new Date();
                 const isOverdue = invoice.status === 'overdue';
                 const updatedDate = invoice.updated_at ? new Date(invoice.updated_at) : null;
                 
                 html += `
-                    <div class="invoice-card bg-white border border-gray-200 rounded-lg p-5 hover:border-green-300 fade-in mb-4">
-                        <div class="flex flex-col md:flex-row justify-between gap-4">
+                    <div class="invoice-card bg-white border border-gray-200 rounded-lg p-3 md:p-5 hover:border-green-300 fade-in mb-3 md:mb-4">
+                        <div class="flex flex-col md:flex-row justify-between gap-3 md:gap-4">
                             <!-- Left Column -->
                             <div class="flex-1">
-                                <div class="flex flex-col md:flex-row md:items-start justify-between mb-4">
-                                    <div class="mb-3 md:mb-0">
-                                        <div class="flex items-center mb-3">
-                                            <div class="w-10 h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-3">
-                                                <i class="fas fa-file-invoice text-green-600"></i>
+                                <div class="invoice-header flex flex-col sm:flex-row sm:items-start justify-between mb-3 md:mb-4">
+                                    <div class="mb-2 sm:mb-0">
+                                        <div class="flex items-center mb-2">
+                                            <div class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-2 md:mr-3 flex-shrink-0">
+                                                <i class="fas fa-file-invoice text-green-600 text-sm md:text-base"></i>
                                             </div>
                                             <div>
-                                                <h3 class="font-bold text-gray-800 text-lg">
+                                                <h3 class="font-bold text-gray-800 text-sm md:text-lg truncate max-w-[180px] sm:max-w-[250px] md:max-w-full">
                                                     ${escapeHtml(invoice.client_name)}
-                                                    ${invoice.client_sys_id ? ` || ${escapeHtml(invoice.client_sys_id)}` : ''}
                                                 </h3>
-                                                <div class="flex items-center mt-1 space-x-4">
-                                                    <span class="text-gray-600 text-sm">
+                                                <div class="flex flex-wrap items-center mt-0.5 md:mt-1 gap-2 md:gap-4">
+                                                    <span class="text-gray-600 text-xs md:text-sm">
                                                         <i class="far fa-calendar mr-1"></i> 
                                                         ${createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                                     </span>
-                                                    <span class="text-gray-600 text-sm ${isOverdue ? 'text-red-600 font-medium' : ''}">
+                                                    <span class="text-gray-600 text-xs md:text-sm ${isOverdue ? 'text-red-600 font-medium' : ''}">
                                                         <i class="far fa-clock mr-1"></i> 
                                                         Due: ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                                     </span>
@@ -1094,125 +1260,106 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                                             </div>
                                         </div>
                                         
-                                        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                                            <span class="flex items-center bg-gray-100 px-3 py-1 rounded-full">
-                                                <i class="fas fa-hashtag mr-2"></i> ${escapeHtml(invoice.invoice_no)}
+                                        <div class="invoice-meta text-xs md:text-sm text-gray-600">
+                                            <span class="flex items-center bg-gray-100 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
+                                                <i class="fas fa-hashtag mr-1 md:mr-2"></i> ${escapeHtml(invoice.invoice_no)}
                                             </span>
                                             ${invoice.phone ? `
-                                                <span class="flex items-center bg-gray-100 px-3 py-1 rounded-full">
-                                                    <i class="fas fa-phone mr-2"></i> ${escapeHtml(invoice.phone)}
+                                                <span class="flex items-center bg-gray-100 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
+                                                    <i class="fas fa-phone mr-1 md:mr-2"></i> ${escapeHtml(invoice.phone)}
                                                 </span>
                                             ` : ''}
                                         </div>
                                     </div>
                                     
-                                    <div class="flex flex-col items-end">
-                                        <div class="amount-badge bg-gradient-to-r from-blue-500 to-blue-600 text-white mb-2">
-                                            BDT ${invoice.total_amount.toFixed(2)}
+                                    <div class="invoice-amount-section flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                                        <div class="amount-badge bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs md:text-sm px-3 py-1 md:px-4 md:py-1.5">
+                                            ৳ ${invoice.total_amount.toFixed(2)}
                                         </div>
-                                        <span class="status-badge status-${invoice.status}">
+                                        <span class="status-badge status-${invoice.status} text-xs">
                                             ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                                         </span>
                                     </div>
                                 </div>
                                 
                                 <!-- Payment Summary -->
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                                    <div class="bg-green-50 p-3 rounded-lg border border-green-100">
-                                        <div class="text-sm text-green-700 mb-1">Total Amount</div>
-                                        <div class="text-base font-bold text-green-800">
-                                            ৳ ${invoice.total_amount.toFixed(2)}
-                                        </div>
+                                <div class="payment-summary grid grid-cols-3 gap-2 md:gap-3 mb-3 md:mb-4">
+                                    <div class="summary-item bg-green-50 p-2 md:p-3 rounded-lg border border-green-100">
+                                        <div class="label text-xs text-green-700">Total</div>
+                                        <div class="value text-sm md:text-base font-bold text-green-800">৳ ${invoice.total_amount.toFixed(2)}</div>
                                     </div>
-                                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                        <div class="text-sm text-blue-700 mb-1">Paid Amount</div>
-                                        <div class="text-base font-bold text-blue-800">
-                                            ৳ ${invoice.paid_amount.toFixed(2)}
-                                        </div>
+                                    <div class="summary-item bg-blue-50 p-2 md:p-3 rounded-lg border border-blue-100">
+                                        <div class="label text-xs text-blue-700">Paid</div>
+                                        <div class="value text-sm md:text-base font-bold text-blue-800">৳ ${invoice.paid_amount.toFixed(2)}</div>
                                     </div>
-                                    <div class="bg-red-50 p-3 rounded-lg border border-red-100">
-                                        <div class="text-sm text-red-700 mb-1">Due Amount</div>
-                                        <div class="text-base font-bold text-red-800">
-                                            ৳ ${invoice.due_amount.toFixed(2)}
-                                        </div>
+                                    <div class="summary-item bg-red-50 p-2 md:p-3 rounded-lg border border-red-100">
+                                        <div class="label text-xs text-red-700">Due</div>
+                                        <div class="value text-sm md:text-base font-bold text-red-800">৳ ${invoice.due_amount.toFixed(2)}</div>
                                     </div>
                                 </div>
                                 
-                                <!-- Meta Information (Created & Updated) -->
-                                <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                                    <div class="flex flex-wrap gap-x-6 gap-y-1">
-                                        <div class="flex items-center">
-                                            <i class="fas fa-user-plus mr-1 text-gray-400"></i>
-                                            <span>Created by: ${escapeHtml(invoice.created_by || 'N/A')}</span>
-                                            <span class="mx-1">•</span>
-                                            <i class="far fa-calendar-alt mr-1 text-gray-400"></i>
-                                            <span>${createdDate.toLocaleString()}</span>
-                                        </div>
+                                <!-- Meta Information -->
+                                <div class="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1">
+                                        <span><i class="fas fa-user-plus mr-1"></i> ${escapeHtml(invoice.created_by || 'N/A')}</span>
+                                        <span><i class="far fa-calendar-alt mr-1"></i> ${createdDate.toLocaleString()}</span>
                                         ${invoice.updated_by || invoice.updated_at ? `
-                                            <div class="flex items-center">
-                                                <i class="fas fa-user-edit mr-1 text-gray-400"></i>
-                                                <span>Updated by: ${escapeHtml(invoice.updated_by || 'N/A')}</span>
-                                                ${updatedDate ? `
-                                                    <span class="mx-1">•</span>
-                                                    <i class="far fa-edit mr-1 text-gray-400"></i>
-                                                    <span>${updatedDate.toLocaleString()}</span>
-                                                ` : ''}
-                                            </div>
+                                            <span><i class="fas fa-user-edit mr-1"></i> ${escapeHtml(invoice.updated_by || 'N/A')}</span>
                                         ` : ''}
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Action Buttons -->
-                            <div class="md:w-48 flex md:flex-col gap-2">
-                                <button class="download-btn bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="downloadInvoice('${invoice.invoice_no}')">
-                                    <i class="fas fa-download mr-2"></i>
-                                    <span>Download</span>
-                                </button>
-                                ${invoice.status !== 'paid' ? `
-                                    <button class="edit-btn bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                            onclick="editInvoice('${invoice.invoice_no}')">
-                                        <i class="fas fa-pencil mr-2"></i>
-                                        <span>Edit</span>
+                            <div class="invoice-actions md:w-48">
+                                <div class="action-grid">
+                                    <button class="download-btn bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-1.5 md:py-2.5 px-2 md:px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn text-xs md:text-sm"
+                                            onclick="downloadInvoice('${invoice.invoice_no}')">
+                                        <i class="fas fa-download mr-1 md:mr-2"></i>
+                                        <span>DL</span>
                                     </button>
-                                ` : ''}
-                                <button class="send-btn bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="sendInvoiceOptions('${invoice.invoice_no}', '${escapeHtml(invoice.client_email)}', '${escapeHtml(invoice.phone)}')">
-                                    <i class="fas fa-paper-plane mr-2"></i>
-                                    <span>Send</span>
-                                </button>
-                                <button class="share-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                        onclick="shareInvoicePdf('${invoice.invoice_no}')">
-                                    <i class="fas fa-share-alt mr-2"></i>
-                                    <span>Share PDF</span>
-                                </button>
-                                ${invoice.status !== 'paid' ? `
-                                    <button class="mark-paid-btn bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium py-2.5 px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn w-full"
-                                            onclick="markAsPaid('${invoice.invoice_no}')">
-                                        <i class="fas fa-check-circle mr-2"></i>
-                                        <span>Mark Paid</span>
+                                    ${invoice.status !== 'paid' ? `
+                                        <button class="edit-btn bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-medium py-1.5 md:py-2.5 px-2 md:px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn text-xs md:text-sm"
+                                                onclick="editInvoice('${invoice.invoice_no}')">
+                                            <i class="fas fa-pencil mr-1 md:mr-2"></i>
+                                            <span>Edit</span>
+                                        </button>
+                                    ` : ''}
+                                    <button class="send-btn bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium py-1.5 md:py-2.5 px-2 md:px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn text-xs md:text-sm"
+                                            onclick="sendInvoiceOptions('${invoice.invoice_no}', '${escapeHtml(invoice.client_email)}', '${escapeHtml(invoice.phone)}')">
+                                        <i class="fas fa-paper-plane mr-1 md:mr-2"></i>
+                                        <span>Send</span>
                                     </button>
-                                ` : ''}
+                                    ${invoice.status !== 'paid' ? `
+                                        <button class="mark-paid-btn bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium py-1.5 md:py-2.5 px-2 md:px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn text-xs md:text-sm"
+                                                onclick="markAsPaid('${invoice.invoice_no}')">
+                                            <i class="fas fa-check-circle mr-1 md:mr-2"></i>
+                                            <span>Paid</span>
+                                        </button>
+                                    ` : ''}
+                                    <button class="share-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-medium py-1.5 md:py-2.5 px-2 md:px-4 rounded-lg transition duration-300 flex items-center justify-center action-btn text-xs md:text-sm full-width"
+                                            onclick="shareInvoicePdf('${invoice.invoice_no}')">
+                                        <i class="fas fa-share-alt mr-1 md:mr-2"></i>
+                                        <span>Share</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             });
             
-            // Append new invoices instead of replacing
             if (currentPage === 1) {
-                elements.container.innerHTML = `<div class="space-y-4" id="invoices-list">${html}</div>`;
+                elements.container.innerHTML = `<div class="space-y-3 md:space-y-4" id="invoices-list">${html}</div>`;
             } else {
                 const invoicesList = document.getElementById('invoices-list');
                 if (invoicesList) {
                     invoicesList.innerHTML += html;
                 } else {
-                    elements.container.innerHTML = `<div class="space-y-4" id="invoices-list">${html}</div>`;
+                    elements.container.innerHTML = `<div class="space-y-3 md:space-y-4" id="invoices-list">${html}</div>`;
                 }
             }
             
-            // Show/hide infinite scroll loader
             const showingCount = Math.min(filteredInvoices.length, currentPage * ITEMS_PER_PAGE);
             elements.showingCount.textContent = showingCount;
             
@@ -1223,72 +1370,58 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             }
         }
 
-        // Initialize infinite scroll
         function initializeInfiniteScroll() {
             if (!isInfiniteScroll) return;
-
             window.addEventListener('scroll', () => {
                 if (isLoading || !hasMore) return;
-
                 const scrollPosition = window.innerHeight + window.scrollY;
                 const threshold = document.body.offsetHeight - INFINITE_SCROLL_THRESHOLD;
-
                 if (scrollPosition >= threshold) {
                     loadMoreInvoices();
                 }
             });
         }
 
-        // Load more invoices for infinite scroll
         async function loadMoreInvoices() {
             const showingCount = currentPage * ITEMS_PER_PAGE;
-            
             if (showingCount >= filteredInvoices.length) {
                 hasMore = false;
                 elements.infiniteLoader.style.display = 'none';
                 return;
             }
-        
             if (isLoading) return;
-            
             isLoading = true;
             elements.infiniteLoader.style.display = 'block';
             elements.infiniteLoader.classList.add('active');
-        
-            // Add a small delay for better UX
             await new Promise(resolve => setTimeout(resolve, 300));
-        
             currentPage++;
             renderInvoices();
-        
             isLoading = false;
             elements.infiniteLoader.classList.remove('active');
-        }   
+        }
 
-        // Escape HTML to prevent XSS
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // Show error message
         function showError(message) {
             elements.container.innerHTML = `
-                <div class="text-center py-12">
-                    <div class="w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-exclamation-triangle text-red-600 text-3xl"></i>
+                <div class="text-center py-8 md:py-12">
+                    <div class="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-2xl md:text-3xl"></i>
                     </div>
-                    <h4 class="text-xl font-semibold text-gray-600 mb-2">Error Loading Data</h4>
-                    <p class="text-gray-500 mb-6 max-w-md mx-auto">${message}</p>
-                    <button onclick="loadData()" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2.5 px-6 rounded-lg transition duration-300 inline-flex items-center">
+                    <h4 class="text-lg md:text-xl font-semibold text-gray-600 mb-2">Error Loading Data</h4>
+                    <p class="text-gray-500 mb-4 md:mb-6 max-w-md mx-auto text-sm">${message}</p>
+                    <button onclick="loadData()" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium py-2 px-4 md:py-2.5 md:px-6 rounded-lg transition duration-300 inline-flex items-center text-sm">
                         <i class="fas fa-sync-alt mr-2"></i> Try Again
                     </button>
                 </div>
             `;
         }
 
-        // Existing functions (downloadInvoice, editInvoice, etc.)
+        // ===== INVOICE ACTIONS =====
         function downloadInvoice(invoiceId) {
             window.open(`print-invoice.php?id=${invoiceId}`, '_blank');
         }
@@ -1302,47 +1435,47 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             const content = document.getElementById('sendModalContent');
             
             let html = `
-                <div class="space-y-4">
+                <div class="space-y-3 md:space-y-4">
                     ${email ? `
-                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg flex items-center justify-center mr-4">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 gap-2 sm:gap-0">
+                            <div class="flex items-center w-full sm:w-auto">
+                                <div class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
                                     <i class="fas fa-envelope text-purple-600"></i>
                                 </div>
                                 <div>
-                                    <div class="font-medium text-gray-800">Email</div>
-                                    <div class="text-sm text-gray-600">${email}</div>
+                                    <div class="font-medium text-gray-800 text-sm">Email</div>
+                                    <div class="text-xs text-gray-600 truncate max-w-[150px] sm:max-w-[200px]">${email}</div>
                                 </div>
                             </div>
                             <button onclick="sendEmail('${invoiceId}', '${email}')" 
-                                    class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-300">
+                                    class="bg-purple-600 hover:bg-purple-700 text-white py-1.5 px-4 rounded-lg transition duration-300 text-sm w-full sm:w-auto">
                                 Send
                             </button>
                         </div>
                     ` : ''}
                     
                     ${phone ? `
-                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-4">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 gap-2 sm:gap-0">
+                            <div class="flex items-center w-full sm:w-auto">
+                                <div class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
                                     <i class="fab fa-whatsapp text-green-600"></i>
                                 </div>
                                 <div>
-                                    <div class="font-medium text-gray-800">WhatsApp</div>
-                                    <div class="text-sm text-gray-600">${phone}</div>
+                                    <div class="font-medium text-gray-800 text-sm">WhatsApp</div>
+                                    <div class="text-xs text-gray-600">${phone}</div>
                                 </div>
                             </div>
                             <button onclick="sendWhatsApp('${invoiceId}', '${phone}')" 
-                                    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition duration-300">
+                                    class="bg-green-600 hover:bg-green-700 text-white py-1.5 px-4 rounded-lg transition duration-300 text-sm w-full sm:w-auto">
                                 Send
                             </button>
                         </div>
                     ` : ''}
                     
                     ${!email && !phone ? `
-                        <div class="text-center py-8">
-                            <i class="fas fa-exclamation-circle text-gray-400 text-4xl mb-4"></i>
-                            <p class="text-gray-600">No contact information available for this client.</p>
+                        <div class="text-center py-6 md:py-8">
+                            <i class="fas fa-exclamation-circle text-gray-400 text-3xl md:text-4xl mb-3"></i>
+                            <p class="text-gray-600 text-sm">No contact information available.</p>
                         </div>
                     ` : ''}
                 </div>
@@ -1361,84 +1494,60 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 try {
                     const response = await fetch('send_invoice.php', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            invoice_id: invoiceId,
-                            email: email,
-                            method: 'email'
-                        })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ invoice_id: invoiceId, email: email, method: 'email' })
                     });
-                    
                     const data = await response.json();
-                    
                     if (data.success) {
                         alert('Invoice sent via email successfully!');
                         closeSendModal();
                     } else {
-                        alert('Error sending invoice: ' + data.message);
+                        alert('Error: ' + data.message);
                     }
                 } catch (error) {
-                    alert('Error sending invoice: ' + error.message);
+                    alert('Error: ' + error.message);
                 }
             }
         }
 
         function sendWhatsApp(invoiceId, phone) {
             const invoice = invoices.find(inv => inv.id == invoiceId);
-            if (!invoice) {
-                alert('Invoice not found!');
-                return;
-            }
-
+            if (!invoice) { alert('Invoice not found!'); return; }
             const cleanPhone = phone.replace(/[\s\+]/g, '');
-            const message = `Hello! Here is your invoice ${invoice.invoice_no}.\n` +
-                `Amount: ${invoice.currency || 'BDT'} ${invoice.total_amount.toFixed(2)}\n` +
-                `You can download it here: ${window.location.origin}/print-invoice.php?id=${invoiceId}\n` +
-                `Thank you!`;
-
+            const message = `Hello! Invoice ${invoice.invoice_no} - Amount: ৳${invoice.total_amount.toFixed(2)}\nDownload: ${window.location.origin}/print-invoice.php?id=${invoiceId}`;
             const encodedMessage = encodeURIComponent(message);
             const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-
-            if (confirm(`Send invoice via WhatsApp to ${phone}?`)) {
+            if (confirm(`Send via WhatsApp to ${phone}?`)) {
                 window.open(whatsappUrl, '_blank');
                 closeSendModal();
             }
         }
 
-        /* ===== MARK AS PAID MODAL ===== */
+        // ===== MARK AS PAID =====
         let mapCurrentInvoiceId = null;
         let mapAdvanceBalance    = 0;
         let mapDueAmount         = 0;
 
         async function markAsPaid(invoiceId) {
             mapCurrentInvoiceId = invoiceId;
-
-            // Invoice info
             const inv = invoices.find(i => i.invoice_no === invoiceId || i.sys_id === invoiceId);
             mapDueAmount = parseFloat(inv?.due_amount || 0);
 
-            // Modal show
             const modal = document.getElementById('markAsPaidModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
-            // Set invoice info
             document.getElementById('mapInvoiceNo').textContent = 'Invoice #' + invoiceId;
             document.getElementById('mapDueAmount').textContent = '৳' + mapDueAmount.toFixed(2);
             document.getElementById('mapCashAmount').value = mapDueAmount.toFixed(2);
             document.getElementById('mapParticular').value = 'Invoice Payment: ' + invoiceId;
 
-            // Reset
             document.getElementById('mapUseAdvance').checked = false;
             document.getElementById('mapAdvanceInputSection').classList.add('hidden');
             document.getElementById('mapAdvanceSection').classList.add('hidden');
 
-            // Load accounts
             await loadMapAccounts();
 
-            // Check advance balance
             try {
                 const r = await fetch(UPDATE_STATUS_API, {
                     method: 'POST',
@@ -1501,10 +1610,9 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 bkWarn.classList.add('hidden');
             }
 
-            // Submit button color
             const btn = document.getElementById('mapSubmitBtn');
             if (remaining > 0.01) {
-                btn.textContent = ''; btn.innerHTML = '<i class="fas fa-check mr-1"></i> Partial Payment';
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Partial Payment';
                 btn.className = btn.className.replace('bg-green-600 hover:bg-green-700', 'bg-orange-500 hover:bg-orange-600');
             } else {
                 btn.innerHTML = '<i class="fas fa-check mr-1"></i> Mark as Paid';
@@ -1523,12 +1631,9 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                     const method = label.dataset.val;
                     const isInstr = ['cheque','bftn-eft'].includes(method);
                     document.getElementById('mapAccountSection')?.classList.remove('hidden');
-                    // instrument হলেও account দেখাবে — clear হলে এই account এ deposit হবে
                     const accLabel = document.querySelector('#mapAccountSection label');
                     if (accLabel) {
-                        accLabel.textContent = isInstr
-                            ? 'Deposit Account (Instrument clear হলে)'
-                            : 'Deposit Account';
+                        accLabel.textContent = isInstr ? 'Deposit Account (clear হলে)' : 'Deposit Account';
                     }
                     document.getElementById('mapChequeFields')?.classList.toggle('hidden', method !== 'cheque');
                     document.getElementById('mapBftnFields')?.classList.toggle('hidden', method !== 'bftn-eft');
@@ -1540,26 +1645,22 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             return document.querySelector('input[name="mapPayMethod"]:checked')?.value || 'cash';
         }
 
-        // Event listeners for summary live update
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('mapUseAdvance')?.addEventListener('change', function() {
                 const sec = document.getElementById('mapAdvanceInputSection');
                 sec.classList.toggle('hidden', !this.checked);
                 if (this.checked) {
                     const maxUse = Math.min(mapAdvanceBalance, mapDueAmount);
-                    const cashEl = document.getElementById('mapCashAmount');
                     document.getElementById('mapAdvanceAmount').value = maxUse.toFixed(2);
-                    // Cash = due - advance
-                    if (cashEl) cashEl.value = Math.max(0, mapDueAmount - maxUse).toFixed(2);
+                    document.getElementById('mapCashAmount').value = Math.max(0, mapDueAmount - maxUse).toFixed(2);
                 }
                 updateMapSummary();
             });
             document.getElementById('mapAdvanceAmount')?.addEventListener('input', () => {
-                // Cash auto-adjust
-                const advVal  = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
-                const maxAdv  = Math.min(mapAdvanceBalance, mapDueAmount);
+                const advVal = parseFloat(document.getElementById('mapAdvanceAmount').value) || 0;
+                const maxAdv = Math.min(mapAdvanceBalance, mapDueAmount);
                 const clamped = Math.min(advVal, maxAdv);
-                const cashEl  = document.getElementById('mapCashAmount');
+                const cashEl = document.getElementById('mapCashAmount');
                 if (cashEl) cashEl.value = Math.max(0, mapDueAmount - clamped).toFixed(2);
                 updateMapSummary();
             });
@@ -1593,9 +1694,8 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
 
             if (totalPaid <= 0) { alert('Amount দিন'); return; }
             if (!isInstrument && cashInput > 0 && !accountId) { alert('Deposit Account select করুন'); return; }
-            if (isInstrument && !accountId) { alert('Deposit Account select করুন (instrument clear হলে এখানে জমা হবে)'); return; }
+            if (isInstrument && !accountId) { alert('Deposit Account select করুন'); return; }
 
-            // Overpayment check
             let overpaymentAction = 'advance';
             if (cashInput + advUsed > mapDueAmount + 0.009) {
                 const overpay = (cashInput + advUsed - mapDueAmount).toFixed(2);
@@ -1625,7 +1725,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                     discount_amount   : withDiscount ? discAmount : 0,
                     discount_particular: withDiscount ? discPart : '',
                 };
-                // Cheque fields
+
                 if (method === 'cheque') {
                     payload.chequeNo          = document.getElementById('mapChequeNo')?.value;
                     payload.chequeDate        = document.getElementById('mapChequeDate')?.value;
@@ -1645,7 +1745,6 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 const data = await res.json();
 
                 if (data.success) {
-                    // File upload
                     const files = document.getElementById('mapFiles')?.files;
                     if (files && files.length > 0) {
                         const fd = new FormData();
@@ -1677,11 +1776,11 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 modal.id = 'mapOverpayModal';
                 modal.className = 'fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4';
                 modal.innerHTML = `
-                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 md:p-6">
                         <h3 class="text-base font-bold text-gray-900 mb-2">
                             <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Overpayment
                         </h3>
-                        <p class="text-sm text-gray-600 mb-4">৳${overpayAmt} বাড়তি। এটা কী হিসেবে রাখবো?</p>
+                        <p class="text-sm text-gray-600 mb-4">৳${overpayAmt} বাড়তি। কী হিসেবে রাখবো?</p>
                         <div class="grid grid-cols-2 gap-3">
                             <button onclick="document.getElementById('mapOverpayModal').dataset.choice='advance'"
                                 class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
@@ -1704,25 +1803,21 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             });
         }
 
-        /* ===== Share Invoice PDF ===== */
         async function shareInvoicePdf(invoiceNo) {
             const pdfUrl = `${IP_PATH}/pages/print-invoice.php?id=${invoiceNo}`;
-
-            // HTTPS না থাকলে Web Share API কাজ করবে না — direct open
             const isHttps = location.protocol === 'https:';
             if (!isHttps) {
                 window.open(pdfUrl, '_blank');
-                showToast('PDF opened in new tab (Share needs HTTPS)', 'info');
+                showToast('PDF opened in new tab', 'info');
                 return;
             }
 
             const btn = document.querySelector(`button[onclick="shareInvoicePdf('${invoiceNo}')"]`);
             const originalHtml = btn?.innerHTML;
-            if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i><span>Loading...</span>';
+            if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>';
 
             try {
                 const response = await fetch(pdfUrl, { credentials: 'include' });
-
                 const contentType = response.headers.get('Content-Type') || '';
                 if (!response.ok || !contentType.includes('application/pdf')) {
                     window.open(pdfUrl, '_blank');
@@ -1733,18 +1828,12 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                 const blob = await response.blob();
                 const file = new File([blob], `Invoice-${invoiceNo}.pdf`, { type: 'application/pdf' });
 
-                // Share API check
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: `Invoice ${invoiceNo}`,
-                        text : `Invoice ${invoiceNo} from TravHub Global Limited`,
-                        files: [file]
-                    });
+                    await navigator.share({ title: `Invoice ${invoiceNo}`, files: [file] });
                 } else {
-                    // Fallback — download
                     const url = URL.createObjectURL(blob);
-                    const a   = document.createElement('a');
-                    a.href     = url;
+                    const a = document.createElement('a');
+                    a.href = url;
                     a.download = `Invoice-${invoiceNo}.pdf`;
                     a.click();
                     URL.revokeObjectURL(url);
@@ -1759,65 +1848,60 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             }
         }
 
-
         function showToast(msg, type='success') {
             const t = document.createElement('div');
-            t.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium
-                ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
-            t.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>${msg}`;
+            t.className = `fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 px-4 py-2.5 md:px-5 md:py-3 rounded-xl shadow-lg text-white text-sm font-medium
+                ${type === 'success' ? 'bg-green-600' : type === 'info' ? 'bg-blue-600' : 'bg-red-600'}`;
+            t.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'info' ? 'info-circle' : 'exclamation-circle'} mr-2"></i>${msg}`;
             document.body.appendChild(t);
             setTimeout(() => t.remove(), 4000);
         }
 
-        // Backdrop click
         document.getElementById('markAsPaidModal')?.addEventListener('click', function(e) {
             if (e.target === this) closeMarkAsPaidModal();
         });
 
-        // Handle window resize for responsive charts
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                if (invoices.length > 0) {
-                    renderCharts();
-                }
+                if (invoices.length > 0) renderCharts();
             }, 250);
         });
     </script>
+
 <!-- ==================== MARK AS PAID MODAL ==================== -->
-<div id="markAsPaidModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+<div id="markAsPaidModal">
+    <div class="modal-box">
         <!-- Header -->
-        <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div class="modal-header">
             <div>
-                <h3 class="text-lg font-bold text-gray-900">
+                <h3 class="text-base md:text-lg font-bold text-gray-900">
                     <i class="fas fa-check-circle text-green-500 mr-2"></i> Mark as Paid
                 </h3>
                 <p class="text-xs text-gray-500 mt-0.5" id="mapInvoiceNo">Invoice #</p>
             </div>
-            <button onclick="closeMarkAsPaidModal()"
-                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500">
+            <button onclick="closeMarkAsPaidModal()" class="close-btn w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex-shrink-0">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="p-5 space-y-4">
+        <div class="space-y-3 md:space-y-4">
             <!-- Due Info -->
-            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 md:p-4 flex items-center justify-between">
                 <div>
                     <p class="text-xs text-orange-600">Invoice Due</p>
-                    <p id="mapDueAmount" class="text-2xl font-bold text-orange-700">৳0.00</p>
+                    <p id="mapDueAmount" class="text-xl md:text-2xl font-bold text-orange-700">৳0.00</p>
                 </div>
-                <i class="fas fa-file-invoice-dollar text-orange-300 text-3xl"></i>
+                <i class="fas fa-file-invoice-dollar text-orange-300 text-2xl md:text-3xl"></i>
             </div>
 
             <!-- Advance Section -->
-            <div id="mapAdvanceSection" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                <div class="flex items-center justify-between mb-3">
+            <div id="mapAdvanceSection" class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 md:p-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                     <div>
                         <p class="text-xs text-indigo-600">Client Advance Balance</p>
-                        <p id="mapAdvanceBalance" class="text-lg font-bold text-indigo-700">৳0.00</p>
+                        <p id="mapAdvanceBalance" class="text-lg md:text-xl font-bold text-indigo-700">৳0.00</p>
                     </div>
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" id="mapUseAdvance" class="w-4 h-4 text-indigo-600 rounded">
@@ -1835,32 +1919,32 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
 
             <!-- Payment Method -->
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-2">Payment Method</label>
-                <div class="grid grid-cols-5 gap-1.5">
-                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-green-500 bg-green-50 text-green-700 rounded-lg cursor-pointer" data-val="cash">
+                <label class="block text-xs font-medium text-gray-600 mb-1.5">Payment Method</label>
+                <div class="payment-method-grid">
+                    <label class="map-method-label" data-val="cash">
                         <input type="radio" name="mapPayMethod" value="cash" class="hidden" checked>
-                        <i class="fas fa-money-bill-wave mb-0.5 text-sm"></i>
-                        <span class="text-xs font-semibold">Cash</span>
+                        <i class="fas fa-money-bill-wave text-sm md:text-base"></i>
+                        <span class="block text-[10px] md:text-xs">Cash</span>
                     </label>
-                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="mfs">
+                    <label class="map-method-label" data-val="mfs">
                         <input type="radio" name="mapPayMethod" value="mfs" class="hidden">
-                        <i class="fas fa-mobile-alt mb-0.5 text-sm"></i>
-                        <span class="text-xs font-semibold">MFS</span>
+                        <i class="fas fa-mobile-alt text-sm md:text-base"></i>
+                        <span class="block text-[10px] md:text-xs">MFS</span>
                     </label>
-                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="npsb">
+                    <label class="map-method-label" data-val="npsb">
                         <input type="radio" name="mapPayMethod" value="npsb" class="hidden">
-                        <i class="fas fa-network-wired mb-0.5 text-sm"></i>
-                        <span class="text-xs font-semibold">NPSB</span>
+                        <i class="fas fa-network-wired text-sm md:text-base"></i>
+                        <span class="block text-[10px] md:text-xs">NPSB</span>
                     </label>
-                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="cheque">
+                    <label class="map-method-label" data-val="cheque">
                         <input type="radio" name="mapPayMethod" value="cheque" class="hidden">
-                        <i class="fas fa-file-alt mb-0.5 text-sm"></i>
-                        <span class="text-xs font-semibold">Cheque</span>
+                        <i class="fas fa-file-alt text-sm md:text-base"></i>
+                        <span class="block text-[10px] md:text-xs">Cheque</span>
                     </label>
-                    <label class="map-method-label flex flex-col items-center p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer" data-val="bftn-eft">
+                    <label class="map-method-label" data-val="bftn-eft">
                         <input type="radio" name="mapPayMethod" value="bftn-eft" class="hidden">
-                        <i class="fas fa-university mb-0.5 text-sm"></i>
-                        <span class="text-xs font-semibold">BFTN</span>
+                        <i class="fas fa-university text-sm md:text-base"></i>
+                        <span class="block text-[10px] md:text-xs">BFTN</span>
                     </label>
                 </div>
             </div>
@@ -1869,16 +1953,16 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             <div id="mapChequeFields" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
                 <div><label class="text-gray-600">Cheque No</label><input type="text" id="mapChequeNo" class="w-full px-2 py-1.5 border rounded mt-1"></div>
                 <div><label class="text-gray-600">Date</label><input type="date" id="mapChequeDate" class="w-full px-2 py-1.5 border rounded mt-1"></div>
-                <div><label class="text-gray-600">Account Name</label><input type="text" id="mapChequeAccName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
-                <div><label class="text-gray-600">Bank</label><input type="text" id="mapChequeBankName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div class="col-span-2"><label class="text-gray-600">Account Name</label><input type="text" id="mapChequeAccName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div class="col-span-2"><label class="text-gray-600">Bank</label><input type="text" id="mapChequeBankName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
             </div>
 
             <!-- BFTN fields -->
             <div id="mapBftnFields" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
-                <div><label class="text-gray-600">Ref No</label><input type="text" id="mapBftnNo" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div class="col-span-2"><label class="text-gray-600">Ref No</label><input type="text" id="mapBftnNo" class="w-full px-2 py-1.5 border rounded mt-1"></div>
                 <div><label class="text-gray-600">Date</label><input type="date" id="mapBftnDate" class="w-full px-2 py-1.5 border rounded mt-1"></div>
-                <div><label class="text-gray-600">Account Name</label><input type="text" id="mapBftnAccName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
-                <div><label class="text-gray-600">Bank</label><input type="text" id="mapBftnBankName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div class="col-span-2"><label class="text-gray-600">Account Name</label><input type="text" id="mapBftnAccName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
+                <div class="col-span-2"><label class="text-gray-600">Bank</label><input type="text" id="mapBftnBankName" class="w-full px-2 py-1.5 border rounded mt-1"></div>
             </div>
 
             <!-- Amount / Date / Account -->
@@ -1902,8 +1986,9 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                         <option value="">-- Select Account --</option>
                     </select>
                 </div>
+
                 <!-- Discount -->
-                <div class="bg-orange-50 border border-orange-200 rounded-lg p-2">
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-2 md:p-3">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" id="mapWithDiscount" class="w-3.5 h-3.5 text-orange-500 rounded" onchange="document.getElementById('mapDiscountFields').classList.toggle('hidden',!this.checked);updateMapSummary()">
                         <span class="text-xs font-medium text-orange-700">Discount দিয়ে close করবো</span>
@@ -1915,6 +2000,7 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
                             <input type="text" id="mapDiscountParticular" placeholder="Reason" class="w-full px-2 py-1.5 border border-orange-300 rounded text-sm mt-1"></div>
                     </div>
                 </div>
+
                 <!-- File Upload -->
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -1931,24 +2017,23 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
             </div>
 
             <!-- Summary -->
-            <div id="mapSummary" class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2 text-sm">
+            <div id="mapSummary" class="bg-gray-50 border border-gray-200 rounded-xl p-3 md:p-4 space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <span class="text-gray-500">Advance Used:</span>
-                    <span id="mapSumAdvance" class="font-medium text-indigo-600">৳0.00</span>
+                    <span class="text-gray-500 text-xs md:text-sm">Advance Used:</span>
+                    <span id="mapSumAdvance" class="font-medium text-indigo-600 text-xs md:text-sm">৳0.00</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-500">Cash/Cheque:</span>
-                    <span id="mapSumCash" class="font-medium text-green-600">৳0.00</span>
+                    <span class="text-gray-500 text-xs md:text-sm">Cash/Cheque:</span>
+                    <span id="mapSumCash" class="font-medium text-green-600 text-xs md:text-sm">৳0.00</span>
                 </div>
                 <div class="flex justify-between border-t border-gray-200 pt-2">
-                    <span class="font-semibold text-gray-700">Total Payment:</span>
-                    <span id="mapSumTotal" class="font-bold text-gray-900">৳0.00</span>
+                    <span class="font-semibold text-gray-700 text-xs md:text-sm">Total Payment:</span>
+                    <span id="mapSumTotal" class="font-bold text-gray-900 text-xs md:text-sm">৳0.00</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-500">Remaining Due:</span>
-                    <span id="mapSumRemaining" class="font-bold text-orange-600">৳0.00</span>
+                    <span class="text-gray-500 text-xs md:text-sm">Remaining Due:</span>
+                    <span id="mapSumRemaining" class="font-bold text-orange-600 text-xs md:text-sm">৳0.00</span>
                 </div>
-                <!-- Baksheesh warning -->
                 <div id="mapBaksheeshWarning" class="hidden text-xs text-pink-600 bg-pink-50 rounded p-2 mt-1">
                     <i class="fas fa-info-circle mr-1"></i>
                     <span id="mapBaksheeshAmt"></span> বাড়তি — Baksheesh হিসেবে record হবে
@@ -1957,13 +2042,13 @@ $allInvoice = $ip_port . "api/invoices/all-invoices.php";
         </div>
 
         <!-- Footer -->
-        <div class="flex justify-end gap-3 p-5 border-t border-gray-100">
+        <div class="flex flex-col sm:flex-row justify-end gap-2 mt-4 md:mt-6 pt-3 md:pt-4 border-t border-gray-100">
             <button onclick="closeMarkAsPaidModal()"
-                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg">
+                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg order-2 sm:order-1">
                 Cancel
             </button>
             <button onclick="submitMarkAsPaid()" id="mapSubmitBtn"
-                class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg flex items-center gap-2">
+                class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 order-1 sm:order-2">
                 <i class="fas fa-check"></i> Mark as Paid
             </button>
         </div>

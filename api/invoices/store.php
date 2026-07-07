@@ -547,11 +547,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $rcvMeta
                 ]);
 
-                // Linked sale entries is_paid=1
+                // Linked sale entries — partial or full paid check
                 if (!empty($financial_entry_ids)) {
                     $ph = implode(',', array_fill(0, count($financial_entry_ids), '?'));
-                    $pdo->prepare("UPDATE financial_entries SET is_paid = 1 WHERE sys_id IN ($ph)")
-                        ->execute($financial_entry_ids);
+                    if ($due_amount <= 0.009) {
+                        // Fully paid — is_paid = 1
+                        $pdo->prepare("UPDATE financial_entries SET is_paid = 1, is_partial = 0 WHERE sys_id IN ($ph)")
+                            ->execute($financial_entry_ids);
+                    } else {
+                        // Partial — is_partial = 1, is_paid = 0
+                        $pdo->prepare("UPDATE financial_entries SET is_paid = 0, is_partial = 1 WHERE sys_id IN ($ph)")
+                            ->execute($financial_entry_ids);
+                    }
                 }
 
 

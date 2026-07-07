@@ -749,8 +749,10 @@
 
     function updateSummary(list) {
         let credit = 0, debit = 0;
-        // সব entries count
+        // rt=6 (Advance) আর rt=7 (Baksheesh) বাদ দিয়ে count
         list.forEach(e => {
+            const rt  = parseInt(e.related_type ?? -1);
+            if (rt === 6 || rt === 7) return; // advance/baksheesh skip
             const amt = Number(e.amount) || 0;
             const t   = (e.type || '').toLowerCase();
             if (t === 'debit') debit += amt;
@@ -861,7 +863,8 @@
             return;
         }
 
-        // Running balance
+        // Running balance — rt=6 (Advance) বাদ দিয়ে calculate
+        // Advance deposit/use outstanding এ count হবে না
         const sorted = [...calcList].sort((a, b) => {
             const da = new Date(a.date), db = new Date(b.date);
             return da - db !== 0 ? da - db : (a.id || 0) - (b.id || 0);
@@ -873,7 +876,13 @@
             const t   = (e.type || '').toLowerCase();
             const rt  = parseInt(e.related_type ?? -1);
 
-            // সব entries — debit বাড়ে, credit কমে
+            // rt=6 (Advance) আর rt=7 (Baksheesh) outstanding এ count হবে না
+            if (rt === 6 || rt === 7) {
+                runMap.set(e.id, cum); // same cum, no change
+                return;
+            }
+
+            // Sale (debit) বাড়ে, Receive/Discount (credit) কমে
             cum += t === 'debit' ? amt : -amt;
             runMap.set(e.id, cum);
         });

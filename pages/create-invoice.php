@@ -1219,6 +1219,7 @@ $base_ip_path = trim($ip_port, "/");
         const FETCH_API_ALL_TASK = `${IP_PATH}/api/old_tasks/tasks-for-work.php`;
         const GET_ALL_CLIENTS_API = `${IP_PATH}/api/clients/all-clients.php`;
         const GET_FINANCIAL_STATEMENT_API = `${IP_PATH}/api/financial_entries/client-task-statement.php`;
+        const INDEX_INVOICE = `${IP_PATH}/pages/index-invoice.php`;
     
         // Global state management for work items
         const workItemStates = new Map();
@@ -3390,12 +3391,14 @@ $base_ip_path = trim($ip_port, "/");
                     // Clear localStorage
                     localStorage.removeItem('invoice_create_draft');
         
-                    // Reset form
-                    this.reset();
-                    document.getElementById('work_items').innerHTML = '';
-                    document.getElementById('clientInput').value = '';
-                    document.getElementById('selectedClientDisplay').textContent = 'No client selected';
-                    
+                    // Reset form manually — this.reset() dynamic elements ভাঙে
+                    const workItemsEl = document.getElementById('work_items');
+                    if (workItemsEl) workItemsEl.innerHTML = '';
+                    const clientInputEl = document.getElementById('clientInput');
+                    if (clientInputEl) clientInputEl.value = '';
+                    const clientDisplayEl = document.getElementById('selectedClientDisplay');
+                    if (clientDisplayEl) clientDisplayEl.textContent = 'No client selected';
+
                     // Clear global client state
                     updateGlobalClientState(null, null);
                     
@@ -3405,16 +3408,10 @@ $base_ip_path = trim($ip_port, "/");
                     // Add initial work item
                     addWorkItem();
                     calculateTotal();
-        
-                    // Fetch new invoice number for next invoice
-                    await fetchInvoiceNumberFromAPI();
-        
-                    console.log('Invoice saved:', result);
-        
-                    // Show success modal
-                    // showSuccessModal(result.invoice_no, result.invoice_id);
-                    printInvoice(result.invoice_no)
-        
+                    
+                    // Print invoice
+                    printInvoice(result.invoice_no);
+                    window.location.href = INDEX_INVOICE;
                 } else {
                     alert('Error: ' + result.message);
                 }
