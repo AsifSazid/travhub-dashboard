@@ -142,12 +142,14 @@ try {
                     uuid, sys_id, service_work_sys_id, work_sys_id,
                     client_sys_id, workname, client_name,
                     status, overall_status,
+                    service_slug,
                     special_ins, meta_data
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?, ?, ?)
             ")->execute([
                 $taskIds['uuid'], $taskIds['sys_id'],
                 $swIds['sys_id'], $workSysId,
                 $clientSysId, $taskName, $clientName,
+                $svcSlug,
                 $spIns ? json_encode($spIns, JSON_UNESCAPED_UNICODE) : null,
                 $taskMeta,
             ]);
