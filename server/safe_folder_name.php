@@ -1,4 +1,5 @@
 <?php
+// server/safe_folder_name.php
 function safeFolderName($name) {
     $name = trim($name);
 

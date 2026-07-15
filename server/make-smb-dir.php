@@ -1,4 +1,5 @@
 <?php
+// server/make-smb-dir.php
 
 require_once 'live_storage.php';
 

@@ -24,7 +24,7 @@ let _gdsSegments  = [];
 let _gdsFares     = [];
 
 // ── Styles (injected once) ────────────────────────────────────
-const AT_STYLES='<style id="at-styles">.at-tab-bar{display:flex;gap:0;overflow-x:auto;border-bottom:2px solid #e5e7eb;margin-bottom:0;background:#fafafa;padding:0 8px}.at-tab{padding:12px 20px;font-size:.82rem;font-weight:600;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap;transition:all .15s ease;background:transparent;position:relative}.at-tab.active{color:#4f46e5;border-bottom-color:#4f46e5}.at-tab:hover:not(.active){color:#374151;background:#f3f4f6;border-radius:8px 8px 0 0}.at-panel{display:none;animation:atFadeIn .2s ease}.at-panel.active{display:block}.at-note-bubble{border-radius:14px;padding:10px 14px;margin-bottom:6px;word-break:break-word;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:all .15s ease}.at-note-bubble:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}.at-note-text{background:#f3f4f6;border:1px solid #e5e7eb}.at-note-image{background:#fff;border:1px solid #e5e7eb;padding:6px;border-radius:12px}.at-note-audio{background:#f5f3ff;border:1px solid #ede9fe}.at-note-video{background:#0f172a;border:1px solid #1e293b;padding:4px;border-radius:12px}.at-note-file{background:#f0fdf4;border:1px solid #bbf7d0;display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:10px}.at-menu-wrapper{position:relative;z-index:100;flex-shrink:0}.at-menu-btn{color:#9ca3af;padding:4px 8px;border-radius:6px;cursor:pointer;transition:all .15s ease;background:transparent;border:none;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;width:28px;height:28px}.at-menu-btn:hover{background:#f3f4f6;color:#4f46e5}.at-menu-dropdown{position:fixed;background:#fff!important;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.15),0 2px 8px rgba(0,0,0,.05);border:1px solid #f1f5f9;min-width:180px;padding:8px 0;z-index:999999!important;display:none;pointer-events:auto;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;opacity:1!important}.at-menu-dropdown.show{display:block}.at-menu-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#374151;cursor:pointer;transition:all .1s ease;border:none;background:none;width:100%;text-align:left;border-radius:0}.at-menu-item:first-child{border-radius:12px 12px 0 0}.at-menu-item:last-child{border-radius:0 0 12px 12px}.at-menu-item:hover{background:#f8fafc}.at-menu-item.danger{color:#dc2626}.at-menu-item.danger:hover{background:#fef2f2;color:#dc2626}.at-menu-item i{width:16px;font-size:.75rem;color:#94a3b8;flex-shrink:0}.at-menu-item.danger i{color:#f87171}.at-menu-item.danger:hover i{color:#dc2626}@keyframes atMenuPop{from{opacity:0;transform:scale(.92) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes atFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes atBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}.at-upload-zone{border:2px dashed #d1d5db;border-radius:12px;padding:24px 20px;text-align:center;cursor:pointer;transition:all .2s ease;background:#fafafa}.at-upload-zone.dragover,.at-upload-zone:hover{border-color:#6366f1;background:#f5f3ff}.at-file-card{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff}.at-ai-dot{width:6px;height:6px;border-radius:50%;background:#6366f1;animation:atBounce .8s infinite;display:inline-block}.at-ai-dot:nth-child(2){animation-delay:.15s}.at-ai-dot:nth-child(3){animation-delay:.3s}.at-pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.3px}.at-pill-draft{background:#f3f4f6;color:#374151}.at-pill-sent{background:#dbeafe;color:#1e40af}.at-pill-moved{background:#dcfce7;color:#166534}.at-pill-superseded{background:#f3f4f6;color:#9ca3af;text-decoration:line-through}.at-pill-cancelled,.at-pill-failed{background:#fee2e2;color:#991b1b}.at-pill-tentative{background:#fef9c3;color:#854d0e}.at-pill-confirmed{background:#dcfce7;color:#166534}.at-pill-refunded{background:#f3e8ff;color:#6b21a8}.at-q-card{border:1.5px solid #e5e7eb;border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .15s ease;background:#fafafa;margin-bottom:8px}.at-q-card:hover{border-color:#a5b4fc;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}.at-q-card.active{border-color:#6366f1;background:#eef2ff;box-shadow:0 2px 12px rgba(99,102,241,.12)}.at-q-card.moved{opacity:.6}.gds-th{font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;padding:6px 8px;background:#f9fafb;border-bottom:1px solid #e5e7eb;white-space:nowrap}.gds-td{font-size:.82rem;padding:6px 8px;border-bottom:1px solid #f3f4f6}.gds-input{width:100%;padding:4px 6px;border:1px solid #e5e7eb;border-radius:6px;font-size:.8rem;background:#fff;outline:0;transition:all .15s ease}.gds-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}.gds-input:read-only{background:#f9fafb;cursor:default}.at-notes-list::-webkit-scrollbar{width:4px}.at-notes-list::-webkit-scrollbar-track{background:transparent}.at-notes-list::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}.at-notes-list::-webkit-scrollbar-thumb:hover{background:#9ca3af}@media (max-width:640px){.at-tab{padding:10px 14px;font-size:.75rem}.at-menu-dropdown{min-width:140px;right:-8px}.at-note-bubble{max-width:92%!important}}</style>';
+const AT_STYLES='<style id="at-styles">\n/* ── Tab Bar ─────────────────────────────────────────────────── */\n.at-tab-bar {\n    display: flex;\n    gap: 0;\n    overflow-x: auto;\n    border-bottom: 2px solid #e5e7eb;\n    margin-bottom: 0;\n    background: #fafafa;\n    padding: 0 8px;\n}\n.at-tab {\n    padding: 12px 20px;\n    font-size: .82rem;\n    font-weight: 600;\n    color: #6b7280;\n    border-bottom: 2px solid transparent;\n    margin-bottom: -2px;\n    cursor: pointer;\n    white-space: nowrap;\n    transition: all .15s ease;\n    background: transparent;\n    position: relative;\n}\n.at-tab.active {\n    color: #4f46e5;\n    border-bottom-color: #4f46e5;\n}\n.at-tab:hover:not(.active) {\n    color: #374151;\n    background: #f3f4f6;\n    border-radius: 8px 8px 0 0;\n}\n.at-panel {\n    display: none;\n    animation: atFadeIn .2s ease;\n}\n.at-panel.active {\n    display: block;\n}\n\n/* ── Note Bubbles ───────────────────────────────────────────── */\n.at-note-bubble {\n    border-radius: 14px;\n    padding: 10px 14px;\n    margin-bottom: 6px;\n    word-break: break-word;\n    position: relative;\n    box-shadow: 0 1px 3px rgba(0,0,0,.04);\n    transition: all .15s ease;\n}\n.at-note-bubble:hover {\n    box-shadow: 0 2px 8px rgba(0,0,0,.06);\n}\n.at-note-text {\n    background: #f3f4f6;\n    border: 1px solid #e5e7eb;\n}\n.at-note-image {\n    background: #ffffff;\n    border: 1px solid #e5e7eb;\n    padding: 6px;\n    border-radius: 12px;\n}\n.at-note-audio {\n    background: #f5f3ff;\n    border: 1px solid #ede9fe;\n}\n.at-note-video {\n    background: #0f172a;\n    border: 1px solid #1e293b;\n    padding: 4px;\n    border-radius: 12px;\n}\n.at-note-file {\n    background: #f0fdf4;\n    border: 1px solid #bbf7d0;\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 8px 14px;\n    border-radius: 10px;\n}\n\n/* ── Three-Dot Menu ─────────────────────────────────────────── */\n.at-menu-wrapper {\n    position: relative;\n    z-index: 100;\n    flex-shrink: 0;\n}\n.at-menu-btn {\n    color: #9ca3af;\n    padding: 4px 8px;\n    border-radius: 6px;\n    cursor: pointer;\n    transition: all .15s ease;\n    background: transparent;\n    border: none;\n    font-size: 14px;\n    line-height: 1;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    width: 28px;\n    height: 28px;\n}\n.at-menu-btn:hover {\n    background: #f3f4f6;\n    color: #4f46e5;\n}\n.at-menu-dropdown {\n    position: absolute;\n    right: 0;\n    bottom: calc(100% + 8px);\n    background: #ffffff;\n    border-radius: 12px;\n    box-shadow: 0 10px 40px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.05);\n    border: 1px solid #f1f5f9;\n    min-width: 160px;\n    padding: 6px 0;\n    z-index: 99999;\n    display: none;\n    transform-origin: bottom right;\n    animation: atMenuPop .15s ease;\n}\n.at-menu-dropdown.show {\n    display: block;\n}\n.at-menu-item {\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 8px 16px;\n    font-size: .78rem;\n    font-weight: 500;\n    color: #374151;\n    cursor: pointer;\n    transition: all .1s ease;\n    border: none;\n    background: none;\n    width: 100%;\n    text-align: left;\n    border-radius: 0;\n}\n.at-menu-item:first-child {\n    border-radius: 12px 12px 0 0;\n}\n.at-menu-item:last-child {\n    border-radius: 0 0 12px 12px;\n}\n.at-menu-item:hover {\n    background: #f8fafc;\n}\n.at-menu-item.danger {\n    color: #dc2626;\n}\n.at-menu-item.danger:hover {\n    background: #fef2f2;\n    color: #dc2626;\n}\n.at-menu-item i {\n    width: 16px;\n    font-size: .75rem;\n    color: #94a3b8;\n    flex-shrink: 0;\n}\n.at-menu-item.danger i {\n    color: #f87171;\n}\n.at-menu-item.danger:hover i {\n    color: #dc2626;\n}\n\n/* ── Animations ─────────────────────────────────────────────── */\n@keyframes atMenuPop {\n    from {\n        opacity: 0;\n        transform: scale(0.92) translateY(6px);\n    }\n    to {\n        opacity: 1;\n        transform: scale(1) translateY(0);\n    }\n}\n@keyframes atFadeIn {\n    from {\n        opacity: 0;\n        transform: translateY(4px);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n@keyframes atBounce {\n    0%, 100% { transform: translateY(0); }\n    50% { transform: translateY(-4px); }\n}\n\n/* ── Upload Zone ────────────────────────────────────────────── */\n.at-upload-zone {\n    border: 2px dashed #d1d5db;\n    border-radius: 12px;\n    padding: 24px 20px;\n    text-align: center;\n    cursor: pointer;\n    transition: all .2s ease;\n    background: #fafafa;\n}\n.at-upload-zone:hover,\n.at-upload-zone.dragover {\n    border-color: #6366f1;\n    background: #f5f3ff;\n}\n\n/* ── File Cards ────────────────────────────────────────────── */\n.at-file-card {\n    border: 1px solid #e5e7eb;\n    border-radius: 10px;\n    overflow: hidden;\n    background: #ffffff;\n}\n\n/* ── AI Dots ────────────────────────────────────────────────── */\n.at-ai-dot {\n    width: 6px;\n    height: 6px;\n    border-radius: 50%;\n    background: #6366f1;\n    animation: atBounce .8s infinite;\n    display: inline-block;\n}\n.at-ai-dot:nth-child(2) { animation-delay: .15s; }\n.at-ai-dot:nth-child(3) { animation-delay: .3s; }\n\n/* ── Status Pills ───────────────────────────────────────────── */\n.at-pill {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 10px;\n    border-radius: 999px;\n    font-size: .68rem;\n    font-weight: 700;\n    letter-spacing: 0.3px;\n}\n.at-pill-draft { background: #f3f4f6; color: #374151; }\n.at-pill-sent { background: #dbeafe; color: #1e40af; }\n.at-pill-moved { background: #dcfce7; color: #166534; }\n.at-pill-superseded { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }\n.at-pill-cancelled { background: #fee2e2; color: #991b1b; }\n.at-pill-tentative { background: #fef9c3; color: #854d0e; }\n.at-pill-confirmed { background: #dcfce7; color: #166534; }\n.at-pill-failed { background: #fee2e2; color: #991b1b; }\n.at-pill-refunded { background: #f3e8ff; color: #6b21a8; }\n\n/* ── Quotation Cards ────────────────────────────────────────── */\n.at-q-card {\n    border: 1.5px solid #e5e7eb;\n    border-radius: 10px;\n    padding: 12px 14px;\n    cursor: pointer;\n    transition: all .15s ease;\n    background: #fafafa;\n    margin-bottom: 8px;\n}\n.at-q-card:hover {\n    border-color: #a5b4fc;\n    background: #ffffff;\n    box-shadow: 0 2px 8px rgba(0,0,0,.04);\n}\n.at-q-card.active {\n    border-color: #6366f1;\n    background: #eef2ff;\n    box-shadow: 0 2px 12px rgba(99,102,241,.12);\n}\n.at-q-card.moved {\n    opacity: .6;\n}\n\n/* ── GDS Table ──────────────────────────────────────────────── */\n.gds-th {\n    font-size: .72rem;\n    font-weight: 700;\n    color: #6b7280;\n    text-transform: uppercase;\n    padding: 6px 8px;\n    background: #f9fafb;\n    border-bottom: 1px solid #e5e7eb;\n    white-space: nowrap;\n}\n.gds-td {\n    font-size: .82rem;\n    padding: 6px 8px;\n    border-bottom: 1px solid #f3f4f6;\n}\n.gds-input {\n    width: 100%;\n    padding: 4px 6px;\n    border: 1px solid #e5e7eb;\n    border-radius: 6px;\n    font-size: .8rem;\n    background: #ffffff;\n    outline: none;\n    transition: all .15s ease;\n}\n.gds-input:focus {\n    border-color: #6366f1;\n    box-shadow: 0 0 0 3px rgba(99,102,241,.1);\n}\n.gds-input:read-only {\n    background: #f9fafb;\n    cursor: default;\n}\n\n/* ── Scrollbar Styling ──────────────────────────────────────── */\n.at-notes-list::-webkit-scrollbar {\n    width: 4px;\n}\n.at-notes-list::-webkit-scrollbar-track {\n    background: transparent;\n}\n.at-notes-list::-webkit-scrollbar-thumb {\n    background: #d1d5db;\n    border-radius: 10px;\n}\n.at-notes-list::-webkit-scrollbar-thumb:hover {\n    background: #9ca3af;\n}\n\n/* ── Responsive ─────────────────────────────────────────────── */\n@media (max-width: 640px) {\n    .at-tab {\n        padding: 10px 14px;\n        font-size: .75rem;\n    }\n    .at-menu-dropdown {\n        min-width: 140px;\n        right: -8px;\n    }\n    .at-note-bubble {\n        max-width: 92% !important;\n    }\n}\n</style>';
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
@@ -304,7 +304,6 @@ function _noteBubble(n) {
         let minWidth = '120px';
         let maxWidth = '85%';
         
-        // Small text (less than 20 chars) - give minimum width
         if (contentLength < 20) {
             minWidth = '320px';
         } else if (contentLength < 50) {
@@ -326,6 +325,24 @@ function _noteBubble(n) {
     }
 
     // ── Image Note ─────────────────────────────────────────────
+    if (n.note_type === 'pdf_images') {
+        const pages = n.pages_json ?? [];
+        const pagesHtml = pages.map((pg, i) => {
+            const pgUrl = (_cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php'))
+                        + `?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
+            return `<img src="${pgUrl}" loading="lazy" onclick="atViewImg('${pgUrl}')"
+                style="width:100%;border-radius:6px;cursor:zoom-in;display:block;background:#f9fafb;margin-bottom:4px;">`;
+        }).join('');
+        return `<div class="at-note-bubble at-note-image" style="position:relative;align-self:flex-start;max-width:780px;">
+            ${del}
+            <div class="text-[10px] text-gray-400 mb-1.5"><i class="fas fa-file-pdf text-red-400 mr-1"></i>${_e(n.file_name??'')} (${pages.length} page${pages.length!==1?'s':''})</div>
+            ${pagesHtml}
+            ${n.content ? `<div class="text-xs text-gray-500 mt-1 px-1">${_e(n.content)}</div>` : ''}
+            <div class="flex items-center justify-between mt-1">
+                <span class="text-[10px] text-gray-300">${_e(dateStr)}</span>
+            </div>
+        </div>`;
+    }
     if (n.note_type === 'image') {
         return `<div class="at-note-bubble at-note-image" style="align-self:flex-start;max-width:780px;position:relative;">
             <img src="${fileUrl}" loading="lazy" onclick="atViewImg('${fileUrl}')"
@@ -449,61 +466,54 @@ window.atCopyImage = async function(url) {
     }
 
     document.addEventListener('click', function(e) {
+        // Check floating menu click first
+        if (e.target.closest('#at-floating-menu')) {
+            setTimeout(_closeMenu, 100);
+            return;
+        }
+
         const btn = e.target.closest('[data-menu-toggle]');
         if (btn) {
-            e.stopPropagation();
             const sysId = btn.getAttribute('data-menu-toggle');
-
-            // Toggle: if same menu open, close it
             if (_activeMenuId === sysId) { _closeMenu(); return; }
             _closeMenu();
 
-            // Find the dropdown HTML inside the bubble
             const sourceMenu = document.getElementById(`at-menu-${sysId}`);
-            if (!sourceMenu) return;
+            if (!sourceMenu) { console.warn('Menu not found:', sysId); return; }
 
-            // Clone into body-level floating div
+            // Build floating menu and append to body first
             const floating = document.createElement('div');
             floating.id        = 'at-floating-menu';
             floating.className = 'at-menu-dropdown show';
             floating.innerHTML = sourceMenu.innerHTML;
-            floating.style.cssText = 'position:fixed;z-index:99999;display:block;';
-
-            // Position
-            const rect       = btn.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const menuH      = floating.offsetHeight || 130;
-            floating.style.right  = (window.innerWidth - rect.right) + 'px';
-            floating.style.left   = 'auto';
-            floating.style.top    = (spaceBelow < menuH
-                ? Math.max(4, rect.top - menuH - 4)
-                : rect.bottom + 4) + 'px';
-
+            floating.style.cssText = 'position:fixed;z-index:99999;display:block;min-width:160px;top:-999px;left:-999px;';
             document.body.appendChild(floating);
             _activeMenuId = sysId;
 
-            // Recalc position after render (height now known)
+            // Measure and position after append
             requestAnimationFrame(() => {
-                const h      = floating.offsetHeight;
-                const sb     = window.innerHeight - rect.bottom;
-                floating.style.top = (sb < h
-                    ? Math.max(4, rect.top - h - 4)
-                    : rect.bottom + 4) + 'px';
-            });
-            return;
-        }
+                const rect = btn.getBoundingClientRect();
+                const h    = floating.offsetHeight || 110;
+                const w    = floating.offsetWidth  || 160;
+                const sb   = window.innerHeight - rect.bottom;
 
-        // Click inside floating menu — allow but close after action
-        if (e.target.closest('#at-floating-menu')) {
-            // Let the action run, then close
-            setTimeout(_closeMenu, 80);
+                floating.style.top = (sb >= h + 8
+                    ? rect.bottom + 4
+                    : Math.max(4, rect.top - h - 4)) + 'px';
+
+                let left = rect.right - w;
+                if (left < 4) left = rect.left;
+                if (left + w > window.innerWidth - 4) left = window.innerWidth - w - 4;
+                floating.style.left  = left + 'px';
+                floating.style.right = 'auto';
+            });
             return;
         }
 
         // Click outside → close
         _closeMenu();
 
-    }, true); // capture
+    }); // bubble phase (no capture)
 
     // Close on any scroll
     window.addEventListener('scroll', _closeMenu, true);
@@ -1758,12 +1768,12 @@ function _renderBBuilder(b) {
     <div id="at-b-body">${type === 'soto' ? _sotoHtml(b) : _gdsHtml(b, 'b')}</div>
 
     ${b && !(_atData?.at_confirmations??[]).some(c=>c.booking_sys_id===b.sys_id&&c.status!=='failed'&&c.status!=='cancelled') ? `
-    <div class="my-3">
+    <div class="mb-3">
         <button onclick="atMoveToConfirmation('${_e(b.sys_id)}')"
             class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2">
             <i class="fas fa-check-circle"></i>Move to Confirmation
         </button>
-    </div>` : b ? '<div class="my-3 text-center text-xs text-indigo-500 bg-indigo-50 py-2 rounded-lg border border-indigo-100">Already in Confirmation</div>' : ''}`;
+    </div>` : b ? '<div class="mb-3 text-center text-xs text-indigo-500 bg-indigo-50 py-2 rounded-lg border border-indigo-100">Already in Confirmation</div>' : ''}`;
 }
 
 window.atBTypeChange = function(type) {
