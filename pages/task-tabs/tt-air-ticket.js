@@ -235,11 +235,15 @@ window.atClearFile = function() {
 // ── Load notes ────────────────────────────────────────────────
 window.atLoadNotes = async function() {
     try {
-        const res  = await fetch(`${_cfg.api.notes}?action=list&task_sys_id=${encodeURIComponent(_cfg.taskSysId)}`);
+        const url  = `${_cfg.api.notes}?action=list&task_sys_id=${encodeURIComponent(_cfg.taskSysId)}`;
+        const res  = await fetch(url);
         const json = await res.json();
         const notes = json.status === 'success' ? (json.data ?? []) : [];
         _renderNotes(notes);
-    } catch { _renderNotes([]); }
+    } catch(e) {
+        console.error('[atLoadNotes] error:', e);
+        _renderNotes([]);
+    }
 };
 
 function _renderNotes(notes) {
@@ -249,7 +253,11 @@ function _renderNotes(notes) {
         list.innerHTML = '<div class="text-center py-8 text-gray-300 text-xs">No notes yet. Write something below.</div>';
         return;
     }
-    list.innerHTML = notes.map(n => _noteBubble(n)).join('');
+    const html = notes.map(n => {
+        try { return _noteBubble(n); }
+        catch(e) { console.error('[_noteBubble] error for', n.sys_id, e); return ''; }
+    }).join('');
+    list.innerHTML = html;
     setTimeout(() => { list.scrollTop = list.scrollHeight; }, 50);
 }
 
@@ -326,7 +334,8 @@ function _noteBubble(n) {
 
     // ── Image Note ─────────────────────────────────────────────
     if (n.note_type === 'pdf_images') {
-        const pages = n.pages_json ?? [];
+        const pagesRaw = n.pages_json ?? [];
+        const pages = Array.isArray(pagesRaw) ? pagesRaw : (typeof pagesRaw === 'string' ? JSON.parse(pagesRaw) : []);
         const pagesHtml = pages.map((pg, i) => {
             const pgUrl = (_cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php'))
                         + `?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
@@ -334,13 +343,16 @@ function _noteBubble(n) {
                 style="width:100%;border-radius:6px;cursor:zoom-in;display:block;background:#f9fafb;margin-bottom:4px;">`;
         }).join('');
         return `<div class="at-note-bubble at-note-image" style="position:relative;align-self:flex-start;max-width:780px;">
-            ${del}
-            <div class="text-[10px] text-gray-400 mb-1.5"><i class="fas fa-file-pdf text-red-400 mr-1"></i>${_e(n.file_name??'')} (${pages.length} page${pages.length!==1?'s':''})</div>
+            <div class="flex items-center justify-between mb-1.5">
+                <div class="text-[10px] text-gray-400"><i class="fas fa-file-pdf text-red-400 mr-1"></i>${_e(n.file_name??'')} (${pages.length} page${pages.length!==1?'s':''})</div>
+                <div style="position:relative;z-index:100;">
+                    <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+                    ${menuHTML(false, false)}
+                </div>
+            </div>
             ${pagesHtml}
             ${n.content ? `<div class="text-xs text-gray-500 mt-1 px-1">${_e(n.content)}</div>` : ''}
-            <div class="flex items-center justify-between mt-1">
-                <span class="text-[10px] text-gray-300">${_e(dateStr)}</span>
-            </div>
+            <div class="mb-time mt-1">${_e(dateStr)}</div>
         </div>`;
     }
     if (n.note_type === 'image') {
