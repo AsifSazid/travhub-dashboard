@@ -1,4 +1,5 @@
 <?php
+// FILE PATH: api/financial_entries/upload-file.php
 /**
  * FILE PATH: /api/financial_entries/upload-file.php
  * Finance file upload — receive/payment/invoice documents
@@ -92,47 +93,57 @@ if (!$userName && $userSysId) {
     }
 }
 
-// SMB root prefix: _clients | _vendors | _accounts
-$rootSuffix = match($userType) {
-    'vendor'  => '_vendors',
-    'account' => '_accounts',
-    default   => '_clients',
-};
+// ── Always use client path for financial files ────────────────
+// Financial files go to dev_clients/{client}/{work}/{task}/financial/
+// regardless of whether entry is client/vendor/account type
 
-// Build CamelCase entity name (same as _smbClientFolder pattern)
-$words     = preg_split('/[\s_]+/', trim($userName));
-$camelName = implode('', array_map('ucfirst', $words));
-$camelName = preg_replace('/[^A-Za-z0-9\-]/', '', $camelName);
+$SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt'));
 
-$entityFolder = ($userSysId ?: 'UNKNOWN') . '_' . $camelName;
-
-// ── Build SMB context ─────────────────────────────────────────
-// We'll use smbEnsureDir/smbBuildPath directly with custom root
-$serverPrefix = trim(@file_get_contents(__DIR__ . '/../../server-name.txt') ?? '');
-$root         = $serverPrefix . $rootSuffix; // e.g. "dev_clients"
-$w            = safeFolderName($feWorkSysId);
-$t            = safeFolderName($feTaskSysId);
-
-// Sequential mkdir
-$omv = new OMV_SMB_Manager();
-_finSmbMkdir($omv, $root, $entityFolder);
-_finSmbMkdir($omv, "$root/$entityFolder", $w);
-_finSmbMkdir($omv, "$root/$entityFolder/$w", $t);
-_finSmbMkdir($omv, "$root/$entityFolder/$w/$t", 'financial');
-
-$smbDir = "$root/$entityFolder/$w/$t/financial";
-
-function _finSmbMkdir(OMV_SMB_Manager $omv, string $parent, string $child): void {
-    $r = $omv->create_folder("$parent/$child");
-    if ($r !== true) {
-        if (
-            stripos((string)$r, 'NT_STATUS_OBJECT_NAME_COLLISION') === false &&
-            stripos((string)$r, 'already exists') === false
-        ) {
-            error_log("[fin upload SMB mkdir] $parent/$child → $r");
-        }
-    }
+// Get client info from com_works
+try {
+    $stmt = $pdo->prepare("
+        SELECT w.client_sys_id, c.name AS client_name
+        FROM com_works w
+        LEFT JOIN clients c ON c.sys_id = w.client_sys_id
+        WHERE w.sys_id = ? LIMIT 1
+    ");
+    $stmt->execute([$feWorkSysId]);
+    $workRow = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $workRow = null;
 }
+
+$clientSysId = preg_replace('/\s+/u', '', $workRow['client_sys_id'] ?? 'UNKNOWN');
+$clientWords = preg_split('/[\s_]+/', trim($workRow['client_name'] ?? 'Unknown'));
+$clientCamel = implode('', array_map('ucfirst', $clientWords));
+$clientCamel = preg_replace('/[^A-Za-z0-9\-]/', '', $clientCamel);
+$clFolder    = $clientSysId . '_' . $clientCamel;
+
+$wFolder = function_exists('safeFolderName') ? safeFolderName($feWorkSysId) : preg_replace('/[^A-Za-z0-9_\-]/', '', $feWorkSysId);
+$tFolder = $feTaskSysId !== 'general' ? (function_exists('safeFolderName') ? safeFolderName($feTaskSysId) : $feTaskSysId) : '';
+
+$smbRoot = $SERVER_CUS_PATH . '_clients';
+$smbCl   = $smbRoot . '/' . $clFolder;
+$smbWork = $smbCl . '/' . $wFolder;
+$smbBase = $tFolder ? $smbWork . '/' . $tFolder : $smbWork;
+
+// Ensure financial folder exists
+require_once '../../server/make-smb-dir.php';
+require_once '../../server/safe_folder_name.php';
+$omvMkdir = new OMV_SMB_Manager();
+foreach ([$smbRoot, $smbCl, $smbWork, $smbBase] as $dir) {
+    $r = $omvMkdir->create_folder($dir);
+}
+$smbDir = makeSMBDir($smbBase, 'financial');
+
+if (str_starts_with($smbDir, '❌')) {
+    ob_clean();
+    echo json_encode(['success' => false, 'message' => 'SMB folder error: ' . $smbDir]);
+    exit;
+}
+
+// smbDir already set above from client path
+$omv = new OMV_SMB_Manager();
 
 // ── Normalize files array ─────────────────────────────────────
 $files = [];
@@ -154,6 +165,10 @@ if (is_array($_FILES['files']['name'])) {
 $uploaded = [];
 $errors   = [];
 
+// Count valid files to determine single vs multiple naming
+$validCount = count(array_filter($files, fn($f) => $f['error'] === UPLOAD_ERR_OK));
+$fileIndex  = 1; // 1-based
+
 foreach ($files as $idx => $file) {
     if ($file['error'] !== UPLOAD_ERR_OK) {
         $errors[] = "File #{$idx}: Upload error code " . $file['error']; continue;
@@ -168,41 +183,86 @@ foreach ($files as $idx => $file) {
         $errors[] = "File #{$idx}: Too large (max 10MB)"; continue;
     }
 
-    // Move to temp
     $tempLocal = sys_get_temp_dir() . '/fin_up_' . uniqid() . '.' . $ext;
     if (!move_uploaded_file($file['tmp_name'], $tempLocal)) {
         $errors[] = "File #{$idx}: Failed to move to temp"; continue;
     }
 
-    // Safe filename: entityId + index + ext
-    $suffix   = $idx === 0 ? '' : '_' . $idx;
-    $safeName = safeFolderName(pathinfo($file['name'], PATHINFO_FILENAME))
-              . '_' . time() . '_' . substr(md5(uniqid()), 0, 6) . '.' . $ext;
+    $idxPad = str_pad($fileIndex, 2, '0', STR_PAD_LEFT);
 
-    $smbPath = "$smbDir/$safeName";
-    $result  = $omv->paste_file($tempLocal, $smbPath);
-    if (file_exists($tempLocal)) unlink($tempLocal);
+    if ($ext === 'pdf') {
+        // PDF → PNG via Imagick
+        $pages = _finPdfToPngs($tempLocal, $entityId, $idxPad, $validCount, $smbDir, $omv);
+        @unlink($tempLocal);
+        if (!empty($pages)) {
+            foreach ($pages as $pg) {
+                $uploaded[] = ['original_name' => $file['name'], 'saved_name' => $pg, 'smb_dir' => $smbDir, 'size' => $file['size'], 'ext' => 'png'];
+            }
+        } else {
+            $errors[] = "File #{$idx}: PDF conversion failed";
+        }
+        $fileIndex++; continue;
+    }
+
+    // Image / doc naming:
+    // Single file total  → {sys_id}_01.ext
+    // Multiple files     → {sys_id}_01_01.ext, {sys_id}_01_02.ext ...
+    $safeName = $validCount === 1
+        ? $entityId . '_01.' . $ext
+        : $entityId . '_01_' . $idxPad . '.' . $ext;
+
+    $result = $omv->paste_file($tempLocal, "$smbDir/$safeName");
+    @unlink($tempLocal);
 
     if ($result === true) {
-        $uploaded[] = [
-            'original_name' => $file['name'],
-            'saved_name'    => $safeName,
-            'smb_dir'       => $smbDir,
-            'size'          => $file['size'],
-            'ext'           => $ext,
-        ];
+        $uploaded[] = ['original_name' => $file['name'], 'saved_name' => $safeName, 'smb_dir' => $smbDir, 'size' => $file['size'], 'ext' => $ext];
     } else {
         $errors[] = "File #{$idx}: SMB upload failed — $result";
     }
+    $fileIndex++;
 }
 
-// ── Update financial_entries.files_json ───────────────────────
+function _finPdfToPngs(string $pdfPath, string $entityId, string $idxPad, int $totalFiles, string $smbDir, OMV_SMB_Manager $omv): array {
+    $saved = [];
+    if (!extension_loaded('imagick')) { error_log('[fin upload] Imagick not loaded'); return $saved; }
+    try {
+        $im = new Imagick();
+        $im->setResolution(150, 150);
+        $im->readImage($pdfPath);
+        $pageCount = count($im);
+        foreach ($im as $pNum => $page) {
+            $page->setImageFormat('png');
+            $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_ACTIVATE);
+            $pagePad = str_pad($pNum + 1, 2, '0', STR_PAD_LEFT);
+            // Single file, single page  → {sys_id}_01.png
+            // Single file, multi page   → {sys_id}_01-01.png, _01-02.png
+            // Multi file, single page   → {sys_id}_01_02.png
+            // Multi file, multi page    → {sys_id}_01_02-01.png, _02-02.png
+            if ($totalFiles === 1) {
+                $pngName = $pageCount === 1 ? $entityId . '_01.png' : $entityId . '_01-' . $pagePad . '.png';
+            } else {
+                $pngName = $pageCount === 1 ? $entityId . '_01_' . $idxPad . '.png' : $entityId . '_01_' . $idxPad . '-' . $pagePad . '.png';
+            }
+            $tmp = sys_get_temp_dir() . '/' . $pngName;
+            $page->writeImage($tmp);
+            if (file_exists($tmp)) {
+                $r = $omv->paste_file($tmp, "$smbDir/$pngName");
+                @unlink($tmp);
+                if ($r === true) $saved[] = $pngName;
+                else error_log("[fin upload] PDF page SMB fail: $pngName → $r");
+            }
+        }
+        $im->clear(); $im->destroy();
+    } catch (Exception $e) { error_log('[fin upload] PDF error: ' . $e->getMessage()); }
+    return $saved;
+}
+
 if (!empty($uploaded)) {
     try {
         $stmt = $pdo->prepare("SELECT files_json FROM financial_entries WHERE sys_id = ? LIMIT 1");
         $stmt->execute([$entityId]);
         $existing  = json_decode($stmt->fetchColumn() ?: '[]', true) ?? [];
-        $newFiles  = array_column($uploaded, 'saved_name');
+        $newFiles  = array_map(fn($u) => $smbDir . '/' . $u['saved_name'], $uploaded);
         $merged    = array_values(array_unique(array_merge($existing, $newFiles)));
         $pdo->prepare("UPDATE financial_entries SET files_json = ? WHERE sys_id = ?")
             ->execute([json_encode($merged), $entityId]);

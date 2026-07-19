@@ -1084,10 +1084,8 @@ $getWorkInfo = $ip_port . "api/clients/get-client.php?work_id=$workId";
                 
                 // Click korle page e jabe
                 card.addEventListener('click', (e) => {
-                    // Delete button e click korle page change hobe na
                     if (e.target.closest('.delete-btn')) return;
                     if (e.target.closest('.download-btn')) return;
-                    
                     window.location.href = `cwe_tm-financial-trxn.php?work_id=${task.work_sys_id}&task_id=${task.sys_id}`;
                 });
         

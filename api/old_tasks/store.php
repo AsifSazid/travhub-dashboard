@@ -83,14 +83,25 @@ $safeTaskTitle = safeFolderName($taskTitle);
 
 $taskFolderName = $safeTaskTitle . "+" . $cleanSysId;
 
-// For Server Storage
+// For Server Storage (local — Gemini processing এর জন্য)
 $clientFolderName = "clients/{$clientSysId}_{$clientName}/{$safeWorkTitle}+{$workSysId}/tasks";
 $taskDirectory = makeDir($clientFolderName, $taskFolderName);
 
-// For Cloud Storage
-$clientCloudFolderName = "{$SERVER_CUS_PATH}_clients/{$clientSysId}_{$clientName}/{$safeWorkTitle}+{$workSysId}";
-$clientCloudFullFolderName = makeSMBDir($clientCloudFolderName, 'tasks');
-$fullPath = makeSMBDir($clientCloudFullFolderName, $taskFolderName);
+// For Cloud Storage — same path as file-explorer.php
+// Structure: dev_clients/{clientSysId}_{CamelClientName}/{workSysId}/{taskSysId}/files/
+$words    = preg_split('/[\s_]+/', trim($work['client_name']));
+$camel    = implode('', array_map('ucfirst', $words));
+$camel    = preg_replace('/[^A-Za-z0-9\-]/', '', $camel);
+$clFolder = $clientSysId . '_' . $camel;
+
+$wFolder  = safeFolderName($workSysId);
+$tFolder  = safeFolderName($cleanSysId);
+
+$smbRoot     = $SERVER_CUS_PATH . '_clients';
+$smbCl       = makeSMBDir($smbRoot, $clFolder);
+$smbWork     = makeSMBDir($smbCl, $wFolder);
+$smbTask     = makeSMBDir($smbWork, $tFolder);
+$fullPath    = makeSMBDir($smbTask, 'files');
 
 // ---------------- FILE UPLOAD ----------------
 $uploadedFiles = [];
@@ -119,25 +130,89 @@ if ($infoFileName && $infoDetails) {
     // এই ফাইলটিও Gemini-তে প্রসেস করার জন্য তালিকায় যোগ করুন
     $filesToProcess[] = $infoFilePath;
     
-    // ডিবাগিং জন্য (পরবর্তীতে মুছে ফেলবেন)
-    error_log("Info file created: " . $infoFilePath);
+    // Mirror to SMB
+    fileSaveinSMB($infoFilePath, $fullPath . '/' . $safeInfoFileName);
 }
+
+// Count valid uploaded files for naming convention
+$validFileCount = 0;
+if (!empty($_FILES['files']['name'][0])) {
+    foreach ($_FILES['files']['error'] as $err) {
+        if ($err === UPLOAD_ERR_OK) $validFileCount++;
+    }
+}
+$fileIndex = 1;
 
 if (!empty($_FILES['files']['name'][0])) {
     foreach ($_FILES['files']['name'] as $key => $name) {
         if ($_FILES['files']['error'][$key] === UPLOAD_ERR_OK) {
-            $safeName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $name);
-            $target = $taskDirectory . '/' . $safeName;
-            
-            if (move_uploaded_file($_FILES['files']['tmp_name'][$key], $target)) {
-                $uploadedFiles[] = $target;
-                $filesToProcess[] = $target; // Add to processing list
-                
-                
-                fileSaveinSMB($target, $fullPath. '/' . $safeName);
+            $ext      = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            $idxPad   = str_pad($fileIndex, 2, '0', STR_PAD_LEFT);
+
+            if ($ext === 'pdf') {
+                // PDF → PNG via Imagick
+                $pngs = _storePdfToPngs($_FILES['files']['tmp_name'][$key], $cleanSysId, $idxPad, $validFileCount, $taskDirectory, $fullPath);
+                foreach ($pngs as $png) {
+                    $uploadedFiles[] = $png['local'];
+                    $filesToProcess[] = $png['local'];
+                }
+            } else {
+                // Single file: {sys_id}_01.ext
+                // Multiple:    {sys_id}_01_01.ext, _01_02.ext ...
+                $safeName = $validFileCount === 1
+                    ? $cleanSysId . '_01.' . $ext
+                    : $cleanSysId . '_01_' . $idxPad . '.' . $ext;
+
+                $target = $taskDirectory . '/' . $safeName;
+                if (move_uploaded_file($_FILES['files']['tmp_name'][$key], $target)) {
+                    $uploadedFiles[]  = $target;
+                    $filesToProcess[] = $target;
+                    fileSaveinSMB($target, $fullPath . '/' . $safeName);
+                }
             }
+            $fileIndex++;
         }
     }
+}
+
+// PDF → PNG helper for store.php
+function _storePdfToPngs(string $pdfPath, string $sysId, string $idxPad, int $totalFiles, string $localDir, string $smbDir): array {
+    $saved = [];
+    if (!extension_loaded('imagick')) return $saved;
+    try {
+        $im = new Imagick();
+        $im->setResolution(150, 150);
+        $im->readImage($pdfPath);
+        $pageCount = count($im);
+        foreach ($im as $pNum => $page) {
+            $page->setImageFormat('png');
+            $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_ACTIVATE);
+            $pagePad = str_pad($pNum + 1, 2, '0', STR_PAD_LEFT);
+            // Single file single page  → {sys_id}_01.png
+            // Single file multi page   → {sys_id}_01-01.png ...
+            // Multi file single page   → {sys_id}_01_02.png
+            // Multi file multi page    → {sys_id}_01_02-01.png ...
+            if ($totalFiles === 1) {
+                $pngName = $pageCount === 1
+                    ? $sysId . '_01.png'
+                    : $sysId . '_01-' . $pagePad . '.png';
+            } else {
+                $pngName = $pageCount === 1
+                    ? $sysId . '_01_' . $idxPad . '.png'
+                    : $sysId . '_01_' . $idxPad . '-' . $pagePad . '.png';
+            }
+            $localPath = $localDir . '/' . $pngName;
+            $page->writeImage($localPath);
+            if (file_exists($localPath)) {
+                fileSaveinSMB($localPath, $smbDir . '/' . $pngName);
+                $saved[] = ['local' => $localPath, 'name' => $pngName];
+            }
+        }
+        $im->clear(); $im->destroy();
+    } catch (Exception $e) {
+        error_log('[store pdfToPng] ' . $e->getMessage());
+    }
+    return $saved;
 }
 
 // ---------------- SAVE PASTED TEXT ----------------
@@ -145,7 +220,10 @@ if (!empty($pastedText)) {
     $textFile = $taskDirectory . '/pasted_text.txt';
     file_put_contents($textFile, $pastedText);
     $uploadedFiles[] = $textFile;
-    $filesToProcess[] = $textFile; // এটিকেও Gemini-তে প্রসেস করুন
+    $filesToProcess[] = $textFile;
+    
+    // Mirror to SMB
+    fileSaveinSMB($textFile, $fullPath . '/pasted_text.txt');
 }
 
 // ---------------- PROCESS WITH GEMINI AI ----------------
@@ -157,6 +235,14 @@ if (!empty($filesToProcess)) {
     
     if ($geminiResponse && isset($geminiResponse['success']) && $geminiResponse['success']) {
         $extractedData = $geminiResponse['data'];
+    }
+}
+
+// ---------------- CLEANUP LOCAL FILES ----------------
+// Files already mirrored to SMB — remove local copies
+foreach ($uploadedFiles as $localFile) {
+    if (file_exists($localFile)) {
+        @unlink($localFile);
     }
 }
 

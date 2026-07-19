@@ -1,10 +1,11 @@
 <?php
 /**
  * FILE PATH: /api/tasks/file-explorer.php
- * Task File Explorer — SMB only, no local storage
+ * Task Mind Board File Explorer
+ * Adapted from /api/travelers/file-explorer.php
  *
- * SMB path:
- *   dev_clients/{clientSysId}_{ClientName}/{work_sys_id}/{task_sys_id}/files/
+ * Folder structure: /storage/tasks/{work_sys_id}/{task_sys_id}/
+ * SMB:              {SERVER_CUS_PATH}_tasks/{work_sys_id}/{task_sys_id}/
  *
  * GET  ?task_id=THR-A26-TK-0001&action=list&path=
  * GET  ?task_id=...&action=list_folders
@@ -13,227 +14,199 @@
  */
 
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
-session_start();
 require_once '../../server/db_connection.php';
 require_once '../../server/live_storage.php';
 require_once '../../server/safe_folder_name.php';
-require_once '../../server/smb_upload_handler.php';
 
 class TaskFileExplorerAPI
 {
-    private PDO            $pdo;
+    private PDO    $pdo;
+    private string $taskId;
+    private string $basePath;
+    private string $baseSMBPath;
+    private string $taskFolder;
+    private string $workFolder;
     private OMV_SMB_Manager $omv;
-    private string         $taskId;
-    private string         $workSysId;
-    private string         $clientSysId;
-    private string         $clientName;
-    private string         $smbBase;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
         $this->omv = new OMV_SMB_Manager();
 
-        if (!isset($_GET['task_id'])) $this->err('task_id is required', 400);
+        if (!isset($_GET['task_id'])) $this->sendError('task_id is required', 400);
         $this->taskId = (string)$_GET['task_id'];
-        $this->init();
+        $this->initTaskDirectory();
     }
 
-    private function init(): void
+    private function initTaskDirectory(): void
     {
-        $stmt = $this->pdo->prepare("
-            SELECT t.sys_id, t.work_sys_id, t.client_sys_id, t.client_name
-            FROM tasks t WHERE t.sys_id = ? LIMIT 1
-        ");
+        $serverCusPath = trim(@file_get_contents(__DIR__ . '/../../server-name.txt') ?? '');
+
+        $stmt = $this->pdo->prepare("SELECT sys_id, work_sys_id, workname FROM tasks WHERE sys_id = ? LIMIT 1");
         $stmt->execute([$this->taskId]);
         $task = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$task) $this->err('Task not found', 404);
+        if (!$task) $this->sendError('Task not found', 404);
 
-        $this->workSysId   = $task['work_sys_id'];
-        $this->clientSysId = $task['client_sys_id'] ?? 'UNKNOWN';
-        $this->clientName  = $task['client_name']   ?? 'Unknown';
+        $this->taskFolder = safeFolderName($task['sys_id']);
+        $this->workFolder = safeFolderName($task['work_sys_id']);
 
-        $prefix = trim(@file_get_contents(__DIR__ . '/../../server-name.txt') ?? '');
-
-        // CamelCase client name
-        $words     = preg_split('/[\s_]+/', trim($task['client_name'] ?? 'Unknown'));
-        $camel     = implode('', array_map('ucfirst', $words));
-        $camel     = preg_replace('/[^A-Za-z0-9\-]/', '', $camel);
-        $clFolder  = ($task['client_sys_id'] ?? 'UNKNOWN') . '_' . $camel;
-
-        $w = safeFolderName($task['work_sys_id']);
-        $t = safeFolderName($task['sys_id']);
-
-        // Ensure all SMB dirs exist
-        $root = $prefix . '_clients';
-        $this->smbMkdir($root, $clFolder);
-        $this->smbMkdir("$root/$clFolder", $w);
-        $this->smbMkdir("$root/$clFolder/$w", $t);
-        $this->smbMkdir("$root/$clFolder/$w/$t", 'files');
-
-        $this->smbBase = "$root/$clFolder/$w/$t/files";
-    }
-
-    private function smbMkdir(string $parent, string $child): void {
-        $r = $this->omv->create_folder("$parent/$child");
-        if ($r !== true) {
-            if (
-                stripos((string)$r, 'NT_STATUS_OBJECT_NAME_COLLISION') === false &&
-                stripos((string)$r, 'already exists') === false
-            ) {
-                error_log("[file-explorer SMB mkdir] $parent/$child → $r");
-            }
+        $root = realpath(__DIR__ . '/../../storage/tasks');
+        if (!$root) {
+            mkdir(__DIR__ . '/../../storage/tasks', 0755, true);
+            $root = realpath(__DIR__ . '/../../storage/tasks');
         }
+
+        $this->basePath    = "{$root}/{$this->workFolder}/{$this->taskFolder}";
+        $this->baseSMBPath = "{$serverCusPath}_tasks/{$this->workFolder}/{$this->taskFolder}";
+
+        if (!is_dir($this->basePath)) mkdir($this->basePath, 0755, true);
+        // Create SMB folder if needed
+        $this->omv->create_folder("{$serverCusPath}_tasks/{$this->workFolder}");
+        $this->omv->create_folder($this->baseSMBPath);
     }
 
     public function handleRequest(): void
     {
-        match ($_SERVER['REQUEST_METHOD']) {
+        $method = $_SERVER['REQUEST_METHOD'];
+        match ($method) {
             'GET'    => $this->handleGet(),
             'POST'   => $this->handlePost(),
             'DELETE' => $this->handleDelete(),
-            default  => $this->err('Method not allowed', 405),
+            default  => $this->sendError('Method not allowed', 405),
         };
     }
 
-    // ── GET: list ─────────────────────────────────────────────
+    // ── GET ──────────────────────────────────────────────────
     private function handleGet(): void
     {
         $action = $_GET['action'] ?? 'list';
         $path   = $this->sanitizePath($_GET['path'] ?? '');
+
         match ($action) {
             'list'         => $this->listContents($path),
-            'list_folders' => $this->listFolders($path),
-            default        => $this->err('Invalid action'),
+            'list_folders' => $this->listAllFolders(),
+            default        => $this->sendError('Invalid action', 400),
         };
     }
 
     private function listContents(string $path): void
     {
-        $smbDir = $this->smbPath($path);
-        // List via smbclient ls
-        $items  = $this->smbList($smbDir);
-        echo json_encode(['success' => true, 'currentPath' => $path, 'smbBase' => $this->smbBase, 'contents' => $items]);
-    }
-
-    private function listFolders(string $path): void
-    {
-        $smbDir = $this->smbPath($path);
-        $all    = $this->smbList($smbDir);
-        $folders= array_filter($all, fn($i) => $i['type'] === 'folder');
-        echo json_encode(['success' => true, 'folders' => array_values($folders)]);
-    }
-
-    private function smbList(string $smbDir): array
-    {
-        // Use OMV ls via temp — simplified: parse smbclient ls output
-        $items = [];
-        // Since OMV_SMB_Manager doesn't have a list method, we exec directly
-        $host  = env('SMB_HOST', '103.104.219.3');
-        $user  = env('SMB_USER', 'travhub');
-        $pass  = env('SMB_PASSWORD', 'travhub@2025');
-        $share = env('SMB_SHARE', 'travhub');
-        $cmd   = "smbclient //{$host}/{$share} -U {$user}%{$pass} -c 'ls \"{$smbDir}\"' 2>&1";
-        exec($cmd, $output);
-
-        foreach ($output as $line) {
-            // smbclient output: "  filename   D/A   size   date"
-            if (preg_match('/^\s+(.+?)\s+(D|A)\s+(\d+)\s+(.+)$/', $line, $m)) {
-                $name = trim($m[1]);
-                if ($name === '.' || $name === '..') continue;
-                $isDir = $m[2] === 'D';
-                $relPath = $smbDir . '/' . $name;
-                $items[] = [
-                    'name'      => $name,
-                    'type'      => $isDir ? 'folder' : 'file',
-                    'size'      => $isDir ? '—' : $this->fmtBytes((int)$m[3]),
-                    'sizeBytes' => (int)$m[3],
-                    'path'      => $relPath,
-                ];
-            }
+        $fullPath = $this->getFullPath($path);
+        if (!is_dir($fullPath)) {
+            echo json_encode(['success' => true, 'currentPath' => $path, 'taskFolder' => $this->taskFolder, 'contents' => []]);
+            return;
         }
-        return $items;
+
+        $items = [];
+        foreach (new DirectoryIterator($fullPath) as $item) {
+            if ($item->isDot()) continue;
+            $name = $item->getFilename();
+            $relPath = $path ? "{$path}/{$name}" : $name;
+            $items[] = [
+                'name'         => $name,
+                'type'         => $item->isDir() ? 'folder' : 'file',
+                'size'         => $item->isFile() ? $this->formatBytes($item->getSize()) : '—',
+                'sizeBytes'    => $item->isFile() ? $item->getSize() : 0,
+                'lastModified' => date('d M Y, H:i', $item->getMTime()),
+                'path'         => $relPath,
+            ];
+        }
+
+        usort($items, fn($a, $b) => $a['type'] === $b['type'] ? strcmp($a['name'], $b['name']) : ($a['type'] === 'folder' ? -1 : 1));
+
+        echo json_encode([
+            'success'     => true,
+            'currentPath' => $path,
+            'taskFolder'  => $this->taskFolder,
+            'contents'    => $items,
+        ]);
+    }
+
+    private function listAllFolders(string $basePath = '', string $relativePath = ''): void
+    {
+        $folders = [];
+        $this->collectFolders($this->basePath, '', $folders);
+        echo json_encode(['success' => true, 'folders' => $folders]);
+    }
+
+    private function collectFolders(string $base, string $rel, array &$result): void
+    {
+        foreach (new DirectoryIterator($base) as $item) {
+            if ($item->isDot() || !$item->isDir()) continue;
+            $name    = $item->getFilename();
+            $relPath = $rel ? "{$rel}/{$name}" : $name;
+            $result[] = ['name' => $name, 'path' => $relPath];
+            $this->collectFolders($item->getPathname(), $relPath, $result);
+        }
     }
 
     // ── POST ─────────────────────────────────────────────────
     private function handlePost(): void
     {
         $isMultipart = str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'multipart');
-        if ($isMultipart) { $this->handleUpload(); return; }
+        $action      = $isMultipart ? ($_POST['action'] ?? '') : '';
+
+        if ($action === 'upload' || $isMultipart) { $this->handleUpload(); return; }
+
         $data   = json_decode(file_get_contents('php://input'), true) ?? [];
         $action = $data['action'] ?? '';
+
         match ($action) {
             'create_folder' => $this->createFolder($data),
             'rename'        => $this->renameItem($data),
             'move'          => $this->moveItem($data),
             'copy'          => $this->copyItem($data),
             'duplicate'     => $this->duplicateItem($data),
-            default         => $this->err("Unknown action: {$action}"),
+            default         => $this->sendError("Unknown action: {$action}", 400),
         };
     }
 
     private function handleUpload(): void
     {
-        $path  = $this->sanitizePath($_POST['path'] ?? '');
-        $files = $_FILES['files'] ?? [];
+        $path       = $this->sanitizePath($_POST['path'] ?? $_POST['target_folder'] ?? '');
+        $targetDir  = $this->getFullPath($path);
+        if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+
+        $uploaded = [];
+        $files    = $_FILES['files'] ?? [];
+
+        // Normalize single vs multiple
         if (!is_array($files['name'])) {
             foreach ($files as $k => $v) $files[$k] = [$v];
         }
 
-        // Normalize to array of file entries
-        $filesArr = [];
         for ($i = 0; $i < count($files['name']); $i++) {
             if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
-            $filesArr[] = [
-                'name'     => $files['name'][$i],
-                'tmp_name' => $files['tmp_name'][$i],
-                'type'     => $files['type'][$i],
-                'error'    => $files['error'][$i],
-                'size'     => $files['size'][$i],
-            ];
-        }
-        if (empty($filesArr)) {
-            echo json_encode(['success' => false, 'error' => 'No valid files']); return;
-        }
+            $origName = basename($files['name'][$i]);
+            $safeName = $this->uniqueName($targetDir, $origName);
+            $dest     = $targetDir . '/' . $safeName;
+            if (!move_uploaded_file($files['tmp_name'][$i], $dest)) continue;
+            $uploaded[] = $safeName;
 
-        // Use task sys_id as base for naming
-        $ctx = [
-            'client_sys_id' => $this->clientSysId,
-            'client_name'   => $this->clientName,
-            'work_sys_id'   => $this->workSysId,
-            'task_sys_id'   => $this->taskId,
-            'module'        => 'files' . ($path ? '/' . $path : ''),
-        ];
-
-        $upload = smbUploadFiles($filesArr, $this->taskId, $ctx);
-
-        if ($upload['success']) {
-            // Store in tasks.files_json
-            $stmt = $this->pdo->prepare("SELECT files_json FROM tasks WHERE sys_id = ? LIMIT 1");
-            $stmt->execute([$this->taskId]);
-            $existing = json_decode($stmt->fetchColumn() ?: '[]', true) ?? [];
-            $merged   = array_values(array_unique(array_merge($existing, $upload['files_json'])));
-            $this->pdo->prepare("UPDATE tasks SET files_json = ? WHERE sys_id = ?")
-                ->execute([json_encode($merged), $this->taskId]);
+            // SMB
+            $smbDest = $this->baseSMBPath . ($path ? "/{$path}" : '') . "/{$safeName}";
+            $this->omv->paste_file($dest, $smbDest);
         }
 
-        echo json_encode([
-            'success' => $upload['success'],
-            'message' => count($upload['files_json']) . ' file(s) uploaded',
-            'files'   => $upload['files_json'],
-            'errors'  => $upload['errors'],
-        ]);
+        echo json_encode(['success' => true, 'message' => count($uploaded) . ' file(s) uploaded', 'files' => $uploaded]);
     }
 
     private function createFolder(array $data): void
     {
-        $path   = $this->sanitizePath($data['path'] ?? '');
-        $name   = safeFolderName($data['name'] ?? '');
-        if (!$name) { echo json_encode(['success' => false, 'error' => 'Name required']); return; }
-        $r = $this->omv->create_folder($this->smbPath($path) . '/' . $name);
-        echo json_encode(['success' => $r === true, 'message' => $r === true ? 'Created' : $r]);
+        $path    = $this->sanitizePath($data['path'] ?? '');
+        $name    = safeFolderName($data['name'] ?? '');
+        if (!$name) { echo json_encode(['success' => false, 'error' => 'Folder name required']); return; }
+        $fullDir = $this->getFullPath($path) . '/' . $name;
+        if (!is_dir($fullDir)) mkdir($fullDir, 0755, true);
+        $smbDir  = $this->baseSMBPath . ($path ? "/{$path}" : '') . "/{$name}";
+        $this->omv->create_folder($smbDir);
+        echo json_encode(['success' => true, 'message' => 'Folder created']);
     }
 
     private function renameItem(array $data): void
@@ -241,35 +214,44 @@ class TaskFileExplorerAPI
         $path    = $this->sanitizePath($data['path'] ?? '');
         $oldName = basename($data['oldName'] ?? '');
         $newName = basename($data['newName'] ?? '');
-        $dir     = $this->smbPath($path);
-        $r = $this->omv->rename_item("$dir/$oldName", "$dir/$newName");
-        echo json_encode(['success' => $r === true]);
+        if (!$oldName || !$newName) { echo json_encode(['success' => false, 'error' => 'Names required']); return; }
+        $dir     = $this->getFullPath($path);
+        rename("{$dir}/{$oldName}", "{$dir}/{$newName}");
+        $smbDir  = $this->baseSMBPath . ($path ? "/{$path}" : '');
+        $this->omv->rename_item("{$smbDir}/{$oldName}", "{$smbDir}/{$newName}");
+        echo json_encode(['success' => true]);
     }
 
     private function moveItem(array $data): void
     {
-        $srcPath = $this->sanitizePath($data['sourcePath'] ?? '');
-        $srcName = basename($data['sourceName'] ?? '');
-        $dstPath = $this->sanitizePath($data['targetPath'] ?? '');
-        $dstName = basename($data['targetName'] ?? $srcName);
-        $r = $this->omv->move_item(
-            $this->smbPath($srcPath) . '/' . $srcName,
-            $this->smbPath($dstPath) . '/' . $dstName
-        );
-        echo json_encode(['success' => $r === true]);
+        $srcPath  = $this->sanitizePath($data['sourcePath'] ?? '');
+        $srcName  = basename($data['sourceName'] ?? '');
+        $dstPath  = $this->sanitizePath($data['targetPath'] ?? '');
+        $dstName  = basename($data['targetName'] ?? $srcName);
+        $srcFull  = $this->getFullPath($srcPath) . '/' . $srcName;
+        $dstDir   = $this->getFullPath($dstPath);
+        if (!is_dir($dstDir)) mkdir($dstDir, 0755, true);
+        rename($srcFull, "{$dstDir}/{$dstName}");
+        $smbSrc   = $this->baseSMBPath . ($srcPath ? "/{$srcPath}" : '') . "/{$srcName}";
+        $smbDst   = $this->baseSMBPath . ($dstPath ? "/{$dstPath}" : '') . "/{$dstName}";
+        $this->omv->move_item($smbSrc, $smbDst);
+        echo json_encode(['success' => true]);
     }
 
     private function copyItem(array $data): void
     {
-        $srcPath = $this->sanitizePath($data['sourcePath'] ?? '');
-        $srcName = basename($data['sourceName'] ?? '');
-        $dstPath = $this->sanitizePath($data['targetPath'] ?? '');
-        $dstName = basename($data['targetName'] ?? $srcName);
-        $r = $this->omv->copy_item(
-            $this->smbPath($srcPath) . '/' . $srcName,
-            $this->smbPath($dstPath) . '/' . $dstName
-        );
-        echo json_encode(['success' => $r === true]);
+        $srcPath  = $this->sanitizePath($data['sourcePath'] ?? '');
+        $srcName  = basename($data['sourceName'] ?? '');
+        $dstPath  = $this->sanitizePath($data['targetPath'] ?? '');
+        $dstName  = basename($data['targetName'] ?? $srcName);
+        $srcFull  = $this->getFullPath($srcPath) . '/' . $srcName;
+        $dstDir   = $this->getFullPath($dstPath);
+        if (!is_dir($dstDir)) mkdir($dstDir, 0755, true);
+        copy($srcFull, "{$dstDir}/{$dstName}");
+        $smbSrc   = $this->baseSMBPath . ($srcPath ? "/{$srcPath}" : '') . "/{$srcName}";
+        $smbDst   = $this->baseSMBPath . ($dstPath ? "/{$dstPath}" : '') . "/{$dstName}";
+        $this->omv->copy_item($smbSrc, $smbDst);
+        echo json_encode(['success' => true]);
     }
 
     private function duplicateItem(array $data): void
@@ -284,40 +266,66 @@ class TaskFileExplorerAPI
         $data    = json_decode(file_get_contents('php://input'), true) ?? [];
         $path    = $this->sanitizePath($data['path'] ?? '');
         $name    = basename($data['name'] ?? '');
-        $smbPath = $this->smbPath($path) . '/' . $name;
-        $isDir   = ($data['type'] ?? '') === 'folder';
+        $fullPath= $this->getFullPath($path) . '/' . $name;
+        $smbPath = $this->baseSMBPath . ($path ? "/{$path}" : '') . "/{$name}";
 
-        if ($isDir) $this->omv->delete_directory($smbPath);
-        else        $this->omv->delete_file($smbPath);
-
+        if (is_dir($fullPath)) {
+            $this->deleteDir($fullPath);
+            $this->omv->delete_directory($smbPath);
+        } else {
+            @unlink($fullPath);
+            $this->omv->delete_file($smbPath);
+        }
         echo json_encode(['success' => true]);
     }
 
     // ── Helpers ───────────────────────────────────────────────
-    private function smbPath(string $relativePath): string
+    private function getFullPath(string $relativePath): string
     {
-        $rel = $this->sanitizePath($relativePath);
-        return $rel ? $this->smbBase . '/' . $rel : $this->smbBase;
+        $full = $this->basePath . ($relativePath ? '/' . ltrim($relativePath, '/') : '');
+        $real = realpath($full);
+        if ($real && !str_starts_with($real, $this->basePath)) $this->sendError('Access denied', 403);
+        return $full;
     }
 
     private function sanitizePath(string $path): string
     {
-        return trim(str_replace(['..', "\0", '\\'], '', $path), '/');
+        $path = str_replace(['..', "\0", '\\'], '', $path);
+        return trim($path, '/');
     }
 
-    private function fmtBytes(int $b): string
+    private function uniqueName(string $dir, string $name): string
     {
-        if ($b < 1024) return "{$b} B";
-        if ($b < 1048576) return round($b / 1024, 1) . ' KB';
-        return round($b / 1048576, 1) . ' MB';
+        if (!file_exists("{$dir}/{$name}")) return $name;
+        $ext  = pathinfo($name, PATHINFO_EXTENSION);
+        $base = pathinfo($name, PATHINFO_FILENAME);
+        $i    = 1;
+        while (file_exists("{$dir}/{$base}_{$i}.{$ext}")) $i++;
+        return "{$base}_{$i}.{$ext}";
     }
 
-    private function err(string $msg, int $code = 400): void
+    private function deleteDir(string $dir): void
     {
-        ob_clean(); http_response_code($code);
-        echo json_encode(['success' => false, 'error' => $msg]); exit;
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $f) {
+            $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
+        }
+        rmdir($dir);
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes < 1024) return "{$bytes} B";
+        if ($bytes < 1048576) return round($bytes / 1024, 1) . ' KB';
+        return round($bytes / 1048576, 1) . ' MB';
+    }
+
+    private function sendError(string $msg, int $code = 400): void
+    {
+        ob_clean();
+        http_response_code($code);
+        echo json_encode(['success' => false, 'error' => $msg]);
+        exit;
     }
 }
 
-require_once '../../server/env.php';
 (new TaskFileExplorerAPI($pdo))->handleRequest();

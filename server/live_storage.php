@@ -151,33 +151,30 @@ if (!class_exists('OMV_SMB_Manager')) {
         
         // ✅ নতুন মেথড: SMB তে ডিরেক্টরি রিকার্সিভ ডিলিট
         public function delete_directory($remote_dir) {
-            // প্রথমে ডিরেক্টরির সব কন্টেন্ট লিস্ট করি
-            $list_cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'ls \"$remote_dir\"' 2>&1";
+            // Use path/* to list CONTENTS (ls "path" lists parent, not contents)
+            $list_cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'ls \"{$remote_dir}/*\"' 2>&1";
             exec($list_cmd, $list_output, $list_return);
-            
+
             foreach ($list_output as $line) {
-                if (preg_match('/^\s+(.+?)\s+[DA]/', $line, $matches)) {
-                    $item = trim($matches[1]);
-                    if ($item === '.' || $item === '..') continue;
-                    
-                    $full_path = $remote_dir . '/' . $item;
-                    
-                    if (strpos($line, 'D') !== false) {
-                        // ডিরেক্টরি - রিকার্সিভ ডিলিট
-                        $this->delete_directory($full_path);
-                    } else {
-                        // ফাইল ডিলিট
-                        $del_cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'del \"$full_path\"' 2>&1";
-                        exec($del_cmd);
-                    }
+                if (!preg_match('/^  (.+?)\s{2,}([DANHS])\s+(\d+)/', $line, $m)) continue;
+                $item = trim($m[1]);
+                if ($item === '.' || $item === '..') continue;
+
+                $full_path = $remote_dir . '/' . $item;
+
+                if ($m[2] === 'D') {
+                    $this->delete_directory($full_path);
+                } else {
+                    $del_cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'del \"{$full_path}\"' 2>&1";
+                    exec($del_cmd);
                 }
             }
-            
-            // ফাঁকা ডিরেক্টরি ডিলিট
-            $rmdir_cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'rmdir \"$remote_dir\"' 2>&1";
+
+            // Delete now-empty directory
+            $rmdir_cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'rmdir \"{$remote_dir}\"' 2>&1";
             exec($rmdir_cmd, $output, $return_var);
-            
-            return ($return_var === 0) ? true : "Failed to delete directory: " . implode(" ", $output);
+
+            return ($return_var === 0) ? true : 'Failed: ' . implode(' ', $output);
         }
         
         /**
@@ -209,6 +206,26 @@ if (!class_exists('OMV_SMB_Manager')) {
             $cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'get \"{$remote_path}\" \"{$local_path}\"' 2>&1";
             exec($cmd, $output, $return_var);
             return ($return_var === 0);
+        }
+
+        public function list_directory(string $remote_dir): array {
+            // smbclient ls "path/*" lists contents of path
+            // Note: trailing slash causes NT_STATUS_NO_SUCH_FILE on this server
+            $listPath = rtrim($remote_dir, '/') . '/*';
+            $cmd = "smbclient //{$this->host}/{$this->share} -U {$this->user}%{$this->pass} -c 'ls \"{$listPath}\"' 2>&1";
+            exec($cmd, $output);
+            $items = [];
+            foreach ($output as $line) {
+                if (!preg_match('/^  (.+?)\s{2,}([DANHS])\s+(\d+)/', $line, $m)) continue;
+                $name = trim($m[1]);
+                if ($name === '.' || $name === '..') continue;
+                $items[] = [
+                    'name'      => $name,
+                    'type'      => $m[2] === 'D' ? 'folder' : 'file',
+                    'sizeBytes' => (int)$m[3],
+                ];
+            }
+            return $items;
         }
     }
 }

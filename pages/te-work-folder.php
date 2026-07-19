@@ -1,5 +1,6 @@
 <?php
-    $api_file_explorer = $ip_port . "api/file-explorer.php";
+    $api_file_explorer = $ip_port . "api/com_works/file-explorer.php";
+    $file_serve_base   = $ip_port . "api/file/serve.php";
 ?>
 <style>
     .context-menu-item {
@@ -585,8 +586,9 @@
 
 <script>
     const workId = `<?php echo $workId; ?>`;
-    const SERVER_NAME = `<?php echo $_SESSION['scp']; ?>`;
+    const SERVER_NAME = `<?php echo $_SESSION['scp'] ?? ''; ?>`;
     const API_FILE_EXPLORER = `<?php echo $api_file_explorer; ?>`;
+    const FILE_SERVE_BASE   = `<?php echo $file_serve_base; ?>`;
 
     // File Explorer Singleton
     const FileExplorer = {
@@ -628,29 +630,21 @@
         async loadFolder(path = '') {
             try {
                 this.showLoading(true);
-                
-                const response = await fetch(`${this.config.apiBaseUrl}?work_id=${workId}&action=list&path=${encodeURIComponent(path)}`);
-                
+
+                const url = `${API_FILE_EXPLORER}?work_id=${encodeURIComponent(workId)}&action=list&path=${encodeURIComponent(path)}`;
+                const response = await fetch(url);
+
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    console.log(data)
-                    this.state.currentPath = data.currentPath || data.path || '';
-                    this.state.clientFolder = data.clientFolder || '';
-                    this.state.workFolder = data.workFolder || '';
-                    
+                    this.state.currentPath = data.currentPath || '';
                     this.addToHistory(this.state.currentPath);
-                    
-                    if (data.contents && Array.isArray(data.contents)) {
-                        this.renderFiles(data.contents);
-                    } else {
-                        this.renderFiles([]);
-                    }
-                    
+                    const items = data.contents ?? [];
+                    this.renderFiles(items);
                     this.updateBreadcrumb();
-                    this.updateStatusBar(data.contents?.length || 0);
+                    this.updateStatusBar(items.length);
                 } else {
                     this.showToast(data.error || 'Unknown error', 'error');
                 }
@@ -664,7 +658,8 @@
         },
         
         async navigateToFolder(folderName) {
-            await this.loadFolder(this.state.currentPath ? `${this.state.currentPath}/${folderName}` : folderName);
+            const newPath = this.state.currentPath ? `${this.state.currentPath}/${folderName}` : folderName;
+            await this.loadFolder(newPath);
         },
         
         async goBack() {
@@ -703,10 +698,8 @@
                 return;
             }
 
-            console.log(this.config.apiBaseUrl + `?work_id=${workId}`);
-
             try {
-                const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                const response = await fetch(`${API_FILE_EXPLORER}?work_id=${encodeURIComponent(workId)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -764,7 +757,7 @@
                         <i class="${icon.class}"></i>
                     </div>
                 </div>
-                <div class="text-sm text-center text-gray-800 break-words max-w-[120px] truncate" title="${file.name}">
+                <div class="text-xs text-center text-gray-800 break-all leading-tight mt-1" title="${file.name}">
                     ${file.name}
                 </div>
                 <div class="text-xs text-gray-500 mt-1 text-center">${file.size}</div>
@@ -845,7 +838,12 @@
         },
         
         getFullFilePath(file) {
-            return `${this.config.baseStoragePath}${this.state.clientFolder}/${this.state.workFolder}/${file.path}`;
+            // Use smb_token if available (serve.php handles auth + streaming)
+            if (file.smb_token) {
+                return `${FILE_SERVE_BASE}?smb_token=${encodeURIComponent(file.smb_token)}`;
+            }
+            // Fallback: direct SMB path token from path
+            return `${FILE_SERVE_BASE}?smb_token=${encodeURIComponent(file.path || '')}`;
         },
         
         // Main Copy File to Clipboard function
@@ -1465,7 +1463,7 @@
                 }
                 
                 try {
-                    const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                    const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1502,7 +1500,7 @@
             } else if (action === 'copy') {
                 // Copy the item
                 try {
-                    const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                    const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1546,7 +1544,7 @@
         
         async loadFoldersForMove() {
             try {
-                const response = await fetch(`${this.config.apiBaseUrl}?work_id=${workId}&action=list_folders`);
+                const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}&action=list_folders`);
                 const data = await response.json();
                 
                 if (data.success && data.folders) {
@@ -1652,7 +1650,7 @@
             }
             
             try {
-                const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1690,7 +1688,7 @@
             if (!newName) return;
             
             try {
-                const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1743,7 +1741,7 @@
                 console.log('New name:', newName);
                 console.log('Path:', this.state.currentPath);
                 
-                const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}&action=rename`, {
+                const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}&action=rename`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1789,7 +1787,7 @@
             }
             
             try {
-                const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1967,7 +1965,7 @@
             }
             
             try {
-                const response = await fetch(this.config.apiBaseUrl + `?work_id=${workId}`, {
+                const response = await fetch(API_FILE_EXPLORER + `?work_id=${encodeURIComponent(workId)}`, {
                     method: 'POST',
                     body: formData
                 });

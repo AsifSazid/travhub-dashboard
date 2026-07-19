@@ -15,6 +15,10 @@ $API = [
     'assign'         => $ip_port . "api/tasks/assign.php",
     'employees'      => $ip_port . "api/employees/all-employees.php",
     'travelers'      => $ip_port . "api/travelers/all-travelers.php",
+    'workTravelers'  => $ip_port . "api/works/travelers.php",
+    'extractDocument'=> $ip_port . "api/travelers/extract-document.php",
+    'storeNewTraveler'=> $ip_port . "api/travelers/store.php",
+    'fileServe'      => $ip_port . "api/file/serve.php",
     'vendors'        => $ip_port . "api/vendors/all-vendors.php",
     'airTickets'     => $ip_port . "api/air-tickets/endpoints.php",
 ];
@@ -210,12 +214,22 @@ $API = [
                             </div>
                             <span class="text-sm font-semibold text-gray-700">Travelers</span>
                         </div>
-                        <button onclick="addTravelerRow()" class="text-xs text-teal-500 hover:text-teal-700 font-semibold">
-                            <i class="fas fa-plus mr-1"></i>Add
-                        </button>
+                        <div class="flex items-center gap-1">
+                            <button onclick="openPassportCarousel()" id="btnPassportCarousel"
+                                class="hidden px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 rounded text-xs" title="View Passports">
+                                <i class="fas fa-id-card"></i>
+                            </button>
+                            <button onclick="openTravelerTableModal()" id="btnTravelerTable"
+                                class="hidden px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-500 rounded text-xs" title="Expand Table">
+                                <i class="fas fa-table"></i>
+                            </button>
+                            <button onclick="addTravelerRow()" class="text-xs text-teal-500 hover:text-teal-700 font-semibold px-2 py-1">
+                                <i class="fas fa-plus mr-1"></i>Add
+                            </button>
+                        </div>
                     </div>
                     <div id="travelerRows" class="space-y-2 mb-1.5"></div>
-                    <div id="linkedTravelersList" class="space-y-1.5"></div>
+                    <div id="linkedTravelersList"></div>
                 </div>
 
             </div><!-- /rightSidebar -->
@@ -343,6 +357,117 @@ $API = [
     </div>
 </div>
 
+<!-- ── NEW TRAVELER MODAL ───────────────────────────────────── -->
+<div id="newTravelerModal" class="fixed inset-0 z-[70] hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-user-plus mr-2 text-teal-500"></i>New Traveler</h3>
+            <button onclick="closeModal('newTravelerModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 space-y-4">
+            <p class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                Upload a passport scan — AI will extract the traveler's information automatically.
+            </p>
+            <!-- Upload area -->
+            <label class="flex flex-col items-center gap-2 px-4 py-6 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                <i class="fas fa-id-card text-teal-400 text-3xl"></i>
+                <span class="text-sm text-gray-600 font-medium">Upload Passport Scan</span>
+                <span class="text-xs text-gray-400">JPG, PNG, PDF, WebP accepted</span>
+                <input type="file" id="newTravelerFile" accept=".jpg,.jpeg,.png,.webp,.pdf" class="hidden"
+                    onchange="previewNewTravelerFile(this)">
+            </label>
+            <div id="newTravelerFilePreview" class="hidden text-xs text-teal-600 bg-teal-50 rounded-lg px-3 py-2 flex items-center gap-2">
+                <i class="fas fa-file"></i>
+                <span id="newTravelerFileName"></span>
+            </div>
+            <!-- Extract progress -->
+            <div id="newTravelerProgress" class="hidden text-center py-2">
+                <i class="fas fa-spinner fa-spin text-teal-500 mr-2"></i>
+                <span class="text-xs text-teal-600">Extracting traveler info...</span>
+            </div>
+            <!-- Extracted preview -->
+            <div id="newTravelerExtracted" class="hidden space-y-2">
+                <p class="text-xs font-bold text-gray-500 uppercase">Extracted Info</p>
+                <div id="newTravelerExtractedData" class="bg-gray-50 rounded-lg p-3 text-xs space-y-1"></div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="extractAndCreateTraveler()" id="newTravelerExtractBtn"
+                    class="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition">
+                    <i class="fas fa-wand-magic-sparkles mr-1.5"></i>Extract & Create
+                </button>
+                <button id="newTravelerSaveBtn" onclick="saveNewTraveler()" class="hidden flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition">
+                    <i class="fas fa-save mr-1.5"></i>Save & Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── PASSPORT CAROUSEL MODAL ──────────────────────────────── -->
+<div id="passportCarouselModal" class="fixed inset-0 z-[70] hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-id-card mr-2 text-indigo-500"></i>Passports</h3>
+            <button onclick="closeModal('passportCarouselModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4">
+            <!-- Carousel -->
+            <div class="relative">
+                <div id="carouselSlides" class="overflow-hidden rounded-xl bg-gray-50 min-h-[300px] flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin text-gray-300 text-2xl"></i>
+                </div>
+                <button onclick="carouselPrev()" class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button onclick="carouselNext()" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <!-- Dots + name -->
+            <div class="mt-3 text-center">
+                <p id="carouselName" class="text-sm font-semibold text-gray-700 mb-2"></p>
+                <div id="carouselDots" class="flex justify-center gap-1.5"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── TRAVELER TABLE MODAL ─────────────────────────────────── -->
+<div id="travelerTableModal" class="fixed inset-0 z-[70] hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm">
+                <i class="fas fa-table mr-2 text-teal-500"></i>Travelers
+                <span class="text-xs text-gray-400 font-normal ml-2">Click any cell to copy</span>
+            </h3>
+            <button onclick="closeModal('travelerTableModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <th class="px-3 py-2 text-left">Name</th>
+                        <th class="px-3 py-2 text-left">Given Name</th>
+                        <th class="px-3 py-2 text-left">Surname</th>
+                        <th class="px-3 py-2 text-left">Passport No</th>
+                        <th class="px-3 py-2 text-left">Expiry</th>
+                        <th class="px-3 py-2 text-left">DOB</th>
+                        <th class="px-3 py-2 text-left">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="travelerTableBody" class="divide-y divide-gray-100"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Toast copy notification -->
+<div id="copyToast" class="fixed bottom-16 right-6 z-[9999] hidden">
+    <div class="bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2">
+        <i class="fas fa-check text-green-400"></i> Copied!
+    </div>
+</div>
+
 <!-- Special Instructions popup -->
 <div id="specialInsModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,.5);backdrop-filter:blur(3px);">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
@@ -418,8 +543,8 @@ function renderCommonUI() {
     // Instructions
     document.getElementById('instructionDisplay').textContent = taskData.instruction ?? '—';
     _renderSpecialIns(taskData.special_ins);
-    // Travelers
-    renderLinkedTravelers(Array.isArray(taskData.traveler_id) ? taskData.traveler_id : []);
+    // Travelers — load from API (work level)
+    loadLinkedTravelers();
 }
 
 // ── Service tab ───────────────────────────────────────────────
@@ -579,21 +704,175 @@ async function aiGenerate(){
 }
 
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
 // TRAVELERS
 // ════════════════════════════════════════════════════════════
-let _travData=[],_travLoaded=false,_travRows=[];
-async function _loadTravelers(){if(_travLoaded)return;try{const r=await fetch(API.travelers);const j=await r.json();_travData=j.travelers??[];_travLoaded=true;}catch{}}
-function addTravelerRow(){
+let _travData=[], _travLoaded=false, _travRows=[];
+let _linkedTravelers=[], _carouselIdx=0, _newTravelerExtracted=null;
+
+async function _loadTravelers() {
+    if(_travLoaded)return;
+    try{const r=await fetch(API.travelers);const j=await r.json();_travData=j.travelers??[];_travLoaded=true;}catch{}
+}
+
+function addTravelerRow() {
     _loadTravelers();
-    const idx=_travRows.length;_travRows.push(null);
-    const div=document.createElement('div');div.className='flex gap-1.5 items-center';div.id=`tR${idx}`;
-    div.innerHTML=`<div class="relative flex-1"><input type="text" id="tI${idx}" placeholder="Search traveler…" class="f-input text-xs" autocomplete="off" oninput="fT(${idx},this.value)" onfocus="fT(${idx},this.value)"><ul id="tD${idx}" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-auto shadow-xl hidden z-50 text-xs"></ul></div><button onclick="document.getElementById('tR${idx}').remove();_travRows[${idx}]=null;" class="w-7 h-7 bg-red-50 hover:bg-red-100 border border-red-200 text-red-400 rounded-lg flex items-center justify-center text-xs flex-shrink-0"><i class="fas fa-times"></i></button>`;
+    const idx=_travRows.length; _travRows.push(null);
+    const div=document.createElement('div'); div.className='space-y-1'; div.id=`tR${idx}`;
+    div.innerHTML=`<div class="flex gap-1.5 items-center"><div class="relative flex-1"><input type="text" id="tI${idx}" placeholder="Search traveler…" class="f-input text-xs" autocomplete="off" oninput="fT(${idx},this.value)" onfocus="fT(${idx},this.value)"><ul id="tD${idx}" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50 text-xs"></ul></div><button onclick="cancelTravelerRow(${idx})" class="w-7 h-7 bg-red-50 hover:bg-red-100 border border-red-200 text-red-400 rounded-lg flex items-center justify-center text-xs flex-shrink-0"><i class="fas fa-times"></i></button></div><div id="tNew${idx}" class="hidden"><button onclick="openNewTravelerModal()" class="w-full py-1.5 text-xs text-teal-600 border border-dashed border-teal-300 rounded-lg hover:bg-teal-50 transition"><i class="fas fa-user-plus mr-1"></i>New Traveler</button></div>`;
     document.getElementById('travelerRows').appendChild(div);
 }
-function fT(idx,q){const dd=document.getElementById(`tD${idx}`);if(!dd)return;_loadTravelers().then(()=>{const v=q.toLowerCase().trim(),list=v?_travData.filter(t=>(t.name||'').toLowerCase().includes(v)):_travData.slice(0,12);if(!list.length){dd.innerHTML=`<li class="px-3 py-2 text-center text-gray-400 text-xs">No travelers</li>`;dd.classList.remove('hidden');return;}dd.innerHTML=list.map(t=>`<li class="px-3 py-2 cursor-pointer hover:bg-teal-50 border-b last:border-b-0 flex items-center gap-2" onclick="sT(${idx},'${t.sys_id}','${(t.name||'').replace(/'/g,"\\'")}')"><div class="w-6 h-6 bg-teal-600 rounded-full text-white flex items-center justify-center text-xs font-bold">${(t.name?.[0]??'T').toUpperCase()}</div><span class="text-xs font-medium text-gray-800">${escHtml(t.name??'')}</span></li>`).join('');dd.classList.remove('hidden');});}
-function sT(idx,id,name){_travRows[idx]=id;document.getElementById(`tI${idx}`).value=`${id} | ${name}`;document.getElementById(`tD${idx}`).classList.add('hidden');}
+
+function cancelTravelerRow(idx){document.getElementById(`tR${idx}`)?.remove();_travRows[idx]=null;}
+
+function fT(idx,q){
+    const dd=document.getElementById(`tD${idx}`);if(!dd)return;
+    _loadTravelers().then(()=>{
+        const v=q.toLowerCase().trim(),list=v?_travData.filter(t=>(t.name||'').toLowerCase().includes(v)):_travData.slice(0,12);
+        const newBtn=document.getElementById(`tNew${idx}`);
+        if(newBtn)newBtn.classList.toggle('hidden',!v||list.length>0);
+        if(!list.length){dd.innerHTML=`<li class="px-3 py-2 text-center text-gray-400 text-xs">No travelers found</li>`;dd.classList.remove('hidden');return;}
+        dd.innerHTML=list.map(t=>`<li class="px-3 py-2 cursor-pointer hover:bg-teal-50 border-b last:border-b-0 flex items-center gap-2" onclick="sT(${idx},'${t.sys_id}','${(t.name||'').replace(/'/g,"\\'")}')"><div class="w-6 h-6 bg-teal-600 rounded-full text-white flex items-center justify-center text-xs font-bold">${(t.name?.[0]??'T').toUpperCase()}</div><div><div class="font-medium text-gray-800">${escHtml(t.name??'')}</div><div class="text-gray-400 font-mono text-[10px]">${t.sys_id}</div></div></li>`).join('');
+        dd.classList.remove('hidden');
+    });
+}
+
+async function sT(idx,travelerSysId,name){
+    document.getElementById(`tI${idx}`).value=`${travelerSysId} | ${name}`;
+    document.getElementById(`tD${idx}`).classList.add('hidden');
+    document.getElementById(`tNew${idx}`)?.classList.add('hidden');
+    _travRows[idx]=travelerSysId;
+    const workSysId=taskData?.work_sys_id??'';
+    if(!workSysId){showToast('error','Work ID not found');return;}
+    try{
+        const r=await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'link',work_sys_id:workSysId,traveler_sys_id:travelerSysId})});
+        const j=await r.json();
+        if(j.status==='success'){showToast('success',`${name} linked!`);document.getElementById(`tR${idx}`)?.remove();_travRows[idx]=null;await loadLinkedTravelers();}
+        else showToast('error',j.message??'Failed');
+    }catch{showToast('error','Network error');}
+}
+
+async function loadLinkedTravelers(){
+    const workSysId=taskData?.work_sys_id??'';if(!workSysId)return;
+    try{
+        const r=await fetch(`${API.workTravelers}?action=list&work_sys_id=${encodeURIComponent(workSysId)}`);
+        const j=await r.json();
+        if(j.status==='success'){_linkedTravelers=j.data??[];renderLinkedTravelers(_linkedTravelers);}
+    }catch{}
+}
+
+async function unlinkTraveler(travelerSysId,name){
+    if(!confirm(`Remove ${name}?`))return;
+    const workSysId=taskData?.work_sys_id??'';
+    try{
+        const r=await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unlink',work_sys_id:workSysId,traveler_sys_id:travelerSysId})});
+        const j=await r.json();
+        if(j.status==='success'){showToast('success',`${name} removed`);await loadLinkedTravelers();}
+        else showToast('error',j.message??'Failed');
+    }catch{showToast('error','Network error');}
+}
+
+function _parsePassport(t){try{return JSON.parse(t.passport_info||'{}')??{};}catch{return {};}}
+
+function renderLinkedTravelers(travelers){
+    const list=document.getElementById('linkedTravelersList');if(!list)return;
+    const hasPassports=travelers.some(t=>t.smb_path);
+    document.getElementById('btnPassportCarousel')?.classList.toggle('hidden',!travelers.length||!hasPassports);
+    document.getElementById('btnTravelerTable')?.classList.toggle('hidden',!travelers.length);
+    if(!travelers.length){list.innerHTML='<p class="text-xs text-gray-400 text-center py-2">No travelers linked</p>';return;}
+    list.innerHTML=`<div class="overflow-x-auto mt-1"><table class="w-full text-xs"><thead><tr class="text-gray-400 border-b border-gray-100"><th class="pb-1 text-left font-medium">Name</th><th class="pb-1 text-left font-medium">PP No</th><th class="pb-1"></th></tr></thead><tbody class="divide-y divide-gray-50">${travelers.map(t=>{const p=_parsePassport(t);const pNo=p.passport_no||p.passport_number||'—';const name=t.name||'—';return`<tr class="hover:bg-gray-50"><td class="py-1.5 pr-2 truncate max-w-[70px] font-medium text-gray-700">${escHtml(name)}</td><td class="py-1.5 pr-2 font-mono text-gray-500">${escHtml(pNo)}</td><td class="py-1.5 flex items-center gap-1"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-400 hover:text-teal-600"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i></a><button onclick="unlinkTraveler('${t.sys_id}','${(name).replace(/'/g,"\\'")} ')" class="text-red-300 hover:text-red-500 ml-1"><i class="fas fa-times text-[10px]"></i></button></td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
 document.addEventListener('click',e=>{_travRows.forEach((_,i)=>{const w=document.getElementById(`tI${i}`)?.parentElement;if(w&&!w.contains(e.target))document.getElementById(`tD${i}`)?.classList.add('hidden');});});
-function renderLinkedTravelers(ids){const list=document.getElementById('linkedTravelersList');if(!list)return;if(!ids.length){list.innerHTML='';return;}list.innerHTML=ids.map(id=>`<div class="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-lg px-2.5 py-1.5 text-xs"><i class="fas fa-user text-teal-500 flex-shrink-0"></i><span class="font-mono text-teal-700 flex-1">${escHtml(String(id))}</span><a href="show-travelers.php?id=${id}" target="_blank" class="text-teal-400 hover:text-teal-600"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i></a></div>`).join('');}
+
+// ── NEW TRAVELER ─────────────────────────────────────────────
+function openNewTravelerModal(){
+    _newTravelerExtracted=null;
+    document.getElementById('newTravelerFile').value='';
+    document.getElementById('newTravelerFilePreview').classList.add('hidden');
+    document.getElementById('newTravelerProgress').classList.add('hidden');
+    document.getElementById('newTravelerExtracted').classList.add('hidden');
+    document.getElementById('newTravelerExtractBtn').classList.remove('hidden');
+    document.getElementById('newTravelerSaveBtn').classList.add('hidden');
+    document.getElementById('newTravelerModal').classList.remove('hidden');
+}
+function previewNewTravelerFile(input){if(!input.files[0])return;document.getElementById('newTravelerFileName').textContent=input.files[0].name;document.getElementById('newTravelerFilePreview').classList.remove('hidden');}
+
+async function extractAndCreateTraveler(){
+    const file=document.getElementById('newTravelerFile').files[0];
+    if(!file){showToast('error','Please upload a passport scan');return;}
+    document.getElementById('newTravelerProgress').classList.remove('hidden');
+    document.getElementById('newTravelerExtractBtn').disabled=true;
+    const fd=new FormData();fd.append('file',file);fd.append('document_type','passport');
+    try{
+        const res=await fetch(API.extractDocument,{method:'POST',body:fd});
+        const j=await res.json();
+        document.getElementById('newTravelerProgress').classList.add('hidden');
+        document.getElementById('newTravelerExtractBtn').disabled=false;
+        if(!j.success){showToast('error',j.message??'Extraction failed');return;}
+        _newTravelerExtracted=j;
+        const p=j.passport_info??j.data??{};
+        const fields=[['Name',p.name??p.full_name??''],['Given Name',p.given_name??p.first_name??''],['Surname',p.surname??p.last_name??''],['Passport No',p.passport_no??p.passport_number??''],['Expiry',p.expiry_date??p.date_of_expiry??''],['DOB',p.date_of_birth??p.dob??'']].filter(([,v])=>v);
+        document.getElementById('newTravelerExtractedData').innerHTML=fields.map(([k,v])=>`<div class="flex gap-2"><span class="text-gray-400 w-24 flex-shrink-0">${k}</span><span class="font-medium text-gray-700">${escHtml(String(v))}</span></div>`).join('');
+        document.getElementById('newTravelerExtracted').classList.remove('hidden');
+        document.getElementById('newTravelerExtractBtn').classList.add('hidden');
+        document.getElementById('newTravelerSaveBtn').classList.remove('hidden');
+    }catch{document.getElementById('newTravelerProgress').classList.add('hidden');document.getElementById('newTravelerExtractBtn').disabled=false;showToast('error','Network error');}
+}
+
+async function saveNewTraveler(){
+    if(!_newTravelerExtracted){showToast('error','Extract data first');return;}
+    const btn=document.getElementById('newTravelerSaveBtn');
+    btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin mr-1.5"></i>Saving...';
+    const file=document.getElementById('newTravelerFile').files[0];
+    const fd=new FormData();
+    if(file)fd.append('file',file);
+    fd.append('extracted_data',JSON.stringify(_newTravelerExtracted));
+    fd.append('work_sys_id',taskData?.work_sys_id??'');
+    try{
+        const res=await fetch(API.storeNewTraveler,{method:'POST',body:fd});
+        const j=await res.json();
+        if(j.success&&j.sys_id){
+            showToast('success','Traveler created!');
+            await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'link',work_sys_id:taskData?.work_sys_id??'',traveler_sys_id:j.sys_id})});
+            closeModal('newTravelerModal');
+            _travLoaded=false;await _loadTravelers();await loadLinkedTravelers();
+        }else showToast('error',j.message??'Save failed');
+    }catch{showToast('error','Network error');}
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-save mr-1.5"></i>Save & Link';
+}
+
+// ── PASSPORT CAROUSEL ────────────────────────────────────────
+function openPassportCarousel(){_carouselIdx=0;document.getElementById('passportCarouselModal').classList.remove('hidden');_renderCarouselSlide();}
+function _renderCarouselSlide(){
+    const travelers=_linkedTravelers.filter(t=>t.smb_path);
+    if(!travelers.length){document.getElementById('carouselSlides').innerHTML='<p class="text-gray-400 text-sm">No passport images</p>';return;}
+    const t=travelers[_carouselIdx];
+    document.getElementById('carouselName').textContent=t.name??'—';
+    document.getElementById('carouselSlides').innerHTML=`<img src="${API.fileServe}?smb_token=${encodeURIComponent(t.smb_path??'')}" alt="${escHtml(t.name??'')}" class="max-h-[400px] max-w-full object-contain rounded-xl" onerror="this.parentElement.innerHTML='<p class=\\'text-gray-400 text-sm\\'>Image not available</p>'">`;
+    document.getElementById('carouselDots').innerHTML=travelers.map((_,i)=>`<button onclick="_cGo(${i})" class="w-2 h-2 rounded-full transition ${i===_carouselIdx?'bg-indigo-500':'bg-gray-300'}"></button>`).join('');
+}
+window._cGo=function(i){_carouselIdx=i;_renderCarouselSlide();};
+function carouselPrev(){const t=_linkedTravelers.filter(x=>x.smb_path);_carouselIdx=(_carouselIdx-1+t.length)%t.length;_renderCarouselSlide();}
+function carouselNext(){const t=_linkedTravelers.filter(x=>x.smb_path);_carouselIdx=(_carouselIdx+1)%t.length;_renderCarouselSlide();}
+
+// ── TRAVELER TABLE MODAL ─────────────────────────────────────
+function openTravelerTableModal(){
+    document.getElementById('travelerTableModal').classList.remove('hidden');
+    const tbody=document.getElementById('travelerTableBody');
+    const cell=(v)=>`<td class="px-3 py-2 cursor-pointer hover:bg-teal-50 transition" onclick="copyCell('${escHtml(String(v))}')" title="Click to copy">${escHtml(String(v))}</td>`;
+    tbody.innerHTML=_linkedTravelers.map(t=>{
+        const p=_parsePassport(t);
+        const given=p.given_name||p.first_name||'—';
+        const surname=p.surname||p.last_name||'—';
+        const pNo=p.passport_no||p.passport_number||'—';
+        const expiry=p.expiry_date||p.date_of_expiry||'—';
+        const dob=p.date_of_birth||p.dob||'—';
+        return`<tr class="hover:bg-gray-50">${cell(t.name||'—')}${cell(given)}${cell(surname)}${cell(pNo)}${cell(expiry)}${cell(dob)}<td class="px-3 py-2"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-500 hover:text-teal-700 text-xs"><i class="fas fa-arrow-up-right-from-square"></i></a></td></tr>`;
+    }).join('');
+}
+function copyCell(text){navigator.clipboard.writeText(text).then(()=>{const t=document.getElementById('copyToast');t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),1500);});}
+
 
 // ════════════════════════════════════════════════════════════
 // SPECIAL INSTRUCTIONS

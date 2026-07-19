@@ -1,8 +1,16 @@
 <?php
+/**
+ * FILE PATH: api/travelers/doc_store.php
+ *
+ * Traveler document upload — SMB only (no local permanent storage).
+ * Supports: PDF (→ PNG via Imagick), images, pasted text, info file.
+ *
+ * SMB path: {SERVER_CUS_PATH}_travelers/{sysId}_{Name}/all_documents/
+ */
+
 session_start();
 
 require '../../server/db_connection.php';
-require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
 require_once '../../server/live_storage.php';
 
@@ -11,82 +19,73 @@ header('Access-Control-Allow-Origin: *');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
-// Increase limits for PDF processing
 ini_set('memory_limit', '1024M');
 set_time_limit(600);
 
 // ---------------- CONFIGURATION ----------------
 $SERVER_CUS_PATH = trim(file_get_contents('../../server-name.txt'));
 
-// ---------------- PDF TO PNG CONVERSION FUNCTION ----------------
-function convertPdfToPngs($pdfPath, $originalName, $taskDirectory, $cloudDocsPath) {
-    $convertedFiles = [];
-    $baseName = pathinfo($originalName, PATHINFO_FILENAME);
-    // Clean base name for filesystem
-    $cleanBaseName = preg_replace('/[^a-zA-Z0-9]/', '_', $baseName);
-    
+// ---------------- PDF TO PNG → SMB (no local save) ----------------
+function convertPdfToPngsToSmb(string $pdfPath, string $originalName, string $cloudDocsPath): array {
+    $omv  = new OMV_SMB_Manager();
+    $baseName = preg_replace('/[^a-zA-Z0-9]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
+    $pages = [];
+
     try {
         $imagick = new Imagick();
         $imagick->setResolution(150, 150);
         $imagick->readImage($pdfPath);
-        
+
         foreach ($imagick as $pageNum => $page) {
             $page->setImageFormat('png');
             $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_ACTIVATE);
-            
-            $pngName = time() . '_' . $cleanBaseName . "_page_" . ($pageNum + 1) . ".png";
-            $localPngPath = $taskDirectory . '/' . $pngName;
-            
-            // Save PNG locally
-            $page->writeImage($localPngPath);
-            
-            if (file_exists($localPngPath)) {
-                $convertedFiles[] = [
-                    'path' => $localPngPath,
-                    'name' => $pngName,
-                    'page' => $pageNum + 1
-                ];
-                
-                // Upload to SMB
-                fileSaveinSMB($localPngPath, $cloudDocsPath, $pngName);
+
+            $pngName  = time() . '_' . $baseName . '_page_' . ($pageNum + 1) . '.png';
+            // Write to system tmp, upload to SMB, delete tmp
+            $tmpPng   = sys_get_temp_dir() . '/' . $pngName;
+            $page->writeImage($tmpPng);
+
+            if (file_exists($tmpPng)) {
+                $dest = rtrim($cloudDocsPath, '/') . '/' . $pngName;
+                $status = $omv->paste_file($tmpPng, $dest);
+                @unlink($tmpPng);
+
+                if ($status === true) {
+                    $pages[] = ['name' => $pngName, 'page' => $pageNum + 1];
+                } else {
+                    error_log("SMB PDF page upload failed: $dest :: $status");
+                }
             }
         }
-        
+
         $imagick->clear();
         $imagick->destroy();
-        
-        return ['success' => true, 'files' => $convertedFiles];
-        
+        return ['success' => true, 'pages' => $pages];
+
     } catch (Exception $e) {
         error_log("PDF Conversion Error: " . $e->getMessage());
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
 
-// ---------------- FILE SAVE IN SMB ----------------
-function fileSaveinSMB($localFilePath, $cloudFolderPath, $fileName) {
-    $omv = new OMV_SMB_Manager();
-    $destPath = rtrim($cloudFolderPath, '/') . '/' . $fileName;
-
-    error_log("📁 SMB Dest: " . $destPath);
-    error_log("📄 SMB Local: " . $localFilePath);
-
-    $paste_status = $omv->paste_file($localFilePath, $destPath);
-    if ($paste_status !== true) {
-        error_log("❌ SMB Error: " . $paste_status);
+// ---------------- SMB FILE UPLOAD ----------------
+function fileSaveInSmb(string $localPath, string $cloudFolderPath, string $fileName): bool {
+    $omv  = new OMV_SMB_Manager();
+    $dest = rtrim($cloudFolderPath, '/') . '/' . $fileName;
+    $status = $omv->paste_file($localPath, $dest);
+    if ($status !== true) {
+        error_log("❌ SMB upload failed: $dest :: $status");
         return false;
     }
     return true;
 }
 
-// ---------------- GET DATA ----------------
+// ---------------- INPUT ----------------
 $travelerId   = $_GET['traveler_id']     ?? null;
 $infoFileName = $_POST['info_file_name'] ?? null;
 $infoDetails  = $_POST['information']    ?? null;
 $pastedText   = $_POST['pasted_text']    ?? null;
 
-// ---------------- VALIDATION ----------------
 if (!$travelerId) {
     echo json_encode(['success' => false, 'message' => 'traveler_id missing']);
     exit;
@@ -102,137 +101,108 @@ if (empty($traveler['sys_id']) || empty($traveler['name'])) {
     exit;
 }
 
-// ---------------- BUILD FOLDER PATH ----------------
+// ---------------- BUILD SMB PATH ----------------
 $cleanSysId     = preg_replace('/\s+/u', '', $traveler['sys_id']);
 $cleanName      = preg_replace('/\s+/u', '', $traveler['name']);
 $travelerFolder = "{$cleanSysId}_{$cleanName}";
 
-// Server Storage
-$taskDirectory = makeDir("travelers/{$travelerFolder}", "all_documents");
-
-// Cloud Storage
 $cloudBasePath = "{$SERVER_CUS_PATH}_travelers/{$travelerFolder}";
 $cloudDocsPath = makeSMBDir($cloudBasePath, 'all_documents');
 $cloudDocsPath = rtrim($cloudDocsPath, '/');
 
 if (str_starts_with($cloudDocsPath, '❌')) {
-    error_log("SMB folder creation failed: " . $cloudDocsPath);
+    error_log("SMB folder creation failed: $cloudDocsPath");
     echo json_encode(['success' => false, 'message' => 'Cloud folder creation failed: ' . $cloudDocsPath]);
     exit;
 }
 
-// ---------------- TRACK UPLOADS ----------------
-$uploadedFiles = [];
-$conversionLog = []; // Track PDF conversions
-$errors = [];
+// ---------------- PROCESS ----------------
+$uploadedFiles = []; // file names stored on SMB
+$conversionLog = [];
+$errors        = [];
 
-// ---------------- SAVE INFO FILE IF PROVIDED ----------------
+// Info file
 if ($infoFileName && $infoDetails) {
-    $fileExtension = pathinfo($infoFileName, PATHINFO_EXTENSION);
-    if (empty($fileExtension)) {
-        $infoFileName .= '.txt';
-    }
-
+    if (!pathinfo($infoFileName, PATHINFO_EXTENSION)) $infoFileName .= '.txt';
     $safeInfoFileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $infoFileName);
-    $infoFilePath     = $taskDirectory . '/' . $safeInfoFileName;
-
-    file_put_contents($infoFilePath, $infoDetails);
-    $uploadedFiles[] = $infoFilePath;
-
-    fileSaveinSMB($infoFilePath, $cloudDocsPath, $safeInfoFileName);
-
-    error_log("📝 Info file created: " . $infoFilePath);
+    $tmpInfo = sys_get_temp_dir() . '/' . $safeInfoFileName;
+    file_put_contents($tmpInfo, $infoDetails);
+    if (fileSaveInSmb($tmpInfo, $cloudDocsPath, $safeInfoFileName)) {
+        $uploadedFiles[] = $safeInfoFileName;
+    }
+    @unlink($tmpInfo);
 }
 
-// ---------------- PROCESS UPLOADED FILES ----------------
+// Uploaded files
 if (!empty($_FILES['files']['name'][0])) {
     foreach ($_FILES['files']['name'] as $key => $name) {
         if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
-            $errors[] = "Error uploading: $name";
+            $errors[] = "Upload error: $name";
             continue;
         }
-        
-        $fileExtension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+        $ext      = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         $tempPath = $_FILES['files']['tmp_name'][$key];
-        
-        // --- PDF CONVERSION ---
-        if ($fileExtension === 'pdf') {
-            error_log("📄 Converting PDF: " . $name);
-            
-            $conversionResult = convertPdfToPngs($tempPath, $name, $taskDirectory, $cloudDocsPath);
-            
-            if ($conversionResult['success']) {
-                foreach ($conversionResult['files'] as $pngFile) {
-                    $uploadedFiles[] = $pngFile['path'];
-                    $conversionLog[] = [
-                        'original_pdf' => $name,
-                        'converted_to' => $pngFile['name'],
-                        'page' => $pngFile['page']
-                    ];
+
+        if ($ext === 'pdf') {
+            $result = convertPdfToPngsToSmb($tempPath, $name, $cloudDocsPath);
+            if ($result['success']) {
+                foreach ($result['pages'] as $pg) {
+                    $uploadedFiles[] = $pg['name'];
+                    $conversionLog[] = ['original_pdf' => $name, 'converted_to' => $pg['name'], 'page' => $pg['page']];
                 }
-                error_log("✅ PDF converted to " . count($conversionResult['files']) . " PNGs");
             } else {
-                $errors[] = "PDF conversion failed for $name: " . $conversionResult['error'];
-                error_log("❌ PDF conversion failed: " . $conversionResult['error']);
+                $errors[] = "PDF conversion failed for $name: " . ($result['error'] ?? '');
             }
-        } 
-        // --- IMAGE FILES (keep as-is) ---
-        elseif (in_array($fileExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+
+        } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
             $safeName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $name);
-            $target = $taskDirectory . '/' . $safeName;
-            
-            if (move_uploaded_file($tempPath, $target)) {
-                $uploadedFiles[] = $target;
-                fileSaveinSMB($target, $cloudDocsPath, $safeName);
-                error_log("✅ Image uploaded: " . $safeName);
+            if (fileSaveInSmb($tempPath, $cloudDocsPath, $safeName)) {
+                $uploadedFiles[] = $safeName;
             } else {
-                $errors[] = "Failed to move uploaded file: $name";
+                $errors[] = "SMB upload failed: $name";
             }
-        }
-        // --- OTHER FILE TYPES (reject) ---
-        else {
-            $errors[] = "Unsupported file type: $name (Only PDF, JPG, JPEG, PNG allowed)";
-            error_log("❌ Rejected file type: " . $fileExtension);
+
+        } else {
+            $errors[] = "Unsupported file type: $name (PDF, JPG, JPEG, PNG, GIF, WEBP only)";
         }
     }
 }
 
-// ---------------- SAVE PASTED TEXT ----------------
+// Pasted text
 if (!empty($pastedText)) {
     $textFileName = time() . '_pasted_text.txt';
-    $textFilePath = $taskDirectory . '/' . $textFileName;
-    file_put_contents($textFilePath, $pastedText);
-    $uploadedFiles[] = $textFilePath;
-    fileSaveinSMB($textFilePath, $cloudDocsPath, $textFileName);
-    error_log("📝 Pasted text saved: " . $textFileName);
+    $tmpText = sys_get_temp_dir() . '/' . $textFileName;
+    file_put_contents($tmpText, $pastedText);
+    if (fileSaveInSmb($tmpText, $cloudDocsPath, $textFileName)) {
+        $uploadedFiles[] = $textFileName;
+    }
+    @unlink($tmpText);
 }
 
 // ---------------- RESPONSE ----------------
-$savedNames = array_map('basename', $uploadedFiles);
-
 $response = [
     'success' => !empty($uploadedFiles),
+    'files'   => $uploadedFiles,
+    'path'    => "{$cloudBasePath}/all_documents", // SMB path reference (no local path)
     'message' => '',
-    'files' => $savedNames,
-    'path' => $taskDirectory,
 ];
 
-// Add conversion details for frontend feedback
 if (!empty($conversionLog)) {
     $response['conversions'] = $conversionLog;
-    $response['message'] = count($uploadedFiles) . ' file(s) saved. ' . count($conversionLog) . ' PDF(s) converted to images.';
+    $response['message'] = count($uploadedFiles) . ' file(s) saved to cloud. ' . count($conversionLog) . ' PDF(s) converted to images.';
 } else {
-    $response['message'] = count($uploadedFiles) . ' file(s) saved successfully';
+    $response['message'] = count($uploadedFiles) . ' file(s) saved to cloud successfully';
 }
 
 if (!empty($errors)) {
     $response['warnings'] = $errors;
-    $response['message'] .= ' However, some errors occurred: ' . implode(', ', $errors);
+    $response['message'] .= ' Warnings: ' . implode(', ', $errors);
 }
 
 if (empty($uploadedFiles)) {
     $response['success'] = false;
-    $response['message'] = 'No files uploaded or created. ' . (!empty($errors) ? implode(', ', $errors) : '');
+    $response['message'] = 'No files uploaded. ' . (!empty($errors) ? implode(', ', $errors) : '');
 }
 
 echo json_encode($response);

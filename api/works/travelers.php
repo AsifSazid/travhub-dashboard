@@ -85,7 +85,7 @@ try {
             }
 
             ob_clean();
-            echo json_encode(['status' => 'success', 'data' => $ordered]);
+            echo json_encode(['status' => 'success', 'data' => $ordered, 'refs' => $refs]);
             break;
 
         // ── LINK a traveler to a work ─────────────────────────
@@ -94,11 +94,29 @@ try {
             $travelerSysId = $body['traveler_sys_id'] ?? '';
             if (!$workSysId || !$travelerSysId) throw new Exception('work_sys_id and traveler_sys_id required');
 
-            // Fetch traveler name (required for the {sys_id, name} object)
-            $tCheck = $pdo->prepare("SELECT sys_id, name FROM travelers WHERE sys_id = ? LIMIT 1");
+            // Fetch traveler full record (passport_info included)
+            $tCheck = $pdo->prepare("SELECT sys_id, name, passport_info, smb_path FROM travelers WHERE sys_id = ? LIMIT 1");
             $tCheck->execute([$travelerSysId]);
             $traveler = $tCheck->fetch(PDO::FETCH_ASSOC);
             if (!$traveler) throw new Exception('Traveler not found');
+
+            // Parse passport_info JSON
+            $passport = [];
+            if (!empty($traveler['passport_info'])) {
+                $passport = json_decode($traveler['passport_info'], true) ?? [];
+            }
+
+            // Build traveler ref object with passport snapshot
+            $travelerRef = [
+                'traveler_sys_id'   => $traveler['sys_id'],
+                'name'              => $traveler['name'],
+                'given_name'        => $passport['given_name']    ?? $passport['first_name']  ?? '',
+                'surname'           => $passport['surname']       ?? $passport['last_name']   ?? '',
+                'passport_no'       => $passport['passport_no']   ?? $passport['passport_number'] ?? '',
+                'passport_expiry'   => $passport['expiry_date']   ?? $passport['date_of_expiry']  ?? '',
+                'dob'               => $passport['date_of_birth'] ?? $passport['dob']              ?? '',
+                'passport_smb_path' => $traveler['smb_path']      ?? '',
+            ];
 
             $wStmt = $pdo->prepare("SELECT traveler_sys_ids, meta_data FROM works WHERE sys_id = ? LIMIT 1");
             $wStmt->execute([$workSysId]);
@@ -107,20 +125,22 @@ try {
 
             $refs = _normalizeTravelerRefs(json_decode($work['traveler_sys_ids'] ?? '[]', true) ?: []);
 
-            $alreadyLinked = false;
+            // Check duplicate
             foreach ($refs as $r) {
-                if ($r['traveler_sys_id'] === $travelerSysId) { $alreadyLinked = true; break; }
+                if ($r['traveler_sys_id'] === $travelerSysId) {
+                    ob_clean();
+                    echo json_encode(['status' => 'success', 'message' => 'Already linked', 'traveler_sys_ids' => $refs]);
+                    exit;
+                }
             }
-            if (!$alreadyLinked) {
-                $refs[] = ['traveler_sys_id' => $traveler['sys_id'], 'name' => $traveler['name']];
-            }
+            $refs[] = $travelerRef;
 
             $meta = buildMetaData($work['meta_data'], $userName);
             $pdo->prepare("UPDATE works SET traveler_sys_ids = ?, meta_data = ? WHERE sys_id = ?")
                 ->execute([json_encode($refs, JSON_UNESCAPED_UNICODE), $meta, $workSysId]);
 
             ob_clean();
-            echo json_encode(['status' => 'success', 'message' => 'Traveler linked', 'traveler_sys_ids' => $refs]);
+            echo json_encode(['status' => 'success', 'message' => 'Traveler linked', 'traveler' => $travelerRef, 'traveler_sys_ids' => $refs]);
             break;
 
         // ── UNLINK a traveler from a work ─────────────────────

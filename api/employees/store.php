@@ -1,9 +1,14 @@
 <?php
+
+// api/employees/store.php
+
 require '../../server/db_connection.php';
 require '../../server/uuid_generator.php';
 require '../../server/employee_id_generator.php';
 require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
+require '../../server/make-smb-dir.php';
+require_once '../../server/live_storage.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -81,24 +86,31 @@ function handleFormDataRequest() {
     $cleanFullName = preg_replace('/\s+/u', '', $fullName);
     $employeeFolderName = $cleanSysId . '_' . $cleanFullName;
     
-    // Create directory structure
+    // Create local directory (kept for legacy serve compatibility)
     $basePath = "../../uploads/employees/";
     $employeeFolderPath = $basePath . $employeeFolderName;
-    
     makeDir('employees', $employeeFolderName);
-    
+
+    // SMB path: dev_hr/{sysId}_{Name}/
+    $SERVER_CUS_PATH   = trim(file_get_contents('../../server-name.txt'));
+    $smbHrBase         = "{$SERVER_CUS_PATH}_hr";
+    $cloudFolderPath   = makeSMBDir($smbHrBase, $employeeFolderName);
+    $cloudFolderPath   = rtrim($cloudFolderPath, '/');
+    $cloudOk           = !str_starts_with($cloudFolderPath, '❌');
+    if (!$cloudOk) {
+        error_log("SMB HR folder creation failed for employee $sys_id: $cloudFolderPath");
+    }
+
     // Handle file uploads
     $uploadedFiles = [];
     $files = $_FILES['files'];
-    
+
     if (isset($files['name'][0]) && !empty($files['name'][0])) {
 
-        // Ensure employee directory exists
         if (!file_exists($employeeFolderPath)) {
             mkdir($employeeFolderPath, 0777, true);
         }
-    
-        // Allowed file types
+
         $allowedTypes = [
             'image/jpeg' => 'jpg',
             'image/png'  => 'png',
@@ -108,57 +120,44 @@ function handleFormDataRequest() {
             'application/msword' => 'doc',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx'
         ];
-    
-        // Maximum file size (5MB)
+
         $maxFileSize = 5 * 1024 * 1024;
-    
-        // Process each file
+
         for ($i = 0; $i < count($files['name']); $i++) {
-    
+
             $fileName  = $files['name'][$i];
             $fileTmp   = $files['tmp_name'][$i];
             $fileSize  = $files['size'][$i];
             $fileType  = $files['type'][$i];
             $fileError = $files['error'][$i];
-    
-            // Skip if error
-            if ($fileError !== UPLOAD_ERR_OK) {
-                continue;
-            }
-    
-            // Validate file type
-            if (!isset($allowedTypes[$fileType])) {
-                continue;
-            }
-    
-            // Validate file size
-            if ($fileSize > $maxFileSize) {
-                continue;
-            }
-    
-            // Get file extension
+
+            if ($fileError !== UPLOAD_ERR_OK) continue;
+            if (!isset($allowedTypes[$fileType])) continue;
+            if ($fileSize > $maxFileSize) continue;
+
             $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    
-            // Filename rule
-            if ($i === 0) {
-                $baseName = 'profile-pic';
-            } else {
-                $baseName = 'image-' . $i;
-            }
-    
-            // Handle duplicate filenames
-            $counter = 1;
-            $finalName = $baseName . '.' . $fileExtension;
+            $baseName      = ($i === 0) ? 'profile-pic' : 'image-' . $i;
+
+            // Avoid duplicate local names
+            $counter     = 1;
+            $finalName   = $baseName . '.' . $fileExtension;
             $destination = $employeeFolderPath . '/' . $finalName;
-    
             while (file_exists($destination)) {
                 $counter++;
-                $finalName = $baseName . '-' . $counter . '.' . $fileExtension;
+                $finalName   = $baseName . '-' . $counter . '.' . $fileExtension;
                 $destination = $employeeFolderPath . '/' . $finalName;
             }
-    
-            // Move uploaded file
+
             if (move_uploaded_file($fileTmp, $destination)) {
+                // Mirror to SMB
+                if ($cloudOk) {
+                    $omv    = new OMV_SMB_Manager();
+                    $dest   = $cloudFolderPath . '/' . $finalName;
+                    $status = $omv->paste_file($destination, $dest);
+                    if ($status !== true) {
+                        error_log("SMB employee file upload failed: $dest :: $status");
+                    }
+                }
                 $uploadedFiles[] = [
                     'original_name' => $fileName,
                     'stored_name'   => $finalName,

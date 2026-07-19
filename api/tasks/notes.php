@@ -3,11 +3,14 @@
  * FILE PATH: /api/tasks/notes.php
  * Mind Board rich notes — text / image / audio / video / file
  *
- * SMB path structure:
- *   {prefix}_clients/{clientSysId}_{clientName}/{workSysId}/{taskSysId}/notes/{fileName}
+ * GET  ?action=list&task_sys_id=THR-A26-TK-0001   → list all notes for task
+ * POST action=store   { task_sys_id, work_sys_id, note_type, content }   → text note
+ * POST (multipart)    action=upload  + file field                         → media note
+ * POST action=delete  { sys_id }
+ * POST action=reorder { items:[{sys_id, sort_order}] }
  *
- * DB stores: file_name only
- * Served via: /api/file/serve.php?note_id=SYS_ID
+ * Media files stored under: /storage/tasks/{work_sys_id}/{task_sys_id}/notes/
+ * SMB path:                  {SERVER_CUS_PATH}_tasks/{work_sys_id}/{task_sys_id}/notes/
  */
 
 ob_start();
@@ -18,7 +21,8 @@ require_once '../../server/api_bootstrap.php';
 require_once '../../server/db_connection.php';
 require_once '../../server/sys_id_generator_v2.php';
 require_once '../../server/generate_meta_data.php';
-require_once '../../server/smb_upload_handler.php';
+require_once '../../server/live_storage.php';
+require_once '../../server/safe_folder_name.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
@@ -34,130 +38,202 @@ if ($method === 'POST' && !empty($_POST)) {
 
 $userName = $_SESSION['user_name'] ?? 'system';
 
-function _noteFileUrl(string $noteSysId): string {
-    $ipPort = trim(@file_get_contents(__DIR__ . '/../../ippath.txt') ?? '');
-    return rtrim($ipPort, '/') . '/api/file/serve.php?note_id=' . rawurlencode($noteSysId);
+// ── Local storage root ────────────────────────────────────────
+$storageRoot = realpath(__DIR__ . '/../../storage/tasks');
+if (!$storageRoot) {
+    mkdir(__DIR__ . '/../../storage/tasks', 0755, true);
+    $storageRoot = realpath(__DIR__ . '/../../storage/tasks');
 }
 
-// Build SMB context — client info comes from tasks table
-function _getCtx(PDO $pdo, string $taskSysId, string $workSysId, string $module = 'notes'): array {
-    $stmt = $pdo->prepare("SELECT client_sys_id, client_name FROM tasks WHERE sys_id = ? LIMIT 1");
-    $stmt->execute([$taskSysId]);
-    $task = $stmt->fetch(PDO::FETCH_ASSOC);
-    return [
-        'client_sys_id' => $task['client_sys_id'] ?? 'UNKNOWN',
-        'client_name'   => $task['client_name']   ?? 'Unknown',
-        'work_sys_id'   => $workSysId,
-        'task_sys_id'   => $taskSysId,
-        'module'        => $module,
-    ];
+function _taskNotesDir(string $workSysId, string $taskSysId): string {
+    global $storageRoot;
+    $wClean = safeFolderName($workSysId);
+    $tClean = safeFolderName($taskSysId);
+    $dir    = "{$storageRoot}/{$wClean}/{$tClean}/notes";
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    return $dir;
+}
+
+function _taskNotesUrl(string $workSysId, string $taskSysId, string $fileName): string {
+    $wClean = safeFolderName($workSysId);
+    $tClean = safeFolderName($taskSysId);
+    return "/storage/tasks/{$wClean}/{$tClean}/notes/" . rawurlencode($fileName);
 }
 
 try {
     switch ($action) {
 
-        case 'list': {
+        // ── LIST ──────────────────────────────────────────────
+        case 'list':
             $taskSysId = $_GET['task_sys_id'] ?? '';
             if (!$taskSysId) throw new Exception('task_sys_id required');
-            $stmt = $pdo->prepare("SELECT * FROM task_notes WHERE task_sys_id=? ORDER BY sort_order ASC, id ASC");
+
+            $stmt = $pdo->prepare("
+                SELECT * FROM task_notes WHERE task_sys_id = ?
+                ORDER BY sort_order ASC, id ASC
+            ");
             $stmt->execute([$taskSysId]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Add public URL for media types
             foreach ($rows as &$r) {
                 $r['meta_data'] = $r['meta_data'] ? json_decode($r['meta_data'], true) : [];
-                $r['file_url']  = $r['file_name'] ? _noteFileUrl($r['sys_id']) : null;
+                if ($r['file_name'] && $r['work_sys_id']) {
+                    $r['file_url'] = _taskNotesUrl($r['work_sys_id'], $r['task_sys_id'], $r['file_name']);
+                } else {
+                    $r['file_url'] = null;
+                }
             }
-            unset($r);
+
             ob_clean();
             echo json_encode(['status' => 'success', 'data' => $rows]);
             break;
-        }
 
-        case 'store': {
+        // ── STORE TEXT NOTE ───────────────────────────────────
+        case 'store':
             $taskSysId = $body['task_sys_id'] ?? '';
             $workSysId = $body['work_sys_id'] ?? '';
             $content   = trim($body['content'] ?? '');
+
             if (!$taskSysId) throw new Exception('task_sys_id required');
             if (!$workSysId) throw new Exception('work_sys_id required');
-            if (!$content)   throw new Exception('content required');
+            if (!$content)   throw new Exception('content is required for text notes');
+
             $ids  = generateV2IDs($pdo, 'task_notes');
             $meta = buildMetaData(null, $userName);
-            $stmt = $pdo->prepare("SELECT MAX(sort_order) FROM task_notes WHERE task_sys_id=?");
-            $stmt->execute([$taskSysId]);
-            $maxSort = ((int)$stmt->fetchColumn()) + 1;
-            $pdo->prepare("INSERT INTO task_notes (uuid,sys_id,task_sys_id,work_sys_id,note_type,content,sort_order,created_by,meta_data) VALUES (?,?,?,?,'text',?,?,?,?)")
-                ->execute([$ids['uuid'],$ids['sys_id'],$taskSysId,$workSysId,$content,$maxSort,$userName,$meta]);
-            ob_clean();
-            echo json_encode(['status'=>'success','message'=>'Note saved','sys_id'=>$ids['sys_id']]);
-            break;
-        }
 
-        case 'upload': {
+            // Get next sort order
+            $maxSort = (int)$pdo->prepare("SELECT MAX(sort_order) FROM task_notes WHERE task_sys_id=?")
+                                 ->execute([$taskSysId]) ? 0 : 0;
+            $stmt3 = $pdo->prepare("SELECT MAX(sort_order) FROM task_notes WHERE task_sys_id=?");
+            $stmt3->execute([$taskSysId]);
+            $maxSort = ((int)$stmt3->fetchColumn()) + 1;
+
+            $pdo->prepare("
+                INSERT INTO task_notes (uuid, sys_id, task_sys_id, work_sys_id, note_type, content, sort_order, created_by, meta_data)
+                VALUES (?, ?, ?, ?, 'text', ?, ?, ?, ?)
+            ")->execute([$ids['uuid'], $ids['sys_id'], $taskSysId, $workSysId, $content, $maxSort, $userName, $meta]);
+
+            ob_clean();
+            echo json_encode(['status' => 'success', 'message' => 'Note saved', 'sys_id' => $ids['sys_id']]);
+            break;
+
+        // ── UPLOAD MEDIA NOTE ─────────────────────────────────
+        case 'upload':
             $taskSysId = $_POST['task_sys_id'] ?? '';
             $workSysId = $_POST['work_sys_id'] ?? '';
-            $caption   = trim($_POST['content'] ?? $_POST['caption'] ?? '');
+            $caption   = trim($_POST['caption'] ?? '');
+
             if (!$taskSysId) throw new Exception('task_sys_id required');
             if (!$workSysId) throw new Exception('work_sys_id required');
             if (empty($_FILES['file'])) throw new Exception('No file uploaded');
 
-            $ctx    = _getCtx($pdo, $taskSysId, $workSysId, 'notes');
-            $upload = smbUploadFile($_FILES['file'], $ctx, $caption);
-            if (!$upload['success']) throw new Exception('Upload failed: ' . $upload['error']);
+            $file     = $_FILES['file'];
+            $origName = $file['name'];
+            $tmpPath  = $file['tmp_name'];
+            $fileSize = $file['size'];
+            $mimeType = $file['type'];
 
-            $ids  = generateV2IDs($pdo, 'task_notes');
+            if ($file['error'] !== UPLOAD_ERR_OK) throw new Exception('Upload error: ' . $file['error']);
+
+            // Determine note_type from mime
+            $noteType = 'file';
+            if (str_starts_with($mimeType, 'image/'))  $noteType = 'image';
+            elseif (str_starts_with($mimeType, 'audio/')) $noteType = 'audio';
+            elseif (str_starts_with($mimeType, 'video/')) $noteType = 'video';
+
+            // Safe filename: sys_id + original ext
+            $ids     = generateV2IDs($pdo, 'task_notes');
+            $ext     = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+            $safeName = safeFolderName(pathinfo($origName, PATHINFO_FILENAME)) . '_' . time() . '.' . $ext;
+
+            // Save locally
+            $dir      = _taskNotesDir($workSysId, $taskSysId);
+            $destPath = $dir . '/' . $safeName;
+            if (!move_uploaded_file($tmpPath, $destPath)) throw new Exception('Failed to save file locally');
+
+            // Save to SMB
+            $omv = new OMV_SMB_Manager();
+            $serverCusPath = trim(@file_get_contents(__DIR__ . '/../../server-name.txt') ?? '');
+            $wClean = safeFolderName($workSysId);
+            $tClean = safeFolderName($taskSysId);
+            $smbDir = "{$serverCusPath}_tasks/{$wClean}/{$tClean}/notes";
+            $omv->create_folder($smbDir);
+            $omv->paste_file($destPath, "{$smbDir}/{$safeName}");
+
             $meta = buildMetaData(null, $userName);
-            $stmt = $pdo->prepare("SELECT MAX(sort_order) FROM task_notes WHERE task_sys_id=?");
-            $stmt->execute([$taskSysId]);
-            $maxSort = ((int)$stmt->fetchColumn()) + 1;
+            $stmt5 = $pdo->prepare("SELECT MAX(sort_order) FROM task_notes WHERE task_sys_id=?");
+            $stmt5->execute([$taskSysId]);
+            $maxSort = ((int)$stmt5->fetchColumn()) + 1;
 
-            $pdo->prepare("INSERT INTO task_notes (uuid,sys_id,task_sys_id,work_sys_id,note_type,content,file_name,file_size,mime_type,pages_json,sort_order,created_by,meta_data) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
-                ->execute([
-                    $ids['uuid'], $ids['sys_id'],
-                    $taskSysId, $workSysId,
-                    $upload['file_type'],             // 'pdf_images' or 'image'/'audio' etc
-                    $caption ?: null,
-                    $upload['file_name'],
-                    $upload['file_size'],
-                    $upload['mime_type'],
-                    isset($upload['pages_json']) ? json_encode($upload['pages_json']) : null,
-                    $maxSort, $userName, $meta,
-                ]);
+            $pdo->prepare("
+                INSERT INTO task_notes (uuid, sys_id, task_sys_id, work_sys_id, note_type, content, file_name, file_path, file_size, mime_type, sort_order, created_by, meta_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ")->execute([
+                $ids['uuid'], $ids['sys_id'], $taskSysId, $workSysId,
+                $noteType, $caption ?: null,
+                $safeName,
+                "tasks/{$wClean}/{$tClean}/notes/{$safeName}",
+                $fileSize, $mimeType,
+                $maxSort, $userName, $meta,
+            ]);
 
             ob_clean();
-            echo json_encode(['status'=>'success','message'=>'File uploaded','sys_id'=>$ids['sys_id'],'file_url'=>_noteFileUrl($ids['sys_id']),'note_type'=>$upload['file_type'],'file_name'=>$upload['file_name']]);
+            echo json_encode([
+                'status'   => 'success',
+                'message'  => 'File uploaded',
+                'sys_id'   => $ids['sys_id'],
+                'file_url' => _taskNotesUrl($workSysId, $taskSysId, $safeName),
+                'note_type'=> $noteType,
+            ]);
             break;
-        }
 
-        case 'delete': {
-            $sysId = $body['sys_id'] ?? $body['note_sys_id'] ?? '';
+        // ── DELETE ────────────────────────────────────────────
+        case 'delete':
+            $sysId = $body['sys_id'] ?? '';
             if (!$sysId) throw new Exception('sys_id required');
-            $stmt = $pdo->prepare("SELECT * FROM task_notes WHERE sys_id=? LIMIT 1");
-            $stmt->execute([$sysId]);
-            $note = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Fetch first to get file info
+            $n = $pdo->prepare("SELECT * FROM task_notes WHERE sys_id=? LIMIT 1");
+            $n->execute([$sysId]);
+            $note = $n->fetch(PDO::FETCH_ASSOC);
+
             if ($note && $note['file_name']) {
-                $ctx = _getCtx($pdo, $note['task_sys_id'], $note['work_sys_id'], 'notes');
-                smbDeleteFile($ctx, $note['file_name']);
+                $dir      = _taskNotesDir($note['work_sys_id'], $note['task_sys_id']);
+                $filePath = $dir . '/' . $note['file_name'];
+                if (file_exists($filePath)) unlink($filePath);
+
+                // SMB delete
+                $omv = new OMV_SMB_Manager();
+                $serverCusPath = trim(@file_get_contents(__DIR__ . '/../../server-name.txt') ?? '');
+                $wClean = safeFolderName($note['work_sys_id']);
+                $tClean = safeFolderName($note['task_sys_id']);
+                $omv->delete_file("{$serverCusPath}_tasks/{$wClean}/{$tClean}/notes/{$note['file_name']}");
             }
+
             $pdo->prepare("DELETE FROM task_notes WHERE sys_id=?")->execute([$sysId]);
             ob_clean();
-            echo json_encode(['status'=>'success','message'=>'Note deleted']);
+            echo json_encode(['status' => 'success', 'message' => 'Note deleted']);
             break;
-        }
 
-        case 'reorder': {
+        // ── REORDER ───────────────────────────────────────────
+        case 'reorder':
             $items = $body['items'] ?? [];
-            if (empty($items)) throw new Exception('items required');
+            if (empty($items)) throw new Exception('items array required');
             $stmt = $pdo->prepare("UPDATE task_notes SET sort_order=? WHERE sys_id=?");
-            foreach ($items as $item) $stmt->execute([(int)$item['sort_order'], $item['sys_id']]);
+            foreach ($items as $item) {
+                $stmt->execute([(int)$item['sort_order'], $item['sys_id']]);
+            }
             ob_clean();
-            echo json_encode(['status'=>'success']);
+            echo json_encode(['status' => 'success']);
             break;
-        }
 
-        default: throw new Exception("Unknown action: '{$action}'");
+        default:
+            throw new Exception("Unknown action: '{$action}'");
     }
 
 } catch (Exception $e) {
     ob_clean();
     http_response_code(400);
-    echo json_encode(['status'=>'error','message'=>$e->getMessage()]);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

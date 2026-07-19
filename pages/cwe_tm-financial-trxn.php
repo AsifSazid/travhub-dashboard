@@ -1,4 +1,5 @@
 <?php
+// FILE PATH: pages/cwe_tm-financial-trxn.php
 // cwe_tm-financial-trnx.php (Print Fix)
 include_once('./authenticate.php');
 $ip_port = @file_get_contents('../ippath.txt');
@@ -13,6 +14,8 @@ $getClientsApi = $ip_port . "api/clients/get-client-info.php?work_id=" . urlenco
 $getTaskFinEntriesApi = $ip_port . "api/financial_entries/task-fin-entries.php?task_id=" . urlencode($taskId);
 $storeFinancialEntriesApi = $ip_port . "api/financial_entries/store.php";
 $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($taskId);
+$uploadFinFileApi = $ip_port . "api/financial_entries/upload-file.php";
+$fileExplorerApi  = $ip_port . "api/old_tasks/file-explorer.php?task_id=" . urlencode($taskId) . "&path=files";
 ?>
 
 <!DOCTYPE html>
@@ -732,10 +735,10 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                             class="px-3 sm:px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors flex items-center text-sm">
                             <i class="fas fa-print mr-2"></i> <span class="hidden xs:inline">Print</span>
                         </button>
-                        <a href="create-vendor.php"
-                            class="px-3 sm:px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center text-sm">
-                            <i class="fas fa-plus mr-2"></i> <span class="hidden xs:inline">Vendor</span>
-                        </a>
+                        <label
+                            class="px-3 sm:px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center text-sm cursor-pointer" onclick="window.print()">
+                            <i class="fas fa-print mr-2"></i> <span class="hidden xs:inline">Print</span>
+                        </label>
                     </div>
                 </div>
 
@@ -743,7 +746,22 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                     <div class="animate-pulse"><div class="h-20 sm:h-24 bg-gray-200 rounded-lg"></div></div>
                 </div>
 
-                <div id="fileAttachments" class="mb-4"></div>
+                <!-- Section 1: Task Files (file-explorer) -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-medium text-gray-500 flex items-center gap-1">
+                            <i class="fas fa-folder-open text-yellow-500"></i> Task Files
+                        </span>
+                        <label class="cursor-pointer px-2 py-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-xs flex items-center gap-1 border border-yellow-200 transition-colors">
+                            <i class="fas fa-plus text-xs"></i> Add
+                            <input type="file" id="s1FileInput" multiple class="hidden"
+                                onchange="s1UploadFiles(this.files)">
+                        </label>
+                    </div>
+                    <div id="s1FileChips" class="flex flex-wrap gap-1.5 min-h-[28px]">
+                        <span class="text-xs text-gray-400 italic">No files yet</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -824,6 +842,18 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                                 </label>
                                 <input type="date" id="client_date" value="<?php echo date('Y-m-d'); ?>"
                                     class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-paperclip mr-1"></i> Attach Files <span class="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <label class="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                                    <i class="fas fa-cloud-upload-alt text-gray-400 text-sm"></i>
+                                    <span id="clientFileLabel" class="text-xs text-gray-500 truncate">Browse or drop files</span>
+                                    <input type="file" id="clientFiles" multiple class="hidden"
+                                        onchange="document.getElementById('clientFileLabel').textContent = this.files.length > 1 ? this.files.length+' files' : (this.files[0]?.name || 'Browse or drop files')">
+                                </label>
                             </div>
 
                             <div class="grid grid-cols-2 gap-2 sm:gap-4">
@@ -927,6 +957,18 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                                 </label>
                                 <input type="date" id="vendor_date" value="<?php echo date('Y-m-d'); ?>"
                                     class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-paperclip mr-1"></i> Attach Files <span class="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <label class="flex items-center gap-2 px-3 py-2 border border-dashed border-green-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
+                                    <i class="fas fa-cloud-upload-alt text-gray-400 text-sm"></i>
+                                    <span id="vendorFileLabel" class="text-xs text-gray-500 truncate">Browse or drop files</span>
+                                    <input type="file" id="vendorFiles" multiple class="hidden"
+                                        onchange="document.getElementById('vendorFileLabel').textContent = this.files.length > 1 ? this.files.length+' files' : (this.files[0]?.name || 'Browse or drop files')">
+                                </label>
                             </div>
 
                             <div class="grid grid-cols-2 gap-2 sm:gap-4">
@@ -1056,6 +1098,17 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                     </h3>
                     <div id="recentActivity" class="space-y-2"></div>
                 </div>
+
+                <!-- Section 2: Financial Stmts Evidence -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5 no-print">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                        <span><i class="fas fa-receipt mr-2 text-indigo-500"></i> Financial Stmts Evidence</span>
+                        <button onclick="_renderFinancialFileChips()" class="text-xs text-gray-400 hover:text-gray-600"><i class="fas fa-redo-alt"></i></button>
+                    </h3>
+                    <div id="financialFileChips" class="flex flex-wrap gap-1.5">
+                        <span class="text-xs text-gray-400 italic">No files attached yet</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1090,6 +1143,9 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
         const UPDATE_FINANCIAL_ENTRY_API = "<?php echo $ip_port; ?>api/financial_entries/update.php";
         const GET_FINANCIAL_STATEMENT_API = "<?php echo $getTaskFinEntriesApi; ?>";
         const GET_TASK_API = "<?php echo $getTaskApi; ?>";
+        const UPLOAD_FIN_FILE_API = "<?php echo $uploadFinFileApi; ?>";
+        const FILE_SERVE_BASE     = "<?php echo $ip_port; ?>api/file/serve.php";
+        const FILE_EXPLORER_API   = "<?php echo $fileExplorerApi; ?>";
 
         const WORK_ID = "<?php echo $workId; ?>";
         const TASK_ID = "<?php echo $taskId; ?>";
@@ -1317,101 +1373,104 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
         }
 
         function loadTaskFiles(task) {
-            if (!task || !clientName || !currentClientId) {
-                fileAttachments.innerHTML = `
-                    <div class="text-center py-3 text-gray-500 text-sm">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                        <p>Loading files...</p>
-                    </div>
-                `;
-                return;
-            }
+        }
+
+        // ── Section 1: Task Files (file-explorer) ────────────────
+        async function s1LoadFiles() {
+            const container = document.getElementById('s1FileChips');
+            if (!container) return;
 
             try {
-                let files = [];
-                if (task.all_file_name) {
-                    try {
-                        files = JSON.parse(task.all_file_name);
-                        if (!Array.isArray(files)) files = [];
-                    } catch (e) {
-                        console.warn('Error parsing file names:', e);
-                        files = [];
-                    }
+                const res  = await fetch(FILE_EXPLORER_API + '&action=list');
+                const data = await res.json();
+                const files = (data.contents || []).filter(i => i.type === 'file');
+
+                if (!data.success || files.length === 0) {
+                    container.innerHTML = '<span class="text-xs text-gray-400 italic">No files yet</span>';
+                    return;
                 }
 
-                if (files.length > 0) {
-                    const filesHTML = files.filter(file => file).map((file) => {
-                        const fileName = file.split('/').pop();
-                        const fileExt = fileName.split('.').pop().toLowerCase();
-                        let icon = 'fas fa-file';
-                        let color = 'gray';
+                container.innerHTML = files.map(f => {
+                    const ext  = f.name.split('.').pop().toLowerCase();
+                    const icon = ['jpg','jpeg','png','gif','webp'].includes(ext) ? 'fa-file-image text-purple-500'
+                               : ext === 'pdf' ? 'fa-file-pdf text-red-500'
+                               : ['doc','docx'].includes(ext) ? 'fa-file-word text-blue-500'
+                               : 'fa-file text-gray-500';
+                    // smb_token is already a full serve URL — don't wrap it again
+                    const url  = f.smb_token || '#';
+                    return `<a href="${url}" target="_blank"
+                        class="file-chip" title="${f.name}">
+                        <i class="fas ${icon} mr-1 text-xs"></i>
+                        <span class="truncate max-w-[120px]">${f.name}</span>
+                    </a>`;
+                }).join('');
+            } catch(e) {
+                container.innerHTML = '<span class="text-xs text-red-400">Error loading files</span>';
+            }
+        }
 
-                        const iconMap = {
-                            'pdf': ['fas fa-file-pdf', 'red'],
-                            'doc': ['fas fa-file-word', 'blue'],
-                            'docx': ['fas fa-file-word', 'blue'],
-                            'xls': ['fas fa-file-excel', 'green'],
-                            'xlsx': ['fas fa-file-excel', 'green'],
-                            'jpg': ['fas fa-file-image', 'purple'],
-                            'jpeg': ['fas fa-file-image', 'purple'],
-                            'png': ['fas fa-file-image', 'purple'],
-                            'gif': ['fas fa-file-image', 'purple'],
-                            'webp': ['fas fa-file-image', 'purple'],
-                            'zip': ['fas fa-file-archive', 'yellow'],
-                            'rar': ['fas fa-file-archive', 'yellow'],
-                            '7z': ['fas fa-file-archive', 'yellow'],
-                            'txt': ['fas fa-file-alt', 'indigo'],
-                            'csv': ['fas fa-file-alt', 'indigo'],
-                            'json': ['fas fa-file-alt', 'indigo']
-                        };
-                        
-                        if (iconMap[fileExt]) {
-                            [icon, color] = iconMap[fileExt];
-                        }
-                        
-                        const cleanClientName = (clientName || '').replace(/\s+/g, '');
-                        const cleanWorkTitle = (WORK_TITLE || '').replace(/\s+/g, '_');
-                        const cleanTaskTitle = TASK_TITLE || '';
-                        
-                        const safeFilePath = `/storage/clients/${currentClientId}_${cleanClientName}/${WORK_ID}+${cleanWorkTitle}/tasks/${TASK_ID}+${cleanTaskTitle}/` + 
-                            file.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                            
-                        return `
-                            <a class="file-chip cursor-pointer hover:shadow-sm" 
-                                 href="${safeFilePath}" target="_blank"
-                                 title="${fileName}">
-                                <i class="${icon} text-${color}-500 mr-1"></i>
-                                <span class="truncate max-w-[100px] sm:max-w-[150px]">${fileName}</span>
-                            </a>
-                        `;
-                    }).join('');
-
-                    fileAttachments.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
-                            <h4 class="text-xs sm:text-sm font-medium text-gray-700">
-                                <i class="fas fa-paperclip mr-1"></i> Attached Files (${files.length})
-                            </h4>
-                        </div>
-                        <div class="flex flex-wrap gap-1 sm:gap-2">
-                            ${filesHTML}
-                        </div>
-                    `;
+        async function s1UploadFiles(files) {
+            if (!files || files.length === 0) return;
+            showNotification('Uploading...', 'info');
+            const fd = new FormData();
+            for (const f of files) fd.append('files[]', f);
+            try {
+                const url  = `<?php echo $ip_port; ?>api/old_tasks/upload-file.php?task_id=${encodeURIComponent(TASK_ID)}`;
+                const res  = await fetch(url, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('File uploaded!', 'success');
+                    s1LoadFiles();
                 } else {
-                    fileAttachments.innerHTML = `
-                        <div class="text-center py-3 text-gray-500 text-sm">
-                            <i class="fas fa-file text-2xl mb-2"></i>
-                            <p>No files attached</p>
-                        </div>
-                    `;
+                    showNotification('Upload failed: ' + (data.message || ''), 'error');
                 }
-            } catch (error) {
-                console.error('Error loading files:', error);
-                fileAttachments.innerHTML = `
-                    <div class="text-center py-3 text-red-500 text-sm">
-                        <i class="fas fa-exclamation-circle text-2xl mb-2"></i>
-                        <p>Error loading files</p>
-                    </div>
-                `;
+            } catch(e) {
+                showNotification('Upload error', 'error');
+            } finally {
+                document.getElementById('s1FileInput').value = '';
+            }
+        }
+
+        // ── Section 2: Financial entry files ─────────────────────
+        async function _renderFinancialFileChips() {
+            const container = document.getElementById('financialFileChips');
+            if (!container) return;
+
+            try {
+                const res  = await fetch(GET_FINANCIAL_STATEMENT_API);
+                const data = await res.json();
+                if (!data.success) return;
+
+                const withFiles = (data.finStmts || []).filter(t => {
+                    try { return JSON.parse(t.files_json || '[]').length > 0; } catch { return false; }
+                });
+
+                if (withFiles.length === 0) {
+                    container.innerHTML = '<span class="text-xs text-gray-400 italic">No files attached yet</span>';
+                    return;
+                }
+
+                let chips = '';
+                withFiles.forEach(t => {
+                    let files = [];
+                    try { files = JSON.parse(t.files_json || '[]'); } catch {}
+                    files.forEach((fname, i) => {
+                        const ext  = fname.split('.').pop().toLowerCase();
+                        const icon = ['jpg','jpeg','png','gif','webp'].includes(ext) ? 'fa-file-image text-purple-400'
+                                   : ext === 'pdf' ? 'fa-file-pdf text-red-400'
+                                   : 'fa-file-invoice text-indigo-400';
+                        const url  = `${FILE_SERVE_BASE}?fin_id=${t.sys_id}&page=${i}`;
+                        const label = t.purpose ? `${t.purpose} #${i+1}` : fname;
+                        chips += `<a href="${url}" target="_blank" class="file-chip" title="${label}">
+                            <i class="fas ${icon} mr-1 text-xs"></i>
+                            <span class="truncate max-w-[110px]">${label}</span>
+                        </a>`;
+                    });
+                });
+
+                container.innerHTML = chips;
+            } catch(e) {
+                container.innerHTML = '<span class="text-xs text-red-400">Error loading</span>';
             }
         }
 
@@ -1759,7 +1818,21 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                 if (result.success) {
                     showNotification(`${type} transaction recorded successfully!`, 'success');
                     addRecentActivity(data);
+
+                    // File upload if any
+                    const fileInputId = data.type === 'debit' ? 'clientFiles' : 'vendorFiles';
+                    const labelId     = data.type === 'debit' ? 'clientFileLabel' : 'vendorFileLabel';
+                    const fileInput   = document.getElementById(fileInputId);
+                    const entrySysId  = result.sys_id;
+
+                    if (entrySysId && fileInput?.files?.length > 0) {
+                        await uploadFinEntryFile(fileInput.files, entrySysId, data.type);
+                        fileInput.value = '';
+                        document.getElementById(labelId).textContent = 'Browse or drop files';
+                    }
+
                     loadFinancialData();
+                    _renderFinancialFileChips();
                 } else {
                     showNotification('Error: ' + (result.message || 'Unknown error'), 'error');
                 }
@@ -1839,9 +1912,13 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
                             <button onclick="editTransaction(${t.id})" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg mr-1">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="deleteTransaction(${t.id})" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg">
+                            <button onclick="deleteTransaction(${t.id})" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg mr-1">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            <label class="px-2 py-1 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg cursor-pointer inline-flex items-center" title="Attach file">
+                                <i class="fas fa-paperclip"></i>
+                                <input type="file" multiple class="hidden" onchange="uploadFinEntryFile(this.files, '${t.sys_id}', '${t.type}', this)">
+                            </label>
                         </td>
                     </tr>
                 `;
@@ -2181,8 +2258,33 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
             document.getElementById('previewModal').classList.add('hidden');
         }
 
-        // ============================================================
-        // INITIALIZATION
+        // ── Upload financial entry file (table 📎 + form submit) ──
+        async function uploadFinEntryFile(files, entrySysId, entryType, inputEl) {
+            if (!files || files.length === 0 || !entrySysId) return;
+
+            const entityType = entryType.toLowerCase() === 'debit' ? 'receive' : 'payment';
+            const fd = new FormData();
+            fd.append('entity_type', entityType);
+            fd.append('entity_id', entrySysId);
+            fd.append('work_sys_id', WORK_ID);
+            fd.append('task_sys_id', TASK_ID);
+            for (const f of files) fd.append('files[]', f);
+
+            try {
+                const res  = await fetch(UPLOAD_FIN_FILE_API, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('File attached!', 'success');
+                    _renderFinancialFileChips();
+                } else {
+                    showNotification('Attach failed: ' + (data.message || ''), 'error');
+                }
+            } catch (e) {
+                showNotification('Upload error', 'error');
+            } finally {
+                if (inputEl) inputEl.value = ''; // Clear so same file can be re-selected
+            }
+        }
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             loadTaskMetaData();
@@ -2190,6 +2292,8 @@ $getTaskApi = $ip_port . "api/old_tasks/task-details.php?task_id=" . urlencode($
             loadFinancialData();
             setupEventListeners();
             setupQtyRateCalc();
+            s1LoadFiles();
+            _renderFinancialFileChips();
         });
     </script>
 </body>

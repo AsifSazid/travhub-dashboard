@@ -32,7 +32,6 @@ session_start();
 require '../../server/db_connection.php';
 require '../../server/uuid_with_system_id_generator.php';
 require '../../server/generate_meta_data.php';
-require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
 require_once '../../server/live_storage.php';
 
@@ -326,14 +325,13 @@ try {
     ]);
 
     // =====================================================================
-    // STEP 6 — Store files in resolved doc_type folders (local + SMB)
+    // STEP 6 — Store files in resolved doc_type folders (SMB only, no local)
     // =====================================================================
     $storageReport = [];
     foreach ($storedFiles as $sf) {
         $docType = $sf['doc_type'];
 
-        // Local + SMB folder for this doc_type
-        $localDir = makeDir("travelers/{$travelerFolder}", $docType);
+        // SMB folder for this doc_type (no local makeDir)
         $cloudDir = makeSMBDir($cloudBase, $docType);
         $cloudDir = rtrim($cloudDir, '/');
         $cloudOk  = !str_starts_with($cloudDir, '❌');
@@ -341,10 +339,9 @@ try {
         $baseName = sanitizeFilename($sf['suggested'] !== '' ? $sf['suggested'] : pathinfo($sf['orig'], PATHINFO_FILENAME));
 
         if ($sf['ext'] === 'pdf') {
-            // PDF -> N PNGs (Imagick), original discarded
-            $pngs = pdfToPngs($sf['tmp'], $baseName, $localDir);
+            // PDF → N PNGs via Imagick, write to sys tmp, upload to SMB, delete tmp
+            $pngs = pdfToPngsToSmb($sf['tmp'], $baseName, $cloudDir, $cloudOk);
             foreach ($pngs as $png) {
-                if ($cloudOk) fileSaveinSMB($png['path'], $cloudDir, $png['name']);
                 $storageReport[] = [
                     'doc_sys_id' => $sf['doc_sys_id'],
                     'stored_as'  => $png['name'],
@@ -354,16 +351,12 @@ try {
             }
         } elseif ($sf['ext'] === 'txt') {
             $finalName = time() . '_' . $baseName . '.txt';
-            $finalPath = $localDir . '/' . $finalName;
-            copy($sf['tmp'], $finalPath);
-            if ($cloudOk) fileSaveinSMB($finalPath, $cloudDir, $finalName);
+            if ($cloudOk) fileSaveinSMB($sf['tmp'], $cloudDir, $finalName);
             $storageReport[] = ['doc_sys_id' => $sf['doc_sys_id'], 'stored_as' => $finalName, 'doc_type' => $docType, 'page' => 1];
         } else {
-            // Image: store as-is
+            // Image: upload tmp directly to SMB
             $finalName = time() . '_' . $baseName . '.' . $sf['ext'];
-            $finalPath = $localDir . '/' . $finalName;
-            copy($sf['tmp'], $finalPath);
-            if ($cloudOk) fileSaveinSMB($finalPath, $cloudDir, $finalName);
+            if ($cloudOk) fileSaveinSMB($sf['tmp'], $cloudDir, $finalName);
             $storageReport[] = ['doc_sys_id' => $sf['doc_sys_id'], 'stored_as' => $finalName, 'doc_type' => $docType, 'page' => 1];
         }
     }
@@ -431,14 +424,20 @@ function fileSaveinSMB(string $localFilePath, string $cloudFolderPath, string $f
     return true;
 }
 
-/** PDF -> per-page PNGs at 150 DPI (same approach as doc_store.php). */
-function pdfToPngs(string $pdfPath, string $baseName, string $localDir): array
+/**
+ * PDF → per-page PNGs at 150 DPI.
+ * Writes each page to sys_get_temp_dir(), uploads to SMB, deletes tmp.
+ * No permanent local storage.
+ * Returns array of ['name' => string, 'page' => int].
+ */
+function pdfToPngsToSmb(string $pdfPath, string $baseName, string $cloudDir, bool $cloudOk): array
 {
     $out = [];
     if (!extension_loaded('imagick')) {
         error_log('Imagick not loaded; cannot convert PDF: ' . $pdfPath);
         return $out;
     }
+    $omv = new OMV_SMB_Manager();
     try {
         $imagick = new Imagick();
         $imagick->setResolution(150, 150);
@@ -447,16 +446,24 @@ function pdfToPngs(string $pdfPath, string $baseName, string $localDir): array
             $page->setImageFormat('png');
             $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_ACTIVATE);
             $pngName = time() . '_' . $baseName . '_page_' . ($pageNum + 1) . '.png';
-            $pngPath = $localDir . '/' . $pngName;
-            $page->writeImage($pngPath);
-            if (file_exists($pngPath)) {
-                $out[] = ['path' => $pngPath, 'name' => $pngName, 'page' => $pageNum + 1];
+            $tmpPng  = sys_get_temp_dir() . '/' . $pngName;
+            $page->writeImage($tmpPng);
+            if (file_exists($tmpPng)) {
+                if ($cloudOk) {
+                    $dest   = rtrim($cloudDir, '/') . '/' . $pngName;
+                    $status = $omv->paste_file($tmpPng, $dest);
+                    if ($status !== true) {
+                        error_log("SMB PDF page upload failed: $dest :: $status");
+                    }
+                }
+                @unlink($tmpPng);
+                $out[] = ['name' => $pngName, 'page' => $pageNum + 1];
             }
         }
         $imagick->clear();
         $imagick->destroy();
     } catch (Exception $e) {
-        error_log('pdfToPngs error: ' . $e->getMessage());
+        error_log('pdfToPngsToSmb error: ' . $e->getMessage());
     }
     return $out;
 }

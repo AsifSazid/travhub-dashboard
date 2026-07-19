@@ -247,6 +247,7 @@ try {
     echo json_encode([
         'success'        => true,
         'message'        => ucfirst($type) . ' transaction recorded successfully',
+        'sys_id'         => $feSysId,
         'transaction_id' => $pdo->lastInsertId(),
         'uuid'           => $ids['uuid'],
         'related_type'   => $relatedType
