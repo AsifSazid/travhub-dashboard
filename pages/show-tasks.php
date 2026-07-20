@@ -81,7 +81,7 @@ $API = [
 <?php include '../elements/aside.php'; ?>
 <?php include '../elements/preview-model.php'; ?>
 
-<main id="mainContent" class="transition-all duration-300" style="padding-top:64px;padding-left:256px;">
+<main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
 
     <!-- Loading -->
     <div id="loadingState" class="text-center py-24 text-gray-400">
@@ -316,7 +316,7 @@ $API = [
                 <span id="mbFilePreviewName" class="flex-1 truncate"></span>
                 <button onclick="mbClearFile()" class="text-red-400 hover:text-red-600 flex-shrink-0"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex items-end gap-2">
+            <div class="flex items-end gap-2 w-full">
                 <!-- Attach file -->
                 <label class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="Attach file">
                     <i class="fas fa-paperclip text-gray-500 text-sm"></i>
@@ -559,7 +559,13 @@ function loadServiceTab(slug, atData) {
 
 function _loadAirTicketTab(atData) {
     document.getElementById('serviceTabArea').innerHTML = '<div id="at-tab-mount"></div>';
+
+    // আগের script tag থাকলে remove করো — duplicate IIFE আটকাতে
+    const old = document.getElementById('at-script-tag');
+    if (old) old.remove();
+
     const s = document.createElement('script');
+    s.id  = 'at-script-tag';
     s.src = 'task-tabs/tt-air-ticket.js?v=' + Date.now();
     s.onload = () => { if (typeof initAirTicketTab==='function') initAirTicketTab({ taskSysId:TASK_SYS_ID, workSysId:taskData?.work_sys_id??'', leadSysId:workData?.lead_sys_id??null, clientName:taskData?.client_name??'', workname:taskData?.workname??'', atData, api:API }); };
     s.onerror = () => { document.getElementById('serviceTabArea').innerHTML=`<div class="sc p-6 text-center text-red-400 text-sm">Air ticket module load failed.</div>`; };
@@ -647,13 +653,97 @@ function mbRenderChat(){
     setTimeout(()=>{ area.scrollTop = area.scrollHeight; }, 50);
 }
 function _mbBubble(n){
-    const d=n.meta_data?.created_by_date?.date??'';
-    const del=`<div class="mb-del" onclick="mbDel('${n.sys_id}')"><i class="fas fa-times"></i></div>`;
-    if(n.note_type==='text')return`<div class="mb-bubble mb-text">${del}<div class="whitespace-pre-line">${escHtml(n.content??'')}</div><div class="mb-time">${escHtml(d)}</div></div>`;
-    if(n.note_type==='image')return`<div class="mb-bubble mb-image">${del}<img src="${n.file_url}" alt="${escHtml(n.file_name??'')}" onclick="mbImg('${n.file_url}')">${n.content?`<div class="text-xs text-gray-500 mt-1 px-1">${escHtml(n.content)}</div>`:''}<div class="mb-time px-1">${escHtml(d)}</div></div>`;
-    if(n.note_type==='audio')return`<div class="mb-bubble mb-audio">${del}<div class="flex items-center gap-2 mb-1"><i class="fas fa-microphone text-purple-400 text-xs"></i><span class="text-xs">${escHtml(n.file_name??'')}</span></div><audio controls class="w-full h-8" src="${n.file_url}"></audio><div class="mb-time">${escHtml(d)}</div></div>`;
-    if(n.note_type==='video')return`<div class="mb-bubble mb-audio">${del}<video controls style="max-height:160px" class="w-full rounded-lg mb-1" src="${n.file_url}"></video><div class="mb-time">${escHtml(d)}</div></div>`;
-    return`<div class="mb-bubble mb-file">${del}<i class="fas fa-paperclip text-green-500 mr-2"></i><a href="${n.file_url}" target="_blank" download class="text-green-700 hover:underline text-sm truncate">${escHtml(n.file_name??'')}</a><div class="mb-time mt-1">${escHtml(d)}</div></div>`;
+    const d = n.meta_data?.created_by_date?.date ?? '';
+    const del = `<div class="mb-del" onclick="mbDel('${n.sys_id}')"><i class="fas fa-times"></i></div>`;
+    const serveBase = API.fileServe;
+ 
+    // ── Text ──────────────────────────────────────────────────
+    if (n.note_type === 'text') {
+        return `<div class="mb-bubble mb-text">${del}
+            <div class="whitespace-pre-line">${escHtml(n.content ?? '')}</div>
+            <div class="mb-time">${escHtml(d)}</div>
+        </div>`;
+    }
+ 
+    // ── PDF → PNG pages (pdf_images) ─────────────────────────
+    if (n.note_type === 'pdf_images') {
+        const pages = Array.isArray(n.pages_json) ? n.pages_json
+                    : (typeof n.pages_json === 'string' ? JSON.parse(n.pages_json || '[]') : []);
+        const pagesHtml = pages.map((_, i) => {
+            const pgUrl = `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
+            return `<div style="position:relative;margin-bottom:6px;border-radius:8px;overflow:hidden;background:#f9fafb;">
+                <img src="${pgUrl}" loading="lazy" onclick="mbImg('${pgUrl}')"
+                    style="width:100%;display:block;cursor:zoom-in;border-radius:8px;">
+                <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;">
+                    <button onclick="mbCopyPageImage('${pgUrl}')" title="Copy"
+                        style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
+                        <i class="fas fa-copy" style="font-size:.65rem;color:#4f46e5;"></i>
+                    </button>
+                    <button onclick="mbDeletePage('${escHtml(n.sys_id)}',${i})" title="Delete page"
+                        style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
+                        <i class="fas fa-trash" style="font-size:.65rem;color:#dc2626;"></i>
+                    </button>
+                </div>
+                <div style="position:absolute;bottom:4px;left:6px;font-size:.6rem;color:rgba(0,0,0,.4);font-weight:600;">P${i+1}</div>
+            </div>`;
+        }).join('');
+        return `<div class="mb-bubble mb-image" style="max-width:320px;position:relative;" id="mb-pdf-${escHtml(n.sys_id)}">${del}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:.65rem;color:#9ca3af;">
+                    <i class="fas fa-file-pdf" style="color:#f87171;margin-right:4px;"></i>
+                    ${escHtml(n.file_name ?? '')} (${pages.length} page${pages.length !== 1 ? 's' : ''})
+                </div>
+                <button onclick="mbSharePdf('${escHtml(n.sys_id)}','${escHtml(n.file_name??'document.pdf')}')"
+                    style="padding:2px 8px;font-size:.65rem;font-weight:600;background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:3px;">
+                    <i class="fas fa-share-alt" style="font-size:.6rem;"></i>Share
+                </button>
+            </div>
+            ${pagesHtml}
+            ${n.content ? `<div style="font-size:.75rem;color:#6b7280;margin-top:4px;">${escHtml(n.content)}</div>` : ''}
+            <div class="mb-time">${escHtml(d)}</div>
+        </div>`;
+    }
+ 
+    // ── Image ─────────────────────────────────────────────────
+    if (n.note_type === 'image') {
+        const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
+        return `<div class="mb-bubble mb-image">${del}
+            <img src="${url}" alt="${escHtml(n.file_name ?? '')}" onclick="mbImg('${url}')"
+                style="width:100%;max-height:200px;object-fit:contain;border-radius:7px;cursor:pointer;display:block;background:#f9fafb;">
+            ${n.content ? `<div class="text-xs text-gray-500 mt-1 px-1">${escHtml(n.content)}</div>` : ''}
+            <div class="mb-time px-1">${escHtml(d)}</div>
+        </div>`;
+    }
+ 
+    // ── Audio ─────────────────────────────────────────────────
+    if (n.note_type === 'audio') {
+        const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
+        return `<div class="mb-bubble mb-audio" style="min-width:280px;max-width:360px;">${del}
+            <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-microphone text-purple-400 text-xs"></i>
+                <span class="text-xs">${escHtml(n.file_name ?? '')}</span>
+            </div>
+            <audio controls class="w-full h-8" src="${url}"></audio>
+            <div class="mb-time">${escHtml(d)}</div>
+        </div>`;
+    }
+ 
+    // ── Video ─────────────────────────────────────────────────
+    if (n.note_type === 'video') {
+        const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
+        return `<div class="mb-bubble mb-audio">${del}
+            <video controls style="max-height:160px" class="w-full rounded-lg mb-1" src="${url}"></video>
+            <div class="mb-time">${escHtml(d)}</div>
+        </div>`;
+    }
+ 
+    // ── File (default) ────────────────────────────────────────
+    const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
+    return `<div class="mb-bubble mb-file">${del}
+        <i class="fas fa-paperclip text-green-500 mr-2"></i>
+        <a href="${url}" target="_blank" download class="text-green-700 hover:underline text-sm truncate">${escHtml(n.file_name ?? '')}</a>
+        <div class="mb-time mt-1">${escHtml(d)}</div>
+    </div>`;
 }
 window.mbImg=function(url){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';o.innerHTML=`<img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:8px;">`;o.onclick=()=>o.remove();document.body.appendChild(o);};
 window.mbFileSelected=function(i){if(!i.files[0])return;_mbFile=i.files[0];document.getElementById('mbFilePreview').classList.remove('hidden');document.getElementById('mbFilePreviewName').textContent=_mbFile.name;};
@@ -672,6 +762,57 @@ window.mbSend=async function(){
 };
 window.mbDel=async function(id){if(!confirm('Delete?'))return;try{const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',sys_id:id})});const j=await r.json();if(j.status==='success')await mbLoadNotes();else showToast('error',j.message);}catch{showToast('error','Network error');}};
 
+window.mbDeletePage = async function(noteSysId, pageIndex) {
+    if (!confirm(`Delete page ${pageIndex + 1}?`)) return;
+    try {
+        const r = await fetch(API.notes, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_page', note_sys_id: noteSysId, page_index: pageIndex }),
+        });
+        const j = await r.json();
+        if (j.status === 'success') { showToast('success', 'Page deleted'); await mbLoadNotes(); }
+        else showToast('error', j.message || 'Delete failed');
+    } catch { showToast('error', 'Delete failed'); }
+};
+
+window.mbCopyPageImage = async function(pgUrl) {
+    try {
+        const res  = await fetch(pgUrl, { credentials: 'include' });
+        const blob = await res.blob();
+        window.focus();
+        await new Promise(r => setTimeout(r, 100));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('success', 'Page copied!');
+    } catch(e) {
+        showToast('error', 'Copy failed');
+        console.error(e);
+    }
+};
+ 
+window.mbSharePdf = async function(noteSysId, fileName) {
+    const pdfUrl = `${API.fileServe}?note_id=${encodeURIComponent(noteSysId)}&dl=1`;
+    try {
+        const res  = await fetch(pdfUrl, { credentials: 'include' });
+        if (!res.ok) { showToast('error', 'File not available'); return; }
+        const blob = await res.blob();
+        const file = new File([blob], fileName, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: fileName });
+        } else {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            showToast('success', 'Downloaded!');
+        }
+    } catch(e) {
+        if (e.name !== 'AbortError') { showToast('error', 'Share failed'); console.error(e); }
+    }
+};
 // ════════════════════════════════════════════════════════════
 // AI
 // ════════════════════════════════════════════════════════════
@@ -683,16 +824,24 @@ async function aiGenerate(){
     btn.innerHTML= '<i class="fas fa-spinner fa-spin mr-1.5"></i>Generating…';
     if (status) status.classList.remove('hidden');
     try {
-        const r=await fetch(API.aiMindboard,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_sys_id:TASK_SYS_ID})});
-        const j=await r.json();
+        const r = await fetch(API.aiMindboard, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                task_sys_id: TASK_SYS_ID,
+                notes: _mbNotes.filter(n => n.note_type === 'text').map(n => n.content).filter(Boolean),
+            })
+        });
+        const j = await r.json();
         const board   = document.getElementById('aiPlanningBoard');
         const content = document.getElementById('aiPlanningContent');
         if (board && content) {
-            content.innerHTML = j.status==='success' ? j.html : `<p class="text-red-400">${escHtml(j.message??'Failed')}</p>`;
+            content.innerHTML = j.status === 'success'
+                ? j.html
+                : `<p class="text-red-400">${escHtml(j.message ?? 'Failed')}</p>`;
             board.classList.remove('hidden');
         }
         closeModal('aiModal');
-        // Open mind board modal to show result
         openMindBoardModal();
     } catch {
         const content = document.getElementById('aiPlanningContent');
@@ -702,7 +851,6 @@ async function aiGenerate(){
     btn.innerHTML= '<i class="fas fa-wand-magic-sparkles mr-1.5"></i>Generate Briefing';
     if (status) status.classList.add('hidden');
 }
-
 // ════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════
 // TRAVELERS

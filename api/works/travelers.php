@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { ob_clean(); http_response_code(2
 
 require_once '../../server/db_connection.php';
 require_once '../../server/generate_meta_data.php';
+require_once '../../server/smb_upload_handler.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -80,7 +81,11 @@ try {
             $ordered = [];
             foreach ($refs as $ref) {
                 foreach ($travelers as $t) {
-                    if ($t['sys_id'] === $ref['traveler_sys_id']) { $ordered[] = $t; break; }
+                    if ($t['sys_id'] === $ref['traveler_sys_id']) {
+                        $t['passport_token'] = !empty($t['smb_path']) ? smbFileUrl($t['smb_path']) : null;
+                        $ordered[] = $t;
+                        break;
+                    }
                 }
             }
 

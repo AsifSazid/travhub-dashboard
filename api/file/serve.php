@@ -59,14 +59,33 @@ try {
 function _serveNote(string $noteId, bool $dl): void
 {
     global $pdo;
+    // tasks + works (current) — client info JSON column এ
     $stmt = $pdo->prepare("
-        SELECT n.*, t.client_sys_id, t.client_name
+        SELECT n.*,
+               JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')) AS client_sys_id,
+               JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name'))   AS client_name
         FROM task_notes n
         LEFT JOIN tasks t ON t.sys_id = n.task_sys_id
+        LEFT JOIN works w ON w.sys_id = t.work_sys_id
         WHERE n.sys_id = ? LIMIT 1
     ");
     $stmt->execute([$noteId]);
     $note = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // old_tasks + com_works (legacy) — আলাদা column আছে
+    if ($note && empty($note['client_sys_id'])) {
+        $stmt2 = $pdo->prepare("
+            SELECT n.*, t.client_sys_id, t.client_name
+            FROM task_notes n
+            LEFT JOIN old_tasks t ON t.sys_id = n.task_sys_id
+            WHERE n.sys_id = ? LIMIT 1
+        ");
+        $stmt2->execute([$noteId]);
+        $note2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+        if ($note2 && !empty($note2['client_sys_id'])) {
+            $note = $note2;
+        }
+    }
 
     if (!$note || !$note['file_name']) {
         ob_clean(); http_response_code(404); echo 'File not found'; return;
@@ -80,9 +99,19 @@ function _serveNote(string $noteId, bool $dl): void
         'module'        => 'notes',
     ];
 
-    // PDF pages
-    if ($note['note_type'] === 'pdf_images' && $note['pages_json']) {
-        $pages   = json_decode($note['pages_json'], true) ?? [];
+    // PDF pages — dl=1 হলে original PDF serve করো, নইলে PNG page serve করো
+    if ($note['note_type'] === 'pdf_images') {
+        if ($dl && $note['file_name']) {
+            // Download mode — original PDF serve করো
+            header('Content-Disposition: attachment; filename="' . $note['file_name'] . '"');
+            ob_end_clean();
+            if (!smbServeFile($ctx, $note['file_name'], 'application/pdf')) {
+                http_response_code(404); echo 'File not available';
+            }
+            return;
+        }
+        // View mode — PNG page serve করো
+        $pages   = json_decode($note['pages_json'] ?? '[]', true) ?? [];
         $pageIdx = (int)($_GET['page'] ?? 0);
         $pgFile  = $pages[$pageIdx] ?? ($pages[0] ?? null);
         if (!$pgFile) { ob_clean(); http_response_code(404); echo 'Page not found'; return; }

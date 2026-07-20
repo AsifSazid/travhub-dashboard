@@ -1,4 +1,5 @@
 <?php
+// elements/aside.php
 // Get current page file name
 $currentPage = basename($_SERVER['PHP_SELF']);
 

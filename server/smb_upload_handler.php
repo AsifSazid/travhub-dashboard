@@ -291,8 +291,8 @@ function smbServeFile(array $ctx, string $fileName, string $mimeType = 'applicat
 // Use this to generate serve URLs for financial/file-explorer files
 // Usage:
 //   $url = smbFileUrl('dev_clients/THR-CL.../WK-001/TK-002/financial/doc.pdf');
-//   <a href="<?= $url ?>">View</a>
-//   <a href="<?= $url ?>&dl=1">Download</a>
+//   echo '<a href="' . $url . '">View</a>';
+//   echo '<a href="' . $url . '&dl=1">Download</a>';
 function smbFileUrl(string $smbPath, bool $download = false): string {
     $ipPort = trim(@file_get_contents(__DIR__ . '/../ippath.txt') ?? '');
     $base   = rtrim($ipPort, '/') . '/api/file/serve.php?smb_token=';

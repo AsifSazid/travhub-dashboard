@@ -132,33 +132,53 @@ function _renderMindboard() {
 
     <!-- Input bar -->
     <div style="flex-shrink:0;border-top:1px solid #f1f5f9;background:#fff;padding:10px 12px;">
+        <!-- STT Panel -->
+        <div id="at-stt-panel" style="display:none;margin-bottom:8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <span id="at-stt-status" style="font-size:.75rem;color:#4f46e5;font-weight:600;">Ready</span>
+                <select id="at-stt-lang" style="font-size:.72rem;border:1px solid #c7d2fe;border-radius:6px;padding:2px 6px;background:#fff;color:#374151;">
+                    <option value="bn-BD">বাংলা</option>
+                    <option value="en-US">English</option>
+                </select>
+            </div>
+            <div id="at-stt-preview" contenteditable="true" style="min-height:36px;background:#fff;border:1px solid #e0e7ff;border-radius:8px;padding:6px 10px;font-size:.82rem;color:#374151;margin-bottom:6px;white-space:pre-wrap;"></div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <button id="at-stt-start" onclick="atSttStart()" style="flex:1;padding:5px;font-size:.72rem;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-play"></i> Start</button>
+                <button id="at-stt-pause" onclick="atSttPause()" disabled style="flex:1;padding:5px;font-size:.72rem;background:#f3f4f6;color:#9ca3af;border:none;border-radius:8px;cursor:pointer;font-weight:600;">⏸ Pause</button>
+                <button id="at-stt-stop" onclick="atSttStop()" disabled style="flex:1;padding:5px;font-size:.72rem;background:#f3f4f6;color:#9ca3af;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-stop"></i> Stop</button>
+            </div>
+            <button onclick="atSttPush()" style="width:100%;padding:5px;font-size:.72rem;background:#059669;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-arrow-down"></i> Push to Note</button>
+        </div>
+        <!-- Multi-file preview -->
+        <div id="at-multi-preview" style="display:none;margin-bottom:6px;flex-wrap:wrap;gap:4px;"></div>
         <!-- File preview chip -->
         <div id="at-file-preview" class="hidden mb-2 bg-indigo-50 rounded-lg px-3 py-1.5 text-xs text-indigo-600 flex items-center gap-2">
             <i class="fas fa-paperclip flex-shrink-0"></i>
             <span id="at-file-preview-name" class="flex-1 truncate"></span>
             <button onclick="atClearFile()" class="text-red-400 hover:text-red-600 flex-shrink-0"><i class="fas fa-times"></i></button>
         </div>
-        <div class="flex items-end gap-2">
-            <label class="w-8 h-8 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="Image">
-                <i class="fas fa-image text-blue-500 text-xs"></i>
-                <input type="file" class="hidden" accept="image/*" onchange="atFileSelected(this)">
+        <div class="flex items-end gap-1.5">
+            <button onclick="atSttToggle()" title="Voice to Text" style="width:32px;height:32px;background:#eef2ff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-keyboard" style="color:#4f46e5;font-size:.75rem;"></i>
+            </button>
+            <button id="at-rec-btn" onclick="atRecToggle()" title="Record Audio" style="width:32px;height:32px;background:#fdf2f8;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-microphone" style="color:#db2777;font-size:.75rem;"></i>
+            </button>
+            <label style="width:32px;height:32px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;" title="Images">
+                <i class="fas fa-image" style="color:#3b82f6;font-size:.75rem;"></i>
+                <input type="file" class="hidden" accept="image/*" multiple onchange="atFilesSelected(this)">
             </label>
-            <label class="w-8 h-8 bg-purple-50 hover:bg-purple-100 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="Audio">
-                <i class="fas fa-microphone text-purple-500 text-xs"></i>
-                <input type="file" class="hidden" accept="audio/*" onchange="atFileSelected(this)">
-            </label>
-            <label class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="File">
-                <i class="fas fa-paperclip text-gray-500 text-xs"></i>
-                <input type="file" class="hidden" onchange="atFileSelected(this)">
+            <label style="width:32px;height:32px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;" title="Files">
+                <i class="fas fa-paperclip" style="color:#6b7280;font-size:.75rem;"></i>
+                <input type="file" class="hidden" multiple onchange="atFilesSelected(this)">
             </label>
             <textarea id="at-note-text" rows="1"
-                placeholder="Write a note… (Enter to send, Shift+Enter for new line) | Paste image (Ctrl+V) | Drop files"
+                placeholder="Write a note… (Enter to send)"
                 style="flex:1;resize:none;border:1.5px solid #e5e7eb;border-radius:20px;padding:8px 14px;font-size:.83rem;outline:none;max-height:80px;overflow-y:auto;transition:border .15s;"
-                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();atAddTextNote();}"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();atSendNote();}"
                 oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-            <button onclick="atAddTextNote()"
-                class="w-9 h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center flex-shrink-0 transition">
-                <i class="fas fa-paper-plane text-sm"></i>
+            <button onclick="atSendNote()" style="width:36px;height:36px;background:#4f46e5;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-paper-plane" style="color:#fff;font-size:.82rem;"></i>
             </button>
         </div>
     </div>`;
@@ -206,30 +226,162 @@ function _renderMindboard() {
         });
     }
 
-    // ── Close menus on outside click ──────────────────────────
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.at-menu-dropdown') && !e.target.closest('.at-menu-btn')) {
-            document.querySelectorAll('.at-menu-dropdown').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
-
+    // ── Close menus — handled by _attachMenuDelegation IIFE ──
     atLoadNotes();
 }
 
 // ── File select handler ──────────────────────────────────────
 let _atPendingFile = null;
-window.atFileSelected = function(input) {
-    if (!input.files[0]) return;
-    _atPendingFile = input.files[0];
-    document.getElementById('at-file-preview').classList.remove('hidden');
-    document.getElementById('at-file-preview-name').textContent = _atPendingFile.name;
+// Multi-file selection
+let _atPendingFiles = [];
+window.atFilesSelected = function(input) {
+    if (!input.files.length) return;
+    _atPendingFiles = Array.from(input.files);
+    const preview = document.getElementById('at-multi-preview');
+    preview.style.display = 'flex';
+    preview.innerHTML = _atPendingFiles.map(f =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;border-radius:20px;padding:2px 8px;font-size:.72rem;color:#374151;"><i class="fas fa-file" style="font-size:.65rem;"></i>${f.name.length>20?f.name.slice(0,18)+'…':f.name}</span>`
+    ).join('');
     input.value = '';
 };
+
+// Legacy single-file support
+window.atFileSelected = function(input) {
+    if (!input.files[0]) return;
+    atFilesSelected(input);
+};
+
 window.atClearFile = function() {
-    _atPendingFile = null;
+    _atPendingFiles = [];
     document.getElementById('at-file-preview').classList.add('hidden');
+    const mp = document.getElementById('at-multi-preview');
+    if (mp) { mp.style.display = 'none'; mp.innerHTML = ''; }
+};
+
+// atSendNote — unified send (text or files)
+window.atSendNote = async function() {
+    if (_atPendingFiles.length > 0) {
+        // Upload all pending files
+        const files = [..._atPendingFiles];
+        atClearFile();
+        for (const file of files) {
+            const fd = new FormData();
+            fd.append('action', 'upload');
+            fd.append('task_sys_id', _cfg.taskSysId);
+            fd.append('work_sys_id', _cfg.workSysId ?? '');
+            fd.append('file', file);
+            try {
+                const res = await fetch(_cfg.api.notes, { method: 'POST', body: fd });
+                await res.json();
+            } catch(e) { console.error('File upload error:', e); }
+        }
+        await atLoadNotes();
+        return;
+    }
+    // Text note
+    atAddTextNote();
+};
+
+// ── Voice Recording ──────────────────────────────────────────
+let _atRecorder = null, _atRecChunks = [], _atRecording = false;
+window.atRecToggle = async function() {
+    if (_atRecording) {
+        _atRecorder?.stop();
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _atRecChunks = [];
+        _atRecorder = new MediaRecorder(stream);
+        _atRecorder.ondataavailable = e => { if (e.data.size > 0) _atRecChunks.push(e.data); };
+        _atRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(_atRecChunks, { type: 'audio/webm' });
+            const btn = document.getElementById('at-rec-btn');
+            if (btn) { btn.style.background = '#fdf2f8'; btn.innerHTML = '<i class="fas fa-microphone" style="color:#db2777;font-size:.75rem;"></i>'; }
+            _atRecording = false;
+            // Upload
+            const fd = new FormData();
+            fd.append('action', 'upload');
+            fd.append('task_sys_id', _cfg.taskSysId);
+            fd.append('work_sys_id', _cfg.workSysId ?? '');
+            fd.append('file', blob, 'voice_' + Date.now() + '.webm');
+            try {
+                const res = await fetch(_cfg.api.notes, { method: 'POST', body: fd });
+                const j = await res.json();
+                if (j.status === 'success') await atLoadNotes();
+            } catch(e) { console.error('Voice upload error:', e); }
+        };
+        _atRecorder.start();
+        _atRecording = true;
+        const btn = document.getElementById('at-rec-btn');
+        if (btn) { btn.style.background = '#fee2e2'; btn.innerHTML = '<i class="fas fa-stop" style="color:#dc2626;font-size:.75rem;"></i>'; }
+    } catch(e) {
+        console.error('Mic error:', e);
+        alert('Microphone access denied');
+    }
+};
+
+// ── STT Module ───────────────────────────────────────────────
+let _atSttRec = null, _atSttFinal = '', _atSttActive = false, _atSttPaused = false;
+window.atSttToggle = function() {
+    const p = document.getElementById('at-stt-panel');
+    if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+};
+window.atSttStart = function() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) { alert('Use Chrome for voice input'); return; }
+    if (!_atSttRec) {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        _atSttRec = new SR();
+        _atSttRec.continuous = true; _atSttRec.interimResults = true;
+        _atSttRec.onresult = e => {
+            let interim = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) _atSttFinal += e.results[i][0].transcript + ' ';
+                else interim += e.results[i][0].transcript;
+            }
+            const el = document.getElementById('at-stt-preview');
+            if (el) el.innerText = _atSttFinal + interim;
+        };
+        _atSttRec.onend = () => { if (_atSttActive && !_atSttPaused) { _atSttRec.lang = document.getElementById('at-stt-lang')?.value || 'bn-BD'; _atSttRec.start(); } };
+    }
+    _atSttFinal = ''; _atSttActive = true; _atSttPaused = false;
+    _atSttRec.lang = document.getElementById('at-stt-lang')?.value || 'bn-BD';
+    _atSttRec.start();
+    const el = document.getElementById('at-stt-preview'); if (el) el.innerText = '';
+    document.getElementById('at-stt-start')?.setAttribute('disabled', true);
+    document.getElementById('at-stt-pause')?.removeAttribute('disabled');
+    document.getElementById('at-stt-stop')?.removeAttribute('disabled');
+    const s = document.getElementById('at-stt-status'); if (s) s.textContent = '🔴 Recording...';
+};
+window.atSttPause = function() {
+    const btn = document.getElementById('at-stt-pause');
+    const s = document.getElementById('at-stt-status');
+    if (!_atSttPaused) {
+        _atSttPaused = true; _atSttRec?.stop();
+        if (btn) btn.textContent = '▶ Resume';
+        if (s) s.textContent = '⏸ Paused';
+    } else {
+        _atSttPaused = false; _atSttRec.lang = document.getElementById('at-stt-lang')?.value || 'bn-BD'; _atSttRec?.start();
+        if (btn) btn.textContent = '⏸ Pause';
+        if (s) s.textContent = '🔴 Recording...';
+    }
+};
+window.atSttStop = function() {
+    _atSttActive = false; _atSttPaused = false; _atSttRec?.stop();
+    document.getElementById('at-stt-start')?.removeAttribute('disabled');
+    document.getElementById('at-stt-pause')?.setAttribute('disabled', true);
+    document.getElementById('at-stt-stop')?.setAttribute('disabled', true);
+    const btn = document.getElementById('at-stt-pause'); if (btn) btn.textContent = '⏸ Pause';
+    const s = document.getElementById('at-stt-status'); if (s) s.textContent = '✅ Done';
+};
+window.atSttPush = function() {
+    const txt = (_atSttFinal || document.getElementById('at-stt-preview')?.innerText || '').trim();
+    if (!txt) return;
+    const ta = document.getElementById('at-note-text');
+    if (ta) ta.value = (ta.value ? ta.value + ' ' : '') + txt;
+    document.getElementById('at-stt-panel').style.display = 'none';
+    _atSttFinal = '';
 };
 
 // ── Load notes ────────────────────────────────────────────────
@@ -266,40 +418,34 @@ function _noteBubble(n) {
     const dateStr = n.meta_data?.created_by_date?.date ?? '';
     const sysId = _e(n.sys_id);
     const content = n.content ?? '';
-    const fileUrl = n.file_url ?? '';
+    const fileUrl = n.serve_url ?? n.file_url ?? '';
     const fileName = n.file_name ?? '';
 
     // ── Menu HTML ──────────────────────────────────────────────
-    function menuHTML(showCopy = true, showDownload = false) {
+    function menuHTML() {
+        const itemStyle = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
+        const dangerStyle = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#dc2626;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
         let items = '';
-        if (showCopy) {
-            if (n.note_type === 'text') {
-                // Text → copy text content
-                const encodedText = encodeURIComponent(content);
-                items += `<button onclick="atCopyText('${encodedText}')" class="at-menu-item">
-                    <i class="fas fa-copy"></i> Copy Text
-                </button>`;
-            } else if (n.note_type === 'image') {
-                // Image → copy actual image to clipboard
-                items += `<button onclick="atCopyImage('${fileUrl}')" class="at-menu-item">
-                    <i class="fas fa-image"></i> Copy Image
-                </button>`;
-            } else {
-                // Others → copy link
-                const encodedUrl = encodeURIComponent(fileUrl);
-                items += `<button onclick="atCopyText('${encodedUrl}')" class="at-menu-item">
-                    <i class="fas fa-link"></i> Copy Link
-                </button>`;
-            }
+
+        if (n.note_type === 'text') {
+            const enc = encodeURIComponent(content);
+            items += `<button onclick="atCopyText('${enc}')" style="${itemStyle}"><i class="fas fa-copy" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Copy</button>`;
+
+        } else if (n.note_type === 'image') {
+            items += `<button onclick="atCopyImage('${fileUrl}')" style="${itemStyle}"><i class="fas fa-copy" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Copy Image</button>`;
+            items += `<button onclick="atShareFile('${fileUrl}','${_e(fileName)}','image/jpeg')" style="${itemStyle}"><i class="fas fa-share-alt" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Share</button>`;
+
+        } else if (n.note_type === 'pdf_images') {
+            // Share button আলাদাভাবে bubble এ আছে — 3-dot এ শুধু Delete
+
+        } else if (n.note_type === 'audio') {
+            items += `<button onclick="atShareFile('${fileUrl}','${_e(fileName)}','audio/webm')" style="${itemStyle}"><i class="fas fa-share-alt" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Share</button>`;
+
+        } else {
+            items += `<button onclick="atShareFile('${fileUrl}','${_e(fileName)}','')" style="${itemStyle}"><i class="fas fa-share-alt" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Share</button>`;
         }
-        if (showDownload) {
-            items += `<a href="${fileUrl}" download="${_e(fileName)}" class="at-menu-item">
-                <i class="fas fa-download"></i> Download
-            </a>`;
-        }
-        items += `<button onclick="atDeleteNote('${sysId}')" class="at-menu-item danger">
-            <i class="fas fa-trash"></i> Delete
-        </button>`;
+
+        items += `<button onclick="atDeleteNote('${sysId}')" style="${dangerStyle}"><i class="fas fa-trash" style="width:16px;font-size:.75rem;color:#f87171;"></i>Delete</button>`;
         return `<div class="at-menu-dropdown" id="at-menu-${sysId}">${items}</div>`;
     }
 
@@ -324,9 +470,9 @@ function _noteBubble(n) {
             <div class="text-sm text-gray-700 whitespace-pre-line" style="word-wrap:break-word;">${_e(content)}</div>
             <div class="flex items-center justify-between mt-1.5">
                 <span class="text-[10px] text-gray-300">${_e(dateStr)}</span>
-                <div style="position:relative;z-index:100;">
-                    <button ${toggleMenu} class="at-menu-btn" style="position:relative;z-index:101;"><i class="fas fa-ellipsis-v"></i></button>
-                    ${menuHTML(true, false)}
+                <div style="position:relative;">
+                    <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+                    ${menuHTML()}
                 </div>
             </div>
         </div>`;
@@ -336,18 +482,43 @@ function _noteBubble(n) {
     if (n.note_type === 'pdf_images') {
         const pagesRaw = n.pages_json ?? [];
         const pages = Array.isArray(pagesRaw) ? pagesRaw : (typeof pagesRaw === 'string' ? JSON.parse(pagesRaw) : []);
+        const serveBase = _cfg.api.fileServe ?? _cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php');
+
         const pagesHtml = pages.map((pg, i) => {
-            const pgUrl = (_cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php'))
-                        + `?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
-            return `<img src="${pgUrl}" loading="lazy" onclick="atViewImg('${pgUrl}')"
-                style="width:100%;border-radius:6px;cursor:zoom-in;display:block;background:#f9fafb;margin-bottom:4px;">`;
+            const pgUrl = `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
+            return `<div style="position:relative;margin-bottom:6px;border-radius:8px;overflow:hidden;background:#f9fafb;">
+                <img src="${pgUrl}" loading="lazy" onclick="atViewImg('${pgUrl}')"
+                    style="width:100%;display:block;cursor:zoom-in;border-radius:8px;">
+                <!-- per-page actions -->
+                <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;">
+                    <button onclick="atCopyPageImage('${pgUrl}')" title="Copy"
+                        style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
+                        <i class="fas fa-copy" style="font-size:.65rem;color:#4f46e5;"></i>
+                    </button>
+                    <button onclick="atDeletePage('${_e(n.sys_id)}',${i})" title="Delete page"
+                        style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
+                        <i class="fas fa-trash" style="font-size:.65rem;color:#dc2626;"></i>
+                    </button>
+                </div>
+                <div style="position:absolute;bottom:4px;left:6px;font-size:.6rem;color:rgba(0,0,0,.4);font-weight:600;">P${i+1}</div>
+            </div>`;
         }).join('');
-        return `<div class="at-note-bubble at-note-image" style="position:relative;align-self:flex-start;max-width:780px;">
+
+        return `<div class="at-note-bubble at-note-image" style="position:relative;align-self:flex-start;max-width:400px;" id="pdf-note-${_e(n.sys_id)}">
             <div class="flex items-center justify-between mb-1.5">
-                <div class="text-[10px] text-gray-400"><i class="fas fa-file-pdf text-red-400 mr-1"></i>${_e(n.file_name??'')} (${pages.length} page${pages.length!==1?'s':''})</div>
-                <div style="position:relative;z-index:100;">
-                    <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
-                    ${menuHTML(false, false)}
+                <div class="text-[10px] text-gray-400">
+                    <i class="fas fa-file-pdf text-red-400 mr-1"></i>
+                    ${_e(n.file_name??'')} (${pages.length} page${pages.length!==1?'s':''})
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <button onclick="atSharePdfPages('${_e(n.sys_id)}')" title="Share as PDF"
+                        style="padding:3px 8px;font-size:.68rem;font-weight:600;background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                        <i class="fas fa-share-alt" style="font-size:.6rem;"></i>Share
+                    </button>
+                    <div style="position:relative;">
+                        <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+                        ${menuHTML()}
+                    </div>
                 </div>
             </div>
             ${pagesHtml}
@@ -362,9 +533,9 @@ function _noteBubble(n) {
             ${content ? `<div class="text-xs text-gray-500 mt-1 px-1">${_e(content)}</div>` : ''}
             <div class="flex items-center justify-between mt-1">
                 <span class="text-[10px] text-gray-300">${_e(dateStr)}</span>
-                <div style="position:relative;z-index:100;">
-                    <button ${toggleMenu} class="at-menu-btn" style="position:relative;z-index:101;"><i class="fas fa-ellipsis-v"></i></button>
-                    ${menuHTML(true, true)}
+                <div style="position:relative;">
+                    <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+                    ${menuHTML()}
                 </div>
             </div>
         </div>`;
@@ -372,15 +543,15 @@ function _noteBubble(n) {
 
     // ── Audio Note ─────────────────────────────────────────────
     if (n.note_type === 'audio') {
-        return `<div class="at-note-bubble at-note-audio" style="align-self:flex-start;max-width:85%;position:relative;">
+        return `<div class="at-note-bubble at-note-audio" style="align-self:flex-start;min-width:380px;max-width:720px;position:relative;">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-microphone text-purple-400 text-xs"></i>
                     <span class="text-xs text-gray-600">${_e(fileName)}</span>
                 </div>
-                <div style="position:relative;z-index:100;">
-                    <button ${toggleMenu} class="at-menu-btn" style="position:relative;z-index:101;"><i class="fas fa-ellipsis-v"></i></button>
-                    ${menuHTML(true, true)}
+                <div style="position:relative;">
+                    <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+                    ${menuHTML()}
                 </div>
             </div>
             <audio controls class="w-full mt-1" style="height:32px;" src="${fileUrl}"></audio>
@@ -396,7 +567,7 @@ function _noteBubble(n) {
                 <button ${toggleMenu} class="at-menu-btn" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;z-index:102;">
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
-                ${menuHTML(true, true)}
+                ${menuHTML()}
             </div>
             <div class="text-[10px] text-gray-300 mt-0.5">${_e(dateStr)}</div>
         </div>`;
@@ -407,9 +578,9 @@ function _noteBubble(n) {
         <i class="fas fa-paperclip text-green-500 flex-shrink-0"></i>
         <a href="${fileUrl}" target="_blank" class="text-sm text-green-700 hover:underline truncate" style="max-width:180px;">${_e(fileName)}</a>
         <span class="text-[10px] text-gray-300 ml-auto">${_e(dateStr)}</span>
-        <div style="position:relative;z-index:100;">
-            <button ${toggleMenu} class="at-menu-btn" style="position:relative;z-index:101;"><i class="fas fa-ellipsis-v"></i></button>
-            ${menuHTML(true, true)}
+        <div style="position:relative;">
+            <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+            ${menuHTML()}
         </div>
     </div>`;
 }
@@ -418,18 +589,20 @@ function _noteBubble(n) {
 window.atCopyText = function(encodedText) {
     try {
         const text = decodeURIComponent(encodedText);
-        navigator.clipboard.writeText(text).then(() => {
-            atT('success', 'Copied!');
-        }).catch(() => {
-            // Fallback method
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            atT('success', 'Copied!');
-        });
+        window.focus();
+        setTimeout(() => {
+            navigator.clipboard.writeText(text).then(() => {
+                atT('success', 'Copied!');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                atT('success', 'Copied!');
+            });
+        }, 100);
     } catch(e) {
         atT('error', 'Copy failed');
         console.error(e);
@@ -439,12 +612,10 @@ window.atCopyText = function(encodedText) {
 // ── Copy Image to Clipboard ───────────────────────────────────
 window.atCopyImage = async function(url) {
     try {
-        const res  = await fetch(url);
+        const res  = await fetch(url, { credentials: 'include' });
         const blob = await res.blob();
-        // Ensure it's png for clipboard API
         let finalBlob = blob;
         if (!blob.type.includes('png')) {
-            // Convert to png via canvas
             const img    = new Image();
             img.src      = URL.createObjectURL(blob);
             await new Promise(r => { img.onload = r; });
@@ -455,20 +626,109 @@ window.atCopyImage = async function(url) {
             finalBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
             URL.revokeObjectURL(img.src);
         }
+        // floating menu click এ focus চলে যায় — window focus হওয়ার পর copy করি
+        window.focus();
+        await new Promise(r => setTimeout(r, 100));
         await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': finalBlob })
         ]);
         atT('success', 'Image copied!');
     } catch(e) {
-        // Fallback: copy URL
-        navigator.clipboard.writeText(url).then(() => atT('success', 'Image URL copied!'));
+        if (e.name === 'NotAllowedError') {
+            atT('error', 'Copy failed — please click on the page first');
+        } else {
+            atT('error', 'Copy failed');
+        }
         console.error('Image copy failed:', e);
     }
 };
 
-// ── Event delegation for data-menu-toggle ─────────────────────
+// ── Delete single PDF page ────────────────────────────────────
+window.atDeletePage = async function(noteSysId, pageIndex) {
+    if (!confirm(`Delete page ${pageIndex + 1}?`)) return;
+    try {
+        const res  = await fetch(_cfg.api.notes, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_page', note_sys_id: noteSysId, page_index: pageIndex }),
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            atT('success', 'Page deleted');
+            await atLoadNotes();
+        } else {
+            atT('error', json.message || 'Delete failed');
+        }
+    } catch(e) {
+        atT('error', 'Delete failed');
+        console.error(e);
+    }
+};
+
+// ── Copy single page image ────────────────────────────────────
+window.atCopyPageImage = async function(pgUrl) {
+    try {
+        const res  = await fetch(pgUrl, { credentials: 'include' });
+        const blob = await res.blob();
+        window.focus();
+        await new Promise(r => setTimeout(r, 100));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        atT('success', 'Page copied!');
+    } catch(e) {
+        atT('error', 'Copy failed');
+        console.error(e);
+    }
+};
+
+// ── Share PDF pages (server has rebuilt PDF on any page delete) ─
+window.atSharePdfPages = async function(noteSysId) {
+    const serveBase = _cfg.api.fileServe ?? _cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php');
+    const pdfUrl    = `${serveBase}?note_id=${encodeURIComponent(noteSysId)}&dl=1`;
+    // notes থেকে file_name নিই
+    try {
+        const res  = await fetch(`${_cfg.api.notes}?action=list&task_sys_id=${encodeURIComponent(_cfg.taskSysId)}`);
+        const json = await res.json();
+        const note = json?.data?.find(n => n.sys_id === noteSysId);
+        const fileName = note?.file_name ?? 'document.pdf';
+        await atShareFile(pdfUrl, fileName, 'application/pdf');
+    } catch(e) {
+        await atShareFile(pdfUrl, 'document.pdf', 'application/pdf');
+    }
+};
+
+// ── Share File (Web Share API) ────────────────────────────────
+window.atShareFile = async function(url, fileName, mimeType) {
+    try {
+        const res  = await fetch(url, { credentials: 'include' });
+        if (!res.ok) { atT('error', 'File not available'); return; }
+        const blob = await res.blob();
+        const file = new File([blob], fileName, { type: mimeType || blob.type });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: fileName });
+        } else {
+            // Desktop বা unsupported browser → download
+            const a = document.createElement('a');
+            a.href     = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            atT('success', 'Downloaded!');
+        }
+    } catch(e) {
+        if (e.name !== 'AbortError') {
+            atT('error', 'Share failed');
+            console.error(e);
+        }
+    }
+};
 (function _attachMenuDelegation() {
-    // Single floating dropdown reused for all menus
+    // Guard: tab switch এ script reload হলে duplicate listener হবে না
+    if (window._atMenuDelegationAttached) return;
+    window._atMenuDelegationAttached = true;
+
     let _activeMenuId = null;
 
     function _closeMenu() {
@@ -478,52 +738,53 @@ window.atCopyImage = async function(url) {
     }
 
     document.addEventListener('click', function(e) {
-        // Check floating menu click first
+        // Floating menu এর ভেতরে click → item action চলুক, তারপর close
         if (e.target.closest('#at-floating-menu')) {
-            setTimeout(_closeMenu, 100);
+            setTimeout(_closeMenu, 120);
             return;
         }
 
         const btn = e.target.closest('[data-menu-toggle]');
         if (btn) {
+            e.stopPropagation();
             const sysId = btn.getAttribute('data-menu-toggle');
             if (_activeMenuId === sysId) { _closeMenu(); return; }
             _closeMenu();
 
-            const sourceMenu = document.getElementById(`at-menu-${sysId}`);
+            let sourceMenu = document.getElementById(`at-menu-${sysId}`);
+            if (!sourceMenu) {
+                sourceMenu = btn.parentElement?.querySelector('.at-menu-dropdown') ?? null;
+            }
             if (!sourceMenu) { console.warn('Menu not found:', sysId); return; }
 
-            // Build floating menu and append to body first
             const floating = document.createElement('div');
-            floating.id        = 'at-floating-menu';
-            floating.className = 'at-menu-dropdown show';
+            floating.id = 'at-floating-menu';
             floating.innerHTML = sourceMenu.innerHTML;
-            floating.style.cssText = 'position:fixed;z-index:99999;display:block;min-width:160px;top:-999px;left:-999px;';
+            floating.style.cssText = 'position:fixed;z-index:99999;background:#fff;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.15),0 2px 8px rgba(0,0,0,.05);border:1px solid #f1f5f9;min-width:160px;padding:6px 0;visibility:hidden;top:0;left:0;';
             document.body.appendChild(floating);
             _activeMenuId = sysId;
 
-            // Measure and position after append
-            requestAnimationFrame(() => {
-                const rect = btn.getBoundingClientRect();
-                const h    = floating.offsetHeight || 110;
-                const w    = floating.offsetWidth  || 160;
-                const sb   = window.innerHeight - rect.bottom;
+            setTimeout(() => {
+                const cx = e.clientX;
+                const cy = e.clientY;
+                const h  = floating.offsetHeight || 100;
+                const w  = floating.offsetWidth  || 160;
 
-                floating.style.top = (sb >= h + 8
-                    ? rect.bottom + 4
-                    : Math.max(4, rect.top - h - 4)) + 'px';
-
-                let left = rect.right - w;
-                if (left < 4) left = rect.left;
+                const top  = (cy - h - 8 > 4) ? (cy - h - 8) : (cy + 8);
+                let   left = cx - w;
+                if (left < 4) left = 4;
                 if (left + w > window.innerWidth - 4) left = window.innerWidth - w - 4;
-                floating.style.left  = left + 'px';
-                floating.style.right = 'auto';
-            });
+
+                floating.style.top        = top + 'px';
+                floating.style.left       = left + 'px';
+                floating.style.visibility = 'visible';
+            }, 50);
+            return;
             return;
         }
 
-        // Click outside → close
-        _closeMenu();
+        // Click outside (কোনো btn বা menu না) → close
+        if (_activeMenuId) _closeMenu();
 
     }); // bubble phase (no capture)
 

@@ -98,12 +98,14 @@ const UIInteractions = (function () {
     // Private methods
     function toggleSidebar() {
         sidebarCollapsed = !sidebarCollapsed;
-    
-        if (sidebarCollapsed) {
-            alert('dhukchi');
+
+        if (!sidebarCollapsed) {
+            // SIDEBAR IS NOW COLLAPSED
             sidebar.classList.remove('w-64');
             sidebar.classList.add('w-16', 'sidebar-collapsed');
-            mainContent.classList.remove('pl-4');
+            
+            // FIX: Remove large padding, add small padding so body expands
+            mainContent.classList.remove('pl-64'); 
             mainContent.classList.add('pl-16');
     
             // Hide all text elements
@@ -130,11 +132,13 @@ const UIInteractions = (function () {
             });
     
         } else {
-            alert('dhuki nai');
+            // SIDEBAR IS NOW EXPANDED
             sidebar.classList.remove('w-16', 'sidebar-collapsed');
             sidebar.classList.add('w-64');
-            mainContent.classList.remove('');
-            mainContent.classList.add('pl-16');
+            
+            // FIX: Remove small padding, add large padding to make room for sidebar
+            mainContent.classList.remove('pl-16'); 
+            mainContent.classList.add('pl-64');
     
             // Show all text elements
             document.querySelectorAll('.sidebar-text, .user-info-text').forEach(text => {
