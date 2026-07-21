@@ -77,12 +77,29 @@ try {
             $tStmt->execute($sysIds);
             $travelers = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Preserve link order, full live record (passport, phone etc. for the modal)
+            // Preserve link order + generate passport_token from passport_info source_file
             $ordered = [];
             foreach ($refs as $ref) {
                 foreach ($travelers as $t) {
                     if ($t['sys_id'] === $ref['traveler_sys_id']) {
-                        $t['passport_token'] = !empty($t['smb_path']) ? smbFileUrl($t['smb_path']) : null;
+                        // passport_token: passport_info এ source_file থেকে SMB path বের করো
+                        $t['passport_token'] = null;
+                        if (!empty($t['passport_info'])) {
+                            $pInfo = json_decode($t['passport_info'], true) ?? [];
+                            // Array format: [{page_type, bio_info, _metadata}]
+                            if (is_array($pInfo)) {
+                                foreach ($pInfo as $page) {
+                                    $srcFile = $page['_metadata']['source_file'] ?? '';
+                                    if ($srcFile && $t['smb_path']) {
+                                        // source_file থেকে filename নিয়ে SMB path বানাও
+                                        $fileName = basename($srcFile);
+                                        $smbFilePath = rtrim($t['smb_path'], '/') . '/passport_identity/' . $fileName;
+                                        $t['passport_token'] = smbFileUrl($smbFilePath);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         $ordered[] = $t;
                         break;
                     }

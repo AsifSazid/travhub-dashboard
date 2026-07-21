@@ -81,7 +81,7 @@ $API = [
 <?php include '../elements/aside.php'; ?>
 <?php include '../elements/preview-model.php'; ?>
 
-<main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+<main id="mainContent" class="transition-all duration-300" style="padding-top:64px;padding-left:256px;">
 
     <!-- Loading -->
     <div id="loadingState" class="text-center py-24 text-gray-400">
@@ -316,7 +316,7 @@ $API = [
                 <span id="mbFilePreviewName" class="flex-1 truncate"></span>
                 <button onclick="mbClearFile()" class="text-red-400 hover:text-red-600 flex-shrink-0"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex items-end gap-2 w-full">
+            <div class="flex items-end gap-2">
                 <!-- Attach file -->
                 <label class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="Attach file">
                     <i class="fas fa-paperclip text-gray-500 text-sm"></i>
@@ -653,97 +653,13 @@ function mbRenderChat(){
     setTimeout(()=>{ area.scrollTop = area.scrollHeight; }, 50);
 }
 function _mbBubble(n){
-    const d = n.meta_data?.created_by_date?.date ?? '';
-    const del = `<div class="mb-del" onclick="mbDel('${n.sys_id}')"><i class="fas fa-times"></i></div>`;
-    const serveBase = API.fileServe;
- 
-    // ── Text ──────────────────────────────────────────────────
-    if (n.note_type === 'text') {
-        return `<div class="mb-bubble mb-text">${del}
-            <div class="whitespace-pre-line">${escHtml(n.content ?? '')}</div>
-            <div class="mb-time">${escHtml(d)}</div>
-        </div>`;
-    }
- 
-    // ── PDF → PNG pages (pdf_images) ─────────────────────────
-    if (n.note_type === 'pdf_images') {
-        const pages = Array.isArray(n.pages_json) ? n.pages_json
-                    : (typeof n.pages_json === 'string' ? JSON.parse(n.pages_json || '[]') : []);
-        const pagesHtml = pages.map((_, i) => {
-            const pgUrl = `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
-            return `<div style="position:relative;margin-bottom:6px;border-radius:8px;overflow:hidden;background:#f9fafb;">
-                <img src="${pgUrl}" loading="lazy" onclick="mbImg('${pgUrl}')"
-                    style="width:100%;display:block;cursor:zoom-in;border-radius:8px;">
-                <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;">
-                    <button onclick="mbCopyPageImage('${pgUrl}')" title="Copy"
-                        style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
-                        <i class="fas fa-copy" style="font-size:.65rem;color:#4f46e5;"></i>
-                    </button>
-                    <button onclick="mbDeletePage('${escHtml(n.sys_id)}',${i})" title="Delete page"
-                        style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
-                        <i class="fas fa-trash" style="font-size:.65rem;color:#dc2626;"></i>
-                    </button>
-                </div>
-                <div style="position:absolute;bottom:4px;left:6px;font-size:.6rem;color:rgba(0,0,0,.4);font-weight:600;">P${i+1}</div>
-            </div>`;
-        }).join('');
-        return `<div class="mb-bubble mb-image" style="max-width:320px;position:relative;" id="mb-pdf-${escHtml(n.sys_id)}">${del}
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                <div style="font-size:.65rem;color:#9ca3af;">
-                    <i class="fas fa-file-pdf" style="color:#f87171;margin-right:4px;"></i>
-                    ${escHtml(n.file_name ?? '')} (${pages.length} page${pages.length !== 1 ? 's' : ''})
-                </div>
-                <button onclick="mbSharePdf('${escHtml(n.sys_id)}','${escHtml(n.file_name??'document.pdf')}')"
-                    style="padding:2px 8px;font-size:.65rem;font-weight:600;background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:3px;">
-                    <i class="fas fa-share-alt" style="font-size:.6rem;"></i>Share
-                </button>
-            </div>
-            ${pagesHtml}
-            ${n.content ? `<div style="font-size:.75rem;color:#6b7280;margin-top:4px;">${escHtml(n.content)}</div>` : ''}
-            <div class="mb-time">${escHtml(d)}</div>
-        </div>`;
-    }
- 
-    // ── Image ─────────────────────────────────────────────────
-    if (n.note_type === 'image') {
-        const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
-        return `<div class="mb-bubble mb-image">${del}
-            <img src="${url}" alt="${escHtml(n.file_name ?? '')}" onclick="mbImg('${url}')"
-                style="width:100%;max-height:200px;object-fit:contain;border-radius:7px;cursor:pointer;display:block;background:#f9fafb;">
-            ${n.content ? `<div class="text-xs text-gray-500 mt-1 px-1">${escHtml(n.content)}</div>` : ''}
-            <div class="mb-time px-1">${escHtml(d)}</div>
-        </div>`;
-    }
- 
-    // ── Audio ─────────────────────────────────────────────────
-    if (n.note_type === 'audio') {
-        const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
-        return `<div class="mb-bubble mb-audio" style="min-width:280px;max-width:360px;">${del}
-            <div class="flex items-center gap-2 mb-1">
-                <i class="fas fa-microphone text-purple-400 text-xs"></i>
-                <span class="text-xs">${escHtml(n.file_name ?? '')}</span>
-            </div>
-            <audio controls class="w-full h-8" src="${url}"></audio>
-            <div class="mb-time">${escHtml(d)}</div>
-        </div>`;
-    }
- 
-    // ── Video ─────────────────────────────────────────────────
-    if (n.note_type === 'video') {
-        const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
-        return `<div class="mb-bubble mb-audio">${del}
-            <video controls style="max-height:160px" class="w-full rounded-lg mb-1" src="${url}"></video>
-            <div class="mb-time">${escHtml(d)}</div>
-        </div>`;
-    }
- 
-    // ── File (default) ────────────────────────────────────────
-    const url = n.serve_url ?? n.file_url ?? `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}`;
-    return `<div class="mb-bubble mb-file">${del}
-        <i class="fas fa-paperclip text-green-500 mr-2"></i>
-        <a href="${url}" target="_blank" download class="text-green-700 hover:underline text-sm truncate">${escHtml(n.file_name ?? '')}</a>
-        <div class="mb-time mt-1">${escHtml(d)}</div>
-    </div>`;
+    const d=n.meta_data?.created_by_date?.date??'';
+    const del=`<div class="mb-del" onclick="mbDel('${n.sys_id}')"><i class="fas fa-times"></i></div>`;
+    if(n.note_type==='text')return`<div class="mb-bubble mb-text">${del}<div class="whitespace-pre-line">${escHtml(n.content??'')}</div><div class="mb-time">${escHtml(d)}</div></div>`;
+    if(n.note_type==='image')return`<div class="mb-bubble mb-image">${del}<img src="${n.file_url}" alt="${escHtml(n.file_name??'')}" onclick="mbImg('${n.file_url}')">${n.content?`<div class="text-xs text-gray-500 mt-1 px-1">${escHtml(n.content)}</div>`:''}<div class="mb-time px-1">${escHtml(d)}</div></div>`;
+    if(n.note_type==='audio')return`<div class="mb-bubble mb-audio">${del}<div class="flex items-center gap-2 mb-1"><i class="fas fa-microphone text-purple-400 text-xs"></i><span class="text-xs">${escHtml(n.file_name??'')}</span></div><audio controls class="w-full h-8" src="${n.file_url}"></audio><div class="mb-time">${escHtml(d)}</div></div>`;
+    if(n.note_type==='video')return`<div class="mb-bubble mb-audio">${del}<video controls style="max-height:160px" class="w-full rounded-lg mb-1" src="${n.file_url}"></video><div class="mb-time">${escHtml(d)}</div></div>`;
+    return`<div class="mb-bubble mb-file">${del}<i class="fas fa-paperclip text-green-500 mr-2"></i><a href="${n.file_url}" target="_blank" download class="text-green-700 hover:underline text-sm truncate">${escHtml(n.file_name??'')}</a><div class="mb-time mt-1">${escHtml(d)}</div></div>`;
 }
 window.mbImg=function(url){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';o.innerHTML=`<img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:8px;">`;o.onclick=()=>o.remove();document.body.appendChild(o);};
 window.mbFileSelected=function(i){if(!i.files[0])return;_mbFile=i.files[0];document.getElementById('mbFilePreview').classList.remove('hidden');document.getElementById('mbFilePreviewName').textContent=_mbFile.name;};
@@ -762,57 +678,6 @@ window.mbSend=async function(){
 };
 window.mbDel=async function(id){if(!confirm('Delete?'))return;try{const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',sys_id:id})});const j=await r.json();if(j.status==='success')await mbLoadNotes();else showToast('error',j.message);}catch{showToast('error','Network error');}};
 
-window.mbDeletePage = async function(noteSysId, pageIndex) {
-    if (!confirm(`Delete page ${pageIndex + 1}?`)) return;
-    try {
-        const r = await fetch(API.notes, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete_page', note_sys_id: noteSysId, page_index: pageIndex }),
-        });
-        const j = await r.json();
-        if (j.status === 'success') { showToast('success', 'Page deleted'); await mbLoadNotes(); }
-        else showToast('error', j.message || 'Delete failed');
-    } catch { showToast('error', 'Delete failed'); }
-};
-
-window.mbCopyPageImage = async function(pgUrl) {
-    try {
-        const res  = await fetch(pgUrl, { credentials: 'include' });
-        const blob = await res.blob();
-        window.focus();
-        await new Promise(r => setTimeout(r, 100));
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        showToast('success', 'Page copied!');
-    } catch(e) {
-        showToast('error', 'Copy failed');
-        console.error(e);
-    }
-};
- 
-window.mbSharePdf = async function(noteSysId, fileName) {
-    const pdfUrl = `${API.fileServe}?note_id=${encodeURIComponent(noteSysId)}&dl=1`;
-    try {
-        const res  = await fetch(pdfUrl, { credentials: 'include' });
-        if (!res.ok) { showToast('error', 'File not available'); return; }
-        const blob = await res.blob();
-        const file = new File([blob], fileName, { type: 'application/pdf' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: fileName });
-        } else {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-            showToast('success', 'Downloaded!');
-        }
-    } catch(e) {
-        if (e.name !== 'AbortError') { showToast('error', 'Share failed'); console.error(e); }
-    }
-};
 // ════════════════════════════════════════════════════════════
 // AI
 // ════════════════════════════════════════════════════════════
@@ -824,24 +689,16 @@ async function aiGenerate(){
     btn.innerHTML= '<i class="fas fa-spinner fa-spin mr-1.5"></i>Generating…';
     if (status) status.classList.remove('hidden');
     try {
-        const r = await fetch(API.aiMindboard, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                task_sys_id: TASK_SYS_ID,
-                notes: _mbNotes.filter(n => n.note_type === 'text').map(n => n.content).filter(Boolean),
-            })
-        });
-        const j = await r.json();
+        const r=await fetch(API.aiMindboard,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_sys_id:TASK_SYS_ID})});
+        const j=await r.json();
         const board   = document.getElementById('aiPlanningBoard');
         const content = document.getElementById('aiPlanningContent');
         if (board && content) {
-            content.innerHTML = j.status === 'success'
-                ? j.html
-                : `<p class="text-red-400">${escHtml(j.message ?? 'Failed')}</p>`;
+            content.innerHTML = j.status==='success' ? j.html : `<p class="text-red-400">${escHtml(j.message??'Failed')}</p>`;
             board.classList.remove('hidden');
         }
         closeModal('aiModal');
+        // Open mind board modal to show result
         openMindBoardModal();
     } catch {
         const content = document.getElementById('aiPlanningContent');
@@ -851,6 +708,7 @@ async function aiGenerate(){
     btn.innerHTML= '<i class="fas fa-wand-magic-sparkles mr-1.5"></i>Generate Briefing';
     if (status) status.classList.add('hidden');
 }
+
 // ════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════
 // TRAVELERS
@@ -920,15 +778,27 @@ async function unlinkTraveler(travelerSysId,name){
     }catch{showToast('error','Network error');}
 }
 
-function _parsePassport(t){try{return JSON.parse(t.passport_info||'{}')??{};}catch{return {};}}
+function _parsePassport(t){
+    try {
+        const raw = JSON.parse(t.passport_info || 'null');
+        if (!raw) return {};
+        // Array format: [{page_type, bio_info, ...}]
+        if (Array.isArray(raw)) {
+            const bio = raw.find(p => p.page_type === 'bio_page');
+            return bio?.bio_info ?? raw[0]?.bio_info ?? {};
+        }
+        // Object format (legacy)
+        return raw;
+    } catch { return {}; }
+}
 
 function renderLinkedTravelers(travelers){
     const list=document.getElementById('linkedTravelersList');if(!list)return;
-    const hasPassports=travelers.some(t=>t.smb_path);
+    const hasPassports=travelers.some(t=>t.passport_token);
     document.getElementById('btnPassportCarousel')?.classList.toggle('hidden',!travelers.length||!hasPassports);
     document.getElementById('btnTravelerTable')?.classList.toggle('hidden',!travelers.length);
     if(!travelers.length){list.innerHTML='<p class="text-xs text-gray-400 text-center py-2">No travelers linked</p>';return;}
-    list.innerHTML=`<div class="overflow-x-auto mt-1"><table class="w-full text-xs"><thead><tr class="text-gray-400 border-b border-gray-100"><th class="pb-1 text-left font-medium">Name</th><th class="pb-1 text-left font-medium">PP No</th><th class="pb-1"></th></tr></thead><tbody class="divide-y divide-gray-50">${travelers.map(t=>{const p=_parsePassport(t);const pNo=p.passport_no||p.passport_number||'—';const name=t.name||'—';return`<tr class="hover:bg-gray-50"><td class="py-1.5 pr-2 truncate max-w-[70px] font-medium text-gray-700">${escHtml(name)}</td><td class="py-1.5 pr-2 font-mono text-gray-500">${escHtml(pNo)}</td><td class="py-1.5 flex items-center gap-1"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-400 hover:text-teal-600"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i></a><button onclick="unlinkTraveler('${t.sys_id}','${(name).replace(/'/g,"\\'")} ')" class="text-red-300 hover:text-red-500 ml-1"><i class="fas fa-times text-[10px]"></i></button></td></tr>`;}).join('')}</tbody></table></div>`;
+    list.innerHTML=`<div class="overflow-x-auto mt-1"><table class="w-full text-xs"><thead><tr class="text-gray-400 border-b border-gray-100"><th class="pb-1 text-left font-medium">Name</th><th class="pb-1 text-left font-medium">PP No</th><th class="pb-1"></th></tr></thead><tbody class="divide-y divide-gray-50">${travelers.map(t=>{const p=_parsePassport(t);const pNo=p.passport_number||p.passport_no||'—';const name=t.name||'—';return`<tr class="hover:bg-gray-50"><td class="py-1.5 pr-2 truncate max-w-[70px] font-medium text-gray-700">${escHtml(name)}</td><td class="py-1.5 pr-2 font-mono text-gray-500">${escHtml(pNo)}</td><td class="py-1.5 flex items-center gap-1"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-400 hover:text-teal-600"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i></a><button onclick="unlinkTraveler('${t.sys_id}','${(name).replace(/'/g,"\\'")} ')" class="text-red-300 hover:text-red-500 ml-1"><i class="fas fa-times text-[10px]"></i></button></td></tr>`;}).join('')}</tbody></table></div>`;
 }
 
 document.addEventListener('click',e=>{_travRows.forEach((_,i)=>{const w=document.getElementById(`tI${i}`)?.parentElement;if(w&&!w.contains(e.target))document.getElementById(`tD${i}`)?.classList.add('hidden');});});
@@ -993,16 +863,16 @@ async function saveNewTraveler(){
 // ── PASSPORT CAROUSEL ────────────────────────────────────────
 function openPassportCarousel(){_carouselIdx=0;document.getElementById('passportCarouselModal').classList.remove('hidden');_renderCarouselSlide();}
 function _renderCarouselSlide(){
-    const travelers=_linkedTravelers.filter(t=>t.smb_path);
-    if(!travelers.length){document.getElementById('carouselSlides').innerHTML='<p class="text-gray-400 text-sm">No passport images</p>';return;}
+    const travelers=_linkedTravelers.filter(t=>t.passport_token);
+    if(!travelers.length){document.getElementById('carouselSlides').innerHTML='<p class="text-gray-400 text-sm text-center">No passport images available</p>';return;}
     const t=travelers[_carouselIdx];
     document.getElementById('carouselName').textContent=t.name??'—';
-    document.getElementById('carouselSlides').innerHTML=`<img src="${API.fileServe}?smb_token=${encodeURIComponent(t.smb_path??'')}" alt="${escHtml(t.name??'')}" class="max-h-[400px] max-w-full object-contain rounded-xl" onerror="this.parentElement.innerHTML='<p class=\\'text-gray-400 text-sm\\'>Image not available</p>'">`;
+    document.getElementById('carouselSlides').innerHTML=`<img src="${t.passport_token}" alt="${escHtml(t.name??'')}" class="max-h-[400px] max-w-full object-contain rounded-xl" onerror="this.parentElement.innerHTML='<p class=\\'text-gray-400 text-sm text-center\\'>Image not available</p>'">`;
     document.getElementById('carouselDots').innerHTML=travelers.map((_,i)=>`<button onclick="_cGo(${i})" class="w-2 h-2 rounded-full transition ${i===_carouselIdx?'bg-indigo-500':'bg-gray-300'}"></button>`).join('');
 }
 window._cGo=function(i){_carouselIdx=i;_renderCarouselSlide();};
-function carouselPrev(){const t=_linkedTravelers.filter(x=>x.smb_path);_carouselIdx=(_carouselIdx-1+t.length)%t.length;_renderCarouselSlide();}
-function carouselNext(){const t=_linkedTravelers.filter(x=>x.smb_path);_carouselIdx=(_carouselIdx+1)%t.length;_renderCarouselSlide();}
+function carouselPrev(){const t=_linkedTravelers.filter(x=>x.passport_token);_carouselIdx=(_carouselIdx-1+t.length)%t.length;_renderCarouselSlide();}
+function carouselNext(){const t=_linkedTravelers.filter(x=>x.passport_token);_carouselIdx=(_carouselIdx+1)%t.length;_renderCarouselSlide();}
 
 // ── TRAVELER TABLE MODAL ─────────────────────────────────────
 function openTravelerTableModal(){
@@ -1011,10 +881,10 @@ function openTravelerTableModal(){
     const cell=(v)=>`<td class="px-3 py-2 cursor-pointer hover:bg-teal-50 transition" onclick="copyCell('${escHtml(String(v))}')" title="Click to copy">${escHtml(String(v))}</td>`;
     tbody.innerHTML=_linkedTravelers.map(t=>{
         const p=_parsePassport(t);
-        const given=p.given_name||p.first_name||'—';
+        const given=p.given_names||p.given_name||p.first_name||'—';
         const surname=p.surname||p.last_name||'—';
-        const pNo=p.passport_no||p.passport_number||'—';
-        const expiry=p.expiry_date||p.date_of_expiry||'—';
+        const pNo=p.passport_number||p.passport_no||'—';
+        const expiry=p.date_of_expiry||p.expiry_date||'—';
         const dob=p.date_of_birth||p.dob||'—';
         return`<tr class="hover:bg-gray-50">${cell(t.name||'—')}${cell(given)}${cell(surname)}${cell(pNo)}${cell(expiry)}${cell(dob)}<td class="px-3 py-2"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-500 hover:text-teal-700 text-xs"><i class="fas fa-arrow-up-right-from-square"></i></a></td></tr>`;
     }).join('');

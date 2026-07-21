@@ -59,33 +59,14 @@ try {
 function _serveNote(string $noteId, bool $dl): void
 {
     global $pdo;
-    // tasks + works (current) — client info JSON column এ
     $stmt = $pdo->prepare("
-        SELECT n.*,
-               JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')) AS client_sys_id,
-               JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name'))   AS client_name
+        SELECT n.*, t.client_sys_id, t.client_name
         FROM task_notes n
         LEFT JOIN tasks t ON t.sys_id = n.task_sys_id
-        LEFT JOIN works w ON w.sys_id = t.work_sys_id
         WHERE n.sys_id = ? LIMIT 1
     ");
     $stmt->execute([$noteId]);
     $note = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // old_tasks + com_works (legacy) — আলাদা column আছে
-    if ($note && empty($note['client_sys_id'])) {
-        $stmt2 = $pdo->prepare("
-            SELECT n.*, t.client_sys_id, t.client_name
-            FROM task_notes n
-            LEFT JOIN old_tasks t ON t.sys_id = n.task_sys_id
-            WHERE n.sys_id = ? LIMIT 1
-        ");
-        $stmt2->execute([$noteId]);
-        $note2 = $stmt2->fetch(PDO::FETCH_ASSOC);
-        if ($note2 && !empty($note2['client_sys_id'])) {
-            $note = $note2;
-        }
-    }
 
     if (!$note || !$note['file_name']) {
         ob_clean(); http_response_code(404); echo 'File not found'; return;
@@ -99,19 +80,9 @@ function _serveNote(string $noteId, bool $dl): void
         'module'        => 'notes',
     ];
 
-    // PDF pages — dl=1 হলে original PDF serve করো, নইলে PNG page serve করো
-    if ($note['note_type'] === 'pdf_images') {
-        if ($dl && $note['file_name']) {
-            // Download mode — original PDF serve করো
-            header('Content-Disposition: attachment; filename="' . $note['file_name'] . '"');
-            ob_end_clean();
-            if (!smbServeFile($ctx, $note['file_name'], 'application/pdf')) {
-                http_response_code(404); echo 'File not available';
-            }
-            return;
-        }
-        // View mode — PNG page serve করো
-        $pages   = json_decode($note['pages_json'] ?? '[]', true) ?? [];
+    // PDF pages
+    if ($note['note_type'] === 'pdf_images' && $note['pages_json']) {
+        $pages   = json_decode($note['pages_json'], true) ?? [];
         $pageIdx = (int)($_GET['page'] ?? 0);
         $pgFile  = $pages[$pageIdx] ?? ($pages[0] ?? null);
         if (!$pgFile) { ob_clean(); http_response_code(404); echo 'Page not found'; return; }
@@ -133,8 +104,15 @@ function _serveNote(string $noteId, bool $dl): void
 function _serveToken(string $token, bool $dl): void
 {
     $smbPath = _smbVerifyToken($token);
+
+    // If token verification fails, check if it's a raw SMB path
     if (!$smbPath) {
-        ob_clean(); http_response_code(403); echo 'Invalid or expired token'; return;
+        // Raw SMB path starts with known prefixes like dev_clients, dev_travelers etc.
+        if (preg_match('/^dev_[a-z_]+\//', $token)) {
+            $smbPath = $token;
+        } else {
+            ob_clean(); http_response_code(403); echo 'Invalid or expired token'; return;
+        }
     }
 
     $omv      = new OMV_SMB_Manager();
@@ -256,8 +234,6 @@ function _serveDoc(string $docId, bool $dl): void
 }
 
 // ── Financial entry file ──────────────────────────────────────
-// ?fin_id=THR-FE-26-00K001&page=0
-// Financial files stored in financial_entries.files_json as SMB token strings.
 function _serveFin(string $finId, bool $dl): void
 {
     global $pdo;
@@ -272,14 +248,36 @@ function _serveFin(string $finId, bool $dl): void
 
     $files   = json_decode($row['files_json'] ?? '[]', true) ?? [];
     $pageIdx = (int)($_GET['page'] ?? 0);
-    $token   = is_array($files) ? ($files[$pageIdx] ?? ($files[0] ?? null)) : null;
+    $entry   = is_array($files) ? ($files[$pageIdx] ?? ($files[0] ?? null)) : null;
 
-    if (!$token) {
+    if (!$entry) {
         ob_clean(); http_response_code(404); echo 'No file at this index'; return;
     }
 
-    // files_json stores SMB tokens — reuse _serveToken
-    _serveToken($token, $dl);
+    // files_json may contain token OR raw SMB path
+    $smbPath = _smbVerifyToken($entry);
+    if ($smbPath) {
+        _serveToken($entry, $dl); return;
+    }
+
+    // Raw SMB path — serve directly
+    $omv      = new OMV_SMB_Manager();
+    $ext      = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
+    $mime     = _extToMime($ext);
+    $tempFile = sys_get_temp_dir() . '/fin_serve_' . uniqid() . '.' . $ext;
+
+    if (!$omv->get_file($entry, $tempFile) || !file_exists($tempFile) || filesize($tempFile) === 0) {
+        if (file_exists($tempFile)) unlink($tempFile);
+        ob_clean(); http_response_code(404); echo 'File not available'; return;
+    }
+
+    if ($dl) header('Content-Disposition: attachment; filename="' . basename($entry) . '"');
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($tempFile));
+    header('Cache-Control: private, max-age=3600');
+    ob_end_clean();
+    readfile($tempFile);
+    unlink($tempFile);
 }
 
 // ═══════════════════════════════════════════════════════════════

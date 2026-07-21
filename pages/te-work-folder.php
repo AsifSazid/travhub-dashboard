@@ -838,11 +838,11 @@
         },
         
         getFullFilePath(file) {
-            // Use smb_token if available (serve.php handles auth + streaming)
             if (file.smb_token) {
+                // smb_token may already be a full serve URL (from smbFileUrl())
+                if (file.smb_token.startsWith('http')) return file.smb_token;
                 return `${FILE_SERVE_BASE}?smb_token=${encodeURIComponent(file.smb_token)}`;
             }
-            // Fallback: direct SMB path token from path
             return `${FILE_SERVE_BASE}?smb_token=${encodeURIComponent(file.path || '')}`;
         },
         

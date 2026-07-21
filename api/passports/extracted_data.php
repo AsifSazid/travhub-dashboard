@@ -100,7 +100,7 @@ function callGemini($content, $type, $prompt) {
     $apiKey = trim(file_get_contents('../../gemini-apikey.txt'));
     if (!$apiKey) throw new Exception('API key missing');
 
-    $model = 'gemini-2.0-flash-lite';
+    $model = 'gemini-2.5-flash';
     $url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey";
 
     if (str_starts_with($type, 'image/')) {
