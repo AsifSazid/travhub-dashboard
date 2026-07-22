@@ -839,8 +839,12 @@
         
         getFullFilePath(file) {
             if (file.smb_token) {
-                // smb_token may already be a full serve URL (from smbFileUrl())
-                if (file.smb_token.startsWith('http')) return file.smb_token;
+                // smb_token may already be a full or relative serve URL
+                if (file.smb_token.includes('serve.php')) {
+                    // Already a serve URL — prefix domain if relative
+                    if (file.smb_token.startsWith('http')) return file.smb_token;
+                    return window.location.origin + file.smb_token;
+                }
                 return `${FILE_SERVE_BASE}?smb_token=${encodeURIComponent(file.smb_token)}`;
             }
             return `${FILE_SERVE_BASE}?smb_token=${encodeURIComponent(file.path || '')}`;
