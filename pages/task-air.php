@@ -4,46 +4,64 @@ $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
-$data = null;
-$taskId = $_GET['task_id'] ?? '';
-$getTicket = $ip_port . "api/old_tasks/get-ticket.php?task_id=$taskId";
 
-// Fetch invoice data from API
-$ch = curl_init($getTicket);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-$response = curl_exec($ch);
-$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+$data     = null;
+$taskId   = $_GET['task_id']     ?? '';    // old system
+$taskSysId = $_GET['task_sys_id'] ?? '';   // new system
+$confSysId = $_GET['conf_sys_id'] ?? '';   // new system
 
-if ($http_code == 200 && !empty($response)) {
-    $resData = json_decode($response, true);
+// ── NEW SYSTEM: tasks + air_tickets ──────────────────────────
+$newFiles        = [];   // array of file entries from files_json
+$newConf         = [];
+$newTask         = [];
+$isNewSystem     = !empty($taskSysId) && !empty($confSysId);
 
-    if (json_last_error() === JSON_ERROR_NONE && isset($resData['success']) && $resData['success'] === true) {
-        if (isset($resData['ticket_json'])) {
+if ($isNewSystem) {
+    $getTickets = $ip_port . "api/tasks/get-tickets.php?task_sys_id=" . urlencode($taskSysId) . "&conf_sys_id=" . urlencode($confSysId);
+    $ch = curl_init($getTickets);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $response  = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-            $raw_json = $resData['ticket_json']["air_ticket_info"];
-
-            // 1st decode
-            if (is_string($raw_json)) {
-                $raw_json = json_decode($raw_json, true);
+    if ($http_code == 200 && !empty($response)) {
+        $resData = json_decode($response, true);
+        if (!empty($resData['success'])) {
+            $newFiles = $resData['files'] ?? [];
+            $newConf  = $resData['confirmation'] ?? [];
+            $newTask  = $resData['task'] ?? [];
+            // প্রথম file এর extracted_data থেকে $data build করি (header/PNR এর জন্য)
+            if (!empty($newFiles[0]['extracted_data'])) {
+                $data = $newFiles[0]['extracted_data'];
             }
-
-            // 2nd decode
-            if (isset($raw_json[0]) && is_string($raw_json[0])) {
-                $raw_json = json_decode($raw_json[0], true);
-            }
-
-            // 3rd decode (final safety)
-            if (isset($raw_json[0]) && is_string($raw_json[0])) {
-                $raw_json = json_decode($raw_json[0], true);
-            }
-
-            // final format
-            $data = (isset($raw_json[0])) ? $raw_json[0] : $raw_json;
         }
-    } else {
-        die("Failed to decode API response. JSON error: " . json_last_error_msg());
+    }
+}
+
+// ── OLD SYSTEM: old_tasks ─────────────────────────────────────
+if (!$isNewSystem && !empty($taskId)) {
+    $getTicket = $ip_port . "api/old_tasks/get-ticket.php?task_id=$taskId";
+    $ch = curl_init($getTicket);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $response  = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code == 200 && !empty($response)) {
+        $resData = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE && isset($resData['success']) && $resData['success'] === true) {
+            if (isset($resData['ticket_json'])) {
+                $raw_json = $resData['ticket_json']["air_ticket_info"];
+                if (is_string($raw_json)) $raw_json = json_decode($raw_json, true);
+                if (isset($raw_json[0]) && is_string($raw_json[0])) $raw_json = json_decode($raw_json[0], true);
+                if (isset($raw_json[0]) && is_string($raw_json[0])) $raw_json = json_decode($raw_json[0], true);
+                $data = (isset($raw_json[0])) ? $raw_json[0] : $raw_json;
+            }
+        } else {
+            die("Failed to decode API response. JSON error: " . json_last_error_msg());
+        }
     }
 }
 
@@ -79,7 +97,13 @@ function nested_val($array, $key, $default = "N/A") {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flight Itinerary - <?php echo val('booking_details.booking_reference_pnr'); ?></title>
+    <title>Flight Itinerary - <?php
+        if ($isNewSystem) {
+            echo htmlspecialchars($newConf['ticket_nos'][0] ?? ($newTask['workname'] ?? 'Ticket'));
+        } else {
+            echo val('booking_details.booking_reference_pnr');
+        }
+    ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
@@ -149,7 +173,161 @@ function nested_val($array, $key, $default = "N/A") {
     <!-- Save Status Toast -->
     <div id="save-status"></div>
 
-    <div class="max-w-5xl mx-auto shadow-2xl main-container overflow-hidden">
+        <!-- ===== NEW SYSTEM: Multiple files → multiple pages ===== -->
+        <?php if ($isNewSystem && !empty($newFiles)): ?>
+        <?php foreach ($newFiles as $fi => $file):
+            $ed = $file['extracted_data'] ?? [];
+            $passengers_new = $ed['passengers'] ?? (isset($ed['passenger_name']) ? [['full_name'=>$ed['passenger_name'],'ticket_number'=>$ed['ticket_number']??'','type'=>'Adult']] : []);
+            $flights_new    = $ed['flights'] ?? (isset($ed['flight_no']) ? [[
+                'flight_number'    => $ed['flight_no'] ?? '',
+                'operating_airline'=> $ed['airline'] ?? '',
+                'departure'        => ['city'=>$ed['departure_city']??'','time'=>$ed['departure_time']??'','date'=>$ed['departure_date']??''],
+                'arrival'          => ['city'=>$ed['arrival_city']??'','time'=>$ed['arrival_time']??'','date'=>$ed['arrival_date']??''],
+                'duration'         => '',
+                'class'            => $ed['class'] ?? '',
+                'baggage_info'     => ['checked'=>$ed['baggage']??''],
+            ]] : []);
+            $pnr_new = $ed['pnr'] ?? ($newConf['ticket_nos'][0] ?? '');
+        ?>
+        <?php if ($fi > 0): ?><div class="page-break" style="page-break-before:always;"></div><?php endif; ?>
+
+        <!-- File <?php echo $fi+1; ?> of <?php echo count($newFiles); ?> -->
+        <div class="max-w-5xl mx-auto shadow-2xl main-container overflow-hidden <?php echo $fi > 0 ? 'mt-8' : ''; ?>">
+            <div class="h-1.5 bg-blue-600 w-full mb-6"></div>
+            <div class="flex justify-between items-start mb-8 px-1">
+                <div class="flex gap-4">
+                    <img src="../assets/images/logo/round-logo.png" alt="Logo" class="h-14 w-auto" onerror="this.style.display='none'">
+                    <div>
+                        <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 leading-none mb-1">
+                            <span contenteditable="true">Travhub Global Limited</span>
+                        </h1>
+                        <div class="text-[10px] text-slate-500 leading-tight">
+                            <p class="font-bold uppercase text-blue-600"><span contenteditable="true">5th floor, House 1, Road 6, Sector 3, Uttara, Dhaka 1230</span></p>
+                            <p><span contenteditable="true">ticket@travhub.com.bd | +880 1611 482773</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="border-l-4 border-blue-600 pl-3">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]"><span contenteditable="true">PNR</span></p>
+                        <p class="text-3xl font-black text-slate-900 font-mono italic uppercase">
+                            <span contenteditable="true"><?php echo htmlspecialchars($pnr_new); ?></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client info from task -->
+            <?php if (!empty($newTask)): ?>
+            <div class="mb-4 px-1 text-[10px] text-slate-500">
+                <span class="font-bold text-slate-700"><?php echo htmlspecialchars($newTask['client_name'] ?? $newTask['client_name_from_work'] ?? ''); ?></span>
+                <?php if (!empty($newTask['workname'])): ?> · <span><?php echo htmlspecialchars($newTask['workname']); ?></span><?php endif; ?>
+                <?php if (count($newFiles) > 1): ?> <span class="ml-2 bg-blue-100 text-blue-600 px-2 py-0.5 rounded font-bold">File <?php echo $fi+1; ?>/<?php echo count($newFiles); ?></span><?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <!-- Passengers -->
+            <div class="mb-8 px-1">
+                <h3 class="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 border-b border-slate-100 pb-1">Passenger Information</h3>
+                <table class="w-full text-left">
+                    <thead><tr class="text-[9px] text-slate-400 uppercase border-b border-slate-50">
+                        <th class="py-1 w-10">No.</th><th class="py-1">Name</th><th class="py-1">Ticket</th><th class="py-1">Type</th><th class="py-1 text-right">Status</th>
+                    </tr></thead>
+                    <tbody class="text-[11px]">
+                        <?php foreach ($passengers_new as $pi => $p): ?>
+                        <tr class="border-b border-slate-50">
+                            <td class="py-2.5 text-slate-400 font-bold"><?php echo $pi+1; ?></td>
+                            <td class="py-2.5 font-bold text-slate-800 uppercase italic"><span contenteditable="true"><?php echo htmlspecialchars($p['full_name']??''); ?></span></td>
+                            <td class="py-2.5 font-mono text-slate-500"><span contenteditable="true"><?php echo htmlspecialchars($p['ticket_number']??''); ?></span></td>
+                            <td class="py-2.5 text-slate-500 italic"><span contenteditable="true"><?php echo htmlspecialchars($p['type']??'Adult'); ?></span></td>
+                            <td class="py-2.5 text-right"><span class="bg-green-50 text-green-700 px-2 py-0.5 rounded text-[9px] font-bold uppercase italic" contenteditable="true">Confirmed</span></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($passengers_new)): ?>
+                        <tr><td colspan="5" class="py-3 text-center text-slate-300 text-xs">No passenger data extracted</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Flights -->
+            <div class="mb-8">
+                <h3 class="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 px-1 border-b border-slate-100 pb-1">Flight Itinerary</h3>
+                <table class="w-full border-collapse">
+                    <thead><tr class="bg-slate-900 text-white text-[9px] uppercase tracking-wider">
+                        <th class="p-2.5 text-left">Flight / Airline</th>
+                        <th class="p-2.5 text-left">Departure</th>
+                        <th class="p-2.5 text-center"></th>
+                        <th class="p-2.5 text-left">Arrival</th>
+                        <th class="p-2.5 text-right pr-3">Details</th>
+                    </tr></thead>
+                    <tbody>
+                        <?php foreach ($flights_new as $f): ?>
+                        <tr class="border-b border-slate-100">
+                            <td class="p-3 align-top">
+                                <div class="font-black text-blue-700 text-[13px] italic"><span contenteditable="true"><?php echo htmlspecialchars($f['flight_number']??''); ?></span></div>
+                                <div class="text-[9px] text-slate-500 font-bold uppercase mt-1"><span contenteditable="true"><?php echo htmlspecialchars($f['operating_airline']??''); ?></span></div>
+                            </td>
+                            <td class="p-3 align-top">
+                                <div class="text-base font-black text-slate-900"><span contenteditable="true"><?php echo htmlspecialchars($f['departure']['time']??''); ?></span></div>
+                                <div class="text-[10px] font-bold text-slate-800 mt-1 uppercase"><span contenteditable="true"><?php echo htmlspecialchars($f['departure']['city']??''); ?></span></div>
+                                <div class="text-[9px] text-slate-500"><span contenteditable="true"><?php echo htmlspecialchars($f['departure']['date']??''); ?></span></div>
+                            </td>
+                            <td class="p-3 text-center opacity-30">
+                                <span class="text-[10px]">✈</span>
+                                <div class="w-8 border-t border-slate-400 mx-auto my-0.5"></div>
+                                <div class="text-[7px] font-bold uppercase"><span contenteditable="true"><?php echo htmlspecialchars($f['duration']??''); ?></span></div>
+                            </td>
+                            <td class="p-3 align-top">
+                                <div class="text-base font-black text-slate-900"><span contenteditable="true"><?php echo htmlspecialchars($f['arrival']['time']??''); ?></span></div>
+                                <div class="text-[10px] font-bold text-slate-800 mt-1 uppercase"><span contenteditable="true"><?php echo htmlspecialchars($f['arrival']['city']??''); ?></span></div>
+                                <div class="text-[9px] text-slate-500"><span contenteditable="true"><?php echo htmlspecialchars($f['arrival']['date']??''); ?></span></div>
+                            </td>
+                            <td class="p-3 align-top text-right pr-3">
+                                <div class="text-[10px] font-bold text-slate-700 italic"><span contenteditable="true"><?php echo htmlspecialchars($f['class']??''); ?></span></div>
+                                <div class="text-[10px] text-blue-600 font-black mt-1 uppercase"><span contenteditable="true">Bag: <?php echo htmlspecialchars($f['baggage_info']['checked']??''); ?></span></div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($flights_new)): ?>
+                        <tr><td colspan="5" class="py-3 text-center text-slate-300 text-xs">No flight data extracted</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Fare -->
+            <div class="footer-section">
+                <div class="flex justify-between items-end bg-slate-50 p-5 rounded-sm border border-slate-100">
+                    <div class="max-w-md">
+                        <p class="text-[9px] font-bold text-blue-600 uppercase tracking-widest mb-2">Ticket No.</p>
+                        <p class="text-[11px] text-slate-600 font-mono"><?php echo htmlspecialchars(implode(', ', $newConf['ticket_nos'] ?? [])); ?></p>
+                    </div>
+                    <div class="text-right min-w-[220px]">
+                        <?php if (!empty($ed['fare_amount'])): ?>
+                        <div class="flex justify-between items-baseline gap-4">
+                            <p class="text-lg font-black text-slate-900 uppercase">Total Fare</p>
+                            <p class="text-2xl font-black text-slate-900">
+                                <span contenteditable="true"><?php echo htmlspecialchars($ed['fare_amount']??''); ?></span>
+                                <span class="text-lg"><?php echo htmlspecialchars($ed['currency']??'BDT'); ?></span>
+                            </p>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <p class="text-center mt-6 text-[8px] text-slate-300 font-bold uppercase tracking-[0.4em]">Electronically Generated • Powered by Travhub Global Limited</p>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
+        <!-- Print button for new system -->
+        <div class="max-w-5xl mx-auto mt-6 flex justify-center gap-4 no-print pb-10">
+            <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-full font-bold uppercase tracking-widest shadow-xl transition-colors">🖨 Print</button>
+            <button onclick="window.close()" class="bg-white text-slate-500 px-10 py-3 rounded-full font-bold border border-slate-200 uppercase tracking-widest hover:bg-slate-50 transition-colors">Close</button>
+        </div>
+        <?php else: // OLD SYSTEM ?>
+
+        <!-- ===== OLD SYSTEM LAYOUT ===== -->
         <div class="h-1.5 bg-blue-600 w-full mb-6"></div>
 
         <!-- ===== HEADER ===== -->
@@ -563,5 +741,6 @@ function nested_val($array, $key, $default = "N/A") {
         }
     }
     </script>
+<?php endif; // end old system ?>
 </body>
 </html>

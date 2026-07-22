@@ -26,6 +26,23 @@ ob_start();
 session_start();
 date_default_timezone_set('Asia/Dhaka');
 
+// Temp: catch PHP errors in response
+ini_set('display_errors', 0);
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    ob_clean();
+    http_response_code(500);
+    echo json_encode(['status'=>'error','message'=>"PHP Error: $errstr in $errfile:$errline"]);
+    exit;
+});
+register_shutdown_function(function() {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        ob_clean();
+        http_response_code(500);
+        echo json_encode(['status'=>'error','message'=>"Fatal: {$e['message']} in {$e['file']}:{$e['line']}"]);
+    }
+});
+
 require_once '../../server/api_bootstrap.php';
 require_once '../../server/db_connection.php';
 require_once '../../server/sys_id_generator_v2.php';
@@ -40,7 +57,7 @@ $body = [];
 if ($method === 'POST') {
     $raw  = file_get_contents('php://input');
     $body = json_decode($raw, true) ?? [];
-    $action = $body['action'] ?? $action;
+    $action = $body['action'] ?? $_POST['action'] ?? $action;
 }
 
 // ── Helper: fetch air_tickets row by task_sys_id ─────────────
@@ -138,7 +155,7 @@ try {
     // ════════════════════════════════════════════════════════
     if ($method !== 'POST') throw new Exception('Method not allowed');
 
-    $taskSysId = $body['task_sys_id'] ?? '';
+    $taskSysId = $body['task_sys_id'] ?? $_POST['task_sys_id'] ?? '';
     if (!$taskSysId) throw new Exception('task_sys_id is required');
 
     switch ($action) {
@@ -757,6 +774,215 @@ try {
             _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Confirmation set', 'conf_sys_id' => $newC['sys_id']]);
+            break;
+        }
+
+        case 'upload_conf_file': {
+            // multipart/form-data — $_POST থেকে নিতে হবে, $body থেকে না
+            $confSysId = $_POST['conf_sys_id'] ?? '';
+            $taskSysId = $_POST['task_sys_id'] ?? $taskSysId; // fallback to already-parsed
+            if (!$confSysId) throw new Exception('conf_sys_id required');
+            if (empty($_FILES['file'])) throw new Exception('No file uploaded');
+            if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) throw new Exception('Upload error: ' . $_FILES['file']['error']);
+
+            // ── fetch air_tickets row ─────────────────────────
+            $row = _fetchRow($pdo, $taskSysId);
+            if (!$row) throw new Exception('Air ticket record not found');
+
+            // ── find conf ─────────────────────────────────────
+            $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
+            $confIdx = null;
+            foreach ($confirmations as $i => $c) {
+                if (($c['sys_id'] ?? '') === $confSysId) { $confIdx = $i; break; }
+            }
+            if ($confIdx === null) throw new Exception("Confirmation '{$confSysId}' not found");
+
+            // ── SMB path: tasks JOIN works ────────────────────
+            require_once '../../server/smb_upload_handler.php';
+            require_once '../../server/safe_folder_name.php';
+            require_once '../../server/live_storage.php';
+
+            $tStmt = $pdo->prepare("
+                SELECT t.work_sys_id,
+                       JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')) AS client_sys_id,
+                       JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name'))   AS client_name
+                FROM tasks t
+                JOIN works w ON w.sys_id = t.work_sys_id
+                WHERE t.sys_id = ? LIMIT 1
+            ");
+            $tStmt->execute([$taskSysId]);
+            $tRow = $tStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$tRow || empty($tRow['client_sys_id'])) throw new Exception('Task/Work/Client not found');
+
+            $ctx = [
+                'client_sys_id' => $tRow['client_sys_id'],
+                'client_name'   => $tRow['client_name'],
+                'work_sys_id'   => $tRow['work_sys_id'],
+                'task_sys_id'   => $taskSysId,
+                'module'        => 'files',
+            ];
+
+            // ── file info ─────────────────────────────────────
+            $file     = $_FILES['file'];
+            $origName = $file['name'];
+            $tmpPath  = $file['tmp_name'];
+            $mimeType = $file['type'] ?: 'application/octet-stream';
+            if (function_exists('finfo_file')) {
+                $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+                $detected = finfo_file($finfo, $tmpPath);
+                finfo_close($finfo);
+                if ($detected) $mimeType = $detected;
+            } elseif (function_exists('mime_content_type')) {
+                $detected = mime_content_type($tmpPath);
+                if ($detected) $mimeType = $detected;
+            }
+            $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+            // file index — existing files count + 1
+            $existingFiles = $confirmations[$confIdx]['files_json'] ?? [];
+            $fileIdx       = str_pad(count($existingFiles) + 1, 2, '0', STR_PAD_LEFT);
+            $fileName      = $confSysId . '_f' . $fileIdx . '.' . $ext;
+
+            // ── SMB upload ────────────────────────────────────
+            smbEnsureDir($ctx);
+            $smbBase = smbBuildPath($ctx);
+            $omv     = new OMV_SMB_Manager();
+
+            $tempLocal = sys_get_temp_dir() . '/conf_up_' . uniqid() . '.' . $ext;
+            if (!move_uploaded_file($tmpPath, $tempLocal)) throw new Exception('Failed to move file');
+            $omv->paste_file($tempLocal, "{$smbBase}/{$fileName}");
+            $smbToken = smbFileUrl("{$smbBase}/{$fileName}");
+
+            // ── AI Extraction (temp file delete এর আগে) ──────
+            require_once '../../server/ai-gemini.php';
+            $extractedData = null;
+            $aiDebugMime   = $mimeType;
+            $aiDebugIsImg  = str_starts_with($mimeType, 'image/');
+            $aiDebugIsPdf  = ($mimeType === 'application/pdf');
+            $aiDebugFileExists = file_exists($tempLocal);
+            $aiDebugFuncExists = function_exists('geminiCallWithFile');
+            try {
+                $isImage = str_starts_with($mimeType, 'image/');
+                $isPdf   = $mimeType === 'application/pdf';
+                if ($isImage || $isPdf) {
+                    $prompt = "Extract all information from this air ticket/travel document. Return ONLY valid JSON with fields: passenger_name, pnr, ticket_number, airline, flight_no, departure_city, arrival_city, departure_date, departure_time, arrival_date, arrival_time, seat, class, baggage, fare_amount, currency. Use null for missing fields.";
+                    if (!$aiDebugFuncExists) {
+                        $extractedData = ['_debug_func_missing' => true];
+                    } else {
+                        $extractedData = geminiCallWithFile($tempLocal, $mimeType, $prompt);
+                    }
+                }
+            } catch (Exception $aiErr) {
+                error_log('[conf upload AI] ' . $aiErr->getMessage());
+                $aiError = $aiErr->getMessage();
+            }
+
+            // temp file delete করো
+            if (file_exists($tempLocal)) unlink($tempLocal);
+
+            // temp file delete করো
+            if (file_exists($tempLocal)) unlink($tempLocal);
+
+            // ── files_json update ─────────────────────────────
+            $fileEntry = [
+                'name'           => $origName,
+                'file_name'      => $fileName,
+                'smb_token'      => $smbToken,
+                'mime_type'      => $mimeType,
+                'uploaded_at'    => date('d-m-Y H:i'),
+                'uploaded_by'    => $userName,
+                'extracted_data' => $extractedData,
+            ];
+
+            $confirmations[$confIdx]['files_json'][] = $fileEntry;
+
+            $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
+            $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
+            $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
+            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+
+            ob_clean();
+            echo json_encode([
+                'status'         => 'success',
+                'file_name'      => $fileName,
+                'smb_token'      => $smbToken,
+                'extracted'      => $extractedData !== null,
+                'extracted_data' => $extractedData,
+                'ai_error'       => $aiError ?? null,
+                'ai_key_set'     => !empty(env('GEMINI_API_KEY', '')),
+                'mime'           => $mimeType,
+                'debug_mime'     => $aiDebugMime,
+                'debug_is_pdf'   => $aiDebugIsPdf,
+                'debug_is_img'   => $aiDebugIsImg,
+                'debug_func_exists' => $aiDebugFuncExists ?? false,
+            ]);
+            break;
+        }
+
+        case 'delete_conf_file': {
+            $confSysId = $body['conf_sys_id'] ?? '';
+            $fileIndex = $body['file_index'] ?? null;
+            if (!$confSysId) throw new Exception('conf_sys_id required');
+            if ($fileIndex === null) throw new Exception('file_index required');
+
+            $row = _fetchRow($pdo, $taskSysId);
+            if (!$row) throw new Exception('Record not found');
+
+            $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
+            $confIdx = null;
+            foreach ($confirmations as $i => $c) {
+                if (($c['sys_id'] ?? '') === $confSysId) { $confIdx = $i; break; }
+            }
+            if ($confIdx === null) throw new Exception('Confirmation not found');
+
+            $files = $confirmations[$confIdx]['files_json'] ?? [];
+            $fileIndex = (int)$fileIndex;
+            if (!isset($files[$fileIndex])) throw new Exception('File not found');
+
+            // SMB থেকে delete
+            require_once '../../server/smb_upload_handler.php';
+            require_once '../../server/safe_folder_name.php';
+            require_once '../../server/live_storage.php';
+            try {
+                $fileName = $files[$fileIndex]['file_name'] ?? '';
+                if ($fileName) {
+                    $tStmt = $pdo->prepare("
+                        SELECT t.work_sys_id,
+                               JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')) AS client_sys_id,
+                               JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name'))   AS client_name
+                        FROM tasks t JOIN works w ON w.sys_id = t.work_sys_id
+                        WHERE t.sys_id = ? LIMIT 1
+                    ");
+                    $tStmt->execute([$taskSysId]);
+                    $tRow = $tStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($tRow) {
+                        $ctx = [
+                            'client_sys_id' => $tRow['client_sys_id'],
+                            'client_name'   => $tRow['client_name'],
+                            'work_sys_id'   => $tRow['work_sys_id'],
+                            'task_sys_id'   => $taskSysId,
+                            'module'        => 'files',
+                        ];
+                        $smbPath = smbBuildPath($ctx) . '/' . $fileName;
+                        $omv = new OMV_SMB_Manager();
+                        $omv->delete_file($smbPath);
+                    }
+                }
+            } catch (Exception $delErr) {
+                error_log('[delete_conf_file SMB] ' . $delErr->getMessage());
+            }
+
+            // files_json থেকে remove
+            array_splice($files, $fileIndex, 1);
+            $confirmations[$confIdx]['files_json'] = array_values($files);
+
+            $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
+            $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
+            $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
+            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+
+            ob_clean();
+            echo json_encode(['status' => 'success']);
             break;
         }
 

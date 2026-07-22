@@ -504,7 +504,7 @@ function _noteBubble(n) {
             </div>`;
         }).join('');
 
-        return `<div class="at-note-bubble at-note-image" style="position:relative;align-self:flex-start;max-width:400px;" id="pdf-note-${_e(n.sys_id)}">
+        return `<div class="at-note-bubble at-note-image" style="position:relative;align-self:flex-start;max-width:780px;" id="pdf-note-${_e(n.sys_id)}">
             <div class="flex items-center justify-between mb-1.5">
                 <div class="text-[10px] text-gray-400">
                     <i class="fas fa-file-pdf text-red-400 mr-1"></i>
@@ -1987,6 +1987,7 @@ function _bCard(b) {
 window.atNewBooking = function() {
     _activeBSysId = null; _gdsSegments = []; _gdsFares = [];
     _renderBBuilder(null);
+    _loadBookingTravelers();
 };
 
 window.atSelectBooking = function(sysId) {
@@ -1999,6 +2000,7 @@ window.atSelectBooking = function(sysId) {
     _gdsFares    = b.pricing_json  ?? [];
     _renderBBuilder(b);
     if (b.type === 'gds' || !b.type) setTimeout(() => _recalcAllFares('b'), 50);
+    _loadBookingTravelers();
 };
 
 function _renderBBuilder(b) {
@@ -2038,6 +2040,14 @@ function _renderBBuilder(b) {
             class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
     </div>
 
+    <!-- Travelers table -->
+    <div class="mb-4">
+        <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Travelers</label>
+        <div id="at-b-travelers" class="text-xs text-gray-300 text-center py-2">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+    </div>
+
     <div id="at-b-body">${type === 'soto' ? _sotoHtml(b) : _gdsHtml(b, 'b')}</div>
 
     ${b && !(_atData?.at_confirmations??[]).some(c=>c.booking_sys_id===b.sys_id&&c.status!=='failed'&&c.status!=='cancelled') ? `
@@ -2048,6 +2058,93 @@ function _renderBBuilder(b) {
         </button>
     </div>` : b ? '<div class="mb-3 text-center text-xs text-indigo-500 bg-indigo-50 py-2 rounded-lg border border-indigo-100">Already in Confirmation</div>' : ''}`;
 }
+
+// ── Booking travelers table ───────────────────────────────────
+async function _loadBookingTravelers() {
+    const el = document.getElementById('at-b-travelers');
+    if (!el) return;
+    if (!_cfg.workSysId) { el.innerHTML = '<p class="text-gray-300 text-xs">No work ID</p>'; return; }
+
+    try {
+        const res  = await fetch(`${_cfg.api.workTravelers}?action=list&work_sys_id=${encodeURIComponent(_cfg.workSysId)}`);
+        const json = await res.json();
+        const travelers = json.status === 'success' ? (json.data ?? []) : [];
+
+        if (!travelers.length) {
+            el.innerHTML = '<p class="text-gray-300 text-xs text-center py-1">No travelers linked</p>';
+            return;
+        }
+
+        const cell = (v) => `<td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition select-all"
+            onclick="atBCopyCell('${_e(String(v))}')" title="Click to copy">${_e(String(v))}</td>`;
+
+        el.innerHTML = `<div class="overflow-x-auto rounded-lg border border-gray-100">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-600 text-[10px] uppercase">
+                        <th class="px-2 py-1.5 text-left font-bold">Name</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Given</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Surname</th>
+                        <th class="px-2 py-1.5 text-center font-bold">PP No</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Expiry</th>
+                        <th class="px-2 py-1.5 text-center font-bold">DOB</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    ${travelers.map(t => {
+                        const pi = t.passport_info ?? '[]';
+                        const pArr = Array.isArray(pi) ? pi : (typeof pi === 'string' ? JSON.parse(pi || '[]') : []);
+                        const bio  = pArr.find?.(p => p.page_type === 'bio_page')?.bio_info ?? {};
+                        const name    = t.name ?? '—';
+                        const given   = bio.given_names ?? bio.given_name ?? '—';
+                        const surname = bio.surname ?? '—';
+                        const ppNo    = bio.passport_number ?? bio.passport_no ?? t.passport_no ?? '—';
+                        const expiry  = bio.date_of_expiry ?? '—';
+                        const dob     = bio.date_of_birth ?? t.date_of_birth ?? '—';
+                        return `<tr class="hover:bg-gray-50 text-gray-800">
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition font-medium" onclick="atBCopyCell('${_e(String(name))}')" title="Copy">${_e(String(name))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center" onclick="atBCopyCell('${_e(String(given))}')" title="Copy">${_e(String(given))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center" onclick="atBCopyCell('${_e(String(surname))}')" title="Copy">${_e(String(surname))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center font-mono" onclick="atBCopyCell('${_e(String(ppNo))}')" title="Copy">${_e(String(ppNo))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center" onclick="atBCopyCell('${_e(String(expiry))}')" title="Copy">${_e(String(expiry))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center" onclick="atBCopyCell('${_e(String(dob))}')" title="Copy">${_e(String(dob))}</td>
+                            <td class="px-2 py-1.5 text-center">
+                                <button onclick="atBUnlinkTraveler('${_e(t.sys_id)}','${_e(name)}')"
+                                    class="text-red-300 hover:text-red-500 transition" title="Remove">
+                                    <i class="fas fa-times text-[10px]"></i>
+                                </button>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    } catch(e) {
+        el.innerHTML = '<p class="text-red-300 text-xs text-center">Load failed</p>';
+        console.error(e);
+    }
+}
+
+window.atBCopyCell = function(text) {
+    window.focus();
+    setTimeout(() => {
+        navigator.clipboard.writeText(text).then(() => atT('success', 'Copied!'));
+    }, 50);
+};
+
+window.atBUnlinkTraveler = async function(travelerSysId, name) {
+    if (!confirm(`Remove ${name}?`)) return;
+    try {
+        const r = await fetch(_cfg.api.workTravelers, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({action:'unlink', work_sys_id:_cfg.workSysId, traveler_sys_id:travelerSysId})
+        });
+        const j = await r.json();
+        if (j.status === 'success') { atT('success', `${name} removed`); _loadBookingTravelers(); }
+        else atT('error', j.message ?? 'Failed');
+    } catch { atT('error', 'Network error'); }
+};
 
 window.atBTypeChange = function(type) {
     const body = document.getElementById('at-b-body');
@@ -2190,6 +2287,7 @@ window.atSelectConf = function(confId) {
     event?.currentTarget?.classList.add('active');
     const b = bookings.find(x => x.sys_id === c.booking_sys_id);
     _renderConfDetail(c, b);
+    _loadConfTravelers(c.sys_id);
 };
 
 function _renderConfDetail(c, b) {
@@ -2233,6 +2331,14 @@ function _renderConfDetail(c, b) {
             class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
     </div>
 
+    <!-- Travelers table -->
+    <div class="mb-4">
+        <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Travelers</label>
+        <div id="at-conf-travelers-${_e(c.sys_id)}" class="text-xs text-gray-300 text-center py-2">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+    </div>
+
     <div class="mb-4">
         <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Note</label>
         <textarea id="at-conf-note-${_e(c.sys_id)}" rows="2"
@@ -2241,34 +2347,72 @@ function _renderConfDetail(c, b) {
 
     <div class="mb-4">
         <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Confirmation Files</label>
-        <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-400 transition"
-            onclick="document.getElementById('at-conf-file-${_e(c.sys_id)}').click()">
-            <input type="file" id="at-conf-file-${_e(c.sys_id)}" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png"
-                onchange="atUploadConfFile(this,'${_e(c.sys_id)}')">
-            <i class="fas fa-cloud-upload-alt text-xl text-gray-300 mb-1 block"></i>
-            <p class="text-xs text-gray-400">Upload ticket files — images shown inline, PDF stored</p>
+
+        <!-- Drop zone + paste area -->
+        <div class="flex gap-2 mb-2">
+            <!-- Drop / Browse -->
+            <div id="at-conf-drop-${_e(c.sys_id)}"
+                class="flex-1 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition flex flex-col items-center justify-center gap-1"
+                ondragover="event.preventDefault();this.classList.add('border-indigo-400','bg-indigo-50')"
+                ondragleave="this.classList.remove('border-indigo-400','bg-indigo-50')"
+                ondrop="event.preventDefault();this.classList.remove('border-indigo-400','bg-indigo-50');atConfDrop(event,'${_e(c.sys_id)}')"
+                onclick="document.getElementById('at-conf-file-${_e(c.sys_id)}').click()">
+                <input type="file" id="at-conf-file-${_e(c.sys_id)}" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    onchange="atConfBrowse(this,'${_e(c.sys_id)}')">
+                <i class="fas fa-cloud-upload-alt text-2xl text-gray-300"></i>
+                <span class="text-xs text-gray-400 font-medium">Drop or Browse</span>
+            </div>
+            <!-- Paste -->
+            <div class="flex-1 border-2 border-dashed border-gray-200 rounded-xl p-3 relative"
+                style="min-height:80px;">
+                <textarea id="at-conf-paste-${_e(c.sys_id)}"
+                    class="w-full h-full text-xs text-gray-400 resize-none outline-none bg-transparent"
+                    placeholder="Paste image here (Ctrl+V)"
+                    onpaste="atConfPaste(event,'${_e(c.sys_id)}')"></textarea>
+            </div>
         </div>
-        <div id="at-conf-uprog-${_e(c.sys_id)}" class="hidden mt-1 text-xs text-indigo-600">
-            <i class="fas fa-spinner fa-spin mr-1"></i>Uploading…
+
+        <!-- Pending preview chips -->
+        <div id="at-conf-pending-${_e(c.sys_id)}" class="flex flex-wrap gap-1.5 mb-2"></div>
+
+        <!-- Upload progress -->
+        <div id="at-conf-uprog-${_e(c.sys_id)}" class="hidden text-xs text-indigo-600 mb-1">
+            <i class="fas fa-spinner fa-spin mr-1"></i><span id="at-conf-uprog-text-${_e(c.sys_id)}">Uploading…</span>
         </div>
-        ${(c.files_json??[]).length ? `<div class="mt-3 space-y-2">
+
+        <!-- Upload button — only shows when pending files exist -->
+        <button id="at-conf-upload-btn-${_e(c.sys_id)}" onclick="atConfUploadPending('${_e(c.sys_id)}')"
+            class="hidden w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition mb-3">
+            <i class="fas fa-upload mr-1.5"></i>Upload Files
+        </button>
+
+        <!-- Existing files -->
+        ${(c.files_json??[]).length ? `<div class="space-y-2">
             ${(c.files_json).map((f,fi) => {
-                const isImg = /\.(jpg|jpeg|png|webp)$/i.test(f.name??'');
+                const isImg = /\.(jpg|jpeg|png|webp)$/i.test(f.name??f.file_name??'');
+                const fileUrl = f.smb_token ?? '';
                 return `<div class="border border-gray-100 rounded-xl overflow-hidden">
-                    ${isImg ? `<img src="${_e(f.path)}" class="w-full max-h-40 object-contain bg-gray-50 cursor-pointer" onclick="atOpenImage('${_e(f.path)}')">` : ''}
+                    ${isImg ? `<img src="${_e(fileUrl)}" class="w-full max-h-40 object-contain bg-gray-50 cursor-pointer" onclick="atOpenImage('${_e(fileUrl)}')">` : ''}
                     <div class="flex items-center gap-2 px-3 py-2">
-                        <i class="fas fa-${isImg?'image':'file-alt'} text-gray-400 text-xs flex-shrink-0"></i>
-                        <span class="text-xs text-gray-600 flex-1 truncate">${_e(f.name)}</span>
-                        ${f.extracted_text ? `<button onclick="atShowExtracted('${fi}','${_e(c.sys_id)}')" class="text-xs text-indigo-500 hover:text-indigo-700 font-semibold px-1.5" title="Show extracted data"><i class="fas fa-eye"></i></button>` : ''}
-                        <a href="${_e(f.path)}" download class="text-xs text-indigo-500 hover:text-indigo-700"><i class="fas fa-download"></i></a>
+                        <i class="fas fa-${isImg?'image':'file-pdf'} text-gray-400 text-xs flex-shrink-0"></i>
+                        <span class="text-xs text-gray-600 flex-1 truncate" title="${_e(f.name??f.file_name??'')}">${_e(f.name??f.file_name??'')}</span>
+                        ${f.extracted_data ? `<button onclick="atShowExtracted('${fi}','${_e(c.sys_id)}')" class="text-indigo-400 hover:text-indigo-600 text-xs px-1" title="View extracted data"><i class="fas fa-eye"></i></button>` : ''}
+                        <a href="${_e(fileUrl)}" target="_blank" class="text-gray-400 hover:text-indigo-500 text-xs px-1" title="Download"><i class="fas fa-download"></i></a>
+                        <button onclick="atDeleteConfFile('${_e(c.sys_id)}',${fi},'${_e(f.name??f.file_name??'')}')" class="text-gray-300 hover:text-red-500 text-xs px-1" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
-                    ${f.extracted_text ? `<div id="at-extracted-${fi}-${_e(c.sys_id)}" class="hidden px-3 pb-2">
-                        <pre class="bg-gray-50 rounded-lg p-2 text-[10px] text-gray-600 max-h-32 overflow-auto font-mono whitespace-pre-wrap">${_e(f.extracted_text)}</pre>
+                    ${f.extracted_data ? `<div id="at-extracted-${fi}-${_e(c.sys_id)}" class="hidden px-3 pb-2">
+                        <pre class="bg-gray-50 rounded-lg p-2 text-[10px] text-gray-600 max-h-32 overflow-auto font-mono whitespace-pre-wrap">${_e(JSON.stringify(f.extracted_data, null, 2))}</pre>
                     </div>` : ''}
                 </div>`;
             }).join('')}
-        </div>` : '<p class="text-[11px] text-gray-300 mt-2 text-center">No files uploaded yet</p>'}
-    </div>
+            ${(c.files_json??[]).length > 0 ? `
+            <div class="flex gap-2 mt-2">
+                <button onclick="atViewConfFiles('${_e(c.sys_id)}')"
+                    class="flex-1 py-1.5 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg transition">
+                    <i class="fas fa-file-alt mr-1"></i>View All Formatted
+                </button>
+            </div>` : ''}
+        </div>` : '<p class="text-[11px] text-gray-300 mt-1 text-center">No files uploaded yet</p>'}
 
     <div class="flex gap-2">
         <button onclick="atSaveConfDetails('${_e(c.sys_id)}')"
@@ -2298,6 +2442,196 @@ window.atOpenImage = function(url) {
     ov.innerHTML = `<img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:8px;">`;
     ov.onclick = () => ov.remove();
     document.body.appendChild(ov);
+};
+
+// ── Confirmation travelers table ──────────────────────────────
+async function _loadConfTravelers(confSysId) {
+    const el = document.getElementById(`at-conf-travelers-${confSysId}`);
+    if (!el || !_cfg.workSysId) return;
+    try {
+        const res  = await fetch(`${_cfg.api.workTravelers}?action=list&work_sys_id=${encodeURIComponent(_cfg.workSysId)}`);
+        const json = await res.json();
+        const travelers = json.status === 'success' ? (json.data ?? []) : [];
+
+        if (!travelers.length) {
+            el.innerHTML = '<p class="text-gray-300 text-xs text-center py-1">No travelers linked</p>';
+            return;
+        }
+
+        el.innerHTML = `<div class="overflow-x-auto rounded-lg border border-gray-100">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-600 text-[10px] uppercase">
+                        <th class="px-2 py-1.5 text-left font-bold">Name</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Given</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Surname</th>
+                        <th class="px-2 py-1.5 text-center font-bold">PP No</th>
+                        <th class="px-2 py-1.5 text-center font-bold">Expiry</th>
+                        <th class="px-2 py-1.5 text-center font-bold">DOB</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    ${travelers.map(t => {
+                        const pi   = t.passport_info ?? '[]';
+                        const pArr = Array.isArray(pi) ? pi : (typeof pi === 'string' ? JSON.parse(pi || '[]') : []);
+                        const bio  = pArr.find?.(p => p.page_type === 'bio_page')?.bio_info ?? {};
+                        const name    = t.name ?? '—';
+                        const given   = bio.given_names ?? bio.given_name ?? '—';
+                        const surname = bio.surname ?? '—';
+                        const ppNo    = bio.passport_number ?? bio.passport_no ?? t.passport_no ?? '—';
+                        const expiry  = bio.date_of_expiry ?? '—';
+                        const dob     = bio.date_of_birth ?? t.date_of_birth ?? '—';
+                        return `<tr class="hover:bg-gray-50 text-gray-800">
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 font-medium" onclick="atBCopyCell('${_e(String(name))}')">${_e(String(name))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 text-center" onclick="atBCopyCell('${_e(String(given))}')">${_e(String(given))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 text-center" onclick="atBCopyCell('${_e(String(surname))}')">${_e(String(surname))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 text-center font-mono" onclick="atBCopyCell('${_e(String(ppNo))}')">${_e(String(ppNo))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 text-center" onclick="atBCopyCell('${_e(String(expiry))}')">${_e(String(expiry))}</td>
+                            <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 text-center" onclick="atBCopyCell('${_e(String(dob))}')">${_e(String(dob))}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    } catch(e) {
+        el.innerHTML = '<p class="text-red-300 text-xs text-center">Load failed</p>';
+    }
+}
+
+// ── Conf file pending state ───────────────────────────────────
+const _confPending = {}; // confSysId → File[]
+
+function _confAddFiles(confSysId, files) {
+    if (!_confPending[confSysId]) _confPending[confSysId] = [];
+    for (const f of files) _confPending[confSysId].push(f);
+    _confRenderPending(confSysId);
+}
+
+function _confRenderPending(confSysId) {
+    const wrap = document.getElementById(`at-conf-pending-${confSysId}`);
+    const btn  = document.getElementById(`at-conf-upload-btn-${confSysId}`);
+    const files = _confPending[confSysId] ?? [];
+    if (!wrap) return;
+    if (!files.length) {
+        wrap.innerHTML = '';
+        btn?.classList.add('hidden');
+        return;
+    }
+    btn?.classList.remove('hidden');
+    wrap.innerHTML = files.map((f, i) => {
+        const icon = f.type.startsWith('image/') ? 'fa-image text-blue-400'
+                   : f.type === 'application/pdf' ? 'fa-file-pdf text-red-400'
+                   : 'fa-paperclip text-gray-400';
+        const kb = (f.size / 1024).toFixed(0);
+        return `<span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5 text-[11px] font-medium">
+            <i class="fas ${icon} text-[10px]"></i>
+            <span class="max-w-[100px] truncate" title="${_e(f.name)}">${_e(f.name)}</span>
+            <span class="text-indigo-400">${kb}k</span>
+            <button onclick="_confRemovePending('${confSysId}',${i})"
+                class="text-red-400 hover:text-red-600 ml-0.5"><i class="fas fa-times text-[9px]"></i></button>
+        </span>`;
+    }).join('');
+}
+
+window._confRemovePending = function(confSysId, idx) {
+    if (_confPending[confSysId]) _confPending[confSysId].splice(idx, 1);
+    _confRenderPending(confSysId);
+};
+
+window.atConfBrowse = function(input, confSysId) {
+    if (!input.files.length) return;
+    _confAddFiles(confSysId, Array.from(input.files));
+    input.value = '';
+};
+
+window.atConfDrop = function(e, confSysId) {
+    if (!e.dataTransfer.files.length) return;
+    _confAddFiles(confSysId, Array.from(e.dataTransfer.files));
+};
+
+window.atConfPaste = function(e, confSysId) {
+    const items = e.clipboardData?.items ?? [];
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            _confAddFiles(confSysId, [file]);
+            break;
+        }
+    }
+};
+
+window.atConfUploadPending = async function(confSysId) {
+    const files = _confPending[confSysId] ?? [];
+    if (!files.length) return;
+
+    const prog     = document.getElementById(`at-conf-uprog-${confSysId}`);
+    const progText = document.getElementById(`at-conf-uprog-text-${confSysId}`);
+    const btn      = document.getElementById(`at-conf-upload-btn-${confSysId}`);
+    if (prog) prog.classList.remove('hidden');
+    if (btn)  btn.disabled = true;
+
+    let uploaded = 0;
+    for (const file of files) {
+        if (progText) progText.textContent = `Uploading ${file.name}… (${++uploaded}/${files.length})`;
+        const fd = new FormData();
+        fd.append('action', 'upload_conf_file');
+        fd.append('conf_sys_id', confSysId);
+        fd.append('task_sys_id', _cfg.taskSysId);
+        fd.append('work_sys_id', _cfg.workSysId);
+        fd.append('file', file);
+        try {
+            const res  = await fetch(_cfg.api.airTickets, {method:'POST', body:fd});
+            const json = await res.json();
+            if (json.status !== 'success') {
+                atT('error', `${file.name}: ${json.message ?? 'Failed'}`);
+            } else if (json.ai_error) {
+                console.warn('AI extract failed:', json.ai_error);
+            }
+        } catch { atT('error', `${file.name}: Upload failed`); }
+    }
+
+    _confPending[confSysId] = [];
+    if (prog) prog.classList.add('hidden');
+    if (btn)  btn.disabled = false;
+    atT('success', `${files.length} file${files.length>1?'s':''} uploaded`);
+    await _reload();
+    // conf re-render
+    const updatedConf = (_atData?.at_confirmations ?? []).find(c => c.sys_id === confSysId);
+    if (updatedConf) {
+        const b = (_atData?.at_bookings ?? []).find(bk => bk.sys_id === updatedConf.booking_sys_id);
+        _renderConfDetail(updatedConf, b ?? null);
+        _loadConfTravelers(confSysId);
+    }
+};
+
+// ── Drag & drop (old handler kept for compat) ─────────────────
+window.atConfFileDrop = window.atConfDrop;
+
+// ── Delete conf file ──────────────────────────────────────────
+window.atDeleteConfFile = async function(confSysId, fileIndex, fileName) {
+    if (!confirm(`Delete "${fileName}"?`)) return;
+    try {
+        const json = await _api({ action:'delete_conf_file', conf_sys_id:confSysId, file_index:fileIndex });
+        if (json.status === 'success') {
+            atT('success', 'File deleted');
+            await _reload();
+            const c = (_atData?.at_confirmations ?? []).find(x => x.sys_id === confSysId);
+            const b = (_atData?.at_bookings ?? []).find(bk => bk.sys_id === c?.booking_sys_id);
+            if (c) { _renderConfDetail(c, b ?? null); _loadConfTravelers(confSysId); }
+        } else { atT('error', json.message ?? 'Delete failed'); }
+    } catch { atT('error', 'Network error'); }
+};
+
+// ── View conf files formatted (task-air.php style) ────────────
+window.atViewConfFiles = function(confSysId) {
+    const c = (_atData?.at_confirmations ?? []).find(x => x.sys_id === confSysId);
+    if (!c) return;
+    const files = c.files_json ?? [];
+    if (!files.length) return;
+    // নতুন window এ open করি
+    const url = `task-air.php?task_sys_id=${encodeURIComponent(_cfg.taskSysId)}&conf_sys_id=${encodeURIComponent(confSysId)}`;
+    window.open(url, '_blank');
 };
 
 window.atUpdateConfStatus = async function(confId, status) {

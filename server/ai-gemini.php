@@ -22,6 +22,65 @@ function _geminiApiKey(): string {
     return '';
 }
 
+/**
+ * geminiCallWithFile — image বা PDF file পাঠিয়ে Gemini থেকে data extract করো
+ * @param string $filePath  local file path (temp)
+ * @param string $mimeType  image/jpeg, image/png, application/pdf etc
+ * @param string $prompt    extraction prompt
+ * @return array|null       parsed JSON array/object or null on failure
+ */
+function geminiCallWithFile(string $filePath, string $mimeType, string $prompt): ?array {
+    $apiKey = _geminiApiKey();
+    if (!$apiKey || !file_exists($filePath)) return ['_debug_no_key_or_file' => true, '_has_key' => !empty($apiKey), '_file_exists' => file_exists($filePath)];
+
+    $model = 'gemini-2.5-flash';
+    $url   = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+    $fileData   = base64_encode(file_get_contents($filePath));
+    $payload    = json_encode([
+        'contents' => [[
+            'role'  => 'user',
+            'parts' => [
+                [
+                    'inline_data' => [
+                        'mime_type' => $mimeType,
+                        'data'      => $fileData,
+                    ]
+                ],
+                ['text' => $prompt],
+            ]
+        ]],
+        'generationConfig' => [
+            'maxOutputTokens' => 2000,
+            'temperature'     => 0.2,
+        ],
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 90,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+    ]);
+    $raw  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code !== 200) { error_log('[geminiCallWithFile] HTTP ' . $code . ': ' . $raw); return ['_debug_http' => $code, '_debug_response' => substr($raw, 0, 500)]; }
+
+    $body = json_decode($raw, true);
+    $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    if (!$text) { error_log('[geminiCallWithFile] Empty text. Body: ' . substr($raw, 0, 500)); return ['_debug_empty' => true, '_debug_body' => substr($raw, 0, 500)]; }
+
+    // JSON block strip করো
+    $clean = preg_replace('/^```(?:json)?\s*/i', '', trim($text));
+    $clean = preg_replace('/\s*```$/', '', $clean);
+    $decoded = json_decode(trim($clean), true);
+    return is_array($decoded) ? $decoded : null;
+}
+
 function geminiCall(string $system, string $user, int $maxTokens = 1000, float $temperature = 0.5): array {
     $apiKey = _geminiApiKey();
     if (!$apiKey) return ['success' => false, 'error' => 'Gemini API key not configured'];

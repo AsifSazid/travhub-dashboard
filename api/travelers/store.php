@@ -194,7 +194,25 @@ try {
     ]);
     
     $travelerId = $pdo->lastInsertId();
-    
+
+    // work_sys_id দেওয়া থাকলে automatically link করো
+    if (!empty($data['work_sys_id'])) {
+        $workSysId = $data['work_sys_id'];
+        $wStmt = $pdo->prepare("SELECT traveler_sys_ids FROM works WHERE sys_id = ? LIMIT 1");
+        $wStmt->execute([$workSysId]);
+        $work = $wStmt->fetch(PDO::FETCH_ASSOC);
+        if ($work) {
+            $refs = json_decode($work['traveler_sys_ids'] ?? '[]', true) ?? [];
+            // Already linked না থাকলে add করো
+            $alreadyLinked = array_filter($refs, fn($r) => ($r['traveler_sys_id'] ?? '') === $cleanSysId);
+            if (empty($alreadyLinked)) {
+                $refs[] = ['traveler_sys_id' => $cleanSysId, 'name' => $data['full_name']];
+                $pdo->prepare("UPDATE works SET traveler_sys_ids = ? WHERE sys_id = ?")
+                    ->execute([json_encode($refs), $workSysId]);
+            }
+        }
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'Traveler created successfully',

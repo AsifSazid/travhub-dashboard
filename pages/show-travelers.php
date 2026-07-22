@@ -6,7 +6,7 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$travelerId = $_GET['traveler_id'];
+$travelerId = $_GET['traveler_id'] ?? $_GET['id'];
 
 ?>
 <!DOCTYPE html>

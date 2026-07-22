@@ -6,7 +6,7 @@
 
 
 
-$travelerId = $_GET['traveler_id'] ?? null;
+$travelerId = $_GET['traveler_id'] ?? $_GET['id'] ?? null;
 
 if (!$travelerId) {
     echo '<div class="text-red-500 p-4">No traveler ID provided</div>';
