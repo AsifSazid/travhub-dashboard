@@ -175,19 +175,30 @@ function nested_val($array, $key, $default = "N/A") {
 
         <!-- ===== NEW SYSTEM: Multiple files → multiple pages ===== -->
         <?php if ($isNewSystem && !empty($newFiles)): ?>
+        <?php if (isset($_GET['debug'])): ?>
+        <div style="padding:12px;">
+        <p style="font-size:11px;font-weight:bold;">newFiles count: <?php echo count($newFiles); ?></p>
+        <pre style="font-size:9px;background:#f9fafb;padding:12px;border-radius:8px;max-height:400px;overflow:auto;"><?php echo htmlspecialchars(json_encode(['newFiles'=>$newFiles,'newConf'=>$newConf,'newTask'=>$newTask], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+        </div>
+        <?php endif; ?>
+
         <?php foreach ($newFiles as $fi => $file):
             $ed = $file['extracted_data'] ?? [];
-            $passengers_new = $ed['passengers'] ?? (isset($ed['passenger_name']) ? [['full_name'=>$ed['passenger_name'],'ticket_number'=>$ed['ticket_number']??'','type'=>'Adult']] : []);
-            $flights_new    = $ed['flights'] ?? (isset($ed['flight_no']) ? [[
-                'flight_number'    => $ed['flight_no'] ?? '',
-                'operating_airline'=> $ed['airline'] ?? '',
-                'departure'        => ['city'=>$ed['departure_city']??'','time'=>$ed['departure_time']??'','date'=>$ed['departure_date']??''],
-                'arrival'          => ['city'=>$ed['arrival_city']??'','time'=>$ed['arrival_time']??'','date'=>$ed['arrival_date']??''],
-                'duration'         => '',
-                'class'            => $ed['class'] ?? '',
-                'baggage_info'     => ['checked'=>$ed['baggage']??''],
-            ]] : []);
-            $pnr_new = $ed['pnr'] ?? ($newConf['ticket_nos'][0] ?? '');
+
+            // passengers — direct or nested
+            $passengers_new = $ed['passengers'] ?? [];
+
+            // flights — direct or under journey
+            $flights_new = $ed['flights'] ?? $ed['journey']['flights'] ?? [];
+
+            // PNR — multiple possible locations
+            $pnr_new = $ed['pnr']
+                ?? $ed['booking_details']['booking_reference_pnr']
+                ?? $ed['airline_details']['airline_pnr']
+                ?? ($newConf['ticket_nos'][0] ?? '');
+
+            // fare — direct or nested
+            $fare_new = $ed['fare'] ?? $ed['fare_details'] ?? [];
         ?>
         <?php if ($fi > 0): ?><div class="page-break" style="page-break-before:always;"></div><?php endif; ?>
 
@@ -284,8 +295,14 @@ function nested_val($array, $key, $default = "N/A") {
                                 <div class="text-[9px] text-slate-500"><span contenteditable="true"><?php echo htmlspecialchars($f['arrival']['date']??''); ?></span></div>
                             </td>
                             <td class="p-3 align-top text-right pr-3">
-                                <div class="text-[10px] font-bold text-slate-700 italic"><span contenteditable="true"><?php echo htmlspecialchars($f['class']??''); ?></span></div>
-                                <div class="text-[10px] text-blue-600 font-black mt-1 uppercase"><span contenteditable="true">Bag: <?php echo htmlspecialchars($f['baggage_info']['checked']??''); ?></span></div>
+                                <div class="text-[10px] font-bold text-slate-700 italic"><span contenteditable="true"><?php echo htmlspecialchars($f['class'] ?? $f['cabin_class'] ?? ''); ?></span></div>
+                                <div class="text-[10px] text-blue-600 font-black mt-1 uppercase"><span contenteditable="true">Bag: <?php
+                                    $bag = $f['baggage_info']['checked']
+                                        ?? $f['baggage_allowance']['checked_baggage']
+                                        ?? $f['baggage_allowance']
+                                        ?? '';
+                                    echo htmlspecialchars(is_array($bag) ? json_encode($bag) : $bag);
+                                ?></span></div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -304,15 +321,18 @@ function nested_val($array, $key, $default = "N/A") {
                         <p class="text-[11px] text-slate-600 font-mono"><?php echo htmlspecialchars(implode(', ', $newConf['ticket_nos'] ?? [])); ?></p>
                     </div>
                     <div class="text-right min-w-[220px]">
-                        <?php if (!empty($ed['fare_amount'])): ?>
-                        <div class="flex justify-between items-baseline gap-4">
-                            <p class="text-lg font-black text-slate-900 uppercase">Total Fare</p>
-                            <p class="text-2xl font-black text-slate-900">
-                                <span contenteditable="true"><?php echo htmlspecialchars($ed['fare_amount']??''); ?></span>
-                                <span class="text-lg"><?php echo htmlspecialchars($ed['currency']??'BDT'); ?></span>
-                            </p>
-                        </div>
-                        <?php endif; ?>
+                    <?php if (!empty($fare_new['total']) || !empty($ed['fare']['total'])): 
+                        $fareTotal    = $fare_new['total'] ?? $ed['fare']['total'] ?? '';
+                        $fareCurrency = $fare_new['currency'] ?? $ed['fare']['currency'] ?? 'BDT';
+                    ?>
+                    <div class="flex justify-between items-baseline gap-4">
+                        <p class="text-lg font-black text-slate-900 uppercase">Total Fare</p>
+                        <p class="text-2xl font-black text-slate-900">
+                            <span contenteditable="true"><?php echo htmlspecialchars($fareTotal); ?></span>
+                            <span class="text-lg"><?php echo htmlspecialchars($fareCurrency); ?></span>
+                        </p>
+                    </div>
+                    <?php endif; ?>
                     </div>
                 </div>
                 <p class="text-center mt-6 text-[8px] text-slate-300 font-bold uppercase tracking-[0.4em]">Electronically Generated • Powered by Travhub Global Limited</p>

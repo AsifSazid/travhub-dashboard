@@ -26,7 +26,7 @@ ob_start();
 session_start();
 date_default_timezone_set('Asia/Dhaka');
 
-// Temp: catch PHP errors in response
+// PHP fatal errors কে JSON এ convert করো
 ini_set('display_errors', 0);
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     ob_clean();
@@ -47,6 +47,7 @@ require_once '../../server/api_bootstrap.php';
 require_once '../../server/db_connection.php';
 require_once '../../server/sys_id_generator_v2.php';
 require_once '../../server/generate_meta_data.php';
+require_once __DIR__ . '/../../server/ai-gemini.php';
 
 $method   = $_SERVER['REQUEST_METHOD'];
 $action   = $_GET['action'] ?? '';
@@ -798,9 +799,9 @@ try {
             if ($confIdx === null) throw new Exception("Confirmation '{$confSysId}' not found");
 
             // ── SMB path: tasks JOIN works ────────────────────
-            require_once '../../server/smb_upload_handler.php';
-            require_once '../../server/safe_folder_name.php';
-            require_once '../../server/live_storage.php';
+            require_once __DIR__ . '/../../server/smb_upload_handler.php';
+            require_once __DIR__ . '/../../server/safe_folder_name.php';
+            require_once __DIR__ . '/../../server/live_storage.php';
 
             $tStmt = $pdo->prepare("
                 SELECT t.work_sys_id,
@@ -854,27 +855,162 @@ try {
             $smbToken = smbFileUrl("{$smbBase}/{$fileName}");
 
             // ── AI Extraction (temp file delete এর আগে) ──────
-            require_once '../../server/ai-gemini.php';
+            $extractedData    = null;
+            // ── AI Extraction (temp file delete এর আগে) ──────
             $extractedData = null;
-            $aiDebugMime   = $mimeType;
-            $aiDebugIsImg  = str_starts_with($mimeType, 'image/');
-            $aiDebugIsPdf  = ($mimeType === 'application/pdf');
-            $aiDebugFileExists = file_exists($tempLocal);
-            $aiDebugFuncExists = function_exists('geminiCallWithFile');
             try {
                 $isImage = str_starts_with($mimeType, 'image/');
                 $isPdf   = $mimeType === 'application/pdf';
                 if ($isImage || $isPdf) {
-                    $prompt = "Extract all information from this air ticket/travel document. Return ONLY valid JSON with fields: passenger_name, pnr, ticket_number, airline, flight_no, departure_city, arrival_city, departure_date, departure_time, arrival_date, arrival_time, seat, class, baggage, fare_amount, currency. Use null for missing fields.";
-                    if (!$aiDebugFuncExists) {
-                        $extractedData = ['_debug_func_missing' => true];
-                    } else {
-                        $extractedData = geminiCallWithFile($tempLocal, $mimeType, $prompt);
+                    $prompt = "Extract flight itinerary details from this travel document (PDF/image) and return ONLY valid JSON matching this exact schema. Extract ALL flight segments in chronological order.
+
+                    SCHEMA:
+                    {
+                      \"purpose\": [
+                        {
+                          \"route\": \"\", 
+                          \"route_type\": \"One-way/Return/Multi-city\",
+                          \"passengers\": [],
+                          \"travel_date\": \"Departure Date | Arrival Date\",
+                          \"others\": []
+                        }
+                      ],
+                      \"booking_details\": {
+                        \"booking_reference_pnr\": \"\",
+                        \"booking_platform\": \"\",
+                        \"booking_number\": \"\",
+                        \"date_of_issue\": \"YYYY-MM-DD\"
+                      },
+                      \"airline_details\": {
+                        \"primary_airline\": \"\",
+                        \"airline_pnr\": \"\",
+                        \"galileo_pnr\": \"\"
+                      },
+                      \"passengers\": [
+                        {
+                          \"name\": {\"first\": \"\", \"last\": \"\"},
+                          \"full_name\": \"\",
+                          \"type\": \"Adult/Child/Infant\",
+                          \"ticket_number\": \"\",
+                          \"passport_number\": \"\",
+                          \"frequent_flyer_number\": \"\",
+                          \"seat_assignment\": \"\"
+                        }
+                      ],
+                      \"journey\": {
+                        \"type\": \"One-way/Return/Multi-city\",
+                        \"total_passengers\": 0,
+                        \"flights\": [
+                          {
+                            \"segment_id\": 1,
+                            \"flight_number\": \"\",
+                            \"operating_airline\": \"\",
+                            \"marketing_airline\": \"\",
+                            \"departure\": {
+                              \"city\": \"\",
+                              \"airport\": \"\",
+                              \"airport_code\": \"\",
+                              \"terminal\": \"\",
+                              \"date\": \"YYYY-MM-DD\",
+                              \"time\": \"HH:MM\",
+                              \"full_datetime\": \"\"
+                            },
+                            \"arrival\": {
+                              \"city\": \"\",
+                              \"airport\": \"\",
+                              \"airport_code\": \"\",
+                              \"terminal\": \"\",
+                              \"date\": \"YYYY-MM-DD\",
+                              \"time\": \"HH:MM\",
+                              \"full_datetime\": \"\"
+                            },
+                            \"duration\": \"\",
+                            \"class\": \"\",
+                            \"status\": \"\",
+                            \"aircraft\": \"\",
+                            \"meal\": \"\",
+                            \"stops\": 0,
+                            \"stopover_info\": [],
+                            \"baggage_info\": {
+                              \"checked\": \"\",
+                              \"cabin\": \"\",
+                              \"personal_item\": \"\",
+                              \"details\": \"\"
+                            },
+                            \"special_services\": \"\"
+                          }
+                        ],
+                        \"transfers\": [
+                          {
+                            \"from_flight\": 1,
+                            \"to_flight\": 2,
+                            \"transfer_location\": \"\",
+                            \"transfer_duration\": \"\",
+                            \"transfer_notes\": \"\",
+                            \"baggage_checked_through\": true
+                          }
+                        ]
+                      },
+                      \"baggage_allowance\": {
+                        \"summary\": \"\",
+                        \"per_passenger\": [
+                          {
+                            \"passenger_name\": \"\",
+                            \"checked_baggage\": \"\",
+                            \"cabin_baggage\": \"\",
+                            \"personal_item\": \"\",
+                            \"total_weight_allowance\": \"\",
+                            \"restrictions\": \"\"
+                          }
+                        ]
+                      },
+                      \"fare_details\": {
+                        \"base_fare\": {\"amount\": 0, \"currency\": \"\"},
+                        \"taxes\": {\"amount\": 0, \"breakdown\": []},
+                        \"total_fare\": {\"amount\": 0, \"currency\": \"\"},
+                        \"fare_rules\": {
+                          \"refundable\": true,
+                          \"changeable\": true,
+                          \"cancellation_penalty\": \"\",
+                          \"validity\": \"\"
+                        }
+                      },
+                      \"important_notes\": [
+                        {
+                          \"type\": \"check-in/visa/baggage/other\",
+                          \"message\": \"\"
+                        }
+                      ],
+                      \"raw_extracted_text\": \"\"
                     }
+                    
+                    EXTRACTION RULES:
+                    
+                    PNR IDENTIFICATION (TWO DISTINCT TYPES):
+                    1. galileo_pnr: GDS/agency code (labels: RESERVATION CODE, BOOKING REF, PNR, GDS PNR, REC LOC, REFERENCE)
+                    2. airline_pnr: Airline-issued code (labels: AIRLINE RES CODE, AIRLINE BOOKING CODE, AIRLINE PNR, CARRIER PNR, CONFIRMATION CODE)
+                    → Identify by LABELS & CONTEXT. Populate only available fields.
+                    
+                    PURPOSE FIELD CONSTRUCTION:
+                    • route: Join segments chronologically with hyphen (-) | Use IATA code if present, otherwise full city name | Examples: DAC-SIN, DAC-SIN-DAC, DAC-SIN-DPS
+                    • route_type: One-way (no return) | Return (returns to origin) | Multi-city (multiple segments, no return)
+                    • passengers: Array of STRINGS | Parse \"LAST/FIRST TITLE\" → \"Salutation FirstName LastName\" | Convert: MR→Mr., MRS→Mrs., MS→Ms., MISS→Miss, DR→Dr.
+                    • travel_date: \"DD MMM | DD MMM\" (first departure | final arrival)
+                    • others: Array in order [\"GDS: {galileo_pnr}\", \"Airline PNR: {airline_pnr}\", \"Ticket: {ticket1}, {ticket2}\"] | Use \"Not Found\" for missing items
+                    
+                    FIELD EXTRACTION:
+                    • airport_code: Use explicit IATA code; if absent, infer from airport/city name; otherwise null
+                    • fare_rules: NON REF/NONEND/NON REFUNDABLE → refundable:false | NON CHANGE/NON ENDORSABLE → changeable:false
+                    • passenger_type: Default \"Adult\" unless explicitly \"Child\" or \"Infant\"
+                    • transfers: Create only for connecting flights with stopovers; empty array for direct flights
+                    • multiple bookings: Create separate purpose objects
+                    
+                    DEFAULT VALUES: strings=\"\", numbers=0, arrays=[], objects=null";
+                    
+                    $extractedData = geminiCallWithFile($tempLocal, $mimeType, $prompt, 4092);
                 }
             } catch (Exception $aiErr) {
                 error_log('[conf upload AI] ' . $aiErr->getMessage());
-                $aiError = $aiErr->getMessage();
             }
 
             // temp file delete করো
@@ -903,18 +1039,10 @@ try {
 
             ob_clean();
             echo json_encode([
-                'status'         => 'success',
-                'file_name'      => $fileName,
-                'smb_token'      => $smbToken,
-                'extracted'      => $extractedData !== null,
-                'extracted_data' => $extractedData,
-                'ai_error'       => $aiError ?? null,
-                'ai_key_set'     => !empty(env('GEMINI_API_KEY', '')),
-                'mime'           => $mimeType,
-                'debug_mime'     => $aiDebugMime,
-                'debug_is_pdf'   => $aiDebugIsPdf,
-                'debug_is_img'   => $aiDebugIsImg,
-                'debug_func_exists' => $aiDebugFuncExists ?? false,
+                'status'    => 'success',
+                'file_name' => $fileName,
+                'smb_token' => $smbToken,
+                'extracted' => $extractedData !== null,
             ]);
             break;
         }
@@ -940,9 +1068,9 @@ try {
             if (!isset($files[$fileIndex])) throw new Exception('File not found');
 
             // SMB থেকে delete
-            require_once '../../server/smb_upload_handler.php';
-            require_once '../../server/safe_folder_name.php';
-            require_once '../../server/live_storage.php';
+            require_once __DIR__ . '/../../server/smb_upload_handler.php';
+            require_once __DIR__ . '/../../server/safe_folder_name.php';
+            require_once __DIR__ . '/../../server/live_storage.php';
             try {
                 $fileName = $files[$fileIndex]['file_name'] ?? '';
                 if ($fileName) {

@@ -29,30 +29,29 @@ function _geminiApiKey(): string {
  * @param string $prompt    extraction prompt
  * @return array|null       parsed JSON array/object or null on failure
  */
-function geminiCallWithFile(string $filePath, string $mimeType, string $prompt): ?array {
+function geminiCallWithFile(string $filePath, string $mimeType, string $prompt, int $maxTokens = 8192): ?array {
     $apiKey = _geminiApiKey();
-    if (!$apiKey || !file_exists($filePath)) return ['_debug_no_key_or_file' => true, '_has_key' => !empty($apiKey), '_file_exists' => file_exists($filePath)];
+    if (!$apiKey || !file_exists($filePath)) return null;
 
     $model = 'gemini-2.5-flash';
     $url   = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
-    $fileData   = base64_encode(file_get_contents($filePath));
-    $payload    = json_encode([
+    $fileData = base64_encode(file_get_contents($filePath));
+    $payload  = json_encode([
         'contents' => [[
             'role'  => 'user',
             'parts' => [
-                [
-                    'inline_data' => [
-                        'mime_type' => $mimeType,
-                        'data'      => $fileData,
-                    ]
-                ],
+                ['inline_data' => ['mime_type' => $mimeType, 'data' => $fileData]],
                 ['text' => $prompt],
             ]
         ]],
         'generationConfig' => [
-            'maxOutputTokens' => 2000,
-            'temperature'     => 0.2,
+            'maxOutputTokens'  => $maxTokens,               // Dynamically uses passed $maxTokens (8192)
+            'temperature'      => 0.1,
+            'responseMimeType' => 'application/json',        // Guarantees pure JSON without markdown backticks
+            'thinkingConfig'   => [
+                'thinkingBudget' => 1024                     // Minimal headroom for structural parsing
+            ]
         ],
     ], JSON_UNESCAPED_UNICODE);
 
@@ -68,16 +67,14 @@ function geminiCallWithFile(string $filePath, string $mimeType, string $prompt):
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($code !== 200) { error_log('[geminiCallWithFile] HTTP ' . $code . ': ' . $raw); return ['_debug_http' => $code, '_debug_response' => substr($raw, 0, 500)]; }
+    if ($code !== 200 || !$raw) return null;
 
     $body = json_decode($raw, true);
     $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    if (!$text) { error_log('[geminiCallWithFile] Empty text. Body: ' . substr($raw, 0, 500)); return ['_debug_empty' => true, '_debug_body' => substr($raw, 0, 500)]; }
+    if (!$text) return null;
 
-    // JSON block strip করো
-    $clean = preg_replace('/^```(?:json)?\s*/i', '', trim($text));
-    $clean = preg_replace('/\s*```$/', '', $clean);
-    $decoded = json_decode(trim($clean), true);
+    // Decode pure JSON directly (no regex needed when responseMimeType is application/json)
+    $decoded = json_decode(trim($text), true);
     return is_array($decoded) ? $decoded : null;
 }
 

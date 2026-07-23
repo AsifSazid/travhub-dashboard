@@ -49,6 +49,14 @@ try {
 
     $files = $conf['files_json'] ?? [];
 
+    // extracted_data JSON string হলে decode করো
+    foreach ($files as &$file) {
+        if (isset($file['extracted_data']) && is_string($file['extracted_data'])) {
+            $file['extracted_data'] = json_decode($file['extracted_data'], true);
+        }
+    }
+    unset($file);
+
     // Task + Work info for header
     $tStmt = $pdo->prepare("
         SELECT t.sys_id, t.workname, t.client_name, t.work_sys_id, t.service_slug,
