@@ -17,6 +17,8 @@ $newTask         = [];
 $isNewSystem     = !empty($taskSysId) && !empty($confSysId);
 
 if ($isNewSystem) {
+    $fileIndex = isset($_GET['file_index']) ? (int)$_GET['file_index'] : null;
+
     $getTickets = $ip_port . "api/tasks/get-tickets.php?task_sys_id=" . urlencode($taskSysId) . "&conf_sys_id=" . urlencode($confSysId);
     $ch = curl_init($getTickets);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -28,10 +30,11 @@ if ($isNewSystem) {
     if ($http_code == 200 && !empty($response)) {
         $resData = json_decode($response, true);
         if (!empty($resData['success'])) {
-            $newFiles = $resData['files'] ?? [];
+            $allFiles = $resData['files'] ?? [];
+            // file_index দিলে শুধু ওই file, নইলে সব
+            $newFiles = $fileIndex !== null ? (isset($allFiles[$fileIndex]) ? [$allFiles[$fileIndex]] : []) : $allFiles;
             $newConf  = $resData['confirmation'] ?? [];
             $newTask  = $resData['task'] ?? [];
-            // প্রথম file এর extracted_data থেকে $data build করি (header/PNR এর জন্য)
             if (!empty($newFiles[0]['extracted_data'])) {
                 $data = $newFiles[0]['extracted_data'];
             }

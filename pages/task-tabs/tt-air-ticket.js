@@ -2431,9 +2431,9 @@ function _renderConfDetail(c, b) {
     </div>`;
 }
 
-window.atShowExtracted = function(fi, confId) {
-    const el = document.getElementById(`at-extracted-${fi}-${confId}`);
-    if (el) el.classList.toggle('hidden');
+window.atShowExtracted = function(fi, confSysId) {
+    const url = `task-air.php?task_sys_id=${encodeURIComponent(_cfg.taskSysId)}&conf_sys_id=${encodeURIComponent(confSysId)}&file_index=${fi}`;
+    window.open(url, '_blank');
 };
 
 window.atOpenImage = function(url) {
