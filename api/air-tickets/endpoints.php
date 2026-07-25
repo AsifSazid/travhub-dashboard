@@ -68,11 +68,25 @@ function _fetchRow(PDO $pdo, string $taskSysId): ?array
     $s->execute([$taskSysId]);
     $row = $s->fetch(PDO::FETCH_ASSOC);
     if (!$row) return null;
+    return _decodeRow($row);
+}
 
+// ── Helper: fetch air_tickets row by work_sys_id (new flow) ──
+function _fetchRowByWork(PDO $pdo, string $workSysId): ?array
+{
+    $s = $pdo->prepare("SELECT * FROM air_tickets WHERE work_sys_id = ? LIMIT 1");
+    $s->execute([$workSysId]);
+    $row = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return null;
+    return _decodeRow($row);
+}
+
+function _decodeRow(array $row): array
+{
     foreach (['at_quotations', 'at_bookings', 'at_confirmations'] as $col) {
         $row[$col] = (isset($row[$col]) && $row[$col]) ? json_decode($row[$col], true) : [];
     }
-    // Legacy at_confirmation (single object) — migrate to array if needed
+    // Legacy at_confirmation (single object) → migrate to array
     if (isset($row['at_confirmation']) && $row['at_confirmation']) {
         $single = json_decode($row['at_confirmation'], true);
         if (is_array($single) && !empty($single) && empty($row['at_confirmations'])) {
@@ -100,21 +114,74 @@ function _saveRow(PDO $pdo, string $taskSysId, array $quotations, array $booking
     ]);
 }
 
-// Save including at_confirmations array
-function _saveRowFull(PDO $pdo, string $taskSysId, array $quotations, array $bookings, array $confirmations, string $existingMeta, string $userName): void
+// Save including at_confirmations array — supports both task_sys_id and work_sys_id
+function _saveRowFull(PDO $pdo, string $id, array $quotations, array $bookings, array $confirmations, string $existingMeta, string $userName, bool $byWork = false): void
 {
-    $meta = buildMetaData($existingMeta, $userName);
+    $meta  = buildMetaData($existingMeta, $userName);
+    $field = $byWork ? 'work_sys_id' : 'task_sys_id';
     $pdo->prepare("
         UPDATE air_tickets
         SET at_quotations=?, at_bookings=?, at_confirmations=?, meta_data=?
-        WHERE task_sys_id=?
+        WHERE {$field}=?
     ")->execute([
-        json_encode($quotations,   JSON_UNESCAPED_UNICODE),
-        json_encode($bookings,     JSON_UNESCAPED_UNICODE),
+        json_encode($quotations,    JSON_UNESCAPED_UNICODE),
+        json_encode($bookings,      JSON_UNESCAPED_UNICODE),
         json_encode($confirmations, JSON_UNESCAPED_UNICODE),
         $meta,
-        $taskSysId,
+        $id,
     ]);
+}
+
+// ── Phase 6: Auto-create task when confirmation → confirmed ───
+function _autoCreateTaskOnConfirmed(PDO $pdo, array $conf, string $workSysId, string $userName): ?string
+{
+    // Check if task already exists for this confirmation
+    $check = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? LIMIT 1");
+    $check->execute([$conf['sys_id']]);
+    if ($check->fetchColumn()) return null; // already created
+
+    // Fetch work to get client info
+    $ws = $pdo->prepare("SELECT client_info, service_type FROM works WHERE sys_id = ? LIMIT 1");
+    $ws->execute([$workSysId]);
+    $work = $ws->fetch(PDO::FETCH_ASSOC);
+    if (!$work) return null;
+
+    $ci         = json_decode($work['client_info'], true) ?? [];
+    $svcTypes   = json_decode($work['service_type'], true) ?? [];
+    $clientName = $ci['name'] ?? 'Unknown';
+    $clientSysId= $ci['sys_id'] ?? null;
+
+    // Build task name from confirmation
+    $ticketNos  = implode(', ', $conf['ticket_nos'] ?? []);
+    $taskName   = 'Air Ticket' . ($ticketNos ? ' — ' . $ticketNos : ' — ' . $conf['sys_id']);
+
+    // Find service_work for air_ticket
+    $sw = $pdo->prepare("SELECT sys_id FROM service_works WHERE work_sys_id = ? AND service_slug = 'air_ticket' LIMIT 1");
+    $sw->execute([$workSysId]);
+    $swSysId = $sw->fetchColumn() ?: null;
+
+    require_once __DIR__ . '/../../server/sys_id_generator_v2.php';
+    require_once __DIR__ . '/../../server/generate_meta_data.php';
+
+    $taskIds  = generateV2IDs($pdo, 'tasks');
+    $taskMeta = buildMetaData(null, $userName);
+
+    $pdo->prepare("
+        INSERT INTO tasks (
+            uuid, sys_id, service_work_sys_id, work_sys_id,
+            client_sys_id, workname, client_name,
+            status, overall_status, service_slug,
+            confirmation_sys_id, meta_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', 'air_ticket', ?, ?)
+    ")->execute([
+        $taskIds['uuid'], $taskIds['sys_id'],
+        $swSysId, $workSysId,
+        $clientSysId, $taskName, $clientName,
+        $conf['sys_id'],
+        $taskMeta,
+    ]);
+
+    return $taskIds['sys_id'];
 }
 
 // ── Helper: short local ID generator (Q-001, B-001 etc) ──────
@@ -139,14 +206,21 @@ try {
     // ════════════════════════════════════════════════════════
     if ($method === 'GET' && $action === 'get') {
         $taskSysId = $_GET['task_sys_id'] ?? '';
-        if (!$taskSysId) throw new Exception('task_sys_id is required');
+        $workSysId = $_GET['work_sys_id'] ?? '';
 
-        $row = _fetchRow($pdo, $taskSysId);
+        $row = null;
+        if ($workSysId) {
+            $row = _fetchRowByWork($pdo, $workSysId);
+        } elseif ($taskSysId) {
+            $row = _fetchRow($pdo, $taskSysId);
+        } else {
+            throw new Exception('task_sys_id or work_sys_id is required');
+        }
 
         ob_clean();
         echo json_encode([
             'status' => 'success',
-            'data'   => $row, // null হলে frontend init করবে
+            'data'   => $row,
         ]);
         exit;
     }
@@ -157,20 +231,21 @@ try {
     if ($method !== 'POST') throw new Exception('Method not allowed');
 
     $taskSysId = $body['task_sys_id'] ?? $_POST['task_sys_id'] ?? '';
-    if (!$taskSysId) throw new Exception('task_sys_id is required');
+    $workSysId = $body['work_sys_id'] ?? $_POST['work_sys_id'] ?? '';
+    $byWork    = !$taskSysId && $workSysId; // new flow: work_sys_id only
+
+    if (!$taskSysId && !$workSysId) throw new Exception('task_sys_id or work_sys_id is required');
 
     switch ($action) {
 
         // ── INIT ─────────────────────────────────────────────
-        // Task এ প্রথমবার air_tickets row তৈরি করে
-        // Frontend: task load হলে get করে, null হলে init call করে
         case 'init': {
-            $workSysId = $body['work_sys_id'] ?? '';
             $leadSysId = $body['lead_sys_id'] ?? null;
             if (!$workSysId) throw new Exception('work_sys_id is required');
 
-            // Already exists?
-            $existing = _fetchRow($pdo, $taskSysId);
+            // Already exists by work?
+            $existing = _fetchRowByWork($pdo, $workSysId);
+            if (!$existing && $taskSysId) $existing = _fetchRow($pdo, $taskSysId);
             if ($existing) {
                 ob_clean();
                 echo json_encode(['status' => 'success', 'message' => 'Already initialized', 'data' => $existing]);
@@ -183,7 +258,7 @@ try {
             $pdo->prepare("
                 INSERT INTO air_tickets (uuid, sys_id, lead_sys_id, work_sys_id, task_sys_id, at_quotations, at_bookings, at_confirmation, meta_data)
                 VALUES (?, ?, ?, ?, ?, '[]', '[]', NULL, ?)
-            ")->execute([$ids['uuid'], $ids['sys_id'], $leadSysId, $workSysId, $taskSysId, $meta]);
+            ")->execute([$ids['uuid'], $ids['sys_id'], $leadSysId, $workSysId, $taskSysId ?: null, $meta]);
 
             ob_clean();
             echo json_encode([
@@ -688,17 +763,19 @@ try {
             $allowed   = ['pending', 'confirmed', 'failed', 'cancelled'];
             if (!in_array($newStatus, $allowed)) throw new Exception('Invalid confirmation status');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = $byWork ? _fetchRowByWork($pdo, $workSysId) : _fetchRow($pdo, $taskSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
             $found = false;
+            $confirmedConf = null;
             foreach ($confirmations as &$c) {
                 if ($c['sys_id'] === $confSysId) {
                     $c['status']     = $newStatus;
                     $c['updated_at'] = date('d-m-Y H:i');
                     $c['updated_by'] = $userName;
                     $found = true;
+                    if ($newStatus === 'confirmed') $confirmedConf = $c;
                     break;
                 }
             }
@@ -708,10 +785,22 @@ try {
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+
+            $id = $byWork ? $workSysId : $taskSysId;
+            _saveRowFull($pdo, $id, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
+
+            // ── Phase 6: Auto-create task on confirmed ────────
+            $autoTaskSysId = null;
+            if ($confirmedConf && $row['work_sys_id']) {
+                $autoTaskSysId = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $row['work_sys_id'], $userName);
+            }
 
             ob_clean();
-            echo json_encode(['status' => 'success', 'message' => 'Confirmation status updated']);
+            echo json_encode([
+                'status'        => 'success',
+                'message'       => 'Confirmation status updated',
+                'auto_task_id'  => $autoTaskSysId,
+            ]);
             break;
         }
 

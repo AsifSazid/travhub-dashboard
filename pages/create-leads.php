@@ -9,9 +9,10 @@ $pageTitle  = $isEditMode ? 'Edit Lead' : 'New Lead';
 $servicesApi  = $ip_port . 'api/masterdata/services/endpoints.php';
 $leadStoreApi = $isEditMode ? $ip_port . "api/leads/store.php?lead={$lead_id}" : $ip_port . 'api/leads/store.php';
 $getLeadApi   = $isEditMode ? $ip_port . "api/leads/edit.php?lead={$lead_id}" : '';
+$moveToWorkApi = $ip_port . 'api/leads/move-to-work.php';
 $clientsApi   = $ip_port . 'api/clients/all-clients.php';
 $extractApi   = $ip_port . 'api/ai/lead-extract.php';
-$speechApi    = $ip_port . 'api/ai/speech-polish.php';
+$speechApi    = $ip_port . 'api/ai/lead-speech-polish.php';
 $hotelsApi         = $ip_port . 'api/hotels/search.php';
 $hotelQuickCreate  = $ip_port . 'api/masterdata/hotels/quick-create.php';
 $countriesApi      = $ip_port . 'api/masterdata/countries/endpoints.php';
@@ -123,10 +124,26 @@ textarea.f-input{resize:vertical;}
         <div>
             <p class="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1"><?php echo $isEditMode?'Edit':'New'; ?> Lead</p>
             <h1 class="text-xl font-bold text-slate-900"><?php echo $isEditMode?'Update Lead Information':'Create a Lead'; ?></h1>
+            <?php if ($isEditMode): ?>
+            <!-- Assigned to badge — populated by JS after loadLeadData() -->
+            <div id="assignedBadge" class="hidden mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-50 border border-violet-200 text-xs font-semibold text-violet-700">
+                <i class="fas fa-user-check text-violet-400" style="font-size:10px"></i>
+                <span id="assignedBadgeName">—</span>
+            </div>
+            <?php endif; ?>
         </div>
-        <a href="index-leads.php" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-500 text-sm font-medium hover:border-slate-300 hover:text-slate-700 transition bg-white">
-            <i class="fas fa-arrow-left text-xs"></i><span class="hidden sm:inline">Back</span>
-        </a>
+        <div class="flex items-center gap-2">
+            <?php if ($isEditMode): ?>
+            <button id="convertBtn" onclick="convertToWork()"
+                class="hidden items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition">
+                <i class="fas fa-arrow-right-arrow-left text-xs"></i>
+                <span>Convert to Work</span>
+            </button>
+            <?php endif; ?>
+            <a href="index-leads.php" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-500 text-sm font-medium hover:border-slate-300 hover:text-slate-700 transition bg-white">
+                <i class="fas fa-arrow-left text-xs"></i><span class="hidden sm:inline">Back</span>
+            </a>
+        </div>
     </div>
 
     <div class="page-grid">
@@ -141,6 +158,11 @@ textarea.f-input{resize:vertical;}
                 </div>
                 <span class="text-sm font-bold text-slate-700">AI Extract</span>
                 <span class="text-xs text-slate-400 font-normal">& Build</span>
+                <!-- Service context badge — shown when a service is selected -->
+                <span id="aiServiceBadge" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">
+                    <i id="aiServiceBadgeIcon" class="fas fa-plane" style="font-size:8px"></i>
+                    <span id="aiServiceBadgeLabel">Air Ticket</span>
+                </span>
             </div>
             <button onclick="document.getElementById('promptArea').value='';document.getElementById('extractResult').classList.add('hidden');"
                 class="w-6 h-6 rounded-md flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition text-xs">
@@ -148,7 +170,7 @@ textarea.f-input{resize:vertical;}
             </button>
         </div>
         <textarea id="promptArea" class="prompt-box mb-3"
-            placeholder="e.g. Rahim wants Dubai trip for 2 adults next month, business class, 5-star hotel…"></textarea>
+            placeholder="Select a service above — then describe the client's request here…"></textarea>
         <div class="flex flex-wrap gap-2">
             <button id="sttToggle" onclick="sttToggle()" class="ai-btn ai-btn-voice"><i class="fas fa-microphone text-xs"></i> Voice</button>
             <button onclick="refinePrompt()" class="ai-btn ai-btn-refine"><i class="fas fa-wand-magic-sparkles text-xs"></i> Refine</button>
@@ -211,110 +233,101 @@ textarea.f-input{resize:vertical;}
         <div class="flex items-center mb-3">
             <div class="flex items-center gap-2">
                 <div id="dot1" class="step-circle active">1</div>
-                <span id="lbl1" class="step-lbl active">Client</span>
+                <span id="lbl1" class="step-lbl active">Info & Services</span>
             </div>
             <div id="line1" class="step-line flex-1 mx-2"></div>
             <div class="flex items-center gap-2">
                 <div id="dot2" class="step-circle">2</div>
-                <span id="lbl2" class="step-lbl">Services</span>
-            </div>
-            <div id="line2" class="step-line flex-1 mx-2"></div>
-            <div class="flex items-center gap-2">
-                <div id="dot3" class="step-circle">3</div>
-                <span id="lbl3" class="step-lbl">Details</span>
+                <span id="lbl2" class="step-lbl">Details</span>
             </div>
         </div>
-        <div class="prog-bar"><div id="progressBar" class="prog-fill" style="width:33%"></div></div>
+        <div class="prog-bar"><div id="progressBar" class="prog-fill" style="width:50%"></div></div>
     </div>
 
-    <!-- STEP 1 — Client -->
+    <!-- STEP 1 — Services first, then Client Info -->
     <div id="step1" class="step-panel active">
     <div class="card">
-        <div class="card-title"><i class="fas fa-user"></i>Client Information</div>
 
-        <div class="mb-4">
-            <label class="f-label">Search existing client</label>
-            <div class="flex gap-2">
-                <div id="clientSearchWrap" class="relative flex-1">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
-                    <input type="text" id="clientInput" placeholder="Name or ID…" class="f-input pl-8" autocomplete="off">
-                    <ul id="clientDropdown" class="absolute w-full bg-white border border-slate-200 rounded-lg mt-1 max-h-52 overflow-auto shadow-xl hidden z-50 text-sm"></ul>
-                </div>
-                <a href="./create-client.php" target="_blank"
-                    class="w-9 h-9 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition flex-shrink-0" title="Add Client">
-                    <i class="fas fa-plus text-xs"></i>
-                </a>
-                <button onclick="loadClients()"
-                    class="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 hover:border-slate-300 text-slate-400 rounded-lg text-sm transition flex-shrink-0">
-                    <i class="fas fa-rotate-right text-xs"></i>
-                </button>
-            </div>
-            <div id="clientBadge" class="hidden client-sel">
-                <div class="client-avatar" id="badgeAvatar">?</div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-slate-800 text-sm truncate" id="badgeName">—</div>
-                    <div class="text-xs text-slate-400 font-mono truncate" id="badgeMeta">—</div>
-                </div>
-                <button onclick="clearClient()" class="text-slate-300 hover:text-red-400 transition text-sm flex-shrink-0"><i class="fas fa-times"></i></button>
-            </div>
-        </div>
-
-        <div class="sec-divider"><span>OR FILL MANUALLY</span></div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-                <label class="f-label">Full Name <span class="text-red-400">*</span></label>
-                <input type="text" id="clientName" placeholder="e.g. Shakil Ahmed" class="f-input">
-            </div>
-            <div>
-                <label class="f-label">Phone</label>
-                <input type="text" id="clientPhone" placeholder="01700000000" class="f-input">
-            </div>
-            <div>
-                <label class="f-label">Email <span class="opt">(optional)</span></label>
-                <input type="email" id="clientEmail" placeholder="client@email.com" class="f-input">
-            </div>
-            <div>
-                <label class="f-label">Lead Source</label>
-                <select id="leadSource" class="f-input">
-                    <option value="">Select…</option>
-                    <option value="System">System</option>
-                    <option value="walk_in">Walk-in</option>
-                    <option value="referral">Referral</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="website">Website</option>
-                    <option value="phone_call">Phone Call</option>
-                    <option value="other">Other</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="flex justify-end mt-5">
-            <button onclick="goStep2()" class="btn-next">Next <i class="fas fa-arrow-right text-xs"></i></button>
-        </div>
-    </div>
-    </div>
-
-    <!-- STEP 2 — Services -->
-    <div id="step2" class="step-panel">
-    <div class="card">
-        <div class="card-title"><i class="fas fa-layer-group"></i>Select Services</div>
-        <p class="text-xs text-slate-400 mb-4 -mt-2">Pick one or more services for this lead</p>
-        <div id="servicesGrid" class="svc-grid grid grid-cols-3 md:grid-cols-6 gap-3 mb-4">
+        <!-- ① SERVICE SELECTION — top -->
+        <div class="card-title"><i class="fas fa-layer-group"></i>Select Service(s)</div>
+        <p class="text-xs text-slate-400 mb-4 -mt-2">Pick the service first — AI extract will be tailored to it</p>
+        <div id="servicesGrid" class="svc-grid grid grid-cols-3 md:grid-cols-6 gap-3 mb-2">
             <div class="col-span-6 text-center py-8 text-slate-300 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Loading…</div>
         </div>
         <div id="svcError" class="hidden mb-3 text-xs text-red-500 flex items-center gap-1">
             <i class="fas fa-exclamation-circle"></i> Please select at least one service.
         </div>
-        <div class="flex justify-between mt-5 pt-4 border-t border-slate-100">
-            <button onclick="goStep(1)" class="btn-back"><i class="fas fa-arrow-left text-xs"></i> Back</button>
-            <button onclick="goStep3()" class="btn-next">Next <i class="fas fa-arrow-right text-xs"></i></button>
+
+        <!-- ② CLIENT INFO — below services -->
+        <div class="border-t border-slate-100 pt-5 mt-3">
+            <div class="card-title"><i class="fas fa-user"></i>Client Information</div>
+
+            <div class="mb-4">
+                <label class="f-label">Search existing client</label>
+                <div class="flex gap-2">
+                    <div id="clientSearchWrap" class="relative flex-1">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+                        <input type="text" id="clientInput" placeholder="Name or ID…" class="f-input pl-8" autocomplete="off">
+                        <ul id="clientDropdown" class="absolute w-full bg-white border border-slate-200 rounded-lg mt-1 max-h-52 overflow-auto shadow-xl hidden z-50 text-sm"></ul>
+                    </div>
+                    <a href="./create-client.php" target="_blank"
+                        class="w-9 h-9 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition flex-shrink-0" title="Add Client">
+                        <i class="fas fa-plus text-xs"></i>
+                    </a>
+                    <button onclick="loadClients()"
+                        class="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 hover:border-slate-300 text-slate-400 rounded-lg text-sm transition flex-shrink-0">
+                        <i class="fas fa-rotate-right text-xs"></i>
+                    </button>
+                </div>
+                <div id="clientBadge" class="hidden client-sel">
+                    <div class="client-avatar" id="badgeAvatar">?</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-slate-800 text-sm truncate" id="badgeName">—</div>
+                        <div class="text-xs text-slate-400 font-mono truncate" id="badgeMeta">—</div>
+                    </div>
+                    <button onclick="clearClient()" class="text-slate-300 hover:text-red-400 transition text-sm flex-shrink-0"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="sec-divider"><span>OR FILL MANUALLY</span></div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="f-label">Full Name <span class="text-red-400">*</span></label>
+                    <input type="text" id="clientName" placeholder="e.g. Shakil Ahmed" class="f-input">
+                </div>
+                <div>
+                    <label class="f-label">Phone</label>
+                    <input type="text" id="clientPhone" placeholder="01700000000" class="f-input">
+                </div>
+                <div>
+                    <label class="f-label">Email <span class="opt">(optional)</span></label>
+                    <input type="email" id="clientEmail" placeholder="client@email.com" class="f-input">
+                </div>
+                <div>
+                    <label class="f-label">Lead Source</label>
+                    <select id="leadSource" class="f-input">
+                        <option value="">Select…</option>
+                        <option value="System">System</option>
+                        <option value="walk_in">Walk-in</option>
+                        <option value="referral">Referral</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="website">Website</option>
+                        <option value="phone_call">Phone Call</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end mt-5 pt-4 border-t border-slate-100">
+            <button onclick="goToDetails()" class="btn-next">Next <i class="fas fa-arrow-right text-xs"></i></button>
         </div>
     </div>
     </div>
 
-    <!-- STEP 3 — Details -->
-    <div id="step3" class="step-panel">
+    <!-- STEP 2 — Details (was step 3) -->
+    <div id="step2" class="step-panel">
     <div class="card">
         <div class="card-title"><i class="fas fa-list-check"></i>Lead Details</div>
 
@@ -398,7 +411,7 @@ textarea.f-input{resize:vertical;}
         <div id="svcPanels"></div>
 
         <div class="flex justify-between mt-6 pt-4 border-t border-slate-100">
-            <button onclick="goStep(2)" class="btn-back"><i class="fas fa-arrow-left text-xs"></i> Back</button>
+            <button onclick="goStep(1)" class="btn-back"><i class="fas fa-arrow-left text-xs"></i> Back</button>
             <button onclick="submitLead()" id="submitBtn" class="btn-save">
                 <i class="fas <?php echo $isEditMode?'fa-sync':'fa-save'; ?> text-xs"></i>
                 <?php echo $isEditMode?'Update Lead':'Save Lead'; ?>
@@ -487,6 +500,8 @@ const HOTELS_API        = '<?php echo $hotelsApi; ?>';
 const HOTEL_CREATE_API  = '<?php echo $hotelQuickCreate; ?>';
 const COUNTRIES_API     = '<?php echo $countriesApi; ?>';
 const VISA_API          = '<?php echo $visaApi; ?>';
+const MOVE_TO_WORK_API  = '<?php echo $moveToWorkApi; ?>';
+const LEAD_SYS_ID       = '<?php echo htmlspecialchars($lead_id); ?>';
 
 const COLOR_HEX = {
     indigo:'#6366f1',sky:'#0ea5e9',purple:'#a855f7',pink:'#ec4899',
@@ -725,12 +740,51 @@ function renderServiceGrid() {
             <div class="text-xs font-semibold text-slate-600 leading-tight">${s.name}</div>
         </div>`;
     }).join('');
+    updateAiPanelForService();
 }
 
 function toggleService(slug) {
     selectedServices.has(slug) ? selectedServices.delete(slug) : selectedServices.add(slug);
     renderServiceGrid();
     document.getElementById('svcError').classList.add('hidden');
+    updateAiPanelForService();
+}
+
+// Service-specific AI panel config
+const _svcAiConfig = {
+    air_ticket:   { icon: 'fa-plane',         label: 'Air Ticket',   placeholder: 'e.g. Rahim wants DAC-DXB round trip for 2 adults next month, business class…' },
+    visa:         { icon: 'fa-passport',       label: 'Visa',         placeholder: 'e.g. Karim needs Dubai tourist visa, 2 adults, traveling in August…' },
+    hotel:        { icon: 'fa-hotel',          label: 'Hotel',        placeholder: 'e.g. Sakib wants 5-star hotel in Bangkok, check-in 10 Aug, 5 nights, 2 rooms…' },
+    package:      { icon: 'fa-box-open',       label: 'Tour Package', placeholder: 'e.g. Family of 4 wants Thailand package 7 days, honeymoon couple, budget 3 lakh…' },
+    tour_package: { icon: 'fa-box-open',       label: 'Tour Package', placeholder: 'e.g. Family of 4 wants Thailand package 7 days, honeymoon couple, budget 3 lakh…' },
+    umrah:        { icon: 'fa-kaaba',          label: 'Umrah',        placeholder: 'e.g. Group of 5 for Umrah, 14 nights, fixed flight, departure January…' },
+    transport:    { icon: 'fa-van-shuttle',    label: 'Transport',    placeholder: 'e.g. Microbus needed DAC-CTG on 15 Aug, 8 passengers, AC required…' },
+};
+
+function updateAiPanelForService() {
+    const firstSlug = [...selectedServices][0] ?? '';
+    const cfg       = _svcAiConfig[firstSlug];
+    const badge     = document.getElementById('aiServiceBadge');
+    const badgeIcon = document.getElementById('aiServiceBadgeIcon');
+    const badgeLbl  = document.getElementById('aiServiceBadgeLabel');
+    const textarea  = document.getElementById('promptArea');
+
+    if (cfg && firstSlug) {
+        // Show badge
+        if (badge) {
+            badge.classList.remove('hidden');
+            badge.classList.add('inline-flex');
+        }
+        if (badgeIcon) badgeIcon.className = `fas ${cfg.icon}`;
+        if (badgeLbl)  badgeLbl.textContent = cfg.label;
+        // Update placeholder
+        if (textarea && !textarea.value.trim()) textarea.placeholder = cfg.placeholder;
+    } else {
+        // No service selected — reset
+        if (badge) { badge.classList.add('hidden'); badge.classList.remove('inline-flex'); }
+        if (textarea && !textarea.value.trim())
+            textarea.placeholder = 'Select a service above — then describe the client\'s request here…';
+    }
 }
 
 /* ═══════════════════════════════════════════════
@@ -796,9 +850,10 @@ function clearClient() {
    STEPS
 ═══════════════════════════════════════════════ */
 function updateProgress(step) {
-    document.getElementById('progressBar').style.width=Math.round((step/3)*100)+'%';
-    [1,2,3].forEach(i=>{
+    document.getElementById('progressBar').style.width=Math.round((step/2)*100)+'%';
+    [1,2].forEach(i=>{
         const dot=document.getElementById('dot'+i),lbl=document.getElementById('lbl'+i),line=document.getElementById('line'+i);
+        if(!dot) return;
         if(i<step){dot.className='step-circle done';dot.innerHTML='<i class="fas fa-check" style="font-size:10px"></i>';lbl.className='step-lbl done';if(line)line.classList.add('done');}
         else if(i===step){dot.className='step-circle active';dot.textContent=i;lbl.className='step-lbl active';}
         else{dot.className='step-circle';dot.textContent=i;lbl.className='step-lbl';if(line)line.classList.remove('done');}
@@ -812,19 +867,27 @@ function goStep(n) {
     window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function goStep2() {
-    if(!document.getElementById('clientName').value.trim()&&!selectedClient){showToast('error','Please enter or select a client.');return;}
+// New unified validation + transition: step 1 → step 2
+function goToDetails() {
+    if (!document.getElementById('clientName').value.trim() && !selectedClient) {
+        showToast('error', 'Please enter or select a client.'); return;
+    }
+    if (selectedServices.size === 0) {
+        document.getElementById('svcError').classList.remove('hidden');
+        document.getElementById('servicesGrid').scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+    }
+    document.getElementById('svcError').classList.add('hidden');
+    buildServicePanels();
     goStep(2);
 }
 
-function goStep3() {
-    if(selectedServices.size===0){document.getElementById('svcError').classList.remove('hidden');return;}
-    buildServicePanels();
-    goStep(3);
-}
+// Legacy stubs — kept so any surviving references don't throw
+function goStep2() { goToDetails(); }
+function goStep3() { goToDetails(); }
 
 /* ═══════════════════════════════════════════════
-   STEP 3 — SERVICE PANELS
+   STEP 2 — SERVICE PANELS
 ═══════════════════════════════════════════════ */
 function buildServicePanels() {
     const slugs  = [...selectedServices];
@@ -897,16 +960,104 @@ function renderServicePanel(slug) {
 
 /* ── Air Ticket Panel ── */
 function renderAirTicketPanel(saved) {
+    const segType  = saved.segment_type ?? 'one_way';
     const segments = saved.segments ?? [{}];
     return `<div>
+        <!-- Segment Type Selector -->
+        <div class="mb-5">
+            <label class="f-label mb-2 block"><i class="fas fa-route mr-1 text-indigo-400"></i>Journey Type</label>
+            <div class="flex gap-2 flex-wrap" id="atSegTypeRow">
+                ${[
+                    ['one_way',    'fa-arrow-right',  'One Way'],
+                    ['round_trip', 'fa-arrows-rotate','Round Trip'],
+                    ['multi_city', 'fa-code-branch',  'Multi City'],
+                ].map(([v, icon, label]) => `
+                    <button type="button"
+                        class="at-seg-type-btn flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition
+                            ${segType === v
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-300'}"
+                        data-type="${v}"
+                        onclick="onAtSegTypeChange('${v}')">
+                        <i class="fas ${icon} text-xs"></i>${label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+
+        <!-- Round Trip shorthand (shown only for round_trip) -->
+        <div id="atRoundTripHint" class="${segType === 'round_trip' ? '' : 'hidden'} mb-4 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2.5 text-xs text-indigo-700">
+            <i class="fas fa-info-circle mr-1.5"></i>
+            Round Trip: fill Outbound segment — Return segment auto-generates mirrored. Edit return details below if needed.
+        </div>
+
         <div id="atSegments" class="space-y-4">
             ${segments.map((seg, i) => atSegmentHtml(seg, i)).join('')}
         </div>
-        <button type="button" onclick="addAtSegment()"
-            class="add-more-btn mt-3">
+        <button type="button" id="atAddSegBtn" onclick="addAtSegment()"
+            class="add-more-btn mt-3 ${segType === 'round_trip' ? 'hidden' : ''}">
             <i class="fas fa-plus text-xs"></i>Add Segment
         </button>
     </div>`;
+}
+
+function onAtSegTypeChange(type) {
+    // Update button styles
+    document.querySelectorAll('.at-seg-type-btn').forEach(btn => {
+        const active = btn.dataset.type === type;
+        btn.className = btn.className
+            .replace(/border-indigo-500 bg-indigo-50 text-indigo-700|border-slate-200 bg-white text-slate-500 hover:border-indigo-300/g, '').trim()
+            + (active
+                ? ' border-indigo-500 bg-indigo-50 text-indigo-700'
+                : ' border-slate-200 bg-white text-slate-500 hover:border-indigo-300');
+    });
+
+    // Show/hide hint and add-segment button
+    document.getElementById('atRoundTripHint')?.classList.toggle('hidden', type !== 'round_trip');
+    document.getElementById('atAddSegBtn')?.classList.toggle('hidden', type === 'round_trip');
+
+    // Adjust segments
+    const container = document.getElementById('atSegments');
+    if (!container) return;
+
+    if (type === 'one_way') {
+        // Keep only first segment
+        while (container.children.length > 1) container.lastElementChild.remove();
+    } else if (type === 'round_trip') {
+        // Ensure exactly 2 segments
+        while (container.children.length > 2) container.lastElementChild.remove();
+        if (container.children.length < 2) {
+            const existing = container.children[0];
+            // Mirror return segment from outbound
+            const fromEl = existing?.querySelector('.at-from');
+            const toEl   = existing?.querySelector('.at-to');
+            const from   = fromEl?.value?.trim() ?? '';
+            const to     = toEl?.value?.trim()   ?? '';
+            const tmp = document.createElement('div');
+            tmp.innerHTML = atSegmentHtml({ from: to, to: from, route: to && from ? `${to} - ${from}` : '' }, 1);
+            container.appendChild(tmp.firstElementChild);
+            // Label the segments
+            _labelAtSegments(type);
+        }
+    }
+    // multi_city — no auto change, user adds manually
+
+    // Store segment_type in serviceAnswers
+    setAns('air_ticket', 'segment_type', type);
+    syncAllAtSegments();
+}
+
+function _labelAtSegments(type) {
+    const segs = document.querySelectorAll('.at-segment');
+    segs.forEach((seg, i) => {
+        const label = seg.querySelector('.at-seg-label');
+        if (!label) return;
+        if (type === 'round_trip') {
+            label.textContent = i === 0 ? 'Outbound' : 'Return';
+        } else {
+            label.textContent = `Segment ${i + 1}`;
+        }
+    });
 }
 
 function atSegmentHtml(seg={}, idx=0) {
@@ -917,7 +1068,7 @@ function atSegmentHtml(seg={}, idx=0) {
         : '';
     return `<div class="at-segment bg-slate-50 border border-slate-200 rounded-xl p-4" id="atSeg${idx}" data-idx="${idx}">
         <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wide"><i class="fas fa-plane mr-1 text-indigo-400"></i>Segment ${idx+1}</span>
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wide"><i class="fas fa-plane mr-1 text-indigo-400"></i><span class="at-seg-label">Segment ${idx+1}</span></span>
             ${idx>0?`<button type="button" onclick="removeAtSegment(${idx})" class="text-red-400 hover:text-red-600 text-xs"><i class="fas fa-trash"></i></button>`:''}
         </div>
         <div class="grid grid-cols-3 gap-3 mb-3">
@@ -1072,6 +1223,9 @@ function syncAllAtSegments() {
         });
     });
     setAns('air_ticket', 'segments', segments);
+    // Preserve segment_type from active button
+    const activeTypeBtn = document.querySelector('.at-seg-type-btn.border-indigo-500');
+    if (activeTypeBtn) setAns('air_ticket', 'segment_type', activeTypeBtn.dataset.type);
 }
 
 /* ── Hotel Panel ── */
@@ -2690,8 +2844,8 @@ function sttStart(){if(!('webkitSpeechRecognition'in window||'SpeechRecognition'
 function sttPause(){if(!_sttPaused){_sttPaused=true;_sttRec?.stop();document.getElementById('sttPause').innerHTML='▶ Resume';sttSetStatus('paused','Paused');}else{_sttPaused=false;_sttRec.lang=document.getElementById('sttLang').value||'bn-BD';_sttRec?.start();document.getElementById('sttPause').innerHTML='⏸ Pause';sttSetStatus('active','Recording…');}}
 function sttStop(){_sttRecording=false;_sttPaused=false;_sttRec?.stop();document.getElementById('sttStart')?.removeAttribute('disabled');document.getElementById('sttPause')?.setAttribute('disabled',true);document.getElementById('sttStop')?.setAttribute('disabled',true);const pb=document.getElementById('sttPause');if(pb)pb.innerHTML='⏸ Pause';const has=(_sttFinal||'').trim().length>0;document.getElementById('sttActions')?.classList.toggle('hidden',!has);sttSetStatus('stopped',has?'Stopped — push below':'Stopped');}
 function sttSetStatus(state,text){const dot=document.getElementById('sttDot'),txt=document.getElementById('sttStatus');if(txt)txt.textContent=text;if(!dot)return;const m={idle:'stt-dot-idle',active:'stt-dot-active',paused:'stt-dot-paused',stopped:'stt-dot-stopped'};dot.className='w-2 h-2 rounded-full flex-shrink-0 '+(m[state]||m.idle);}
-async function sttPush(polish){const prev=document.getElementById('sttPreview');const raw=(prev?prev.innerText:_sttFinal).trim();if(!raw){showToast('error','No transcript');return;}if(!polish){const ex=document.getElementById('promptArea').value.trim();document.getElementById('promptArea').value=ex?ex+' '+raw:raw;showToast('success','Pushed ✓');return;}const btn=document.getElementById('sttPolish');if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin text-xs mr-1"></i>Polishing…';}try{const fd=new FormData();fd.append('raw_text',raw);const res=await fetch(SPEECH_API,{method:'POST',body:fd});const d=await res.json();if(d.success){const ex=document.getElementById('promptArea').value.trim();document.getElementById('promptArea').value=ex?ex+' '+d.corrected_text:d.corrected_text;showToast('success','Polished & pushed ✓');}else showToast('error',d.error||'Failed');}catch{showToast('error','Network error');}if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles text-xs"></i> Polish & Push';}}
-async function refinePrompt(){const text=document.getElementById('promptArea').value.trim();if(!text){showToast('error','Type something first');return;}showLoader('Refining…');try{const fd=new FormData();fd.append('raw_text',text);const res=await fetch(SPEECH_API,{method:'POST',body:fd});const d=await res.json();if(d.success){document.getElementById('promptArea').value=d.corrected_text||text;showToast('success','Refined ✓');}else showToast('error',d.error||'Failed');}catch{showToast('error','Network error');}hideLoader();}
+async function sttPush(polish){const prev=document.getElementById('sttPreview');const raw=(prev?prev.innerText:_sttFinal).trim();if(!raw){showToast('error','No transcript');return;}if(!polish){const ex=document.getElementById('promptArea').value.trim();document.getElementById('promptArea').value=ex?ex+' '+raw:raw;showToast('success','Pushed ✓');return;}const btn=document.getElementById('sttPolish');if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin text-xs mr-1"></i>Polishing…';}try{const fd=new FormData();fd.append('raw_text',raw);fd.append('service_type',[...selectedServices][0]??'');const res=await fetch(SPEECH_API,{method:'POST',body:fd});const d=await res.json();if(d.success){const ex=document.getElementById('promptArea').value.trim();document.getElementById('promptArea').value=ex?ex+' '+d.corrected_text:d.corrected_text;showToast('success','Polished & pushed ✓');}else showToast('error',d.error||'Failed');}catch{showToast('error','Network error');}if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles text-xs"></i> Polish & Push';}}
+async function refinePrompt(){const text=document.getElementById('promptArea').value.trim();if(!text){showToast('error','Type something first');return;}showLoader('Refining…');try{const fd=new FormData();fd.append('raw_text',text);fd.append('service_type',[...selectedServices][0]??'');const res=await fetch(SPEECH_API,{method:'POST',body:fd});const d=await res.json();if(d.success){document.getElementById('promptArea').value=d.corrected_text||text;showToast('success','Refined ✓');}else showToast('error',d.error||'Failed');}catch{showToast('error','Network error');}hideLoader();}
 
 /* ═══════════════════════════════════════════════
    AI EXTRACT & BUILD
@@ -2700,13 +2854,16 @@ async function extractAndBuild() {
     const prompt = document.getElementById('promptArea').value.trim();
     if (!prompt) { showToast('error', 'Please enter a prompt first'); return; }
 
-    showLoader('AI extracting…');
+    showLoader('AI extracting via pre-prompter…');
     try {
+        // Pass pre-selected service_type for service-aware pre-prompting
+        const firstService = [...selectedServices][0] ?? '';
         const res  = await fetch(EXTRACT_API, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
                 prompt,
+                service_type: firstService,
                 countries: allCountries.map(c => ({ sys_id: c.sys_id, name: c.name })),
                 services:  allServices.map(s  => ({ slug: s.slug,    name: s.name  })),
             }),
@@ -2721,11 +2878,37 @@ async function extractAndBuild() {
         if (d.client?.phone) document.getElementById('clientPhone').value = d.client.phone;
         if (d.client?.email) document.getElementById('clientEmail').value = d.client.email;
 
-        // Try to auto-match existing client by name
+        // Fuzzy client match — search by each word in the extracted name
         if (d.client?.name && clientsData.length) {
-            const q = d.client.name.toLowerCase();
-            const found = clientsData.find(c => (c.name || '').toLowerCase().includes(q));
-            if (found) selectClient(clientsData.indexOf(found));
+            const words = d.client.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+            const scored = clientsData.map((c, idx) => {
+                const cn = (c.name || '').toLowerCase();
+                const matchCount = words.filter(w => cn.includes(w)).length;
+                return { idx, matchCount };
+            }).filter(x => x.matchCount > 0)
+              .sort((a, b) => b.matchCount - a.matchCount);
+
+            if (scored.length === 1 || (scored.length > 0 && scored[0].matchCount === words.length)) {
+                // Single strong match — auto-select silently
+                selectClient(scored[0].idx);
+            } else if (scored.length > 1) {
+                // Multiple candidates — show them in the dropdown for user to pick
+                const inp = document.getElementById('clientInput');
+                const drop = document.getElementById('clientDropdown');
+                if (inp && drop) {
+                    inp.value = d.client.name + ' (select below ↓)';
+                    drop.innerHTML = `<li class="px-4 py-2 text-[10px] font-bold text-indigo-500 uppercase tracking-wider bg-indigo-50">Possible matches — click to select</li>`
+                        + scored.slice(0, 5).map(({ idx }) => {
+                            const c = clientsData[idx];
+                            return `<li class="px-4 py-2.5 cursor-pointer hover:bg-indigo-50 border-b border-slate-50 text-sm" onclick="selectClient(${idx})">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 bg-indigo-600 rounded-full text-white flex items-center justify-center font-bold text-xs flex-shrink-0">${(c.name?.[0]??'C').toUpperCase()}</div>
+                                    <div><div class="font-medium text-slate-800">${c.name}</div><div class="text-xs text-slate-400 font-mono">${c.sys_id}${c._phone?' · '+c._phone:''}</div></div>
+                                </div></li>`;
+                        }).join('');
+                    drop.classList.remove('hidden');
+                }
+            }
         }
 
         // ── 2. Source ──────────────────────────────────────────
@@ -2782,13 +2965,29 @@ async function extractAndBuild() {
             Object.assign(serviceAnswers, d.service_data);
         }
 
+        // ── 6b. Top-level segment_type → air_ticket panel ─────
+        const topSegType = d.segment_type
+            || d.service_data?.air_ticket?.segment_type
+            || '';
+        if (topSegType && (selectedServices.has('air_ticket') || d.services?.includes('air_ticket'))) {
+            if (!serviceAnswers.air_ticket) serviceAnswers.air_ticket = {};
+            serviceAnswers.air_ticket.segment_type = topSegType;
+        }
+
         // ── 7. Rebuild service panels with filled data ─────────
         await buildServicePanels();
 
+        // ── 7b. Apply segment_type to UI after panel renders ──
+        if (topSegType && document.getElementById('atSegTypeRow')) {
+            setTimeout(() => onAtSegTypeChange(topSegType), 80);
+        }
+
         // ── 8. Chips display ───────────────────────────────────
+        const segTypeLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
         const chips = [];
         if (d.client?.name)    chips.push({ icon:'fa-user',          label: d.client.name,              color:'indigo' });
         if (d.services?.length)chips.push({ icon:'fa-layer-group',   label: d.services.length+' service(s)', color:'green'  });
+        if (topSegType)        chips.push({ icon:'fa-route',         label: segTypeLabels[topSegType] ?? topSegType, color:'violet' });
         if (common.countries?.length) chips.push({ icon:'fa-globe', label: common.countries.map(c=>c.name).join(', '), color:'blue' });
         if (common.budget)     chips.push({ icon:'fa-money-bill',    label: 'BDT '+Number(common.budget).toLocaleString(), color:'emerald' });
         if (common.pax_adult)  chips.push({ icon:'fa-users',         label: `${common.pax_adult} adult${common.pax_adult>1?'s':''}`, color:'purple' });
@@ -2816,6 +3015,30 @@ function clearContainer(id) {
 /* ═══════════════════════════════════════════════
    SUBMIT
 ═══════════════════════════════════════════════ */
+async function convertToWork() {
+    const btn = document.getElementById('convertBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Converting…'; }
+    try {
+        const res  = await fetch(MOVE_TO_WORK_API, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ sys_id: LEAD_SYS_ID }),
+        });
+        const json = await res.json();
+        if (json.success || json.status === 'success') {
+            showToast('success', 'Converted to Work ✓');
+            setTimeout(() => {
+                window.location.href = 'show-works.php?id=' + (json.work_sys_id ?? '');
+            }, 1000);
+        } else {
+            throw new Error(json.message ?? 'Conversion failed');
+        }
+    } catch(e) {
+        showToast('error', e.message);
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-arrow-right-arrow-left text-xs"></i> Convert to Work'; }
+    }
+}
+
 async function submitLead() {
     const name=document.getElementById('clientName').value.trim();
     if(!name){showToast('error','Client name is required');return;}
@@ -2911,6 +3134,23 @@ async function loadLeadData() {
 
         const d  = json.data;
         const ci = d.client_info ?? {};
+
+        // ── Assigned to badge ──────────────────────────────────
+        const assignedTo = d.assigned_to;
+        const badge      = document.getElementById('assignedBadge');
+        const badgeName  = document.getElementById('assignedBadgeName');
+        if (assignedTo?.name && badge) {
+            badgeName.textContent = 'Assigned: ' + assignedTo.name;
+            badge.classList.remove('hidden');
+            badge.classList.add('inline-flex');
+        }
+
+        // ── Convert to Work button — show only if not yet converted ──
+        const convertBtn = document.getElementById('convertBtn');
+        if (convertBtn && d.lead_status !== 'converted') {
+            convertBtn.classList.remove('hidden');
+            convertBtn.classList.add('flex');
+        }
 
         document.getElementById('clientName').value  = ci.name  ?? '';
         document.getElementById('clientPhone').value = flatVal(ci.phone);

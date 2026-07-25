@@ -29,10 +29,13 @@ try {
     if (!$serviceName) throw new Exception('service_name is required');
 
     // 1. Fetch work to get client info
-    $ws = $pdo->prepare("SELECT client_name, client_sys_id FROM works WHERE sys_id = ? LIMIT 1");
+    $ws = $pdo->prepare("SELECT client_info FROM works WHERE sys_id = ? LIMIT 1");
     $ws->execute([$workSysId]);
     $work = $ws->fetch(PDO::FETCH_ASSOC);
     if (!$work) throw new Exception('Work not found');
+
+    $ci         = json_decode($work['client_info'], true) ?? [];
+    $clientName = $ci['name'] ?? '—';
 
     $userName = $_SESSION['user_name'] ?? 'system';
     $meta     = buildMetaData(null, $userName);
@@ -62,14 +65,15 @@ try {
 
         $ntIds   = generateV2IDs($pdo, 'notifications');
         $ntMeta  = buildMetaData(null, $userName);
-        $title   = "New Service Assigned: {$serviceName}";
-        $body_msg= "Work {$workSysId} has a new service '{$serviceName}' assigned to {$deptName} department. Client: " . ($work['client_name'] ?? '—');
+        $link    = "show-works.php?id={$workSysId}";
+        $title   = "New Service: {$serviceName}";
+        $body_msg= "Work {$workSysId} has a new '{$serviceName}' service. Client: {$clientName}";
 
         $pdo->prepare("
             INSERT INTO notifications
-                (uuid, sys_id, recipient_type, department_sys_id, type, title, body, work_sys_id, service_work_sys_id, is_read, meta_data)
+                (uuid, sys_id, recipient_type, department_sys_id, type, title, body, work_sys_id, service_work_sys_id, link, is_read, meta_data)
             VALUES
-                (?, ?, 'department', ?, 'service_assigned', ?, ?, ?, ?, 0, ?)
+                (?, ?, 'department', ?, 'service_assigned', ?, ?, ?, ?, ?, 0, ?)
         ")->execute([
             $ntIds['uuid'],
             $ntIds['sys_id'],
@@ -78,6 +82,7 @@ try {
             $body_msg,
             $workSysId,
             $swIds['sys_id'],
+            $link,
             $ntMeta,
         ]);
 

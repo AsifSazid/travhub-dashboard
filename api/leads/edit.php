@@ -37,6 +37,7 @@ try {
                 service_data, 
                 lead_info, 
                 lead_status,
+                assigned_to,
                 meta_data
             FROM leads 
             WHERE sys_id = ? OR uuid = ?";
@@ -53,10 +54,11 @@ try {
 
     // Decode JSON fields
     $lead['service_type'] = json_decode($lead['service_type'], true);
-    $lead['client_info'] = json_decode($lead['client_info'], true);
+    $lead['client_info']  = json_decode($lead['client_info'],  true);
     $lead['service_data'] = json_decode($lead['service_data'], true);
-    $lead['lead_info'] = json_decode($lead['lead_info'], true);
-    $lead['meta_data'] = json_decode($lead['meta_data'], true);
+    $lead['lead_info']    = json_decode($lead['lead_info'],    true);
+    $lead['assigned_to']  = json_decode($lead['assigned_to'],  true);
+    $lead['meta_data']    = json_decode($lead['meta_data'],    true);
 
     // Clean output buffer before sending JSON
     ob_clean();

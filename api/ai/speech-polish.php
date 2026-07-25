@@ -1,8 +1,17 @@
 <?php
 /**
- * api/ai/speech-polish.php
- * POST { raw_text } — polishes a voice transcript into structured package description
+ * FILE PATH: /api/ai/speech-polish.php
+ *
+ * Speech / Text Polish — Package Description Formatter
+ *
+ * POST { raw_text }
+ *
+ * Polishes a voice transcript or rough text into a structured
+ * travel PACKAGE DESCRIPTION. Used by the package builder.
+ *
+ * For lead inquiry polishing → use lead-speech-polish.php
  */
+
 session_start();
 require_once '../../server/api_bootstrap.php';
 require_once '../../server/ai-gemini.php';

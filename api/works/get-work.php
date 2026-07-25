@@ -34,7 +34,7 @@ try {
     }
 
     // Decode JSON fields
-    foreach (['client_info','service_type','service_data','instruction','special_instruction','lead_info','lead_snapshot','meta_data'] as $col) {
+    foreach (['client_info','service_type','service_data','segment_data','instruction','special_instruction','lead_info','lead_snapshot','meta_data'] as $col) {
         $work[$col] = $work[$col] ? json_decode($work[$col], true) : [];
     }
 
@@ -68,17 +68,41 @@ try {
         }
     }
 
-    // 4. Work summary stats
-    $totalTasks    = count($tasks);
+    // 4. Fetch air_tickets for this work (Phase 3 — work_sys_id based)
+    $stmtAt = $pdo->prepare("SELECT * FROM air_tickets WHERE work_sys_id = ? LIMIT 1");
+    $stmtAt->execute([$sysId]);
+    $atRow = $stmtAt->fetch(PDO::FETCH_ASSOC);
+    $airTicketData = null;
+    if ($atRow) {
+        foreach (['at_quotations','at_bookings','at_confirmations','meta_data'] as $col) {
+            $atRow[$col] = ($atRow[$col] ?? null) ? json_decode($atRow[$col], true) : [];
+        }
+        // Legacy at_confirmation (single) → at_confirmations array
+        if (!empty($atRow['at_confirmation']) && empty($atRow['at_confirmations'])) {
+            $single = is_string($atRow['at_confirmation']) ? json_decode($atRow['at_confirmation'], true) : $atRow['at_confirmation'];
+            if (is_array($single) && !empty($single)) {
+                $atRow['at_confirmations'] = [array_merge(['sys_id'=>'C-001','added_at'=>'legacy'], $single)];
+            }
+        }
+        $airTicketData = $atRow;
+    }
+
+    // 5. Work summary stats
+    $totalTasks     = count($tasks);
     $completedTasks = count(array_filter($tasks, fn($t) => $t['status'] === 'done'));
+
+    // Confirmed tasks (auto-created from confirmations)
+    $confirmedTasks = array_values(array_filter($tasks, fn($t) => !empty($t['confirmation_sys_id'])));
 
     ob_clean();
     echo json_encode([
-        'status'        => 'success',
-        'work'          => $work,
-        'service_works' => $serviceWorks,
-        'tasks'         => $tasks,
-        'stats'         => [
+        'status'          => 'success',
+        'work'            => $work,
+        'service_works'   => $serviceWorks,
+        'tasks'           => $tasks,
+        'confirmed_tasks' => $confirmedTasks,
+        'air_ticket_data' => $airTicketData,
+        'stats'           => [
             'total_tasks'     => $totalTasks,
             'completed_tasks' => $completedTasks,
             'remaining_tasks' => $totalTasks - $completedTasks,

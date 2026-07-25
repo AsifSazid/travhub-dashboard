@@ -25,6 +25,7 @@ try {
         $r['client_info']         = $r['client_info']         ? json_decode($r['client_info'], true)         : [];
         $r['service_type']        = $r['service_type']        ? json_decode($r['service_type'], true)        : [];
         $r['service_data']        = $r['service_data']        ? json_decode($r['service_data'], true)        : [];
+        $r['segment_data']        = $r['segment_data']        ? json_decode($r['segment_data'], true)        : [];
         $r['instruction']         = $r['instruction']         ? json_decode($r['instruction'], true)         : [];
         $r['special_instruction'] = $r['special_instruction'] ? json_decode($r['special_instruction'], true) : [];
         $r['lead_info']           = $r['lead_info']           ? json_decode($r['lead_info'], true)           : [];

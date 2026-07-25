@@ -1,9 +1,25 @@
 <?php
 /**
  * FILE PATH: /api/ai/lead-extract.php
- * POST { prompt, countries: [{sys_id, name}], services: [{slug, name}] }
- * → Gemini extracts structured lead data → return JSON
+ *
+ * Lead AI Extraction — POST endpoint
+ *
+ * Responsible for:
+ *   - Defining the Lead extraction system prompt + JSON schema
+ *   - Defining per-service role instructions
+ *   - Calling prePrompt() to enhance the raw user input
+ *   - Calling Gemini and returning structured lead data
+ *
+ * Body: {
+ *   prompt:       string   — raw user prompt (typed / voice-transcribed)
+ *   service_type: string   — pre-selected service slug (optional)
+ *   countries:    [{sys_id, name}]
+ *   services:     [{slug, name}]
+ * }
+ *
+ * Returns: { status: 'success', data: { client, services, segment_type, common, service_data } }
  */
+
 ob_start();
 session_start();
 date_default_timezone_set('Asia/Dhaka');
@@ -24,54 +40,94 @@ if (!$data || empty($data['prompt'])) {
     exit;
 }
 
-$prompt    = trim($data['prompt']);
-$countries = $data['countries'] ?? []; // [{sys_id, name}]
-$services  = $data['services']  ?? []; // [{slug, name}]
+$rawPrompt   = trim($data['prompt']);
+$serviceType = trim($data['service_type'] ?? '');
+$countries   = $data['countries'] ?? [];
+$services    = $data['services']  ?? [];
 
-// Build country list for system prompt
+// ── Step 1: use raw prompt directly ──────────────────────────────────
+// Pre-prompter is skipped here intentionally.
+// The raw prompt (typed text, voice transcript, pasted content) goes
+// directly to the extraction call — the system prompt below is already
+// detailed enough. Adding an enhance step in between loses information
+// (especially client names, dates, and segment details).
+$extractionPrompt = $rawPrompt;
+
+// ── Step 2: build the system prompt (lead-specific, defined HERE) ─────
 $countryList = implode(', ', array_map(fn($c) => "{$c['name']} (id:{$c['sys_id']})", $countries));
-
-// Build service list for system prompt
 $serviceList = implode(', ', array_map(fn($s) => "{$s['slug']} ({$s['name']})", $services));
 
-$system = <<<PROMPT
-You are a travel lead data extraction assistant for a Bangladeshi travel agency called TravHub.
+// Per-service role instruction — tells AI what to focus on for this service
+$serviceRoles = [
+    'air_ticket'   => "You are acting as an AIR TICKET specialist. Focus on: FLIGHT SEGMENTS (from, to, route, date, class, airline), segment type (one_way/round_trip/multi_city), and passenger counts. For round_trip: generate exactly 2 segments (outbound + return). For multi_city: extract all segments mentioned.",
+    'visa'         => "You are acting as a VISA specialist. Focus on: DESTINATION COUNTRY, visa type, applicant count and names, travel dates, and any special conditions.",
+    'hotel'        => "You are acting as a HOTEL specialist. Focus on: HOTEL NAME or preference, city/country, check-in date, check-out date, number of rooms, room type, star rating preference.",
+    'package'      => "You are acting as a TOUR PACKAGE specialist. Focus on: DESTINATIONS, travel duration, package type (family/couple/group/honeymoon), inclusions, number of travelers, budget.",
+    'tour_package' => "You are acting as a TOUR PACKAGE specialist. Focus on: DESTINATIONS, travel duration, package type (family/couple/group/honeymoon), inclusions, number of travelers, budget.",
+    'umrah'        => "You are acting as an UMRAH specialist. Focus on: departure date, total nights (Makkah + Madina split), package type (flight/land/group), umrah type, group size.",
+    'transport'    => "You are acting as a TRANSPORT specialist. Focus on: route (from/to), vehicle type, travel date/time, passenger count, special requirements (AC, luggage, etc.).",
+];
 
-Extract structured data from the user's prompt and return ONLY valid JSON — no explanation, no markdown, no code blocks.
+$roleInstruction = isset($serviceRoles[$serviceType])
+    ? $serviceRoles[$serviceType] . "\n\nPrimary service: {$serviceType}. Also detect other services if explicitly mentioned."
+    : "Detect which service(s) are being requested from the available list and extract accordingly.";
+
+$system = <<<SYSTEM
+You are a lead data extraction assistant for TravHub, a Bangladeshi travel agency.
+Extract structured data from the user's description and return ONLY valid JSON — no explanation, no markdown, no code blocks.
 
 Available services: {$serviceList}
 Available countries: {$countryList}
 
+{$roleInstruction}
+
+CRITICAL EXTRACTION RULES:
+- Client name: extract ANY person's name mentioned — even in Bangla (e.g. "মেজর মেহেদী হাসান" → "Major Mehedi Hasan"), transliterate to English
+- Client phone/email: extract if mentioned anywhere in the text
+- For air_ticket: ALWAYS populate ALL segment fields — route, from, to, airline, class, luggage, departure_date, arrival_date, date_flexibility, special_instruction
+- departure_date = outbound travel date, arrival_date = return/landing date at destination
+- If text says "September 9" or "৯ সেপ্টেম্বর" → "2026-09-09" (use current year if no year given)
+- Segment route: always "FROM-TO" format e.g. "DAC-BKK"
+- If round_trip: segment[0] = outbound (DAC→BKK), segment[1] = return (BKK→DAC)
+- Extract airline preference even if vague (e.g. "Biman", "Emirates", "any airline" → keep as-is)
+- Extract class even if implied (e.g. "economy class", "business" → "Economy" / "Business")
+- special_instruction: any specific requests, notes, conditions mentioned
+
 Return this exact JSON structure:
 {
   "client": {
-    "name": "string or empty",
+    "name": "Full name in English (transliterate from Bangla if needed) or empty",
     "phone": "string or empty",
     "email": "string or empty"
   },
   "source": "facebook|website|phone_call|walk_in|referral|other or empty",
   "services": ["slug1", "slug2"],
+  "segment_type": "one_way|round_trip|multi_city or empty",
   "common": {
-    "title": "short descriptive title or empty",
+    "title": "short descriptive title including travel date if mentioned (e.g. 'Major Mehedi — DAC-BKK Round Trip — Sep 2026') or empty",
     "countries": [{"sys_id": "from list above", "name": "country name"}],
     "pax_adult": 1,
     "pax_child": 0,
     "pax_infant": 0,
+    "tentative_start_date": "tentative starting date"
+    "tentative_end_date": "tentative end date"
     "budget": "number as string or empty",
     "notes": "any extra info or special requests"
   },
   "service_data": {
     "air_ticket": {
+      "segment_type": "one_way|round_trip|multi_city",
       "segments": [{
-        "route": "DAC-DXB",
+        "route": "DAC-BKK",
         "from": "DAC",
-        "to": "DXB",
-        "airline": "",
-        "class": "Economy|Business|First",
-        "luggage": {"value": "", "unit": "Kg"},
-        "departure_date": "",
-        "arrival_date": "",
-        "special_instruction": []
+        "to": "BKK",
+        "airline": "preference or empty",
+        "class": "Economy|Premium|Business|First or empty",
+        "luggage": {"value": "20 or empty", "unit": "Kg"},
+        "departure_date": "YYYY-MM-DD or empty",
+        "arrival_date": "YYYY-MM-DD or empty",
+        "date_flexibility": "Fixed|±3 days|±7 days|Flexible|Specific month or empty",
+        "special_instruction": ["any notes"]
       }]
     },
     "hotel": {
@@ -136,23 +192,24 @@ Return this exact JSON structure:
 }
 
 Rules:
-- Only include in "services" array what the user actually mentioned
-- Only include in "service_data" the keys that match selected services
-- Match country names to the provided country list — use exact sys_id from list
-- If a country is not in the list, use empty sys_id but keep the name
-- For air ticket: use IATA codes if possible (DAC=Dhaka, DXB=Dubai, BKK=Bangkok etc)
-- Dates in YYYY-MM-DD format, datetimes in YYYY-MM-DDTHH:mm format
-- Budget as a number string in BDT (convert if needed: 1 lakh = 100000)
-- pax counts as integers
-- If info is not mentioned, leave as empty string or empty array
-- Do NOT include service_data keys for services not selected
-PROMPT;
+- Only include in "services" what is actually mentioned
+- Only include in "service_data" keys for detected/selected services
+- air_ticket round_trip: EXACTLY 2 segments (outbound + return) — both fully populated
+- air_ticket multi_city: all segments mentioned
+- Match country names to the provided list — use exact sys_id
+- If country not in list: empty sys_id, keep name
+- IATA: DAC=Dhaka, DXB=Dubai, BKK=Bangkok, KUL=KL, CGP=Chittagong, ZYL=Sylhet, CXB=Cox's Bazar
+- Dates: YYYY-MM-DD. Datetimes: YYYY-MM-DDTHH:mm. Current year: 2026
+- Budget as number string in BDT (1 lakh = 100000)
+- pax as integers (minimum 1 adult)
+- Missing info: empty string or empty array — never omit a field from the schema
+SYSTEM;
 
-$result = geminiJSON($system, $prompt, 2000);
+// ── Step 3: call Gemini ───────────────────────────────────────────────
+$result = geminiJSON($system, $extractionPrompt, 8192);
 
 if (!$result['success']) {
-    // Retry once
-    $result = geminiJSON($system, $prompt, 2000);
+    $result = geminiJSON($system, $extractionPrompt, 8192); // single retry
 }
 
 if (!$result['success']) {
@@ -167,27 +224,58 @@ if (!$result['success']) {
 
 $extracted = $result['data'];
 
-// Sanitize — ensure required keys exist
+// ── Step 4: sanitise output ───────────────────────────────────────────
 if (!isset($extracted['client']))       $extracted['client']       = [];
 if (!isset($extracted['services']))     $extracted['services']     = [];
 if (!isset($extracted['common']))       $extracted['common']       = [];
 if (!isset($extracted['service_data'])) $extracted['service_data'] = [];
 if (!isset($extracted['source']))       $extracted['source']       = '';
+if (!isset($extracted['segment_type'])) $extracted['segment_type'] = '';
+
+// Normalise segment_type
+$validSegTypes = ['one_way', 'round_trip', 'multi_city'];
+if (!in_array($extracted['segment_type'], $validSegTypes, true)) {
+    $atSegType = $extracted['service_data']['air_ticket']['segment_type'] ?? '';
+    $extracted['segment_type'] = in_array($atSegType, $validSegTypes, true) ? $atSegType : '';
+}
 
 // Ensure common sub-keys
 $extracted['common'] = array_merge([
-    'title'          => '',
-    'countries'      => [],
-    'pax_adult'      => 1,
-    'pax_child'      => 0,
-    'pax_infant'     => 0,
-    'budget'         => '',
-    'notes'          => '',
+    'title'     => '',
+    'countries' => [],
+    'pax_adult'  => 1,
+    'pax_child'  => 0,
+    'pax_infant' => 0,
+    'budget'    => '',
+    'notes'     => '',
 ], $extracted['common']);
 
-// Validate pax are integers
-foreach (['pax_adult','pax_child','pax_infant'] as $f)
+foreach (['pax_adult', 'pax_child', 'pax_infant'] as $f) {
     $extracted['common'][$f] = (int)($extracted['common'][$f] ?? 0);
+}
+
+// round_trip safety: ensure exactly 2 segments
+if (
+    $extracted['segment_type'] === 'round_trip' &&
+    isset($extracted['service_data']['air_ticket']['segments'])
+) {
+    $segs = $extracted['service_data']['air_ticket']['segments'];
+    if (count($segs) === 1) {
+        $outbound = $segs[0];
+        $extracted['service_data']['air_ticket']['segments'] = [$outbound, [
+            'route'               => ($outbound['to'] ?? '') . '-' . ($outbound['from'] ?? ''),
+            'from'                => $outbound['to']           ?? '',
+            'to'                  => $outbound['from']         ?? '',
+            'airline'             => $outbound['airline']      ?? '',
+            'class'               => $outbound['class']        ?? '',
+            'luggage'             => $outbound['luggage']      ?? ['value' => '', 'unit' => 'Kg'],
+            'departure_date'      => $outbound['arrival_date'] ?? '',
+            'arrival_date'        => '',
+            'date_flexibility'    => $outbound['date_flexibility'] ?? '',
+            'special_instruction' => [],
+        ]];
+    }
+}
 
 ob_clean();
 echo json_encode(['status' => 'success', 'data' => $extracted]);

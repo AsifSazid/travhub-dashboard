@@ -50,46 +50,38 @@ try {
     require_once '../../server/sys_id_generator_v2.php';
 
     if ($assignedTo && !empty($assignedTo['sys_id'])) {
-        // ── New assignment notification ──
-        // $empStmt = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
-        // $empStmt->execute([$assignedTo['sys_id']]);
-        // $empRow = $empStmt->fetch(PDO::FETCH_ASSOC);
-        $deptId = $empRow['department_sys_id'] ?? 'system development';
+        // Caller builds the link — header.php just navigates to it
+        $link = "create-leads.php?id={$sysId}";
 
         $ntIds  = generateV2IDs($pdo, 'notifications');
         $ntMeta = buildMetaData(null, $userName);
 
         $pdo->prepare("
             INSERT INTO notifications
-                (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, task_sys_id, service_work_sys_id, is_read, meta_data)
-            VALUES (?, ?, 'user', ?, ?, 'lead_assigned', ?, ?, NULL, NULL, NULL, 0, ?)
+                (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, task_sys_id, service_work_sys_id, link, is_read, meta_data)
+            VALUES (?, ?, 'user', NULL, ?, 'lead_assigned', ?, ?, NULL, NULL, NULL, ?, 0, ?)
         ")->execute([
             $ntIds['uuid'], $ntIds['sys_id'],
-            $deptId, $assignedTo['sys_id'],
-            'Lead Assigned to You',
-            "You have been assigned to lead {$sysId} — client: {$clientName}",
+            $assignedTo['sys_id'],
+            'Lead Assigned: ' . $clientName,
+            "You have been assigned to lead {$sysId} — client: {$clientName}.",
+            $link,
             $ntMeta,
         ]);
 
     } elseif (!$assignedTo && !empty($oldAssigned['sys_id'])) {
-        // ── Unassign notification → notify the person who was removed ──
-        // $empStmt = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
-        // $empStmt->execute([$oldAssigned['sys_id']]);
-        // $empRow = $empStmt->fetch(PDO::FETCH_ASSOC);
-        $deptId = $empRow['department_sys_id'] ?? 'system development';
-
         $ntIds  = generateV2IDs($pdo, 'notifications');
         $ntMeta = buildMetaData(null, $userName);
 
         $pdo->prepare("
             INSERT INTO notifications
-                (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, task_sys_id, service_work_sys_id, is_read, meta_data)
-            VALUES (?, ?, 'user', ?, ?, 'lead_unassigned', ?, ?, NULL, NULL, NULL, 0, ?)
+                (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, task_sys_id, service_work_sys_id, link, is_read, meta_data)
+            VALUES (?, ?, 'user', NULL, ?, 'lead_unassigned', ?, ?, NULL, NULL, NULL, NULL, 0, ?)
         ")->execute([
             $ntIds['uuid'], $ntIds['sys_id'],
-            $deptId, $oldAssigned['sys_id'],
+            $oldAssigned['sys_id'],
             'Lead Unassigned',
-            "You have been removed from lead {$sysId} — client: {$clientName}",
+            "You have been removed from lead {$sysId} — client: {$clientName}.",
             $ntMeta,
         ]);
     }

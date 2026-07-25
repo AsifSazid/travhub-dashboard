@@ -75,6 +75,16 @@ try {
     $userName    = $_SESSION['user_name'] ?? 'system';
     $SERVER_CUS_PATH = trim(@file_get_contents('../../server-name.txt') ?? '');
 
+    // Extract segment_type — from top-level or air_ticket service_data
+    $validSegTypes = ['one_way', 'round_trip', 'multi_city'];
+    $segmentType = $serviceData['segment_type']
+        ?? $serviceData['air_ticket']['segment_type']
+        ?? null;
+    if (!in_array($segmentType, $validSegTypes, true)) $segmentType = null;
+
+    // segment_data = the full service_data from the lead (all segments for all services)
+    $segmentData = $serviceData;
+
     // 2. Create ONE work
     $workIds   = generateV2IDs($pdo, 'works');
     $workSysId = $workIds['sys_id'];
@@ -93,19 +103,30 @@ try {
     $pdo->prepare("
         INSERT INTO works (
             uuid, sys_id, lead_sys_id,
-            client_info, service_type, service_count, service_data,
+            client_info, service_type, service_count,
+            segment_type, segment_data,
+            service_data,
             instruction, special_instruction, lead_info, lead_snapshot,
             work_status, assigned_to, meta_data
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', NULL, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', NULL, ?)
     ")->execute([
         $workIds['uuid'], $workSysId, $sys_id,
-        $lead['client_info'], $lead['service_type'], count($services), $lead['service_data'],
-        $lead['instruction'], $lead['special_instruction'], $lead['lead_info'],
+        $lead['client_info'],
+        $lead['service_type'],
+        count($services),
+        $segmentType,
+        json_encode($segmentData, JSON_UNESCAPED_UNICODE),
+        $lead['service_data'],
+        $lead['instruction'],
+        $lead['special_instruction'],
+        $lead['lead_info'],
         json_encode($lead, JSON_UNESCAPED_UNICODE),
         $meta,
     ]);
 
     // 3. Create service_works + notify dept employees
+    // NOTE: Tasks are NO LONGER created at conversion time.
+    //       Tasks are auto-created when a Confirmation reaches "Confirmed" status.
     $createdSW = [];
 
     foreach ($services as $svcSlug) {
@@ -127,34 +148,6 @@ try {
         if ($deptSysId) {
             _notifyDeptEmployees($pdo, $deptSysId, $workSysId, $swIds['sys_id'], $svcName, $clientName, $userName);
         }
-
-        // ── Segment-wise task creation ─────────────────────────
-        $svcSegments = _getSegments($svcSlug, $serviceData);
-
-        foreach ($svcSegments as $segIdx => $seg) {
-            $taskIds   = generateV2IDs($pdo, 'tasks');
-            $taskMeta  = buildMetaData(null, $userName);
-            $taskName  = _buildTaskName($svcSlug, $svcName, $seg, $segIdx, count($svcSegments));
-            $spIns     = $seg['special_instruction'] ?? [];
-
-            $pdo->prepare("
-                INSERT INTO tasks (
-                    uuid, sys_id, service_work_sys_id, work_sys_id,
-                    client_sys_id, workname, client_name,
-                    status, overall_status,
-                    service_slug,
-                    special_ins, meta_data
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?, ?, ?)
-            ")->execute([
-                $taskIds['uuid'], $taskIds['sys_id'],
-                $swIds['sys_id'], $workSysId,
-                $clientSysId, $taskName, $clientName,
-                $svcSlug,
-                $spIns ? json_encode($spIns, JSON_UNESCAPED_UNICODE) : null,
-                $taskMeta,
-            ]);
-        }
-        // ────────────────────────────────────────────────────────
 
         $createdSW[] = [
             'sys_id'        => $swIds['sys_id'],
@@ -184,112 +177,22 @@ try {
 }
 
 /**
- * Extract segments from service_data for a given slug.
- * Returns array of segments — each will become one task.
- */
-function _getSegments(string $slug, array $serviceData): array
-{
-    $data = $serviceData[$slug] ?? [];
-
-    // Services with named segments array
-    if (in_array($slug, ['air_ticket', 'hotel', 'visa', 'transport'])) {
-        $segs = $data['segments'] ?? [];
-        // Filter out completely empty segments
-        $segs = array_values(array_filter($segs, fn($s) => !empty(array_filter($s))));
-        return !empty($segs) ? $segs : [['_auto' => true]]; // at least one task
-    }
-
-    // Tour package — one task per destination city (or just one overall)
-    if ($slug === 'tour_package' || $slug === 'package') {
-        $dests = $data['destinations'] ?? [];
-        if (!empty($dests)) {
-            return array_map(fn($d) => ['_dest' => $d], $dests);
-        }
-        return [['_title' => $data['title'] ?? '']];
-    }
-
-    // Umrah — single task
-    if ($slug === 'umrah') {
-        return [$data];
-    }
-
-    // Fallback — one task
-    return [['_auto' => true]];
-}
-
-/**
- * Build a human-readable task name from segment data.
- */
-function _buildTaskName(string $slug, string $svcName, array $seg, int $idx, int $total): string
-{
-    $num = $total > 1 ? ' #' . ($idx + 1) : '';
-
-    switch ($slug) {
-        case 'air_ticket':
-            $route = $seg['route'] ?? (($seg['from'] ?? '') . '-' . ($seg['to'] ?? ''));
-            return $svcName . $num . ($route ? ' — ' . strtoupper(trim($route, '-')) : '');
-
-        case 'hotel':
-            $hotel = $seg['hotel_name'] ?? '';
-            $city  = $seg['city_name']  ?? '';
-            $loc   = implode(', ', array_filter([$hotel, $city]));
-            return $svcName . $num . ($loc ? ' — ' . $loc : '');
-
-        case 'visa':
-            $country = $seg['country_name']  ?? '';
-            $cat     = $seg['category_name'] ?? '';
-            $detail  = implode(' / ', array_filter([$country, $cat]));
-            return $svcName . $num . ($detail ? ' — ' . $detail : '');
-
-        case 'transport':
-            $route = $seg['route'] ?? (($seg['from'] ?? '') . '-' . ($seg['to'] ?? ''));
-            $type  = $seg['type'] ?? '';
-            $detail = implode(' ', array_filter([$type, $route ? strtoupper(trim($route, '-')) : '']));
-            return $svcName . $num . ($detail ? ' — ' . $detail : '');
-
-        case 'tour_package':
-        case 'package':
-            if (isset($seg['_dest'])) {
-                $d = $seg['_dest'];
-                $cities   = implode(', ', $d['city_names'] ?? []);
-                $country  = $d['country_name'] ?? '';
-                $location = implode(' — ', array_filter([$country, $cities]));
-                return $svcName . $num . ($location ? ' — ' . $location : '');
-            }
-            $title = $seg['_title'] ?? '';
-            return $svcName . ($title ? ' — ' . $title : '');
-
-        case 'umrah':
-            $type   = $seg['umrah_type']   ?? '';
-            $nights = $seg['total_nights'] ?? '';
-            $detail = implode(', ', array_filter([
-                $type   ? ucwords(str_replace('_', ' ', $type)) : '',
-                $nights ? $nights . ' Nights'                   : '',
-            ]));
-            return $svcName . ($detail ? ' — ' . $detail : '');
-
-        default:
-            return $svcName . $num;
-    }
-}
-
-/**
  * Notify ALL employees in a department when a service is assigned to them
  */
 function _notifyDeptEmployees(PDO $pdo, string $deptSysId, string $workSysId, string $swSysId, string $svcName, string $clientName, string $userName): void
 {
-    // ── Preferred: match via employees.department_sys_id (reliable, new system) ──
+    $link = "show-works.php?id={$workSysId}";
+
+    // ── Preferred: match via employees.department_sys_id ──
     $emp = $pdo->prepare("SELECT sys_id, name FROM employees WHERE department_sys_id = ? AND status = 'active'");
     $emp->execute([$deptSysId]);
     $employees = $emp->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Fallback: legacy employees.department_name text match against departments.name ──
-    // (covers employees not yet migrated to department_sys_id)
+    // ── Fallback: legacy department_name text match ──
     if (empty($employees)) {
         $d = $pdo->prepare("SELECT name FROM departments WHERE sys_id = ? LIMIT 1");
         $d->execute([$deptSysId]);
         $deptRow = $d->fetch(PDO::FETCH_ASSOC);
-
         if ($deptRow) {
             $empFallback = $pdo->prepare("
                 SELECT sys_id, name FROM employees
@@ -300,35 +203,35 @@ function _notifyDeptEmployees(PDO $pdo, string $deptSysId, string $workSysId, st
         }
     }
 
+    $title = "New Service: {$svcName}";
+    $body_ = "Work {$workSysId} has a new '{$svcName}' service for client {$clientName}.";
+
     if (empty($employees)) {
-        // Final fallback: dept-level notification (no specific user target)
-        _insertNotif($pdo, $deptSysId, null, $workSysId, null, $swSysId, $svcName, $clientName, $userName);
+        _insertNotif($pdo, $deptSysId, null, $workSysId, null, $swSysId, $title, $body_, $link, $userName);
         return;
     }
 
-    $title = "New Service: {$svcName}";
-    $body_ = "Work {$workSysId} has a new '{$svcName}' service for client {$clientName}. Please handle this task.";
-
     foreach ($employees as $e) {
-        _insertNotif($pdo, $deptSysId, $e['sys_id'], $workSysId, null, $swSysId, $title, $body_, $userName);
+        _insertNotif($pdo, $deptSysId, $e['sys_id'], $workSysId, null, $swSysId, $title, $body_, $link, $userName);
     }
 }
 
-function _insertNotif(PDO $pdo, ?string $deptSysId, ?string $userSysId, string $workSysId, ?string $taskSysId, ?string $swSysId, string $title, string $body_, string $userName): void
+function _insertNotif(PDO $pdo, ?string $deptSysId, ?string $userSysId, string $workSysId, ?string $taskSysId, ?string $swSysId, string $title, string $body_, string $link, string $userName): void
 {
     $recipientType = $userSysId ? 'user' : 'department';
     $ntIds  = generateV2IDs($pdo, 'notifications');
     $ntMeta = buildMetaData(null, $userName);
     $pdo->prepare("
         INSERT INTO notifications
-            (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, task_sys_id, service_work_sys_id, is_read, meta_data)
+            (uuid, sys_id, recipient_type, department_sys_id, user_sys_id, type, title, body, work_sys_id, task_sys_id, service_work_sys_id, link, is_read, meta_data)
         VALUES
-            (?, ?, ?, ?, ?, 'service_assigned', ?, ?, ?, ?, ?, 0, ?)
+            (?, ?, ?, ?, ?, 'service_assigned', ?, ?, ?, ?, ?, ?, 0, ?)
     ")->execute([
         $ntIds['uuid'], $ntIds['sys_id'],
         $recipientType, $deptSysId, $userSysId,
         $title, $body_,
         $workSysId, $taskSysId, $swSysId,
+        $link,
         $ntMeta,
     ]);
 }

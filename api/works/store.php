@@ -45,9 +45,14 @@ try {
     $travelerIds = $body['traveler_ids'] ?? [];
     $instruction = $body['instruction']  ?? '';
     $specialIns  = $body['special_instruction'] ?? '';
+    $segmentType = $body['segment_type'] ?? null;
+    $segmentData = $body['segment_data'] ?? null;
 
     if (!$clientName)    throw new Exception('client_name is required');
     if (empty($services)) throw new Exception('At least one service is required');
+
+    $validSegTypes = ['one_way', 'round_trip', 'multi_city'];
+    if (!in_array($segmentType, $validSegTypes, true)) $segmentType = null;
 
     $clientInfo['sys_id'] = $clientSysId;
     $clientInfo['name']   = $clientName;
@@ -76,15 +81,19 @@ try {
     $pdo->prepare("
         INSERT INTO works (
             uuid, sys_id, lead_sys_id,
-            client_info, service_type, service_count, service_data,
+            client_info, service_type, service_count,
+            segment_type, segment_data,
+            service_data,
             instruction, special_instruction, lead_info, lead_snapshot,
             work_status, assigned_to, meta_data
-        ) VALUES (?, ?, NULL, ?, ?, ?, '{}', ?, ?, '{}', NULL, 'open', NULL, ?)
+        ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, '{}', ?, ?, '{}', NULL, 'open', NULL, ?)
     ")->execute([
         $workIds['uuid'], $workSysId,
         json_encode($clientInfo, JSON_UNESCAPED_UNICODE),
         json_encode($services, JSON_UNESCAPED_UNICODE),
         count($services),
+        $segmentType,
+        $segmentData ? json_encode($segmentData, JSON_UNESCAPED_UNICODE) : null,
         json_encode(['text' => $instruction], JSON_UNESCAPED_UNICODE),
         json_encode($specInsArr, JSON_UNESCAPED_UNICODE),
         $meta,
