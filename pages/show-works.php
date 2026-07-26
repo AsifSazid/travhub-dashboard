@@ -34,19 +34,31 @@ $deepLinkSw = $_GET['sw'] ?? '';
         /* ── Layout ─────────────────────────────────────────── */
         #pageContent { display:flex; flex-direction:column; height:calc(100vh - 64px); }
         #bodyWrap    { display:flex; flex:1; overflow:hidden; }
-        #mainArea    { flex:1; overflow-y:auto; padding:16px; }
+        #mainArea    { flex:1; overflow-y:auto; padding:0px 16px 16px 16px; }
         #rightSidebar{
             width:288px; flex-shrink:0;
             border-left:1px solid #f1f5f9;
             background:#fff;
             overflow-y:auto; overflow-x:hidden;
             padding:10px;
+            min-width:200px; max-width:480px;
+            position:relative;
+        }
+        #sidebarResizeHandle {
+            position:absolute; left:0; top:0; bottom:0; width:4px;
+            cursor:col-resize; background:transparent; z-index:10;
+            transition:background .15s;
+        }
+        #sidebarResizeHandle:hover, #sidebarResizeHandle.dragging {
+            background:#6366f1;
         }
         #rightSidebar::-webkit-scrollbar{width:4px;}
         #rightSidebar::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:4px;}
 
         /* ── Accordion ──────────────────────────────────────── */
-        .sc { background:#fff; border-radius:12px; border:1px solid #f1f5f9; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:6px; }
+        .sc{background:#fff;border-radius:12px;border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+        .f-input{width:100%;padding:7px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.83rem;color:#1f2937;outline:none;transition:border .15s;background:#fff;}
+        .f-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.07);}
         .acc-header { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; cursor:pointer; user-select:none; transition:background .12s; }
         .acc-header:hover { background:#f9fafb; }
         .acc-body { overflow:hidden; max-height:0; opacity:0; transition:max-height .25s ease,opacity .18s; }
@@ -108,6 +120,8 @@ $deepLinkSw = $_GET['sw'] ?? '';
             <i class="fas fa-chevron-right text-gray-300 text-[10px]"></i>
             <span class="font-mono text-xs text-gray-600" id="breadWorkId">—</span>
             <span id="workStatusBadge" class="ml-1"></span>
+            <!-- Common info chips -->
+            <div class="flex items-center gap-3 ml-3" id="commonInfoStrip"></div>
             <div class="flex-1"></div>
             <button onclick="openStatusModal()" class="px-3 py-1.5 bg-white border border-gray-200 hover:border-indigo-300 text-gray-600 rounded-lg text-xs font-medium transition">
                 <i class="fas fa-tag mr-1.5"></i>Status
@@ -124,8 +138,10 @@ $deepLinkSw = $_GET['sw'] ?? '';
             <div id="mainArea">
 
                 <!-- Service Module Tabs -->
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
-                    <div class="flex border-b border-gray-100 overflow-x-auto bg-gray-50 px-2 pt-2" id="svcModuleTabBar"></div>
+                <div class="bg-white rounded-xl shadow-sm mb-4">
+                    <div class="flex border-b border-gray-100 overflow-x-auto bg-gray-50 px-2 pt-1.5 sticky top-0 z-10" id="svcModuleTabBar"></div>
+                    <!-- Service info strip — slim single line -->
+                    <div id="svcInfoStrip" class="hidden items-center gap-3 px-4 py-1.5 border-b border-gray-100 bg-gray-50 text-xs text-gray-500 flex-wrap overflow-x-auto"></div>
                     <div id="at-tab-mount"></div>
                     <div id="svc-module-empty" class="hidden p-10 text-center text-gray-400 text-sm">
                         <i class="fas fa-layer-group text-2xl mb-2 block opacity-30"></i>
@@ -148,24 +164,9 @@ $deepLinkSw = $_GET['sw'] ?? '';
 
             <!-- ── RIGHT SIDEBAR ──────────────────────────── -->
             <div id="rightSidebar">
+                <div id="sidebarResizeHandle"></div>
 
-                <!-- 1. Work Overview -->
-                <div class="sc">
-                    <div class="acc-header rounded-xl" onclick="toggleAcc('acc-ov',this)">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-info-circle text-indigo-500 text-xs"></i>
-                            </div>
-                            <span class="text-sm font-semibold text-gray-700">Work Overview</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-gray-400 text-xs acc-chevron open"></i>
-                    </div>
-                    <div id="acc-ov" class="acc-body open" style="max-height:400px;">
-                        <div class="px-3 pb-3" id="overviewKV"></div>
-                    </div>
-                </div>
-
-                <!-- 2. Travelers (always open, table modal) -->
+                <!-- Travelers (always open, no accordion) -->
                 <div class="sc p-3">
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
@@ -175,20 +176,23 @@ $deepLinkSw = $_GET['sw'] ?? '';
                             <span class="text-sm font-semibold text-gray-700">Travelers</span>
                         </div>
                         <div class="flex items-center gap-1">
+                            <button onclick="openPassportCarousel()" id="btnPassportCarousel"
+                                class="hidden px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 rounded text-xs" title="View Passports">
+                                <i class="fas fa-id-card"></i>
+                            </button>
                             <button onclick="openTravelerTableModal()" id="btnTravelerTable"
                                 class="hidden px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-500 rounded text-xs" title="Expand Table">
                                 <i class="fas fa-table"></i>
                             </button>
-                            <button onclick="openAddTravelerModal()" class="text-xs text-teal-500 hover:text-teal-700 font-semibold px-2 py-1">
+                            <button onclick="openNewTravelerModal()" class="text-xs text-teal-500 hover:text-teal-700 font-semibold px-2 py-1">
                                 <i class="fas fa-plus mr-1"></i>Add
                             </button>
                         </div>
                     </div>
                     <div class="relative mb-2">
                         <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none"></i>
-                        <input type="text" id="travelerSearchInput" placeholder="Search & link traveler…"
-                            class="w-full pl-7 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                            autocomplete="off"
+                        <input type="text" id="travelerSearchInput" placeholder="Search & link existing traveler…"
+                            class="f-input pl-7 text-xs" autocomplete="off"
                             oninput="travelerSearchFilter(this.value)"
                             onfocus="travelerSearchFilter(this.value)">
                         <ul id="travelerSearchDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50 text-xs"></ul>
@@ -213,9 +217,32 @@ $deepLinkSw = $_GET['sw'] ?? '';
                             <div id="notesSideList" class="max-h-48 overflow-y-auto space-y-1 mb-2">
                                 <p class="text-xs text-gray-400 py-2 text-center">No notes yet.</p>
                             </div>
-                            <button onclick="openMindBoardModal()"
+                            <!-- Quick note input -->
+                            <div class="flex gap-1.5">
+                                <label class="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="Attach file">
+                                    <i class="fas fa-paperclip text-gray-400 text-[10px]"></i>
+                                    <input type="file" id="noteboardFileInput" class="hidden" onchange="noteboardFileSelected(this)">
+                                </label>
+                                <button id="nb-sidebar-rec-btn" onclick="nbSidebarRecToggle()"
+                                    class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition"
+                                    style="background:#f1f5f9;" title="Voice record">
+                                    <i class="fas fa-microphone text-gray-400 text-[10px]"></i>
+                                </button>
+                                <input type="text" id="noteboardInput" placeholder="Add a note…"
+                                    class="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                    onkeydown="if(event.key==='Enter')noteboardSendText()">
+                                <button onclick="noteboardSendText()" class="px-2.5 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs transition">
+                                    <i class="fas fa-paper-plane text-[10px]"></i>
+                                </button>
+                            </div>
+                            <div id="noteboardFilePreview" class="hidden text-[10px] text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1 flex items-center gap-1.5">
+                                <i class="fas fa-paperclip flex-shrink-0"></i>
+                                <span id="noteboardFileName" class="flex-1 truncate"></span>
+                                <button onclick="noteboardClearFile()" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                            </div>
+                            <button onclick="openNoteBoardModal()"
                                 class="w-full py-1.5 text-indigo-500 hover:text-indigo-700 text-xs font-semibold text-center border border-indigo-100 rounded-lg hover:bg-indigo-50 transition">
-                                Open Mind Board <i class="fas fa-arrow-right ml-1"></i>
+                                Open Note Board <i class="fas fa-arrow-right ml-1"></i>
                             </button>
                         </div>
                     </div>
@@ -346,30 +373,76 @@ $deepLinkSw = $_GET['sw'] ?? '';
     </div>
 </div>
 
-<!-- Add Traveler Modal -->
-<div id="addTravelerModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
-        <div class="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
-            <h3 class="font-semibold text-gray-800"><i class="fas fa-user-plus mr-2 text-indigo-500"></i>Add Traveler</h3>
-            <button onclick="closeModal('addTravelerModal')" class="text-gray-400 hover:text-gray-700 text-xl"><i class="fas fa-times"></i></button>
+<!-- New Traveler Modal -->
+<div id="newTravelerModal" class="fixed inset-0 z-[70] hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col" style="max-height:90vh;">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-user-plus mr-2 text-teal-500"></i>New Traveler</h3>
+            <button onclick="closeModal('newTravelerModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-4 flex-shrink-0">
-            <div class="relative">
-                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                <input type="text" id="modalTravelerSearch" placeholder="Search by name, passport, phone…"
-                    autocomplete="off"
-                    class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
-                    oninput="filterModalTravelers(this.value)">
+        <div class="overflow-y-auto flex-1 p-4 space-y-3">
+            <label id="ntDropZone" class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                <i class="fas fa-id-card text-teal-400 text-2xl"></i>
+                <span class="text-sm text-gray-600 font-medium">Upload Passport Scan</span>
+                <span class="text-xs text-gray-400">JPG, PNG, PDF, WebP</span>
+                <input type="file" id="ntFileInput" accept=".jpg,.jpeg,.png,.webp,.pdf" class="hidden" onchange="ntFileSelected(this)">
+            </label>
+            <div id="ntFilePreview" class="hidden text-xs text-teal-600 bg-teal-50 rounded-lg px-3 py-2 flex items-center gap-2">
+                <i class="fas fa-file"></i>
+                <span id="ntFileName" class="flex-1 truncate"></span>
+                <button onclick="ntClearFile()" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="ntProgress" class="hidden text-center py-2 text-xs text-teal-600">
+                <i class="fas fa-spinner fa-spin mr-1"></i><span id="ntProgressText">Extracting...</span>
+            </div>
+            <div id="ntExtracted" class="hidden bg-gray-50 rounded-xl p-3 text-xs space-y-1"></div>
+            <div id="ntDuplicateBox" class="hidden border border-yellow-300 bg-yellow-50 rounded-xl p-3">
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+                    <span class="text-xs font-bold text-yellow-700">Traveler Already Exists</span>
+                </div>
+                <div id="ntDuplicateInfo" class="text-xs text-gray-700 mb-3"></div>
+                <button onclick="ntLinkExisting()"
+                    class="w-full py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-link mr-1"></i>Link This Traveler
+                </button>
             </div>
         </div>
-        <div id="modalTravelerResults" class="overflow-y-auto flex-1 px-4 pb-3 space-y-2">
-            <div class="text-center py-8 text-gray-400 text-sm"><i class="fas fa-spinner fa-spin"></i></div>
+        <div class="p-4 border-t border-gray-100 flex-shrink-0 flex gap-2">
+            <button onclick="ntExtractAndCheck()" id="ntExtractBtn"
+                class="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition">
+                <i class="fas fa-wand-magic-sparkles mr-1.5"></i>Extract & Check
+            </button>
+            <button onclick="ntCreate()" id="ntCreateBtn" class="hidden flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition">
+                <i class="fas fa-user-plus mr-1.5"></i>Create & Link
+            </button>
         </div>
-        <div class="p-4 border-t border-gray-100 flex-shrink-0">
-            <a href="create-traveler.php" target="_blank"
-                class="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-sm font-semibold transition">
-                <i class="fas fa-plus"></i>Create New Traveler
-            </a>
+    </div>
+</div>
+
+<!-- Passport Carousel Modal -->
+<div id="passportCarouselModal" class="fixed inset-0 z-[70] hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-id-card mr-2 text-indigo-500"></i>Passports</h3>
+            <button onclick="closeModal('passportCarouselModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4">
+            <div class="relative">
+                <div id="carouselSlides" class="overflow-hidden rounded-xl bg-gray-50 min-h-[300px] flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin text-gray-300 text-2xl"></i>
+                </div>
+                <button onclick="carouselPrev()" class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button onclick="carouselNext()" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="mt-3 text-center">
+                <p id="carouselName" class="text-sm font-semibold text-gray-700 mb-2"></p>
+                <div id="carouselDots" class="flex justify-center gap-1.5"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -407,8 +480,23 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <div id="mindBoardModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style="height:85vh;">
         <div class="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
-            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-comments mr-2 text-indigo-400"></i>Mind Board</h3>
-            <button onclick="closeModal('mindBoardModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-comments mr-2 text-indigo-400"></i>Mind Board <span class="text-xs text-gray-400 font-normal ml-1" id="mbServiceLabel"></span></h3>
+            <div class="flex items-center gap-2">
+                <button onclick="openAiModal()"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-semibold transition"
+                    title="AI Planning Briefing">
+                    <i class="fas fa-wand-magic-sparkles text-[10px]"></i>AI Brief
+                </button>
+                <button onclick="closeModal('mindBoardModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <!-- AI Planning Board — shown after generation -->
+        <div id="aiPlanningBoard" class="hidden flex-shrink-0 border-b border-indigo-100 bg-indigo-50 px-4 py-3 text-sm">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider"><i class="fas fa-brain mr-1.5"></i>AI Planning Briefing</span>
+                <button onclick="document.getElementById('aiPlanningBoard').classList.add('hidden')" class="text-indigo-300 hover:text-indigo-500 text-xs"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="aiPlanningContent" class="text-gray-700 text-xs leading-relaxed max-h-36 overflow-y-auto"></div>
         </div>
         <div id="mbChatArea" class="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2"
             style="--scrollbar-width:4px;">
@@ -438,7 +526,45 @@ $deepLinkSw = $_GET['sw'] ?? '';
     </div>
 </div>
 
-<!-- Note Detail Modal (click note → show full) -->
+<!-- Note Board Modal (right sidebar Notes — noteboard) -->
+<div id="noteBoardModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style="height:85vh;">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-sticky-note mr-2 text-blue-400"></i>Note Board <span class="text-xs text-gray-400 font-normal ml-1" id="nbServiceLabel"></span></h3>
+            <button onclick="closeModal('noteBoardModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="nbChatArea" class="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
+            <div class="text-center py-6 text-gray-300 text-xs"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+        <div class="flex-shrink-0 border-t border-gray-100 bg-white p-3">
+            <div id="nbFilePreview" class="hidden mb-2 bg-indigo-50 rounded-lg px-3 py-1.5 text-xs text-indigo-600 flex items-center gap-2">
+                <i class="fas fa-paperclip flex-shrink-0"></i>
+                <span id="nbFilePreviewName" class="flex-1 truncate"></span>
+                <button onclick="nbClearFile()" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex items-end gap-2">
+                <label class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition">
+                    <i class="fas fa-paperclip text-gray-500 text-sm"></i>
+                    <input type="file" id="nbFileInput" class="hidden" onchange="nbFileSelected(this)">
+                </label>
+                <button id="nb-rec-btn" onclick="nbRecToggle()"
+                    class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition"
+                    style="background:#f1f5f9;">
+                    <i class="fas fa-microphone" style="color:#64748b;font-size:.75rem;"></i>
+                </button>
+                <textarea id="nbTextInput" rows="1" placeholder="Write a note… (Enter to send)"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();nbSend();}"
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
+                    style="flex:1;resize:none;border:1.5px solid #e5e7eb;border-radius:20px;padding:8px 14px;font-size:.83rem;outline:none;max-height:100px;overflow-y:auto;transition:border .15s;"></textarea>
+                <button onclick="nbSend()"
+                    class="w-9 h-9 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 transition">
+                    <i class="fas fa-paper-plane text-white text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="noteDetailModal" class="fixed inset-0 z-[60] hidden modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div class="flex items-center justify-between p-4 border-b border-gray-100">
@@ -452,7 +578,26 @@ $deepLinkSw = $_GET['sw'] ?? '';
     </div>
 </div>
 
-<!-- Special Instructions Modal -->
+<!-- AI Modal -->
+<div id="aiModal" class="fixed inset-0 z-[60] hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-wand-magic-sparkles mr-2 text-indigo-500"></i>AI Planning Briefing</h3>
+            <button onclick="closeModal('aiModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4">
+            <p class="text-xs text-gray-400 mb-3">AI will analyze your Mind Board notes and generate a planning briefing. The result will appear inside the Mind Board.</p>
+            <button onclick="aiGenerate()" id="aiGenBtn"
+                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
+                <i class="fas fa-wand-magic-sparkles mr-1.5"></i>Generate Briefing
+            </button>
+            <div id="aiGenStatus" class="hidden mt-3 text-center text-xs text-indigo-500">
+                <i class="fas fa-spinner fa-spin mr-1"></i>Analyzing notes…
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="specialInsModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,.5);backdrop-filter:blur(3px);">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div class="flex items-center justify-between p-4 border-b border-amber-100 bg-amber-50 rounded-t-2xl">
@@ -490,15 +635,20 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <script>
 const WORK_SYS_ID  = "<?php echo htmlspecialchars($workSysId); ?>";
 const DEEP_LINK_SW = "<?php echo htmlspecialchars($deepLinkSw); ?>";
+const CURRENT_USER = "<?php echo htmlspecialchars($_SESSION['user_name'] ?? ''); ?>";
 const API = {
-    getWork:      "<?php echo $getWorkApi; ?>",
-    status:       "<?php echo $updateStatusApi; ?>",
-    addService:   "<?php echo $addServiceApi; ?>",
-    depts:        "<?php echo $deptApi; ?>",
-    workTravelers:"<?php echo $workTravelersApi; ?>",
-    allTravelers: "<?php echo $allTravelersApi; ?>",
-    airTickets:   "<?php echo $airTicketsApi; ?>",
-    notes:        "<?php echo $notesApi; ?>",
+    getWork:       "<?php echo $getWorkApi; ?>",
+    status:        "<?php echo $updateStatusApi; ?>",
+    addService:    "<?php echo $addServiceApi; ?>",
+    depts:         "<?php echo $deptApi; ?>",
+    workTravelers: "<?php echo $workTravelersApi; ?>",
+    travelers:     "<?php echo $allTravelersApi; ?>",
+    airTickets:    "<?php echo $airTicketsApi; ?>",
+    notes:         "<?php echo $notesApi; ?>",
+    extractDocument:  "<?php echo $ip_port; ?>api/travelers/extract-document.php",
+    storeNewTraveler: "<?php echo $ip_port; ?>api/travelers/store.php",
+    checkDuplicate:   "<?php echo $ip_port; ?>api/travelers/check-duplicate.php",
+    aiMindboard:      "<?php echo $ip_port; ?>api/works/ai-mindboard.php",
 };
 
 const SVC_INFO = {
@@ -516,9 +666,8 @@ let confirmedTasks  = [];
 let airTicketData   = null;
 let _mbNotes        = [];
 let _mbFile         = null;
-let _linkedTravelers = [];
-let _allTravelers    = [];
 let allDepts         = [];
+let activeServiceSlug = null;
 
 // ════════════════════════════════════════════════════════════
 // LOAD
@@ -536,7 +685,6 @@ async function loadWork() {
         airTicketData  = json.air_ticket_data ?? null;
 
         renderPage();
-        mbLoadNotes();
         loadLinkedTravelers();
     } catch(e) {
         document.getElementById('loadingState').innerHTML = `<p class="text-red-400 text-center text-sm"><i class="fas fa-exclamation-circle mr-2"></i>${esc(e.message)}</p>`;
@@ -554,8 +702,17 @@ function renderPage() {
     document.getElementById('breadWorkId').textContent   = WORK_SYS_ID;
     document.getElementById('workStatusBadge').innerHTML = badgeHtml(workData.work_status);
 
-    renderOverview(ci, workData, services);
-    renderSpecialIns(workData);
+    // Common info strip — breadcrumb এর পাশে
+    const segLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
+    const dot = `<span class="text-gray-300 text-xs">·</span>`;
+    const chips = [
+        ci.name  ? `<span class="text-xs font-semibold text-gray-700"><i class="fas fa-user text-gray-300 mr-1 text-[10px]"></i>${esc(ci.name)}</span>` : '',
+        ci.phone ? `<span class="text-xs text-gray-400"><i class="fas fa-phone text-gray-300 mr-1 text-[10px]"></i>${esc(ci.phone)}</span>` : '',
+        workData.segment_type ? `<span class="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">${segLabels[workData.segment_type] ?? workData.segment_type}</span>` : '',
+    ].filter(Boolean);
+    document.getElementById('commonInfoStrip').innerHTML = chips.join(` ${dot} `);
+
+    renderSpecialIns(workData, null);
     renderServiceModuleTabs(serviceWorks);
     renderConfirmedTasks();
 
@@ -584,17 +741,18 @@ function renderOverview(ci, w, services) {
 }
 
 // ════════════════════════════════════════════════════════════
-// SPECIAL INSTRUCTIONS
+// SPECIAL INSTRUCTIONS — service-specific
 // ════════════════════════════════════════════════════════════
-function renderSpecialIns(w) {
-    const segData = sp(w.segment_data) ?? {};
-    const items   = [];
-
-    // Collect from all services in segment_data
+function renderSpecialIns(w, activeSlug) {
+    const segData  = sp(w.segment_data) ?? {};
     const svcTypes = sp(w.service_type) ?? [];
     const services = Array.isArray(svcTypes) ? svcTypes : [svcTypes];
+    const items    = [];
 
-    services.forEach(slug => {
+    // Only show active service's instructions (or all if no active)
+    const targetServices = activeSlug ? [activeSlug] : services;
+
+    targetServices.forEach(slug => {
         const svcData = segData[slug] ?? {};
         const segs    = svcData.segments ?? [svcData];
         segs.forEach(seg => {
@@ -602,13 +760,12 @@ function renderSpecialIns(w) {
                 if (ins) items.push({ service: SVC_INFO[slug]?.label ?? slug, text: ins });
             });
         });
-        // top-level special_instruction
         (svcData.special_instruction ?? []).forEach(ins => {
             if (ins) items.push({ service: SVC_INFO[slug]?.label ?? slug, text: ins });
         });
     });
 
-    // Also check work-level special_instruction
+    // Work-level instructions always show
     const workSpIns = sp(w.special_instruction) ?? [];
     (Array.isArray(workSpIns) ? workSpIns : [workSpIns]).forEach(ins => {
         if (ins) items.push({ service: 'Work', text: ins });
@@ -702,15 +859,28 @@ function switchServiceModule(slug, swSysId, btn) {
 }
 
 function loadServiceModule(slug, swSysId) {
+    activeServiceSlug = slug;
     const mount = document.getElementById('at-tab-mount');
     mount.innerHTML = '';
+
+    // Service-specific info strip (segment type, route etc)
+    renderSvcInfoStrip(slug);
+
+    // Reload right sidebar Notes (noteboard) for this service
+    loadNoteboard(slug);
+
+    // Reload special instructions for this service
+    renderSpecialIns(workData, slug);
+
     if (slug === 'air_ticket') {
         const ci = sp(workData.client_info) ?? {};
         initWorkAirTicketTab({
-            workSysId:  WORK_SYS_ID,
-            leadSysId:  workData.lead_sys_id ?? '',
-            clientName: ci.name ?? '',
-            atData:     airTicketData,
+            workSysId:    WORK_SYS_ID,
+            leadSysId:    workData.lead_sys_id ?? '',
+            clientName:   ci.name ?? '',
+            serviceSlug:  slug,
+            currentUser:  CURRENT_USER,
+            atData:       airTicketData,
             api: { airTickets:API.airTickets, notes:API.notes, workTravelers:API.workTravelers },
         });
     } else {
@@ -720,6 +890,80 @@ function loadServiceModule(slug, swSysId) {
             <p class="text-sm font-medium">${esc(info.label)} module coming soon</p>
         </div>`;
     }
+}
+
+// Service-specific info strip — slim single/double line below tab bar
+function renderSvcInfoStrip(slug) {
+    const strip   = document.getElementById('svcInfoStrip');
+    const segData = sp(workData.segment_data) ?? {};
+    const svcData = segData[slug] ?? {};
+    const chips   = [];
+    const dot     = `<span class="text-gray-300">·</span>`;
+
+    if (slug === 'air_ticket') {
+        const segLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
+        if (svcData.segment_type) chips.push(`<span class="font-medium text-sky-600">${segLabels[svcData.segment_type] ?? svcData.segment_type}</span>`);
+        const segs = svcData.segments ?? [];
+        segs.forEach(seg => {
+            const from  = seg.from_city  || seg.from  || '';
+            const to    = seg.to_city    || seg.to    || '';
+            const route = from && to ? `${from} → ${to}` : (seg.route || '');
+            const date  = seg.travel_date || seg.date || '';
+            if (route) chips.push(`<span class="flex items-center gap-1"><i class="fas fa-plane text-sky-400 text-[9px]"></i>${esc(route)}${date ? ' <span class="text-gray-400">'+esc(date)+'</span>' : ''}</span>`);
+        });
+        if (svcData.pax)          chips.push(`<span><i class="fas fa-user text-gray-300 mr-1"></i>${esc(String(svcData.pax))} Pax</span>`);
+        if (svcData.cabin_class)  chips.push(`<span class="capitalize">${esc(svcData.cabin_class)}</span>`);
+
+    } else if (slug === 'hotel') {
+        const segs = svcData.segments ?? [];
+        segs.forEach(seg => {
+            const loc    = [seg.hotel_name, seg.city_name].filter(Boolean).join(', ');
+            const nights = seg.nights || seg.total_nights || '';
+            const rooms  = seg.rooms  || '';
+            if (loc)    chips.push(`<span><i class="fas fa-hotel text-pink-400 mr-1 text-[9px]"></i>${esc(loc)}</span>`);
+            if (nights) chips.push(`<span>${esc(String(nights))} Nights</span>`);
+            if (rooms)  chips.push(`<span>${esc(String(rooms))} Rooms</span>`);
+        });
+
+    } else if (slug === 'visa') {
+        const segs = svcData.segments ?? [];
+        segs.forEach(seg => {
+            const country = seg.country_name  || '';
+            const cat     = seg.category_name || seg.visa_type || '';
+            if (country) chips.push(`<span><i class="fas fa-passport text-violet-400 mr-1 text-[9px]"></i>${esc(country)}</span>`);
+            if (cat)     chips.push(`<span>${esc(cat)}</span>`);
+        });
+
+    } else if (slug === 'tour_package' || slug === 'package') {
+        const dests = svcData.destinations ?? [];
+        dests.forEach(d => {
+            const loc = [d.country_name, ...(d.city_names ?? [])].filter(Boolean).join(', ');
+            if (loc) chips.push(`<span><i class="fas fa-suitcase-rolling text-green-400 mr-1 text-[9px]"></i>${esc(loc)}</span>`);
+        });
+        if (svcData.duration) chips.push(`<span>${esc(String(svcData.duration))} Days</span>`);
+
+    } else if (slug === 'umrah') {
+        if (svcData.umrah_type)    chips.push(`<span class="capitalize font-medium text-amber-600">${esc(svcData.umrah_type.replace('_',' '))}</span>`);
+        if (svcData.total_nights)  chips.push(`<span>${esc(String(svcData.total_nights))} Nights</span>`);
+        if (svcData.pax)           chips.push(`<span><i class="fas fa-user text-gray-300 mr-1"></i>${esc(String(svcData.pax))} Pax</span>`);
+
+    } else if (slug === 'transport') {
+        const segs = svcData.segments ?? [];
+        segs.forEach(seg => {
+            const route = [seg.from, seg.to].filter(Boolean).join(' → ');
+            if (seg.type)  chips.push(`<span class="capitalize">${esc(seg.type)}</span>`);
+            if (route)     chips.push(`<span><i class="fas fa-van-shuttle text-teal-400 mr-1 text-[9px]"></i>${esc(route)}</span>`);
+        });
+    }
+
+    if (!chips.length) {
+        strip.classList.add('hidden');
+        strip.classList.remove('flex');
+        return;
+    }
+    strip.classList.remove('hidden');
+    strip.classList.add('flex');
+    strip.innerHTML = chips.join(` ${dot} `);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -754,46 +998,82 @@ function renderConfirmedTasks() {
 }
 
 // ════════════════════════════════════════════════════════════
-// MIND BOARD
+// AI PLANNING BRIEFING
 // ════════════════════════════════════════════════════════════
-async function mbLoadNotes() {
-    try {
-        const r = await fetch(`${API.notes}?action=list&work_sys_id=${encodeURIComponent(WORK_SYS_ID)}`);
-        const j = await r.json();
-        _mbNotes = j.status==='success' ? (j.data??[]) : [];
-    } catch { _mbNotes = []; }
-    renderMbSidebar();
-    renderMbChat();
+function openAiModal() {
+    document.getElementById('aiModal').classList.remove('hidden');
 }
 
-function renderMbSidebar() {
-    const msgCount  = _mbNotes.filter(n=>n.note_type==='text').length;
-    const fileCount = _mbNotes.filter(n=>n.note_type!=='text').length;
-    document.getElementById('mbMsgCount').textContent  = msgCount;
-    document.getElementById('mbFileCount').textContent = fileCount;
+async function aiGenerate() {
+    const btn    = document.getElementById('aiGenBtn');
+    const status = document.getElementById('aiGenStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Generating…';
+    if (status) status.classList.remove('hidden');
+    try {
+        const r = await fetch(API.aiMindboard, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                work_sys_id:  WORK_SYS_ID,
+                service_slug: activeServiceSlug ?? 'air_ticket',
+            }),
+        });
+        const j = await r.json();
+        const board   = document.getElementById('aiPlanningBoard');
+        const content = document.getElementById('aiPlanningContent');
+        if (board && content) {
+            content.innerHTML = j.status === 'success'
+                ? j.html
+                : `<p class="text-red-400">${esc(j.message ?? 'Failed')}</p>`;
+            board.classList.remove('hidden');
+        }
+        closeModal('aiModal');
+        openMindBoardModal();
+    } catch {
+        const content = document.getElementById('aiPlanningContent');
+        if (content) content.innerHTML = '<p class="text-red-400">Network error</p>';
+    }
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles mr-1.5"></i>Generate Briefing';
+    if (status) status.classList.add('hidden');
+}
 
-    // Notes badge
-    const badge = document.getElementById('notesBadge');
-    if (_mbNotes.length) { badge.textContent=_mbNotes.length; badge.classList.remove('hidden'); }
 
-    // Notes side list — show text notes as clickable chips
+let _nbNotes = [], _nbFile = null, _noteboardFile = null;
+
+async function loadNoteboard(slug) {
+    if (!slug) return;
+    try {
+        const r = await fetch(`${API.notes}?action=list&work_sys_id=${encodeURIComponent(WORK_SYS_ID)}&service_slug=${encodeURIComponent(slug)}&board=noteboard`);
+        const j = await r.json();
+        _nbNotes = j.status === 'success' ? (j.data ?? []) : [];
+    } catch { _nbNotes = []; }
+    renderNoteboardSidebar();
+    if (!document.getElementById('noteBoardModal').classList.contains('hidden')) renderNbChat();
+}
+
+function renderNoteboardSidebar() {
+    const badge    = document.getElementById('notesBadge');
     const sideList = document.getElementById('notesSideList');
-    const textNotes = _mbNotes.filter(n=>n.note_type==='text').slice(0,8);
+    if (_nbNotes.length) { badge.textContent = _nbNotes.length; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+    const textNotes = _nbNotes.filter(n => n.note_type === 'text').slice(0, 8);
     if (!textNotes.length) {
         sideList.innerHTML = '<p class="text-xs text-gray-400 py-2 text-center">No notes yet.</p>';
     } else {
         sideList.innerHTML = textNotes.map(n => `
-            <div class="note-chip" onclick="openNoteDetail('${esc(n.sys_id)}')">
+            <div class="note-chip" onclick="openNoteDetail('${esc(n.sys_id)}','nb')">
                 <i class="fas fa-comment text-blue-300 text-xs flex-shrink-0 mt-0.5"></i>
                 <span class="note-chip-text">${esc(n.content ?? '')}</span>
             </div>`).join('');
     }
     accRefresh('acc-notes');
-    accRefresh('acc-mb');
 }
 
-function openNoteDetail(sysId) {
-    const note = _mbNotes.find(n=>n.sys_id===sysId);
+function openNoteDetail(sysId, board) {
+    const notes = board === 'nb' ? _nbNotes : _mbNotes;
+    const note  = notes.find(n => n.sys_id === sysId);
     if (!note) return;
     document.getElementById('noteDetailText').textContent = note.content ?? '';
     const meta = note.meta_data?.created_by_date;
@@ -801,68 +1081,312 @@ function openNoteDetail(sysId) {
     document.getElementById('noteDetailModal').classList.remove('hidden');
 }
 
-function renderMbChat() {
-    const area = document.getElementById('mbChatArea');
-    if (!_mbNotes.length) {
-        area.innerHTML = '<div class="text-center py-8 text-gray-300 text-xs">No notes yet. Write something below.</div>';
+function openNoteBoardModal() {
+    document.getElementById('noteBoardModal').classList.remove('hidden');
+    const label = document.getElementById('nbServiceLabel');
+    if (label) label.textContent = activeServiceSlug ? '— ' + (SVC_INFO[activeServiceSlug]?.label ?? activeServiceSlug) : '';
+    renderNbChat();
+}
+
+function renderNbChat() {
+    const area = document.getElementById('nbChatArea'); if (!area) return;
+    if (!_nbNotes.length) { area.innerHTML = '<div class="text-center py-8 text-gray-300 text-xs">No notes yet.</div>'; return; }
+    area.innerHTML = _nbNotes.map(n => _nbBubble(n)).join('');
+    setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
+}
+
+function _nbBubble(n) {
+    const meta    = n.meta_data?.created_by_date;
+    const time    = meta ? `${meta.user} · ${meta.date}` : '';
+    const creator = meta?.user ?? n.created_by ?? '';
+    const canDel  = !creator || creator === CURRENT_USER;
+    const del     = canDel
+        ? `<button onclick="nbDel('${n.sys_id}')" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] hidden items-center justify-center hover:bg-red-600 nb-del"><i class="fas fa-times"></i></button>`
+        : '';
+    if (n.note_type === 'text') return `
+        <div class="flex flex-col items-start relative group nb-bubble-wrap">
+            <div class="relative bg-blue-50 border border-blue-100 rounded-2xl rounded-bl-sm px-3 py-2 text-sm text-gray-800 max-w-[85%] whitespace-pre-wrap">${esc(n.content??'')}${del}</div>
+            <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
+        </div>`;
+    if (n.note_type === 'image') return `
+        <div class="flex flex-col items-start relative group nb-bubble-wrap">
+            <div class="relative bg-white border border-gray-200 rounded-xl p-1 max-w-[85%]">
+                <img src="${esc(n.serve_url??'')}" class="rounded-lg max-h-52 object-contain cursor-pointer" onclick="window._previewOpen&&window._previewOpen(this.src)">${del}
+            </div>
+            <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
+        </div>`;
+    if (n.note_type === 'audio') return `
+        <div class="flex flex-col items-start relative group nb-bubble-wrap">
+            <div class="relative bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 max-w-[85%]">
+                <audio controls src="${esc(n.serve_url??'')}" class="h-8 w-48"></audio>${del}
+            </div>
+            <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
+        </div>`;
+    return `
+        <div class="flex flex-col items-start relative group nb-bubble-wrap">
+            <div class="relative bg-green-50 border border-green-100 rounded-xl px-3 py-2 flex items-center gap-2 max-w-[85%]">
+                <i class="fas fa-file text-green-500 text-sm flex-shrink-0"></i>
+                <a href="${esc(n.serve_url??'')}?dl=1" class="text-xs text-green-700 font-medium truncate max-w-[140px]" download>${esc(n.file_name??'file')}</a>${del}
+            </div>
+            <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
+        </div>`;
+}
+
+document.addEventListener('mouseover', e => {
+    const nw = e.target.closest('.nb-bubble-wrap');
+    document.querySelectorAll('.nb-del').forEach(b => b.style.display='none');
+    if (nw) { const btn = nw.querySelector('.nb-del'); if(btn) btn.style.display='flex'; }
+});
+
+// Sidebar file input
+function noteboardFileSelected(input) {
+    _noteboardFile = input.files[0] ?? null;
+    if (_noteboardFile) {
+        document.getElementById('noteboardFileName').textContent = _noteboardFile.name;
+        document.getElementById('noteboardFilePreview').classList.remove('hidden');
+    }
+}
+function noteboardClearFile() {
+    _noteboardFile = null;
+    document.getElementById('noteboardFileInput').value = '';
+    document.getElementById('noteboardFilePreview').classList.add('hidden');
+}
+
+// Voice recording for Note Board sidebar
+let _nbSidebarRecorder = null, _nbSidebarRecChunks = [], _nbSidebarRecording = false;
+async function nbSidebarRecToggle() {
+    const btn = document.getElementById('nb-sidebar-rec-btn');
+    if (_nbSidebarRecording) {
+        _nbSidebarRecorder?.stop();
         return;
     }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _nbSidebarRecChunks = [];
+        _nbSidebarRecorder  = new MediaRecorder(stream);
+        _nbSidebarRecorder.ondataavailable = e => { if (e.data.size > 0) _nbSidebarRecChunks.push(e.data); };
+        _nbSidebarRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            _nbSidebarRecording = false;
+            if (btn) { btn.style.background = '#f1f5f9'; btn.innerHTML = '<i class="fas fa-microphone text-gray-400 text-[10px]"></i>'; }
+            const blob = new Blob(_nbSidebarRecChunks, { type: 'audio/webm' });
+            const slug = activeServiceSlug; if (!slug) return;
+            const fd = new FormData();
+            fd.append('action', 'upload');
+            fd.append('work_sys_id', WORK_SYS_ID);
+            fd.append('service_slug', slug);
+            fd.append('board', 'noteboard');
+            fd.append('file', blob, 'voice_' + Date.now() + '.webm');
+            try {
+                const r = await fetch(API.notes, { method:'POST', body:fd });
+                const j = await r.json();
+                if (j.status === 'success') await loadNoteboard(slug);
+                else showToast('error', j.message);
+            } catch { showToast('error', 'Upload failed'); }
+        };
+        _nbSidebarRecorder.start();
+        _nbSidebarRecording = true;
+        if (btn) { btn.style.background = '#fee2e2'; btn.innerHTML = '<i class="fas fa-stop text-red-500 text-[10px]"></i>'; }
+    } catch { alert('Microphone access denied'); }
+}
+
+async function noteboardSendText() {
+    const slug = activeServiceSlug; if (!slug) return;
+    if (_noteboardFile) {
+        const fd = new FormData();
+        fd.append('action','upload'); fd.append('work_sys_id', WORK_SYS_ID);
+        fd.append('service_slug', slug); fd.append('board', 'noteboard');
+        fd.append('file', _noteboardFile);
+        try {
+            const r = await fetch(API.notes, {method:'POST', body:fd});
+            const j = await r.json();
+            if (j.status==='success') { noteboardClearFile(); await loadNoteboard(slug); }
+            else showToast('error', j.message);
+        } catch { showToast('error','Upload failed'); }
+        return;
+    }
+    const input = document.getElementById('noteboardInput');
+    const txt   = input?.value.trim();
+    if (!txt) return;
+    input.value = '';
+    try {
+        const r = await fetch(API.notes, {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'store', work_sys_id:WORK_SYS_ID, service_slug:slug, board:'noteboard', content:txt})});
+        const j = await r.json();
+        if (j.status==='success') await loadNoteboard(slug); else showToast('error', j.message);
+    } catch { showToast('error','Network error'); }
+}
+
+// Note Board modal file
+function nbFileSelected(input) {
+    _nbFile = input.files[0] ?? null;
+    if (_nbFile) {
+        document.getElementById('nbFilePreviewName').textContent = _nbFile.name;
+        document.getElementById('nbFilePreview').classList.remove('hidden');
+    }
+}
+function nbClearFile() {
+    _nbFile = null;
+    document.getElementById('nbFileInput').value = '';
+    document.getElementById('nbFilePreview').classList.add('hidden');
+}
+
+// Voice recording for Note Board
+let _nbRecorder = null, _nbRecChunks = [], _nbRecording = false;
+async function nbRecToggle() {
+    const btn = document.getElementById('nb-rec-btn');
+    if (_nbRecording) {
+        _nbRecorder?.stop();
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _nbRecChunks = [];
+        _nbRecorder  = new MediaRecorder(stream);
+        _nbRecorder.ondataavailable = e => { if (e.data.size > 0) _nbRecChunks.push(e.data); };
+        _nbRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            _nbRecording = false;
+            if (btn) { btn.style.background = '#f1f5f9'; btn.innerHTML = '<i class="fas fa-microphone" style="color:#64748b;font-size:.75rem;"></i>'; }
+            const blob = new Blob(_nbRecChunks, { type: 'audio/webm' });
+            const slug = activeServiceSlug; if (!slug) return;
+            const fd = new FormData();
+            fd.append('action', 'upload');
+            fd.append('work_sys_id', WORK_SYS_ID);
+            fd.append('service_slug', slug);
+            fd.append('board', 'noteboard');
+            fd.append('file', blob, 'voice_' + Date.now() + '.webm');
+            try {
+                const r = await fetch(API.notes, { method:'POST', body:fd });
+                const j = await r.json();
+                if (j.status === 'success') await loadNoteboard(slug);
+                else showToast('error', j.message);
+            } catch { showToast('error', 'Upload failed'); }
+        };
+        _nbRecorder.start();
+        _nbRecording = true;
+        if (btn) { btn.style.background = '#fee2e2'; btn.innerHTML = '<i class="fas fa-stop" style="color:#dc2626;font-size:.75rem;"></i>'; }
+    } catch(e) {
+        alert('Microphone access denied');
+    }
+}
+
+async function nbSend() {
+    const slug = activeServiceSlug; if (!slug) return;
+    if (_nbFile) {
+        const fd = new FormData();
+        fd.append('action','upload'); fd.append('work_sys_id', WORK_SYS_ID);
+        fd.append('service_slug', slug); fd.append('board', 'noteboard');
+        fd.append('file', _nbFile);
+        try {
+            const r = await fetch(API.notes, {method:'POST', body:fd});
+            const j = await r.json();
+            if (j.status==='success') { nbClearFile(); await loadNoteboard(slug); }
+            else showToast('error', j.message);
+        } catch { showToast('error','Upload failed'); }
+        return;
+    }
+    const txt = document.getElementById('nbTextInput').value.trim();
+    if (!txt) return;
+    document.getElementById('nbTextInput').value = ''; document.getElementById('nbTextInput').style.height = 'auto';
+    try {
+        const r = await fetch(API.notes, {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'store', work_sys_id:WORK_SYS_ID, service_slug:slug, board:'noteboard', content:txt})});
+        const j = await r.json();
+        if (j.status==='success') await loadNoteboard(slug); else showToast('error', j.message);
+    } catch { showToast('error','Network error'); }
+}
+
+async function nbDel(id) {
+    const note = _nbNotes.find(n => n.sys_id === id);
+    const creator = note?.meta_data?.created_by_date?.user ?? note?.created_by ?? '';
+    if (creator && creator !== CURRENT_USER) {
+        showToast('error', 'Permission denied — only the creator can delete this note');
+        return;
+    }
+    if (!confirm('Delete this note?')) return;
+    const slug = activeServiceSlug;
+    try {
+        const r = await fetch(API.notes, {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'delete', sys_id:id})});
+        const j = await r.json();
+        if (j.status==='success') await loadNoteboard(slug); else showToast('error', j.message);
+    } catch { showToast('error','Network error'); }
+}
+
+// ════════════════════════════════════════════════════════════
+// MIND BOARD (tab inside service module — mindboard)
+// ════════════════════════════════════════════════════════════
+function openMindBoardModal() {
+    document.getElementById('mindBoardModal').classList.remove('hidden');
+    const label = document.getElementById('mbServiceLabel');
+    if (label) label.textContent = activeServiceSlug ? '— ' + (SVC_INFO[activeServiceSlug]?.label ?? activeServiceSlug) : '';
+    if (activeServiceSlug) mbLoadMindboard(activeServiceSlug);
+    else renderMbChat();
+}
+
+async function mbLoadMindboard(slug) {
+    try {
+        const r = await fetch(`${API.notes}?action=list&work_sys_id=${encodeURIComponent(WORK_SYS_ID)}&service_slug=${encodeURIComponent(slug)}&board=mindboard`);
+        const j = await r.json();
+        _mbNotes = j.status === 'success' ? (j.data ?? []) : [];
+    } catch { _mbNotes = []; }
+    // Update mind board counts in sidebar
+    document.getElementById('mbMsgCount').textContent  = _mbNotes.filter(n=>n.note_type==='text').length;
+    document.getElementById('mbFileCount').textContent = _mbNotes.filter(n=>n.note_type!=='text').length;
+    accRefresh('acc-mb');
+    renderMbChat();
+}
+
+function renderMbChat() {
+    const area = document.getElementById('mbChatArea'); if (!area) return;
+    if (!_mbNotes.length) { area.innerHTML = '<div class="text-center py-8 text-gray-300 text-xs">No notes yet. Write something below.</div>'; return; }
     area.innerHTML = _mbNotes.map(n => _mbBubble(n)).join('');
     setTimeout(()=>{ area.scrollTop = area.scrollHeight; }, 100);
 }
 
 function _mbBubble(n) {
-    const meta = n.meta_data?.created_by_date;
-    const time = meta ? `${meta.user} · ${meta.date}` : '';
-    const del  = `<button onclick="mbDel('${n.sys_id}')" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] hidden items-center justify-center hover:bg-red-600 mb-del"><i class="fas fa-times"></i></button>`;
-
+    const meta    = n.meta_data?.created_by_date;
+    const time    = meta ? `${meta.user} · ${meta.date}` : '';
+    const creator = meta?.user ?? n.created_by ?? '';
+    const canDel  = !creator || creator === CURRENT_USER;
+    const del     = canDel
+        ? `<button onclick="mbDel('${n.sys_id}')" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] hidden items-center justify-center hover:bg-red-600 mb-del"><i class="fas fa-times"></i></button>`
+        : '';
     if (n.note_type === 'text') return `
         <div class="flex flex-col items-start relative group mb-bubble-wrap">
             <div class="relative bg-gray-100 rounded-2xl rounded-bl-sm px-3 py-2 text-sm text-gray-800 max-w-[85%] whitespace-pre-wrap">${esc(n.content??'')}${del}</div>
             <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
         </div>`;
-
     if (n.note_type === 'image') return `
         <div class="flex flex-col items-start relative group mb-bubble-wrap">
             <div class="relative bg-white border border-gray-200 rounded-xl p-1 max-w-[85%]">
-                <img src="${esc(n.serve_url??'')}" class="rounded-lg max-h-52 object-contain cursor-pointer" onclick="window._previewOpen&&window._previewOpen(this.src)">
-                ${del}
+                <img src="${esc(n.serve_url??'')}" class="rounded-lg max-h-52 object-contain cursor-pointer" onclick="window._previewOpen&&window._previewOpen(this.src)">${del}
             </div>
             <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
         </div>`;
-
     if (n.note_type === 'audio') return `
         <div class="flex flex-col items-start relative group mb-bubble-wrap">
             <div class="relative bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 max-w-[85%]">
-                <audio controls src="${esc(n.serve_url??'')}" class="h-8 w-48"></audio>
-                ${del}
+                <audio controls src="${esc(n.serve_url??'')}" class="h-8 w-48"></audio>${del}
             </div>
             <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
         </div>`;
-
-    // file / pdf_images / other
     return `
         <div class="flex flex-col items-start relative group mb-bubble-wrap">
             <div class="relative bg-green-50 border border-green-100 rounded-xl px-3 py-2 flex items-center gap-2 max-w-[85%]">
                 <i class="fas fa-file text-green-500 text-sm flex-shrink-0"></i>
-                <a href="${esc(n.serve_url??'')}?dl=1" class="text-xs text-green-700 font-medium truncate max-w-[140px]" download>${esc(n.file_name??'file')}</a>
-                ${del}
+                <a href="${esc(n.serve_url??'')}?dl=1" class="text-xs text-green-700 font-medium truncate max-w-[140px]" download>${esc(n.file_name??'file')}</a>${del}
             </div>
             <span class="text-[10px] text-gray-400 mt-1 ml-1">${esc(time)}</span>
         </div>`;
 }
 
-// Hover to show delete button
 document.addEventListener('mouseover', e => {
-    const wrap = e.target.closest('.mb-bubble-wrap');
+    const mw = e.target.closest('.mb-bubble-wrap');
     document.querySelectorAll('.mb-del').forEach(b => b.style.display='none');
-    if (wrap) { const btn = wrap.querySelector('.mb-del'); if(btn) btn.style.display='flex'; }
+    if (mw) { const btn = mw.querySelector('.mb-del'); if(btn) btn.style.display='flex'; }
 });
-
-function openMindBoardModal() {
-    document.getElementById('mindBoardModal').classList.remove('hidden');
-    renderMbChat();
-}
 
 function mbFileSelected(input) {
     _mbFile = input.files[0] ?? null;
@@ -874,190 +1398,301 @@ function mbFileSelected(input) {
 function mbClearFile() { _mbFile=null; document.getElementById('mbFilePreview').classList.add('hidden'); document.getElementById('mbFileInput').value=''; }
 
 async function mbSend() {
-    const txt = document.getElementById('mbTextInput').value.trim();
+    const txt  = document.getElementById('mbTextInput').value.trim();
+    const slug = activeServiceSlug ?? 'general';
     if (_mbFile) {
         const fd = new FormData();
-        fd.append('action','upload'); fd.append('work_sys_id',WORK_SYS_ID); fd.append('file',_mbFile);
-        try { const r=await fetch(API.notes,{method:'POST',body:fd}); const j=await r.json(); if(j.status==='success'){mbClearFile();await mbLoadNotes();}else showToast('error',j.message); } catch{showToast('error','Upload failed');}
+        fd.append('action','upload'); fd.append('work_sys_id',WORK_SYS_ID);
+        fd.append('service_slug',slug); fd.append('board','mindboard');
+        fd.append('file',_mbFile);
+        try {
+            const r=await fetch(API.notes,{method:'POST',body:fd});
+            const j=await r.json();
+            if(j.status==='success'){mbClearFile();await mbLoadMindboard(slug);}
+            else showToast('error',j.message);
+        } catch{showToast('error','Upload failed');}
         return;
     }
     if (!txt) return;
     document.getElementById('mbTextInput').value=''; document.getElementById('mbTextInput').style.height='auto';
     try {
-        const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'store',work_sys_id:WORK_SYS_ID,content:txt})});
-        const j=await r.json(); if(j.status==='success') await mbLoadNotes(); else showToast('error',j.message);
+        const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'store',work_sys_id:WORK_SYS_ID,service_slug:slug,board:'mindboard',content:txt})});
+        const j=await r.json();
+        if(j.status==='success') await mbLoadMindboard(slug); else showToast('error',j.message);
     } catch{showToast('error','Network error');}
 }
 
 async function mbDel(id) {
-    if(!confirm('Delete this note?')) return;
-    try {
-        const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',sys_id:id})});
-        const j=await r.json(); if(j.status==='success') await mbLoadNotes(); else showToast('error',j.message);
-    } catch{showToast('error','Network error');}
-}
-
-// ════════════════════════════════════════════════════════════
-// TRAVELERS
-// ════════════════════════════════════════════════════════════
-async function loadLinkedTravelers() {
-    try {
-        const r=await fetch(`${API.workTravelers}?action=list&work_sys_id=${encodeURIComponent(WORK_SYS_ID)}`);
-        const j=await r.json();
-        _linkedTravelers = j.status==='success' ? (j.data??[]) : [];
-    } catch { _linkedTravelers=[]; }
-    renderLinkedTravelers();
-}
-
-function renderLinkedTravelers() {
-    const list = document.getElementById('linkedTravelersList');
-    const tableBtn = document.getElementById('btnTravelerTable');
-
-    if (!_linkedTravelers.length) {
-        list.innerHTML = '<p class="text-xs text-gray-400 italic">No travelers linked.</p>';
-        tableBtn?.classList.add('hidden');
+    const note = _mbNotes.find(n => n.sys_id === id);
+    const creator = note?.meta_data?.created_by_date?.user ?? note?.created_by ?? '';
+    if (creator && creator !== CURRENT_USER) {
+        showToast('error', 'Permission denied — only the creator can delete this note');
         return;
     }
-    tableBtn?.classList.remove('hidden');
-
-    list.innerHTML = _linkedTravelers.map(t => {
-        const initial = (t.name||'?').charAt(0).toUpperCase();
-        const pi = t.passport_info?.[0]?.bio_info ?? {};
-        const sub = [t.passport_no||pi.passport_number, t.phone].filter(Boolean).join(' · ');
-        return `<div class="flex items-center gap-2 group py-1">
-            <div class="w-7 h-7 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center font-bold text-xs flex-shrink-0">${initial}</div>
-            <div class="flex-1 min-w-0">
-                <p class="text-gray-700 font-medium text-xs truncate">${esc(t.name)}</p>
-                ${sub?`<p class="text-gray-400 text-[10px] truncate">${esc(sub)}</p>`:''}
-            </div>
-            <button onclick="unlinkTraveler('${esc(t.sys_id)}')"
-                class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 text-xs flex-shrink-0 transition">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>`;
-    }).join('');
-}
-
-async function unlinkTraveler(sysId) {
-    if(!confirm('Remove this traveler?')) return;
+    if(!confirm('Delete this note?')) return;
+    const slug = activeServiceSlug ?? 'general';
     try {
-        const r=await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unlink',work_sys_id:WORK_SYS_ID,traveler_sys_id:sysId})});
-        const j=await r.json(); if(j.status==='success'){_linkedTravelers=_linkedTravelers.filter(t=>t.sys_id!==sysId);renderLinkedTravelers();}else showToast('error',j.message);
+        const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',sys_id:id})});
+        const j=await r.json();
+        if(j.status==='success') await mbLoadMindboard(slug); else showToast('error',j.message);
     } catch{showToast('error','Network error');}
 }
 
-// Inline search (sidebar)
-let _travelerTimer;
+// ════════════════════════════════════════════════════════════
+// TRAVELERS — exact from show-tasks.php (adapted for WORK_SYS_ID)
+// ════════════════════════════════════════════════════════════
+let _travData=[], _travLoaded=false;
+let _linkedTravelers=[], _carouselIdx=0, _newTravelerExtracted=null, _ntFile=null, _ntDuplicateSysId=null;
+
+async function _loadTravelers() {
+    if(_travLoaded)return;
+    try{const r=await fetch(API.travelers);const j=await r.json();_travData=j.travelers??[];_travLoaded=true;}catch{}
+}
+
 function travelerSearchFilter(q) {
-    clearTimeout(_travelerTimer);
-    const drop = document.getElementById('travelerSearchDrop');
-    if (!q || q.length < 2) { drop.classList.add('hidden'); return; }
-    _travelerTimer = setTimeout(async () => {
-        if (!_allTravelers.length) {
-            const r=await fetch(API.allTravelers); const j=await r.json();
-            _allTravelers = j.success ? (j.travelers??[]) : [];
+    const dd = document.getElementById('travelerSearchDrop'); if (!dd) return;
+    _loadTravelers().then(() => {
+        const v = q.toLowerCase().trim();
+        if (!v) { dd.classList.add('hidden'); return; }
+        const list = _travData.filter(t => (t.name||'').toLowerCase().includes(v) ||
+            (t.passport_no||'').toLowerCase().includes(v)).slice(0, 12);
+        if (!list.length) {
+            dd.innerHTML = `<li class="px-3 py-2 text-center text-gray-400 text-xs">No travelers found</li>`;
+            dd.classList.remove('hidden'); return;
         }
-        const ql = q.toLowerCase();
-        const results = _allTravelers.filter(t =>
-            (t.name||'').toLowerCase().includes(ql) || (t.passport_no||'').toLowerCase().includes(ql)
-        ).slice(0,8);
-        const linkedIds = new Set(_linkedTravelers.map(t=>t.sys_id));
-        drop.innerHTML = results.length
-            ? results.map(t => {
-                const isLinked = linkedIds.has(t.sys_id);
-                return `<li class="flex items-center justify-between px-3 py-2 hover:bg-indigo-50 cursor-pointer">
-                    <div class="min-w-0"><p class="font-medium text-gray-700 truncate">${esc(t.name)}</p><p class="text-gray-400 text-[10px] truncate">${esc(t.passport_no??'')}</p></div>
-                    ${isLinked
-                        ? '<span class="text-green-500 text-xs font-bold flex-shrink-0"><i class="fas fa-check mr-1"></i>Added</span>'
-                        : `<button onclick="linkTravelerInline('${esc(t.sys_id)}')" class="text-indigo-500 text-xs font-semibold flex-shrink-0 hover:text-indigo-700">Add</button>`}
-                </li>`;
-              }).join('')
-            : '<li class="px-3 py-3 text-xs text-gray-400 text-center">No results</li>';
-        drop.classList.remove('hidden');
-    }, 250);
+        dd.innerHTML = list.map(t => `<li class="px-3 py-2 cursor-pointer hover:bg-teal-50 border-b last:border-b-0 flex items-center gap-2"
+            onclick="travelerSearchSelect('${t.sys_id}','${(t.name||'').replace(/'/g,"\\'")}')">
+            <div class="w-6 h-6 bg-teal-600 rounded-full text-white flex items-center justify-center text-xs font-bold">${(t.name?.[0]??'T').toUpperCase()}</div>
+            <div><div class="font-medium text-gray-800">${escHtml(t.name??'')}</div>
+            <div class="text-gray-400 font-mono text-[10px]">${t.sys_id} ${t.passport_no?'· '+t.passport_no:''}</div></div>
+        </li>`).join('');
+        dd.classList.remove('hidden');
+    });
 }
 
-async function linkTravelerInline(sysId) {
+async function travelerSearchSelect(travelerSysId, name) {
+    document.getElementById('travelerSearchInput').value = '';
+    document.getElementById('travelerSearchDrop').classList.add('hidden');
     try {
-        const r=await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'link',work_sys_id:WORK_SYS_ID,traveler_sys_id:sysId})});
-        const j=await r.json(); if(j.status==='success'){document.getElementById('travelerSearchInput').value='';document.getElementById('travelerSearchDrop').classList.add('hidden');await loadLinkedTravelers();}else showToast('error',j.message);
-    } catch{showToast('error','Network error');}
+        const r = await fetch(API.workTravelers, {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'link', work_sys_id:WORK_SYS_ID, traveler_sys_id:travelerSysId})});
+        const j = await r.json();
+        if (j.status === 'success') { showToast('success', `${name} linked!`); await loadLinkedTravelers(); }
+        else showToast('error', j.message ?? 'Failed');
+    } catch { showToast('error', 'Network error'); }
 }
 
 document.addEventListener('click', e => {
-    if (!e.target.closest('#travelerSearchInput') && !e.target.closest('#travelerSearchDrop'))
-        document.getElementById('travelerSearchDrop').classList.add('hidden');
+    if (!document.getElementById('travelerSearchInput')?.parentElement?.contains(e.target))
+        document.getElementById('travelerSearchDrop')?.classList.add('hidden');
 });
 
-// Modal traveler search (Add Traveler Modal)
-async function openAddTravelerModal() {
-    document.getElementById('addTravelerModal').classList.remove('hidden');
-    document.getElementById('modalTravelerSearch').value = '';
-    if (!_allTravelers.length) {
-        const r=await fetch(API.allTravelers); const j=await r.json();
-        _allTravelers = j.success ? (j.travelers??[]) : [];
-    }
-    filterModalTravelers('');
+async function loadLinkedTravelers(){
+    try{
+        const r=await fetch(`${API.workTravelers}?action=list&work_sys_id=${encodeURIComponent(WORK_SYS_ID)}`);
+        const j=await r.json();
+        if(j.status==='success'){_linkedTravelers=j.data??[];renderLinkedTravelers(_linkedTravelers);}
+    }catch{}
 }
 
-function filterModalTravelers(q) {
-    const ql = q.toLowerCase();
-    const linkedIds = new Set(_linkedTravelers.map(t=>t.sys_id));
-    let list = _allTravelers;
-    if (q) list = list.filter(t=>(t.name||'').toLowerCase().includes(ql)||(t.passport_no||'').toLowerCase().includes(ql));
-    list = list.slice(0,40);
-    const wrap = document.getElementById('modalTravelerResults');
-    wrap.innerHTML = list.map(t => {
-        const isLinked = linkedIds.has(t.sys_id);
-        const initial  = (t.name||'?').charAt(0).toUpperCase();
-        const sub = [t.passport_no,t.phone].filter(Boolean).join(' · ');
-        return `<div class="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 hover:border-indigo-200 transition">
-            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0">${initial}</div>
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-700 truncate">${esc(t.name)}</p>
-                ${sub?`<p class="text-xs text-gray-400 truncate">${esc(sub)}</p>`:''}
-            </div>
-            ${isLinked
-                ? '<span class="text-xs text-green-600 font-semibold flex-shrink-0"><i class="fas fa-check mr-1"></i>Added</span>'
-                : `<button onclick="linkTravelerModal('${esc(t.sys_id)}')" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-semibold transition flex-shrink-0">Add</button>`}
-        </div>`;
-    }).join('') || '<p class="text-center text-gray-400 text-sm py-6">No travelers found.</p>';
+async function unlinkTraveler(travelerSysId,name){
+    if(!confirm(`Remove ${name}?`))return;
+    try{
+        const r=await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'unlink',work_sys_id:WORK_SYS_ID,traveler_sys_id:travelerSysId})});
+        const j=await r.json();
+        if(j.status==='success'){showToast('success',`${name} removed`);await loadLinkedTravelers();}
+        else showToast('error',j.message??'Failed');
+    }catch{showToast('error','Network error');}
 }
 
-async function linkTravelerModal(sysId) {
+function _parsePassport(t){
     try {
-        const r=await fetch(API.workTravelers,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'link',work_sys_id:WORK_SYS_ID,traveler_sys_id:sysId})});
-        const j=await r.json(); if(j.status==='success'){await loadLinkedTravelers();filterModalTravelers(document.getElementById('modalTravelerSearch').value);}else showToast('error',j.message);
-    } catch{showToast('error','Network error');}
+        const raw = JSON.parse(t.passport_info || 'null');
+        if (!raw) return {};
+        if (Array.isArray(raw)) {
+            const bio = raw.find(p => p.page_type === 'bio_page');
+            return bio?.bio_info ?? raw[0]?.bio_info ?? {};
+        }
+        return raw;
+    } catch { return {}; }
 }
 
-// Traveler Table Modal
-function openTravelerTableModal() {
+function renderLinkedTravelers(travelers){
+    const list=document.getElementById('linkedTravelersList');if(!list)return;
+    const hasPassports=travelers.some(t=>t.passport_token);
+    document.getElementById('btnPassportCarousel')?.classList.toggle('hidden',!travelers.length||!hasPassports);
+    document.getElementById('btnTravelerTable')?.classList.toggle('hidden',!travelers.length);
+    if(!travelers.length){list.innerHTML='<p class="text-xs text-gray-400 text-center py-2">No travelers linked</p>';return;}
+    list.innerHTML=`<div class="overflow-x-auto mt-1"><table class="w-full text-xs"><thead><tr class="text-gray-400 border-b border-gray-100"><th class="pb-1 text-left font-medium">Name</th><th class="pb-1 text-left font-medium">PP No</th><th class="pb-1"></th></tr></thead><tbody class="divide-y divide-gray-50">${travelers.map(t=>{const p=_parsePassport(t);const pNo=p.passport_number||p.passport_no||t.passport_no||'—';const name=t.name||'—';return`<tr class="hover:bg-gray-50"><td class="py-1.5 pr-2 truncate max-w-[70px] font-medium text-gray-700">${escHtml(name)}</td><td class="py-1.5 pr-2 font-mono text-gray-500">${escHtml(pNo)}</td><td class="py-1.5 flex items-center gap-1"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-400 hover:text-teal-600"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i></a><button onclick="unlinkTraveler('${t.sys_id}','${(name).replace(/'/g,"\\'")}')" class="text-red-300 hover:text-red-500 ml-1" title="Remove"><i class="fas fa-times text-[10px]"></i></button></td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
+function openNewTravelerModal(){
+    _ntFile=null; _newTravelerExtracted=null; _ntDuplicateSysId=null;
+    document.getElementById('ntFileInput').value='';
+    document.getElementById('ntFilePreview').classList.add('hidden');
+    document.getElementById('ntProgress').classList.add('hidden');
+    document.getElementById('ntExtracted').classList.add('hidden');
+    document.getElementById('ntDuplicateBox').classList.add('hidden');
+    document.getElementById('ntExtractBtn').classList.remove('hidden');
+    document.getElementById('ntCreateBtn').classList.add('hidden');
+    document.getElementById('newTravelerModal').classList.remove('hidden');
+}
+
+window.ntFileSelected = function(input) {
+    if (!input.files[0]) return;
+    _ntFile = input.files[0];
+    document.getElementById('ntFileName').textContent = _ntFile.name;
+    document.getElementById('ntFilePreview').classList.remove('hidden');
+};
+
+window.ntClearFile = function() {
+    _ntFile = null;
+    document.getElementById('ntFileInput').value = '';
+    document.getElementById('ntFilePreview').classList.add('hidden');
+    document.getElementById('ntExtracted').classList.add('hidden');
+    document.getElementById('ntDuplicateBox').classList.add('hidden');
+    document.getElementById('ntCreateBtn').classList.add('hidden');
+    _newTravelerExtracted = null; _ntDuplicateSysId = null;
+};
+
+window.ntExtractAndCheck = async function() {
+    if (!_ntFile) { showToast('error', 'Upload a passport scan first'); return; }
+    const btn = document.getElementById('ntExtractBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Extracting…';
+    const prog = document.getElementById('ntProgress');
+    prog.classList.remove('hidden');
+    document.getElementById('ntProgressText').textContent = 'Extracting passport info…';
+    const fd = new FormData(); fd.append('file', _ntFile); fd.append('document_type', 'passport');
+    try {
+        const res = await fetch(API.extractDocument, {method:'POST', body:fd});
+        const j   = await res.json();
+        if (!j.success) { showToast('error', j.message ?? 'Extraction failed'); return; }
+        _newTravelerExtracted = j;
+        const p = j.passport_info ?? j.data ?? {};
+        const bio = p.bio_info ?? p;
+        const fields = [
+            ['Name', bio.full_name ?? p.full_name ?? ''],
+            ['Given Name', bio.given_names ?? ''],
+            ['Surname', bio.surname ?? ''],
+            ['Passport No', bio.passport_number ?? p.document_number ?? ''],
+            ['Expiry', bio.date_of_expiry ?? ''],
+            ['DOB', bio.date_of_birth ?? p.date_of_birth ?? ''],
+        ].filter(([,v]) => v);
+        document.getElementById('ntExtracted').innerHTML = fields.map(([k,v]) =>
+            `<div class="flex gap-2"><span class="text-gray-400 w-24 flex-shrink-0">${k}</span><span class="font-medium text-gray-700">${escHtml(String(v))}</span></div>`
+        ).join('');
+        document.getElementById('ntExtracted').classList.remove('hidden');
+        document.getElementById('ntProgressText').textContent = 'Checking for duplicates…';
+        const docNum = bio.passport_number ?? p.document_number ?? '';
+        const fullName = bio.full_name ?? p.full_name ?? '';
+        const dob = bio.date_of_birth ?? p.date_of_birth ?? '';
+        const dupRes = await fetch(API.checkDuplicate, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({full_name:fullName, document_number:docNum, document_type:'passport', date_of_birth:dob})
+        });
+        const dupJ = await dupRes.json();
+        if (dupJ.has_duplicates) {
+            const dup = dupJ.duplicates[0];
+            _ntDuplicateSysId = dup.sys_id;
+            document.getElementById('ntDuplicateInfo').innerHTML =
+                `<div class="space-y-1">
+                    <div><span class="text-gray-400">Name:</span> <span class="font-medium">${escHtml(dup.name??'')}</span></div>
+                    <div><span class="text-gray-400">PP No:</span> <span class="font-mono">${escHtml(dup.document_number??'')}</span></div>
+                    <div><span class="text-gray-400">DOB:</span> ${escHtml(dup.date_of_birth??'')}</div>
+                    <div><span class="text-gray-400">ID:</span> <span class="font-mono text-[10px]">${escHtml(dup.sys_id??'')}</span></div>
+                </div>`;
+            document.getElementById('ntDuplicateBox').classList.remove('hidden');
+            document.getElementById('ntCreateBtn').classList.add('hidden');
+        } else {
+            _ntDuplicateSysId = null;
+            document.getElementById('ntDuplicateBox').classList.add('hidden');
+            document.getElementById('ntCreateBtn').classList.remove('hidden');
+        }
+    } catch(e) {
+        showToast('error', 'Network error'); console.error(e);
+    } finally {
+        prog.classList.add('hidden');
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles mr-1.5"></i>Extract & Check';
+    }
+};
+
+window.ntLinkExisting = async function() {
+    if (!_ntDuplicateSysId) return;
+    try {
+        const r = await fetch(API.workTravelers, {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'link', work_sys_id:WORK_SYS_ID, traveler_sys_id:_ntDuplicateSysId})});
+        const j = await r.json();
+        if (j.status === 'success') {
+            showToast('success', 'Traveler linked!');
+            closeModal('newTravelerModal');
+            _travLoaded = false;
+            await loadLinkedTravelers();
+        } else showToast('error', j.message ?? 'Failed');
+    } catch { showToast('error', 'Network error'); }
+};
+
+window.ntCreate = async function() {
+    if (!_newTravelerExtracted) { showToast('error', 'Extract data first'); return; }
+    const btn = document.getElementById('ntCreateBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Creating…';
+    const p = _newTravelerExtracted.passport_info ?? _newTravelerExtracted.data ?? {};
+    const bio = p.bio_info ?? p;
+    const payload = {
+        full_name:       bio.full_name ?? p.full_name ?? '',
+        date_of_birth:   bio.date_of_birth ?? p.date_of_birth ?? null,
+        document_type:   'passport',
+        document_number: bio.passport_number ?? p.document_number ?? null,
+        file_path:       _newTravelerExtracted.file_path ?? null,
+        extracted_data:  _newTravelerExtracted.full_extracted_data ?? _newTravelerExtracted ?? null,
+        work_sys_id:     WORK_SYS_ID,
+        force_create:    false,
+    };
+    try {
+        const res = await fetch(API.storeNewTraveler, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        const j = await res.json();
+        if (j.success && j.sys_id) {
+            showToast('success', 'Traveler created & linked!');
+            closeModal('newTravelerModal');
+            _travLoaded = false;
+            await _loadTravelers();
+            await loadLinkedTravelers();
+        } else showToast('error', j.message ?? 'Save failed');
+    } catch { showToast('error', 'Network error'); }
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus mr-1.5"></i>Create & Link';
+};
+
+// ── Passport Carousel ─────────────────────────────────────────
+function openPassportCarousel(){_carouselIdx=0;document.getElementById('passportCarouselModal').classList.remove('hidden');_renderCarouselSlide();}
+function _renderCarouselSlide(){
+    const travelers=_linkedTravelers.filter(t=>t.passport_token);
+    if(!travelers.length){document.getElementById('carouselSlides').innerHTML='<p class="text-gray-400 text-sm text-center">No passport images available</p>';return;}
+    const t=travelers[_carouselIdx];
+    document.getElementById('carouselName').textContent=t.name??'—';
+    document.getElementById('carouselSlides').innerHTML=`<img src="${t.passport_token}" alt="${escHtml(t.name??'')}" class="max-h-[400px] max-w-full object-contain rounded-xl" onerror="this.parentElement.innerHTML='<p class=\\'text-gray-400 text-sm text-center\\'>Image not available</p>'">`;
+    document.getElementById('carouselDots').innerHTML=travelers.map((_,i)=>`<button onclick="_cGo(${i})" class="w-2 h-2 rounded-full transition ${i===_carouselIdx?'bg-indigo-500':'bg-gray-300'}"></button>`).join('');
+}
+window._cGo=function(i){_carouselIdx=i;_renderCarouselSlide();};
+function carouselPrev(){const t=_linkedTravelers.filter(x=>x.passport_token);_carouselIdx=(_carouselIdx-1+t.length)%t.length;_renderCarouselSlide();}
+function carouselNext(){const t=_linkedTravelers.filter(x=>x.passport_token);_carouselIdx=(_carouselIdx+1)%t.length;_renderCarouselSlide();}
+
+// ── Traveler Table Modal ──────────────────────────────────────
+function openTravelerTableModal(){
     document.getElementById('travelerTableModal').classList.remove('hidden');
-    const tbody = document.getElementById('travelerTableBody');
-    tbody.innerHTML = _linkedTravelers.map(t => {
-        const pi = t.passport_info?.[0]?.bio_info ?? {};
-        const cells = [
-            t.name, pi.given_names||'', pi.surname||'',
-            t.passport_no||pi.passport_number||'',
-            t.passport_expiry||pi.date_of_expiry||'',
-            pi.date_of_birth||'',
-        ];
-        return `<tr>
-            ${cells.map(c=>`<td class="px-3 py-2 cursor-pointer hover:bg-indigo-50 transition" onclick="copyCellText('${esc(c)}')">${esc(c||'—')}</td>`).join('')}
-            <td class="px-3 py-2">
-                <button onclick="unlinkTraveler('${esc(t.sys_id)}')" class="text-xs text-red-400 hover:text-red-600">Remove</button>
-            </td>
-        </tr>`;
+    const tbody=document.getElementById('travelerTableBody');
+    const cell=(v)=>`<td class="px-3 py-2 cursor-pointer hover:bg-teal-50 transition" onclick="copyCell('${escHtml(String(v))}')" title="Click to copy">${escHtml(String(v))}</td>`;
+    tbody.innerHTML=_linkedTravelers.map(t=>{
+        const p=_parsePassport(t);
+        const given=p.given_names||p.given_name||p.first_name||'—';
+        const surname=p.surname||p.last_name||'—';
+        const pNo=p.passport_number||p.passport_no||'—';
+        const expiry=p.date_of_expiry||p.expiry_date||'—';
+        const dob=p.date_of_birth||p.dob||'—';
+        return`<tr class="hover:bg-gray-50">${cell(t.name||'—')}${cell(given)}${cell(surname)}${cell(pNo)}${cell(expiry)}${cell(dob)}<td class="px-3 py-2"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-500 hover:text-teal-700 text-xs"><i class="fas fa-arrow-up-right-from-square"></i></a></td></tr>`;
     }).join('');
 }
-
-function copyCellText(text) {
-    navigator.clipboard.writeText(text).catch(()=>{});
-    const toast = document.getElementById('copyToast');
-    toast.classList.remove('hidden');
-    setTimeout(()=>toast.classList.add('hidden'),1500);
-}
+function copyCell(text){navigator.clipboard.writeText(text).then(()=>{const t=document.getElementById('copyToast');t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),1500);});}
 
 // ════════════════════════════════════════════════════════════
 // STATUS
@@ -1113,6 +1748,7 @@ document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>
 
 function sp(v){if(!v)return null;if(typeof v==='object')return v;try{return JSON.parse(v);}catch{return null;}}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function badgeHtml(status){const m={open:['badge-open','🟡 Open'],in_progress:['badge-in_progress','🔵 In Progress'],done:['badge-done','✅ Done'],cancelled:['badge-cancelled','❌ Cancelled']};const[cls,label]=m[status]??['',status];return`<span class="badge ${cls}">${label}</span>`;}
 function fmtDate(s){if(!s)return'—';const m=s.match(/^(\d{2})-(\d{2})-(\d{4})/);if(m)return`${m[1]} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[3]}`;return s;}
 
@@ -1124,6 +1760,44 @@ function showToast(type,msg){
     document.getElementById('toast').classList.remove('hidden');
     setTimeout(()=>document.getElementById('toast').classList.add('hidden'),3500);
 }
+
+// ── Sidebar resize ────────────────────────────────────────────
+(function() {
+    const handle  = document.getElementById('sidebarResizeHandle');
+    const sidebar = document.getElementById('rightSidebar');
+    if (!handle || !sidebar) return;
+
+    // Restore saved width
+    const saved = localStorage.getItem('sw_sidebar_width');
+    if (saved) sidebar.style.width = saved + 'px';
+
+    let startX, startW;
+
+    handle.addEventListener('mousedown', e => {
+        startX = e.clientX;
+        startW = sidebar.offsetWidth;
+        handle.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+
+        function onMove(e) {
+            const dx  = startX - e.clientX; // drag left = wider
+            const newW = Math.min(480, Math.max(200, startW + dx));
+            sidebar.style.width = newW + 'px';
+        }
+        function onUp() {
+            localStorage.setItem('sw_sidebar_width', sidebar.offsetWidth);
+            handle.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        e.preventDefault();
+    });
+})();
 
 loadWork();
 loadDepts();

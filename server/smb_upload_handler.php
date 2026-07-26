@@ -64,42 +64,103 @@ function _smbClientFolder(string $clientSysId, string $clientName): string {
 }
 
 // ── Build full SMB path ───────────────────────────────────────
+/**
+ * New structure (Phase 3+):
+ *   {prefix}_clients/{client}/{work_sys_id}/{service_slug}/{sub_folder}/{fileName}
+ *
+ * ctx keys:
+ *   client_sys_id  — required
+ *   client_name    — required
+ *   work_sys_id    — required
+ *   service_slug   — required  e.g. 'air_ticket', 'hotel', 'visa'
+ *   sub_folder     — required  e.g. 'notes/mindboard', 'notes/noteboard',
+ *                               'files/bookings', 'files/confirmations'
+ *   task_sys_id    — optional  only for financials sub_folder
+ *
+ * Examples:
+ *   air_ticket/notes/mindboard/
+ *   air_ticket/notes/noteboard/
+ *   air_ticket/files/bookings/
+ *   air_ticket/files/confirmations/
+ *   air_ticket/{task_sys_id}/financials/
+ */
 function smbBuildPath(array $ctx, string $fileName = ''): string {
-    $prefix = _smbServerPrefix();                    // "dev"
-    $cl     = _smbClientFolder($ctx['client_sys_id'], $ctx['client_name']); // "THR-CL-20-00K001_MajorMehediHasan"
-    $w      = safeFolderName($ctx['work_sys_id']);   // "THR-A26-WK-0001"
-    $t      = safeFolderName($ctx['task_sys_id']);   // "THR-A26-TK-0002"
-    $m      = safeFolderName($ctx['module']);         // "notes"
+    $prefix  = _smbServerPrefix();
+    $cl      = _smbClientFolder($ctx['client_sys_id'], $ctx['client_name']);
+    $w       = safeFolderName($ctx['work_sys_id']);
+    $svc     = $ctx['service_slug'] ?? '';
+    $sub     = $ctx['sub_folder']   ?? '';
 
-    $path = "{$prefix}_clients/{$cl}/{$w}/{$t}/{$m}";
+    // Financial: task_sys_id based
+    if (!empty($ctx['task_sys_id']) && $sub === 'financials') {
+        $t    = safeFolderName($ctx['task_sys_id']);
+        $path = "{$prefix}_clients/{$cl}/{$w}/{$svc}/{$t}/financials";
+    } elseif ($svc && $sub) {
+        $path = "{$prefix}_clients/{$cl}/{$w}/{$svc}/{$sub}";
+    } else {
+        // Legacy fallback (task-based old structure)
+        $t    = safeFolderName($ctx['task_sys_id'] ?? '');
+        $m    = safeFolderName($ctx['module']       ?? '');
+        $path = "{$prefix}_clients/{$cl}/{$w}/{$t}/{$m}";
+    }
+
     return $fileName ? $path . '/' . $fileName : $path;
 }
 
 // ── Sequential SMB mkdir ──────────────────────────────────────
-// Each call creates ONE new folder on an EXISTING parent.
-// "dev_clients" must already exist on SMB (created during client setup).
-// "dev_clients/clientFolder" must exist (created during client creation).
-// We create: work → task → module
 function smbEnsureDir(array $ctx): bool {
     $prefix = _smbServerPrefix();
     $cl     = _smbClientFolder($ctx['client_sys_id'], $ctx['client_name']);
     $w      = safeFolderName($ctx['work_sys_id']);
-    $t      = safeFolderName($ctx['task_sys_id']);
-    $m      = safeFolderName($ctx['module']);
+    $svc    = $ctx['service_slug'] ?? '';
+    $sub    = $ctx['sub_folder']   ?? '';
 
-    $clientBase = "{$prefix}_clients/{$cl}"; // already exists from client creation
+    $omv = new OMV_SMB_Manager();
 
-    // Step 1: work folder
-    $r1 = makeSMBDir($clientBase, $w);
-    _smbOkOrLog($r1, "work: $clientBase/$w");
+    // Build full path step by step and create each level
+    $levels = [];
 
-    // Step 2: task folder
-    $r2 = makeSMBDir("$clientBase/$w", $t);
-    _smbOkOrLog($r2, "task: $clientBase/$w/$t");
+    if ($svc && $sub) {
+        // New structure
+        $levels[] = ["{$prefix}_clients", $cl];
+        $levels[] = ["{$prefix}_clients/{$cl}", $w];
+        $levels[] = ["{$prefix}_clients/{$cl}/{$w}", $svc];
 
-    // Step 3: module folder
-    $r3 = makeSMBDir("$clientBase/$w/$t", $m);
-    _smbOkOrLog($r3, "module: $clientBase/$w/$t/$m");
+        $subParts = explode('/', trim($sub, '/'));
+        $current  = "{$prefix}_clients/{$cl}/{$w}/{$svc}";
+        foreach ($subParts as $part) {
+            $levels[] = [$current, $part];
+            $current .= "/{$part}";
+        }
+    } elseif (!empty($ctx['task_sys_id']) && ($ctx['sub_folder'] ?? '') === 'financials') {
+        $t = safeFolderName($ctx['task_sys_id']);
+        $levels[] = ["{$prefix}_clients", $cl];
+        $levels[] = ["{$prefix}_clients/{$cl}", $w];
+        $levels[] = ["{$prefix}_clients/{$cl}/{$w}", $svc];
+        $levels[] = ["{$prefix}_clients/{$cl}/{$w}/{$svc}", $t];
+        $levels[] = ["{$prefix}_clients/{$cl}/{$w}/{$svc}/{$t}", 'financials'];
+    } else {
+        // Legacy
+        $t = safeFolderName($ctx['task_sys_id'] ?? '');
+        $m = safeFolderName($ctx['module']       ?? '');
+        $levels[] = ["{$prefix}_clients", $cl];
+        $levels[] = ["{$prefix}_clients/{$cl}", $w];
+        $levels[] = ["{$prefix}_clients/{$cl}/{$w}", $t];
+        $levels[] = ["{$prefix}_clients/{$cl}/{$w}/{$t}", $m];
+    }
+
+    foreach ($levels as [$parent, $folder]) {
+        $result = $omv->create_folder("{$parent}/{$folder}");
+        if ($result !== true) {
+            $rs = is_string($result) ? $result : '';
+            // Already exists — fine
+            if (stripos($rs, 'NT_STATUS_OBJECT_NAME_COLLISION') !== false ||
+                stripos($rs, 'already exists') !== false) {
+                continue;
+            }
+            error_log("[smbEnsureDir] Failed to create {$parent}/{$folder} → {$rs}");
+        }
+    }
 
     return true;
 }
@@ -110,8 +171,10 @@ function _smbOkOrLog($result, string $ctx): void {
             stripos($result, 'NT_STATUS_OBJECT_NAME_COLLISION') === false &&
             stripos($result, 'already exists') === false
         ) {
-            error_log("[SMB mkdir] $ctx → $result");
+            error_log("[smbEnsureDir] FAILED — {$ctx} → {$result}");
         }
+    } else {
+        error_log("[smbEnsureDir] OK — {$ctx}");
     }
 }
 
@@ -169,9 +232,14 @@ function _smbConvertPdfToImages(string $pdfTempPath, string $baseName, array $ct
  * @return array {success, file_name, smb_path, file_type, mime_type, file_size, error}
  */
 function smbUploadFile(array $fileArr, array $ctx, string $caption = ''): array {
-    // Validate context
-    foreach (['client_sys_id','client_name','work_sys_id','task_sys_id','module'] as $k) {
+    // Validate context — service_slug + sub_folder required in new structure
+    foreach (['client_sys_id','client_name','work_sys_id'] as $k) {
         if (empty($ctx[$k])) return ['success'=>false,'error'=>"Missing context: $k"];
+    }
+    $hasNew    = !empty($ctx['service_slug']) && !empty($ctx['sub_folder']);
+    $hasLegacy = !empty($ctx['task_sys_id']) && !empty($ctx['module']);
+    if (!$hasNew && !$hasLegacy) {
+        return ['success'=>false,'error'=>'Missing context: service_slug+sub_folder or task_sys_id+module required'];
     }
 
     // Validate file

@@ -3086,7 +3086,7 @@ async function submitLead() {
     const payload={
         client_info:{
             sys_id: selectedClient?.sys_id ?? null,
-            name,
+            name:   selectedClient?.name   ?? name,
             phone: document.getElementById('clientPhone').value.trim(),
             email: document.getElementById('clientEmail').value.trim(),
         },

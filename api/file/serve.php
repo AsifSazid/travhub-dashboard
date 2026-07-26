@@ -60,9 +60,18 @@ function _serveNote(string $noteId, bool $dl): void
 {
     global $pdo;
     $stmt = $pdo->prepare("
-        SELECT n.*, t.client_sys_id, t.client_name
+        SELECT n.*,
+               COALESCE(
+                   JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')),
+                   t.client_sys_id
+               ) AS client_sys_id,
+               COALESCE(
+                   JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name')),
+                   t.client_name
+               ) AS client_name
         FROM task_notes n
-        LEFT JOIN tasks t ON t.sys_id = n.task_sys_id
+        LEFT JOIN tasks t  ON t.sys_id  = n.task_sys_id
+        LEFT JOIN works w  ON w.sys_id  = n.work_sys_id
         WHERE n.sys_id = ? LIMIT 1
     ");
     $stmt->execute([$noteId]);
@@ -72,13 +81,30 @@ function _serveNote(string $noteId, bool $dl): void
         ob_clean(); http_response_code(404); echo 'File not found'; return;
     }
 
-    $ctx = [
-        'client_sys_id' => $note['client_sys_id'] ?? 'UNKNOWN',
-        'client_name'   => $note['client_name']   ?? 'Unknown',
-        'work_sys_id'   => $note['work_sys_id'],
-        'task_sys_id'   => $note['task_sys_id'],
-        'module'        => 'notes',
-    ];
+    $boardType = $note['board_type'] ?? 'task';
+
+    error_log('[serve.php] note_id=' . $noteId . ' board_type=' . $boardType . ' service_slug=' . ($note['service_slug']??'null') . ' board_name=' . ($note['board_name']??'null') . ' work_sys_id=' . ($note['work_sys_id']??'null') . ' client_sys_id=' . ($note['client_sys_id']??'null') . ' client_name=' . ($note['client_name']??'null') . ' file=' . ($note['file_name']??'null'));
+
+    if ($boardType === 'work') {
+        // New structure: work/service/notes/board/
+        $ctx = [
+            'client_sys_id' => $note['client_sys_id'] ?? 'UNKNOWN',
+            'client_name'   => $note['client_name']   ?? 'Unknown',
+            'work_sys_id'   => $note['work_sys_id'],
+            'task_sys_id'   => null,
+            'service_slug'  => $note['service_slug']  ?? 'general',
+            'sub_folder'    => 'notes/' . ($note['board_name'] ?? 'mindboard'),
+        ];
+    } else {
+        // Legacy structure: work/task/notes/
+        $ctx = [
+            'client_sys_id' => $note['client_sys_id'] ?? 'UNKNOWN',
+            'client_name'   => $note['client_name']   ?? 'Unknown',
+            'work_sys_id'   => $note['work_sys_id'],
+            'task_sys_id'   => $note['task_sys_id'],
+            'module'        => 'notes',
+        ];
+    }
 
     // PDF pages
     if ($note['note_type'] === 'pdf_images' && $note['pages_json']) {

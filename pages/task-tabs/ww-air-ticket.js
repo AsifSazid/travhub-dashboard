@@ -20,6 +20,7 @@
 let _cfg       = {};
 let _atData    = null;
 let _activeTab = 'mindboard';
+let _atCurrentNotes = [];
 let _activeQSysId = null;
 let _activeBSysId = null;
 let _gdsSegments  = [];
@@ -34,6 +35,7 @@ const AT_STYLES='<style id="at-styles">\n/* ── Tab Bar ───────
 window.initWorkAirTicketTab = async function (config) {
     _cfg    = config;
     _atData = config.atData;
+    window.CURRENT_USER = config.currentUser ?? window.CURRENT_USER ?? '';
 
     if (!document.getElementById('at-styles')) {
         document.head.insertAdjacentHTML('beforeend', AT_STYLES);
@@ -43,8 +45,8 @@ window.initWorkAirTicketTab = async function (config) {
     if (!mount) return;
 
     mount.innerHTML = `
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="at-tab-bar px-4 pt-3">
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden" style="display:flex;flex-direction:column;">
+        <div class="at-tab-bar px-4 pt-2" style="position:sticky;top:0;z-index:20;background:#fafafa;flex-shrink:0;">
             <button class="at-tab active" data-tab="mindboard"><i class="fas fa-brain mr-1.5"></i>Mind Board</button>
             <button class="at-tab" data-tab="quotation"><i class="fas fa-file-invoice mr-1.5"></i>Quotation</button>
             <button class="at-tab" data-tab="booking"><i class="fas fa-bookmark mr-1.5"></i>Booking</button>
@@ -267,7 +269,8 @@ window.atSendNote = async function() {
             const fd = new FormData();
             fd.append('action', 'upload');
             fd.append('work_sys_id', _cfg.workSysId);
-            fd.append('work_sys_id', _cfg.workSysId ?? '');
+            fd.append('service_slug', _cfg.serviceSlug ?? 'air_ticket');
+            fd.append('board', 'mindboard');
             fd.append('file', file);
             try {
                 const res = await fetch(_cfg.api.notes, { method: 'POST', body: fd });
@@ -303,7 +306,8 @@ window.atRecToggle = async function() {
             const fd = new FormData();
             fd.append('action', 'upload');
             fd.append('work_sys_id', _cfg.workSysId);
-            fd.append('work_sys_id', _cfg.workSysId ?? '');
+            fd.append('service_slug', _cfg.serviceSlug ?? 'air_ticket');
+            fd.append('board', 'mindboard');
             fd.append('file', blob, 'voice_' + Date.now() + '.webm');
             try {
                 const res = await fetch(_cfg.api.notes, { method: 'POST', body: fd });
@@ -386,10 +390,12 @@ window.atSttPush = function() {
 // ── Load notes ────────────────────────────────────────────────
 window.atLoadNotes = async function() {
     try {
-        const url  = `${_cfg.api.notes}?action=list&work_sys_id=${encodeURIComponent(_cfg.workSysId)}`;
+        const slug = _cfg.serviceSlug ?? 'air_ticket';
+        const url  = `${_cfg.api.notes}?action=list&work_sys_id=${encodeURIComponent(_cfg.workSysId)}&service_slug=${encodeURIComponent(slug)}&board=mindboard`;
         const res  = await fetch(url);
         const json = await res.json();
         const notes = json.status === 'success' ? (json.data ?? []) : [];
+        _atCurrentNotes = notes;
         _renderNotes(notes);
     } catch(e) {
         console.error('[atLoadNotes] error:', e);
@@ -414,15 +420,17 @@ function _renderNotes(notes) {
 
 // ── Note Bubble with Three-Dot Menu ──────────────────────────
 function _noteBubble(n) {
-    const dateStr = n.meta_data?.created_by_date?.date ?? '';
-    const sysId = _e(n.sys_id);
-    const content = n.content ?? '';
-    const fileUrl = n.serve_url ?? n.file_url ?? '';
+    const dateStr  = n.meta_data?.created_by_date?.date ?? '';
+    const creator  = n.meta_data?.created_by_date?.user ?? n.created_by ?? '';
+    const canDel   = !creator || creator === (window.CURRENT_USER ?? '');
+    const sysId    = _e(n.sys_id);
+    const content  = n.content ?? '';
+    const fileUrl  = n.serve_url ?? n.file_url ?? '';
     const fileName = n.file_name ?? '';
 
     // ── Menu HTML ──────────────────────────────────────────────
     function menuHTML() {
-        const itemStyle = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
+        const itemStyle   = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
         const dangerStyle = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#dc2626;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
         let items = '';
 
@@ -444,7 +452,7 @@ function _noteBubble(n) {
             items += `<button onclick="atShareFile('${fileUrl}','${_e(fileName)}','')" style="${itemStyle}"><i class="fas fa-share-alt" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Share</button>`;
         }
 
-        items += `<button onclick="atDeleteNote('${sysId}')" style="${dangerStyle}"><i class="fas fa-trash" style="width:16px;font-size:.75rem;color:#f87171;"></i>Delete</button>`;
+        if (canDel) items += `<button onclick="atDeleteNote('${sysId}')" style="${dangerStyle}"><i class="fas fa-trash" style="width:16px;font-size:.75rem;color:#f87171;"></i>Delete</button>`;
         return `<div class="at-menu-dropdown" id="at-menu-${sysId}">${items}</div>`;
     }
 
@@ -481,7 +489,9 @@ function _noteBubble(n) {
     if (n.note_type === 'pdf_images') {
         const pagesRaw = n.pages_json ?? [];
         const pages = Array.isArray(pagesRaw) ? pagesRaw : (typeof pagesRaw === 'string' ? JSON.parse(pagesRaw) : []);
-        const serveBase = _cfg.api.fileServe ?? _cfg.api.notes.replace('api/works/notes.php', 'api/file/serve.php');
+        const serveBase = _cfg.api.fileServe
+            ?? _cfg.api.notes.replace('api/works/notes.php', 'api/file/serve.php')
+                             .replace('api/tasks/notes.php', 'api/file/serve.php');
 
         const pagesHtml = pages.map((pg, i) => {
             const pgUrl = `${serveBase}?note_id=${encodeURIComponent(n.sys_id)}&page=${i}`;
@@ -681,7 +691,7 @@ window.atCopyPageImage = async function(pgUrl) {
 
 // ── Share PDF pages (server has rebuilt PDF on any page delete) ─
 window.atSharePdfPages = async function(noteSysId) {
-    const serveBase = _cfg.api.fileServe ?? _cfg.api.notes.replace('api/works/notes.php', 'api/file/serve.php');
+    const serveBase = _cfg.api.fileServe ?? _cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php');
     const pdfUrl    = `${serveBase}?note_id=${encodeURIComponent(noteSysId)}&dl=1`;
     // notes থেকে file_name নিই
     try {
@@ -796,6 +806,12 @@ window.atShareFile = async function(url, fileName, mimeType) {
 
 // ── Delete Note ───────────────────────────────────────────────
 window.atDeleteNote = async function(sysId) {
+    const note    = _atCurrentNotes.find(n => n.sys_id === sysId);
+    const creator = note?.meta_data?.created_by_date?.user ?? note?.created_by ?? '';
+    if (creator && creator !== (window.CURRENT_USER ?? '')) {
+        atT('error', 'Permission denied — only the creator can delete this note');
+        return;
+    }
     if (!confirm('Delete this note?')) return;
     try {
         const res = await fetch(_cfg.api.notes, {
@@ -840,7 +856,8 @@ window.atAddTextNote = async function() {
         const fd = new FormData();
         fd.append('action', 'upload');
         fd.append('work_sys_id', _cfg.workSysId);
-        fd.append('work_sys_id', _cfg.workSysId);
+        fd.append('service_slug', _cfg.serviceSlug ?? 'air_ticket');
+        fd.append('board', 'mindboard');
         fd.append('content', content);
         
         // ── PDF Conversion ──────────────────────────────────
@@ -871,7 +888,7 @@ window.atAddTextNote = async function() {
     try {
         const res  = await fetch(_cfg.api.notes, {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ action:'store', work_sys_id:_cfg.workSysId, content }),
+            body: JSON.stringify({ action:'store', work_sys_id:_cfg.workSysId, service_slug:_cfg.serviceSlug??'air_ticket', board:'mindboard', content }),
         });
         const json = await res.json();
         if (json.status === 'success') {

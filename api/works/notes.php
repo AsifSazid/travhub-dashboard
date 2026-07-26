@@ -18,14 +18,28 @@
 ob_start();
 session_start();
 date_default_timezone_set('Asia/Dhaka');
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
-require_once '../server/api_bootstrap.php';
-require_once '../server/db_connection.php';
-require_once '../server/sys_id_generator_v2.php';
-require_once '../server/generate_meta_data.php';
-require_once '../server/live_storage.php';
-require_once '../server/safe_folder_name.php';
-require_once '../server/smb_upload_handler.php';
+// Convert fatal errors to JSON
+register_shutdown_function(function() {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        error_log('[works/notes.php] Fatal: ' . $e['message'] . ' in ' . $e['file'] . ':' . $e['line']);
+        ob_clean();
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'Fatal: ' . $e['message']]);
+    }
+});
+
+require_once '../../server/api_bootstrap.php';
+ini_set('display_errors', 0); // override bootstrap — prevent HTML errors leaking into JSON
+require_once '../../server/db_connection.php';
+require_once '../../server/sys_id_generator_v2.php';
+require_once '../../server/generate_meta_data.php';
+require_once '../../server/live_storage.php';
+require_once '../../server/safe_folder_name.php';
+require_once '../../server/smb_upload_handler.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
@@ -46,7 +60,7 @@ $userName = $_SESSION['user_name'] ?? 'system';
 /**
  * tasks JOIN works (current) অথবা old_tasks JOIN com_works (legacy) — দুটোতেই try করে ctx বানাও
  */
-function _notesGetCtx(PDO $pdo, string $taskSysId): array {
+function _wkNotesGetCtx(PDO $pdo, string $taskSysId): array {
     // Current system: tasks + works
     // works table এ client info JSON column এ: client_info = {"sys_id":"...","name":"..."}
     $stmt = $pdo->prepare("
@@ -91,12 +105,12 @@ function _notesGetCtx(PDO $pdo, string $taskSysId): array {
 }
 
 /** {note_sys_id}_01.ext */
-function _noteFileName(string $noteSysId, string $ext): string {
+function _wkNoteFileName(string $noteSysId, string $ext): string {
     return $noteSysId . '_01.' . $ext;
 }
 
 /** PDF pages: {note_sys_id}_01.png (1pg) or {note_sys_id}_01-01.png, _01-02.png ... */
-function _noteConvertPdf(string $tmpPath, string $noteSysId, array $ctx): array {
+function _wkNoteConvertPdf(string $tmpPath, string $noteSysId, array $ctx): array {
     if (!class_exists('Imagick')) return [];
     try {
         $omv  = new OMV_SMB_Manager();
@@ -136,31 +150,38 @@ function _noteConvertPdf(string $tmpPath, string $noteSysId, array $ctx): array 
 }
 
 /** sort_order এর পরের value — task or work */
-function _nextSort(PDO $pdo, string $id, bool $byWork = false): int {
+function _wkNextSort(PDO $pdo, string $id, bool $byWork = false): int {
     $field = $byWork ? 'work_sys_id' : 'task_sys_id';
     $s = $pdo->prepare("SELECT MAX(sort_order) FROM task_notes WHERE board_type=? AND {$field}=?");
     $s->execute([$byWork ? 'work' : 'task', $id]);
     return ((int)$s->fetchColumn()) + 1;
 }
 
-/** Work context (client info) from works table directly — no task needed */
-function _notesGetCtxByWork(PDO $pdo, string $workSysId): array {
+/** Work context for SMB — service_slug + board_name determine the path */
+function _wkNotesGetCtxByWork(PDO $pdo, string $workSysId, string $serviceSlug, string $boardName = 'noteboard'): array {
     $stmt = $pdo->prepare("
         SELECT w.sys_id AS work_sys_id,
                JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')) AS client_sys_id,
                JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name'))   AS client_name
-        FROM works w
-        WHERE w.sys_id = ?
-        LIMIT 1
+        FROM works w WHERE w.sys_id = ? LIMIT 1
     ");
     $stmt->execute([$workSysId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row) return ['work_sys_id' => $workSysId, 'task_sys_id' => null, 'client_sys_id' => null, 'client_name' => 'unknown'];
+    if (!$row) return [
+        'work_sys_id'  => $workSysId,
+        'task_sys_id'  => null,
+        'client_sys_id'=> null,
+        'client_name'  => 'unknown',
+        'service_slug' => $serviceSlug,
+        'sub_folder'   => "notes/{$boardName}",
+    ];
     return [
         'work_sys_id'  => $row['work_sys_id'],
         'task_sys_id'  => null,
         'client_sys_id'=> $row['client_sys_id'] ?? null,
         'client_name'  => $row['client_name']   ?? 'unknown',
+        'service_slug' => $serviceSlug,
+        'sub_folder'   => "notes/{$boardName}",
     ];
 }
 
@@ -169,21 +190,26 @@ try {
 
         // ── LIST ──────────────────────────────────────────────
         case 'list':
-            $taskSysId = $_GET['task_sys_id'] ?? '';
-            $workSysId = $_GET['work_sys_id']  ?? '';
-            $byWork    = !$taskSysId && $workSysId;
+            $taskSysId   = $_GET['task_sys_id']  ?? '';
+            $workSysId   = $_GET['work_sys_id']   ?? '';
+            $serviceSlug = $_GET['service_slug']  ?? 'air_ticket';
+            $boardName   = $_GET['board']         ?? 'noteboard'; // mindboard | noteboard
+            $byWork      = !$taskSysId && $workSysId;
 
             if (!$taskSysId && !$workSysId) throw new Exception('task_sys_id or work_sys_id required');
 
             if ($byWork) {
                 $stmt = $pdo->prepare("
-                    SELECT * FROM task_notes WHERE board_type = 'work' AND work_sys_id = ?
+                    SELECT * FROM task_notes
+                    WHERE board_type='work' AND work_sys_id=?
+                      AND (service_slug=? OR service_slug IS NULL)
+                      AND (board_name=? OR board_name IS NULL)
                     ORDER BY sort_order ASC, id ASC
                 ");
-                $stmt->execute([$workSysId]);
+                $stmt->execute([$workSysId, $serviceSlug, $boardName]);
             } else {
                 $stmt = $pdo->prepare("
-                    SELECT * FROM task_notes WHERE board_type = 'task' AND task_sys_id = ?
+                    SELECT * FROM task_notes WHERE board_type='task' AND task_sys_id=?
                     ORDER BY sort_order ASC, id ASC
                 ");
                 $stmt->execute([$taskSysId]);
@@ -195,7 +221,7 @@ try {
                 $r['pages_json'] = $r['pages_json'] ? json_decode($r['pages_json'], true) : null;
                 // Serve URL — serve.php handles SMB fetch
                 $r['serve_url'] = $r['sys_id']
-                    ? '../file/serve.php?note_id=' . urlencode($r['sys_id'])
+                    ? '../../api/file/serve.php?note_id=' . urlencode($r['sys_id'])
                     : null;
             }
 
@@ -205,14 +231,15 @@ try {
 
         // ── STORE TEXT NOTE ───────────────────────────────────
         case 'store':
-            $taskSysId = $body['task_sys_id'] ?? '';
-            $workSysId = $body['work_sys_id'] ?? '';
-            $content   = trim($body['content'] ?? '');
-            $byWork    = !$taskSysId && $workSysId;
+            $taskSysId   = $body['task_sys_id']  ?? '';
+            $workSysId   = $body['work_sys_id']   ?? '';
+            $serviceSlug = $body['service_slug']  ?? 'air_ticket';
+            $boardName   = $body['board']         ?? 'noteboard';
+            $content     = trim($body['content']  ?? '');
+            $byWork      = !$taskSysId && $workSysId;
 
             if (!$taskSysId && !$workSysId) throw new Exception('task_sys_id or work_sys_id required');
             if (!$workSysId && $taskSysId) {
-                // Try to resolve work_sys_id from task
                 $tw = $pdo->prepare("SELECT work_sys_id FROM tasks WHERE sys_id=? LIMIT 1");
                 $tw->execute([$taskSysId]);
                 $workSysId = $tw->fetchColumn() ?: '';
@@ -225,15 +252,17 @@ try {
 
             $pdo->prepare("
                 INSERT INTO task_notes
-                    (uuid, sys_id, task_sys_id, work_sys_id, board_type, note_type, content, sort_order, created_by, meta_data)
-                VALUES (?, ?, ?, ?, ?, 'text', ?, ?, ?, ?)
+                    (uuid, sys_id, task_sys_id, work_sys_id, board_type, service_slug, board_name, note_type, content, sort_order, created_by, meta_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'text', ?, ?, ?, ?)
             ")->execute([
                 $ids['uuid'], $ids['sys_id'],
                 $byWork ? null : $taskSysId,
                 $workSysId,
                 $boardType,
+                $byWork ? $serviceSlug : null,
+                $byWork ? $boardName   : null,
                 $content,
-                _nextSort($pdo, $byWork ? $workSysId : $taskSysId, $byWork),
+                _wkNextSort($pdo, $byWork ? $workSysId : $taskSysId, $byWork),
                 $userName, $meta,
             ]);
 
@@ -243,10 +272,12 @@ try {
 
         // ── UPLOAD MEDIA NOTE ─────────────────────────────────
         case 'upload':
-            $taskSysId = $_POST['task_sys_id'] ?? '';
-            $workSysId = $_POST['work_sys_id'] ?? '';
-            $caption   = trim($_POST['content'] ?? $_POST['caption'] ?? '');
-            $byWork    = !$taskSysId && $workSysId;
+            $taskSysId   = $_POST['task_sys_id']  ?? '';
+            $workSysId   = $_POST['work_sys_id']   ?? '';
+            $serviceSlug = $_POST['service_slug']  ?? 'air_ticket';
+            $boardName   = $_POST['board']         ?? 'noteboard';
+            $caption     = trim($_POST['content']  ?? $_POST['caption'] ?? '');
+            $byWork      = !$taskSysId && $workSysId;
 
             if (!$taskSysId && !$workSysId) throw new Exception('task_sys_id or work_sys_id required');
             if (!$workSysId && $taskSysId) {
@@ -269,8 +300,10 @@ try {
 
             if ($file['error'] !== UPLOAD_ERR_OK) throw new Exception('Upload error: ' . $file['error']);
 
-            // ── Step 1: resolve SMB ctx (client path) ─────────
-            $ctx = $byWork ? _notesGetCtxByWork($pdo, $workSysId) : _notesGetCtx($pdo, $taskSysId);
+            // ── Step 1: resolve SMB ctx ───────────────────────
+            $ctx = $byWork
+                ? _wkNotesGetCtxByWork($pdo, $workSysId, $serviceSlug, $boardName)
+                : _wkNotesGetCtx($pdo, $taskSysId);
             $boardType = $byWork ? 'work' : 'task';
 
             // ── Step 2: generate note IDs ─────────────────────
@@ -279,16 +312,20 @@ try {
             $ext     = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
             $meta    = buildMetaData(null, $userName);
             $sortId  = $byWork ? $workSysId : $taskSysId;
-            $maxSort = _nextSort($pdo, $sortId, $byWork);
+            $maxSort = _wkNextSort($pdo, $sortId, $byWork);
 
             // ── Step 3: ensure SMB notes dir exists ───────────
-            smbEnsureDir($ctx);
-            $smbBase = smbBuildPath($ctx); // {prefix}_clients/…/notes
+            try {
+                smbEnsureDir($ctx);
+            } catch (Exception $dirErr) {
+                error_log('[works/notes upload] smbEnsureDir failed: ' . $dirErr->getMessage());
+            }
+            $smbBase = smbBuildPath($ctx);
             $omv     = new OMV_SMB_Manager();
 
             // ── Step 4: PDF → PNG branch ──────────────────────
             if ($mimeType === 'application/pdf') {
-                $pages = _noteConvertPdf($tmpPath, $noteId, $ctx);
+                $pages = _wkNoteConvertPdf($tmpPath, $noteId, $ctx);
 
                 if (!empty($pages)) {
                     // Success — pdf_images note
@@ -298,15 +335,17 @@ try {
 
                     $pdo->prepare("
                         INSERT INTO task_notes
-                            (uuid, sys_id, task_sys_id, work_sys_id, board_type, note_type, content,
-                             file_name, file_path, file_size, mime_type, pages_json,
+                            (uuid, sys_id, task_sys_id, work_sys_id, board_type, service_slug, board_name,
+                             note_type, content, file_name, file_path, file_size, mime_type, pages_json,
                              sort_order, created_by, meta_data)
-                        VALUES (?, ?, ?, ?, ?, 'pdf_images', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'pdf_images', ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ")->execute([
-                        $ids['uuid'], $noteId, $byWork ? null : $taskSysId, $workSysId, $boardType,
+                        $ids['uuid'], $noteId,
+                        $byWork ? null : $taskSysId, $workSysId, $boardType,
+                        $byWork ? $serviceSlug : null,
+                        $byWork ? $boardName   : null,
                         $caption ?: null,
-                        $fileName,
-                        $smbBase . '/' . $fileName,
+                        $fileName, $smbBase.'/'.$fileName,
                         $fileSize, $mimeType,
                         json_encode($pages),
                         $maxSort, $userName, $meta,
@@ -330,26 +369,33 @@ try {
             elseif (str_starts_with($mimeType, 'audio/')) $noteType = 'audio';
             elseif (str_starts_with($mimeType, 'video/')) $noteType = 'video';
 
-            $fileName = _noteFileName($noteId, $ext); // {note_sys_id}_01.ext
+            $fileName = _wkNoteFileName($noteId, $ext); // {note_sys_id}_01.ext
             $smbPath  = "{$smbBase}/{$fileName}";
 
             // Temp এ move করে SMB তে upload, তারপর delete
             $tempLocal = sys_get_temp_dir() . '/note_up_' . uniqid() . '.' . $ext;
             if (!move_uploaded_file($tmpPath, $tempLocal)) throw new Exception('Failed to move to temp');
-            $omv->paste_file($tempLocal, $smbPath);
+            $uploadResult = $omv->paste_file($tempLocal, $smbPath);
             if (file_exists($tempLocal)) unlink($tempLocal);
+
+            if ($uploadResult !== true) {
+                error_log('[works/notes upload] SMB paste_file failed: ' . print_r($uploadResult, true) . ' | path: ' . $smbPath);
+                throw new Exception('SMB upload failed: ' . (is_string($uploadResult) ? $uploadResult : 'unknown error'));
+            }
 
             $pdo->prepare("
                 INSERT INTO task_notes
-                    (uuid, sys_id, task_sys_id, work_sys_id, board_type, note_type, content,
-                     file_name, file_path, file_size, mime_type,
+                    (uuid, sys_id, task_sys_id, work_sys_id, board_type, service_slug, board_name,
+                     note_type, content, file_name, file_path, file_size, mime_type,
                      sort_order, created_by, meta_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ")->execute([
-                $ids['uuid'], $noteId, $byWork ? null : $taskSysId, $workSysId, $boardType,
+                $ids['uuid'], $noteId,
+                $byWork ? null : $taskSysId, $workSysId, $boardType,
+                $byWork ? $serviceSlug : null,
+                $byWork ? $boardName   : null,
                 $noteType, $caption ?: null,
-                $fileName,
-                $smbPath,
+                $fileName, $smbPath,
                 $fileSize, $mimeType,
                 $maxSort, $userName, $meta,
             ]);
@@ -359,7 +405,7 @@ try {
                 'status'    => 'success',
                 'sys_id'    => $noteId,
                 'note_type' => $noteType,
-                'serve_url' => '../file/serve.php?note_id=' . urlencode($noteId),
+                'serve_url' => '../../api/file/serve.php?note_id=' . urlencode($noteId),
             ]);
             break;
 
@@ -380,8 +426,8 @@ try {
             if (!isset($pages[$pageIndex])) throw new Exception('Page not found');
 
             $ctx     = ($note['board_type'] ?? 'task') === 'work'
-                ? _notesGetCtxByWork($pdo, $note['work_sys_id'])
-                : _notesGetCtx($pdo, $note['task_sys_id']);
+                ? _wkNotesGetCtxByWork($pdo, $note['work_sys_id'], $note['service_slug'] ?? 'general', $note['board_name'] ?? 'mindboard')
+                : _wkNotesGetCtx($pdo, $note['task_sys_id']);
             $omv     = new OMV_SMB_Manager();
             $base    = smbBuildPath($ctx);
 
@@ -447,11 +493,23 @@ try {
             $n->execute([$noteSysId]);
             $note = $n->fetch(PDO::FETCH_ASSOC);
 
+            // Creator check — only the creator can delete
+            if ($note) {
+                $meta    = $note['meta_data'] ? json_decode($note['meta_data'], true) : [];
+                $creator = $meta['created_by_date']['user'] ?? $note['created_by'] ?? null;
+                if ($creator && $creator !== $userName) {
+                    ob_clean();
+                    http_response_code(403);
+                    echo json_encode(['status' => 'error', 'message' => 'Permission denied']);
+                    break;
+                }
+            }
+
             if ($note) {
                 try {
                     $ctx = ($note['board_type'] ?? 'task') === 'work'
-                        ? _notesGetCtxByWork($pdo, $note['work_sys_id'])
-                        : _notesGetCtx($pdo, $note['task_sys_id']);
+                        ? _wkNotesGetCtxByWork($pdo, $note['work_sys_id'], $note['service_slug'] ?? 'general', $note['board_name'] ?? 'mindboard')
+                        : _wkNotesGetCtx($pdo, $note['task_sys_id']);
                     $omv  = new OMV_SMB_Manager();
                     $base = smbBuildPath($ctx);
 
