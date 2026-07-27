@@ -162,14 +162,38 @@ try {
     $pdo->prepare("UPDATE leads SET lead_status='converted', meta_data=? WHERE sys_id=?")
         ->execute([$leadMeta, $sys_id]);
 
-    ob_clean();
-    echo json_encode([
+    $responseJson = json_encode([
         'success'               => true,
         'status'                => 'success',
         'message'               => 'Lead converted to work successfully.',
         'work_sys_id'           => $workSysId,
         'created_service_works' => $createdSW,
     ]);
+
+    // ── Fire-and-forget: close connection, then run AI in background ──
+    ignore_user_abort(true);
+    set_time_limit(120);
+
+    ob_clean();
+    header('Content-Type: application/json');
+    header('Content-Length: ' . strlen($responseJson));
+    header('Connection: close');
+    echo $responseJson;
+    ob_end_flush();
+    flush();
+
+    // Client connection closed — now generate SOP silently
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+
+    // Run SOP generation directly (no HTTP round-trip needed)
+    try {
+        require_once __DIR__ . '/../works/generate-sop.php';
+        _generateSop($pdo, $workSysId, $userName);
+    } catch (Throwable $bgErr) {
+        error_log('[move-to-work] SOP generation failed: ' . $bgErr->getMessage());
+    }
 
 } catch (PDOException $e) {
     ob_clean();

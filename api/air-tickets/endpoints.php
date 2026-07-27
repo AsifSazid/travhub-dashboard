@@ -71,7 +71,12 @@ function _fetchRow(PDO $pdo, string $taskSysId): ?array
     return _decodeRow($row);
 }
 
-// ── Helper: fetch air_tickets row by work_sys_id (new flow) ──
+// ── Helper: fetch by task or work — whichever is available ───
+function _fetchByContext(PDO $pdo, string $taskSysId, string $workSysId): ?array {
+    if ($taskSysId) return _fetchByContext($pdo, $taskSysId, $workSysId);
+    if ($workSysId) return _fetchRowByWork($pdo, $workSysId);
+    return null;
+}
 function _fetchRowByWork(PDO $pdo, string $workSysId): ?array
 {
     $s = $pdo->prepare("SELECT * FROM air_tickets WHERE work_sys_id = ? LIMIT 1");
@@ -98,19 +103,20 @@ function _decodeRow(array $row): array
 }
 
 // Save all JSON columns
-function _saveRow(PDO $pdo, string $taskSysId, array $quotations, array $bookings, $confirmation, string $existingMeta, string $userName): void
+function _saveRow(PDO $pdo, string $id, array $quotations, array $bookings, $confirmation, string $existingMeta, string $userName, bool $byWork = false): void
 {
-    $meta = buildMetaData($existingMeta, $userName);
+    $meta  = buildMetaData($existingMeta, $userName);
+    $field = $byWork ? 'work_sys_id' : 'task_sys_id';
     $pdo->prepare("
         UPDATE air_tickets
         SET at_quotations=?, at_bookings=?, at_confirmation=?, meta_data=?
-        WHERE task_sys_id=?
+        WHERE {$field}=?
     ")->execute([
         json_encode($quotations, JSON_UNESCAPED_UNICODE),
         json_encode($bookings,   JSON_UNESCAPED_UNICODE),
         $confirmation !== null ? json_encode($confirmation, JSON_UNESCAPED_UNICODE) : null,
         $meta,
-        $taskSysId,
+        $id,
     ]);
 }
 
@@ -212,7 +218,7 @@ try {
         if ($workSysId) {
             $row = _fetchRowByWork($pdo, $workSysId);
         } elseif ($taskSysId) {
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
         } else {
             throw new Exception('task_sys_id or work_sys_id is required');
         }
@@ -245,7 +251,7 @@ try {
 
             // Already exists by work?
             $existing = _fetchRowByWork($pdo, $workSysId);
-            if (!$existing && $taskSysId) $existing = _fetchRow($pdo, $taskSysId);
+            if (!$existing && $taskSysId) $existing = _fetchByContext($pdo, $taskSysId, $workSysId);
             if ($existing) {
                 ob_clean();
                 echo json_encode(['status' => 'success', 'message' => 'Already initialized', 'data' => $existing]);
@@ -272,7 +278,7 @@ try {
         // ── SAVE QUOTATION ────────────────────────────────────
         // at_quotations array তে নতুন quotation push করে
         case 'save_quotation': {
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found. Call init first.');
 
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
@@ -298,7 +304,7 @@ try {
             $quotations[] = $newQ;
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Quotation saved', 'quotation_sys_id' => $newQ['sys_id']]);
@@ -311,7 +317,7 @@ try {
             $qSysId = $body['quotation_sys_id'] ?? '';
             if (!$qSysId) throw new Exception('quotation_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
@@ -342,7 +348,7 @@ try {
             if (!$found) throw new Exception("Quotation '{$qSysId}' not found");
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Quotation updated']);
@@ -354,7 +360,7 @@ try {
             $qSysId = $body['quotation_sys_id'] ?? '';
             if (!$qSysId) throw new Exception('quotation_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $quotations = array_values(array_filter(
@@ -363,7 +369,7 @@ try {
             ));
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Quotation deleted']);
@@ -380,7 +386,7 @@ try {
             if (!$qSysId)                        throw new Exception('quotation_sys_id is required');
             if (!in_array($newStatus, $allowed))  throw new Exception('Invalid quotation status');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
@@ -395,7 +401,7 @@ try {
             unset($q);
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Quotation status updated']);
@@ -410,7 +416,7 @@ try {
             $qSysId = $body['quotation_sys_id'] ?? '';
             if (!$qSysId) throw new Exception('quotation_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
@@ -456,7 +462,7 @@ try {
             $bookings[] = $newB;
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode([
@@ -470,7 +476,7 @@ try {
         // ── SAVE BOOKING ──────────────────────────────────────
         // at_bookings array তে নতুন booking push (quotation ছাড়া directly)
         case 'save_booking': {
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found. Call init first.');
 
             $bookings = is_array($row['at_bookings']) ? $row['at_bookings'] : [];
@@ -512,7 +518,7 @@ try {
             $bookings[] = $newB;
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode([
@@ -532,7 +538,7 @@ try {
             $bSysId = $body['booking_sys_id'] ?? '';
             if (!$bSysId) throw new Exception('booking_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $bookings   = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
@@ -597,7 +603,7 @@ try {
             }
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode([
@@ -613,7 +619,7 @@ try {
             $bSysId = $body['booking_sys_id'] ?? '';
             if (!$bSysId) throw new Exception('booking_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $bookings = array_values(array_filter(
@@ -629,7 +635,7 @@ try {
 
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, $bookings, $confirmation, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmation, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Booking deleted']);
@@ -646,7 +652,7 @@ try {
             if (!$bSysId)                        throw new Exception('booking_sys_id is required');
             if (!in_array($newStatus, $allowed))  throw new Exception('Invalid booking status');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $bookings = is_array($row['at_bookings']) ? $row['at_bookings'] : [];
@@ -662,7 +668,7 @@ try {
 
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRow($pdo, $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName);
+            _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Booking status updated']);
@@ -679,7 +685,7 @@ try {
             $bSysId = $body['booking_sys_id'] ?? '';
             if (!$bSysId) throw new Exception('booking_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $bookings      = is_array($row['at_bookings'])      ? $row['at_bookings']      : [];
@@ -713,7 +719,7 @@ try {
             $row['at_confirmations'] = $confirmations;
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+            _saveRowFull($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Added to confirmation', 'conf_sys_id' => $newC['sys_id']]);
@@ -726,7 +732,7 @@ try {
             $confSysId = $body['conf_sys_id'] ?? '';
             if (!$confSysId) throw new Exception('conf_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
@@ -748,7 +754,7 @@ try {
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+            _saveRowFull($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Confirmation updated']);
@@ -763,7 +769,7 @@ try {
             $allowed   = ['pending', 'confirmed', 'failed', 'cancelled'];
             if (!in_array($newStatus, $allowed)) throw new Exception('Invalid confirmation status');
 
-            $row = $byWork ? _fetchRowByWork($pdo, $workSysId) : _fetchRow($pdo, $taskSysId);
+            $row = $byWork ? _fetchRowByWork($pdo, $workSysId) : _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
@@ -789,17 +795,56 @@ try {
             $id = $byWork ? $workSysId : $taskSysId;
             _saveRowFull($pdo, $id, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
-            // ── Phase 6: Auto-create task on confirmed ────────
+            ob_clean();
+            echo json_encode([
+                'status'  => 'success',
+                'message' => 'Confirmation status updated',
+            ]);
+            break;
+        }
+
+        // ── CONFIRM AND CREATE TASK ───────────────────────────
+        case 'confirm_and_create_task': {
+            $confSysId = $body['conf_sys_id'] ?? '';
+            if (!$confSysId) throw new Exception('conf_sys_id required');
+
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
+            if (!$row) throw new Exception('Air ticket record not found');
+
+            $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
+            $found = false;
+            $confirmedConf = null;
+            foreach ($confirmations as &$c) {
+                if ($c['sys_id'] === $confSysId) {
+                    $c['status']     = 'confirmed';
+                    $c['updated_at'] = date('d-m-Y H:i');
+                    $c['updated_by'] = $userName;
+                    $found = true;
+                    $confirmedConf = $c;
+                    break;
+                }
+            }
+            unset($c);
+            if (!$found) throw new Exception("Confirmation '{$confSysId}' not found");
+
+            $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
+            $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
+            $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
+
+            $id = $byWork ? $workSysId : $taskSysId;
+            _saveRowFull($pdo, $id, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
+
             $autoTaskSysId = null;
-            if ($confirmedConf && $row['work_sys_id']) {
-                $autoTaskSysId = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $row['work_sys_id'], $userName);
+            $wSysId = $row['work_sys_id'] ?? $workSysId;
+            if ($wSysId) {
+                $autoTaskSysId = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $wSysId, $userName);
             }
 
             ob_clean();
             echo json_encode([
-                'status'        => 'success',
-                'message'       => 'Confirmation status updated',
-                'auto_task_id'  => $autoTaskSysId,
+                'status'       => 'success',
+                'message'      => 'Confirmed and task created',
+                'auto_task_id' => $autoTaskSysId,
             ]);
             break;
         }
@@ -810,7 +855,7 @@ try {
             $confSysId = $body['conf_sys_id'] ?? '';
             if (!$confSysId) throw new Exception('conf_sys_id is required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
@@ -825,7 +870,7 @@ try {
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+            _saveRowFull($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Confirmation removed']);
@@ -839,7 +884,7 @@ try {
             // fall-through not possible in PHP switch, so duplicate minimal logic
             $bSysId = $body['booking_sys_id'] ?? '';
             if (!$bSysId) throw new Exception('booking_sys_id is required');
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
             $bookings      = is_array($row['at_bookings'])     ? $row['at_bookings']     : [];
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
@@ -861,7 +906,7 @@ try {
             $confirmations[] = $newC;
             $quotations      = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $existingMeta    = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+            _saveRowFull($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Confirmation set', 'conf_sys_id' => $newC['sys_id']]);
             break;
@@ -876,7 +921,7 @@ try {
             if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) throw new Exception('Upload error: ' . $_FILES['file']['error']);
 
             // ── fetch air_tickets row ─────────────────────────
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
             // ── find conf ─────────────────────────────────────
@@ -1124,7 +1169,7 @@ try {
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+            _saveRowFull($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode([
@@ -1142,7 +1187,7 @@ try {
             if (!$confSysId) throw new Exception('conf_sys_id required');
             if ($fileIndex === null) throw new Exception('file_index required');
 
-            $row = _fetchRow($pdo, $taskSysId);
+            $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Record not found');
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
@@ -1196,7 +1241,7 @@ try {
             $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $bookings     = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
-            _saveRowFull($pdo, $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName);
+            _saveRowFull($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode(['status' => 'success']);

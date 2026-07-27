@@ -49,7 +49,6 @@ try {
         FROM task_notes
         WHERE work_sys_id = ? AND board_type = 'work'
           AND service_slug = ? AND board_name = 'mindboard'
-          AND note_type = 'text'
         ORDER BY sort_order ASC, id ASC
         LIMIT 30
     ");
@@ -58,17 +57,26 @@ try {
 
     if (empty($notes)) {
         ob_clean();
-        echo json_encode(['status' => 'error', 'message' => 'No Mind Board notes found. Add some notes first.']);
+        echo json_encode(['status' => 'error', 'message' => 'No Mind Board notes found. Add some notes or files first.']);
         exit;
     }
 
-    // 3. Build context for Gemini
+    // Build context — text notes + file references
     $notesText = '';
     foreach ($notes as $i => $n) {
         $meta = $n['meta_data'] ? json_decode($n['meta_data'], true) : [];
         $user = $meta['created_by_date']['user'] ?? '';
         $date = $meta['created_by_date']['date'] ?? '';
-        $notesText .= ($i + 1) . ". [{$user} · {$date}] " . ($n['content'] ?? '') . "\n";
+        $prefix = ($i + 1) . ". [{$user} · {$date}] ";
+
+        if ($n['note_type'] === 'text') {
+            $notesText .= $prefix . ($n['content'] ?? '') . "\n";
+        } else {
+            $type = ucwords(str_replace('_', ' ', $n['note_type']));
+            $file = $n['file_name'] ?? 'file';
+            $cap  = $n['content'] ? ' — "' . $n['content'] . '"' : '';
+            $notesText .= $prefix . "[{$type}: {$file}{$cap}]\n";
+        }
     }
 
     $segmentContext = '';
@@ -106,24 +114,17 @@ Generate a planning briefing that:
 
 Format as clean HTML paragraphs and bullet points.";
 
-    $result = geminiJSON($system, $user, 1500);
+    $result = geminiCall($system, $user, 1500, 0.4);
 
-    if ($result['success'] ?? false) {
-        // geminiJSON returns parsed JSON — but we want HTML text
-        // So use geminiCall instead
+    if (!($result['success'] ?? false)) {
+        throw new Exception($result['error'] ?? 'AI generation failed');
     }
 
-    // Use geminiCall for HTML output
-    $r = geminiCall($system, $user, 1500, 0.4);
-
-    if (!$r['success']) {
-        throw new Exception($r['error'] ?? 'AI generation failed');
-    }
-
-    $html = trim($r['text'] ?? '');
+    $html = trim($result['text'] ?? '');
     // Strip any markdown code blocks just in case
-    $html = preg_replace('/^```html?\s*/m', '', $html);
-    $html = preg_replace('/```\s*$/m', '', $html);
+    $html = preg_replace('/^```html?\s*/im', '', $html);
+    $html = preg_replace('/```\s*$/im', '', $html);
+    $html = trim($html);
 
     ob_clean();
     echo json_encode([

@@ -91,8 +91,8 @@ try {
     $totalTasks     = count($tasks);
     $completedTasks = count(array_filter($tasks, fn($t) => $t['status'] === 'done'));
 
-    // Confirmed tasks (auto-created from confirmations)
-    $confirmedTasks = array_values(array_filter($tasks, fn($t) => !empty($t['confirmation_sys_id'])));
+    // Confirmed tasks (auto-created, not merged)
+    $confirmedTasks = array_values(array_filter($tasks, fn($t) => !empty($t['confirmation_sys_id']) && empty($t['is_merged'])));
 
     ob_clean();
     echo json_encode([

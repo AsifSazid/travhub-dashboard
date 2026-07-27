@@ -27,7 +27,7 @@ let _gdsSegments  = [];
 let _gdsFares     = [];
 
 // ── Styles (injected once) ────────────────────────────────────
-const AT_STYLES='<style id="at-styles">\n/* ── Tab Bar ─────────────────────────────────────────────────── */\n.at-tab-bar {\n    display: flex;\n    gap: 0;\n    overflow-x: auto;\n    border-bottom: 2px solid #e5e7eb;\n    margin-bottom: 0;\n    background: #fafafa;\n    padding: 0 8px;\n}\n.at-tab {\n    padding: 12px 20px;\n    font-size: .82rem;\n    font-weight: 600;\n    color: #6b7280;\n    border-bottom: 2px solid transparent;\n    margin-bottom: -2px;\n    cursor: pointer;\n    white-space: nowrap;\n    transition: all .15s ease;\n    background: transparent;\n    position: relative;\n}\n.at-tab.active {\n    color: #4f46e5;\n    border-bottom-color: #4f46e5;\n}\n.at-tab:hover:not(.active) {\n    color: #374151;\n    background: #f3f4f6;\n    border-radius: 8px 8px 0 0;\n}\n.at-panel {\n    display: none;\n    animation: atFadeIn .2s ease;\n}\n.at-panel.active {\n    display: block;\n}\n\n/* ── Note Bubbles ───────────────────────────────────────────── */\n.at-note-bubble {\n    border-radius: 14px;\n    padding: 10px 14px;\n    margin-bottom: 6px;\n    word-break: break-word;\n    position: relative;\n    box-shadow: 0 1px 3px rgba(0,0,0,.04);\n    transition: all .15s ease;\n}\n.at-note-bubble:hover {\n    box-shadow: 0 2px 8px rgba(0,0,0,.06);\n}\n.at-note-text {\n    background: #f3f4f6;\n    border: 1px solid #e5e7eb;\n}\n.at-note-image {\n    background: #ffffff;\n    border: 1px solid #e5e7eb;\n    padding: 6px;\n    border-radius: 12px;\n}\n.at-note-audio {\n    background: #f5f3ff;\n    border: 1px solid #ede9fe;\n}\n.at-note-video {\n    background: #0f172a;\n    border: 1px solid #1e293b;\n    padding: 4px;\n    border-radius: 12px;\n}\n.at-note-file {\n    background: #f0fdf4;\n    border: 1px solid #bbf7d0;\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 8px 14px;\n    border-radius: 10px;\n}\n\n/* ── Three-Dot Menu ─────────────────────────────────────────── */\n.at-menu-wrapper {\n    position: relative;\n    z-index: 100;\n    flex-shrink: 0;\n}\n.at-menu-btn {\n    color: #9ca3af;\n    padding: 4px 8px;\n    border-radius: 6px;\n    cursor: pointer;\n    transition: all .15s ease;\n    background: transparent;\n    border: none;\n    font-size: 14px;\n    line-height: 1;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    width: 28px;\n    height: 28px;\n}\n.at-menu-btn:hover {\n    background: #f3f4f6;\n    color: #4f46e5;\n}\n.at-menu-dropdown {\n    position: absolute;\n    right: 0;\n    bottom: calc(100% + 8px);\n    background: #ffffff;\n    border-radius: 12px;\n    box-shadow: 0 10px 40px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.05);\n    border: 1px solid #f1f5f9;\n    min-width: 160px;\n    padding: 6px 0;\n    z-index: 99999;\n    display: none;\n    transform-origin: bottom right;\n    animation: atMenuPop .15s ease;\n}\n.at-menu-dropdown.show {\n    display: block;\n}\n.at-menu-item {\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 8px 16px;\n    font-size: .78rem;\n    font-weight: 500;\n    color: #374151;\n    cursor: pointer;\n    transition: all .1s ease;\n    border: none;\n    background: none;\n    width: 100%;\n    text-align: left;\n    border-radius: 0;\n}\n.at-menu-item:first-child {\n    border-radius: 12px 12px 0 0;\n}\n.at-menu-item:last-child {\n    border-radius: 0 0 12px 12px;\n}\n.at-menu-item:hover {\n    background: #f8fafc;\n}\n.at-menu-item.danger {\n    color: #dc2626;\n}\n.at-menu-item.danger:hover {\n    background: #fef2f2;\n    color: #dc2626;\n}\n.at-menu-item i {\n    width: 16px;\n    font-size: .75rem;\n    color: #94a3b8;\n    flex-shrink: 0;\n}\n.at-menu-item.danger i {\n    color: #f87171;\n}\n.at-menu-item.danger:hover i {\n    color: #dc2626;\n}\n\n/* ── Animations ─────────────────────────────────────────────── */\n@keyframes atMenuPop {\n    from {\n        opacity: 0;\n        transform: scale(0.92) translateY(6px);\n    }\n    to {\n        opacity: 1;\n        transform: scale(1) translateY(0);\n    }\n}\n@keyframes atFadeIn {\n    from {\n        opacity: 0;\n        transform: translateY(4px);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n@keyframes atBounce {\n    0%, 100% { transform: translateY(0); }\n    50% { transform: translateY(-4px); }\n}\n\n/* ── Upload Zone ────────────────────────────────────────────── */\n.at-upload-zone {\n    border: 2px dashed #d1d5db;\n    border-radius: 12px;\n    padding: 24px 20px;\n    text-align: center;\n    cursor: pointer;\n    transition: all .2s ease;\n    background: #fafafa;\n}\n.at-upload-zone:hover,\n.at-upload-zone.dragover {\n    border-color: #6366f1;\n    background: #f5f3ff;\n}\n\n/* ── File Cards ────────────────────────────────────────────── */\n.at-file-card {\n    border: 1px solid #e5e7eb;\n    border-radius: 10px;\n    overflow: hidden;\n    background: #ffffff;\n}\n\n/* ── AI Dots ────────────────────────────────────────────────── */\n.at-ai-dot {\n    width: 6px;\n    height: 6px;\n    border-radius: 50%;\n    background: #6366f1;\n    animation: atBounce .8s infinite;\n    display: inline-block;\n}\n.at-ai-dot:nth-child(2) { animation-delay: .15s; }\n.at-ai-dot:nth-child(3) { animation-delay: .3s; }\n\n/* ── Status Pills ───────────────────────────────────────────── */\n.at-pill {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 10px;\n    border-radius: 999px;\n    font-size: .68rem;\n    font-weight: 700;\n    letter-spacing: 0.3px;\n}\n.at-pill-draft { background: #f3f4f6; color: #374151; }\n.at-pill-sent { background: #dbeafe; color: #1e40af; }\n.at-pill-moved { background: #dcfce7; color: #166534; }\n.at-pill-superseded { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }\n.at-pill-cancelled { background: #fee2e2; color: #991b1b; }\n.at-pill-tentative { background: #fef9c3; color: #854d0e; }\n.at-pill-confirmed { background: #dcfce7; color: #166534; }\n.at-pill-failed { background: #fee2e2; color: #991b1b; }\n.at-pill-refunded { background: #f3e8ff; color: #6b21a8; }\n\n/* ── Quotation Cards ────────────────────────────────────────── */\n.at-q-card {\n    border: 1.5px solid #e5e7eb;\n    border-radius: 10px;\n    padding: 12px 14px;\n    cursor: pointer;\n    transition: all .15s ease;\n    background: #fafafa;\n    margin-bottom: 8px;\n}\n.at-q-card:hover {\n    border-color: #a5b4fc;\n    background: #ffffff;\n    box-shadow: 0 2px 8px rgba(0,0,0,.04);\n}\n.at-q-card.active {\n    border-color: #6366f1;\n    background: #eef2ff;\n    box-shadow: 0 2px 12px rgba(99,102,241,.12);\n}\n.at-q-card.moved {\n    opacity: .6;\n}\n\n/* ── GDS Table ──────────────────────────────────────────────── */\n.gds-th {\n    font-size: .72rem;\n    font-weight: 700;\n    color: #6b7280;\n    text-transform: uppercase;\n    padding: 6px 8px;\n    background: #f9fafb;\n    border-bottom: 1px solid #e5e7eb;\n    white-space: nowrap;\n}\n.gds-td {\n    font-size: .82rem;\n    padding: 6px 8px;\n    border-bottom: 1px solid #f3f4f6;\n}\n.gds-input {\n    width: 100%;\n    padding: 4px 6px;\n    border: 1px solid #e5e7eb;\n    border-radius: 6px;\n    font-size: .8rem;\n    background: #ffffff;\n    outline: none;\n    transition: all .15s ease;\n}\n.gds-input:focus {\n    border-color: #6366f1;\n    box-shadow: 0 0 0 3px rgba(99,102,241,.1);\n}\n.gds-input:read-only {\n    background: #f9fafb;\n    cursor: default;\n}\n\n/* ── Scrollbar Styling ──────────────────────────────────────── */\n.at-notes-list::-webkit-scrollbar {\n    width: 4px;\n}\n.at-notes-list::-webkit-scrollbar-track {\n    background: transparent;\n}\n.at-notes-list::-webkit-scrollbar-thumb {\n    background: #d1d5db;\n    border-radius: 10px;\n}\n.at-notes-list::-webkit-scrollbar-thumb:hover {\n    background: #9ca3af;\n}\n\n/* ── Responsive ─────────────────────────────────────────────── */\n@media (max-width: 640px) {\n    .at-tab {\n        padding: 10px 14px;\n        font-size: .75rem;\n    }\n    .at-menu-dropdown {\n        min-width: 140px;\n        right: -8px;\n    }\n    .at-note-bubble {\n        max-width: 92% !important;\n    }\n}\n</style>';
+const AT_STYLES='<style id="at-styles">\n/* ── Tab Bar ─────────────────────────────────────────────────── */\n.at-tab-bar {\n    display: flex;\n    gap: 0;\n    border-bottom: 2px solid #e5e7eb;\n    margin-bottom: 0;\n    background: #fafafa;\n    padding: 0 8px;\n}\n.at-tab {\n    padding: 12px 20px;\n    font-size: .82rem;\n    font-weight: 600;\n    color: #6b7280;\n    border-bottom: 2px solid transparent;\n    margin-bottom: -2px;\n    cursor: pointer;\n    white-space: nowrap;\n    transition: all .15s ease;\n    background: transparent;\n    position: relative;\n}\n.at-tab.active {\n    color: #4f46e5;\n    border-bottom-color: #4f46e5;\n}\n.at-tab:hover:not(.active) {\n    color: #374151;\n    background: #f3f4f6;\n    border-radius: 8px 8px 0 0;\n}\n.at-panel {\n    display: none;\n    animation: atFadeIn .2s ease;\n}\n.at-panel.active {\n    display: block;\n}\n\n/* ── Note Bubbles ───────────────────────────────────────────── */\n.at-note-bubble {\n    border-radius: 14px;\n    padding: 10px 14px;\n    margin-bottom: 6px;\n    word-break: break-word;\n    position: relative;\n    box-shadow: 0 1px 3px rgba(0,0,0,.04);\n    transition: all .15s ease;\n}\n.at-note-bubble:hover {\n    box-shadow: 0 2px 8px rgba(0,0,0,.06);\n}\n.at-note-text {\n    background: #f3f4f6;\n    border: 1px solid #e5e7eb;\n}\n.at-note-image {\n    background: #ffffff;\n    border: 1px solid #e5e7eb;\n    padding: 6px;\n    border-radius: 12px;\n}\n.at-note-audio {\n    background: #f5f3ff;\n    border: 1px solid #ede9fe;\n}\n.at-note-video {\n    background: #0f172a;\n    border: 1px solid #1e293b;\n    padding: 4px;\n    border-radius: 12px;\n}\n.at-note-file {\n    background: #f0fdf4;\n    border: 1px solid #bbf7d0;\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 8px 14px;\n    border-radius: 10px;\n}\n\n/* ── Three-Dot Menu ─────────────────────────────────────────── */\n.at-menu-wrapper {\n    position: relative;\n    z-index: 100;\n    flex-shrink: 0;\n}\n.at-menu-btn {\n    color: #9ca3af;\n    padding: 4px 8px;\n    border-radius: 6px;\n    cursor: pointer;\n    transition: all .15s ease;\n    background: transparent;\n    border: none;\n    font-size: 14px;\n    line-height: 1;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    width: 28px;\n    height: 28px;\n}\n.at-menu-btn:hover {\n    background: #f3f4f6;\n    color: #4f46e5;\n}\n.at-menu-dropdown {\n    position: absolute;\n    right: 0;\n    bottom: calc(100% + 8px);\n    background: #ffffff;\n    border-radius: 12px;\n    box-shadow: 0 10px 40px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.05);\n    border: 1px solid #f1f5f9;\n    min-width: 160px;\n    padding: 6px 0;\n    z-index: 99999;\n    display: none;\n    transform-origin: bottom right;\n    animation: atMenuPop .15s ease;\n}\n.at-menu-dropdown.show {\n    display: block;\n}\n.at-menu-item {\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 8px 16px;\n    font-size: .78rem;\n    font-weight: 500;\n    color: #374151;\n    cursor: pointer;\n    transition: all .1s ease;\n    border: none;\n    background: none;\n    width: 100%;\n    text-align: left;\n    border-radius: 0;\n}\n.at-menu-item:first-child {\n    border-radius: 12px 12px 0 0;\n}\n.at-menu-item:last-child {\n    border-radius: 0 0 12px 12px;\n}\n.at-menu-item:hover {\n    background: #f8fafc;\n}\n.at-menu-item.danger {\n    color: #dc2626;\n}\n.at-menu-item.danger:hover {\n    background: #fef2f2;\n    color: #dc2626;\n}\n.at-menu-item i {\n    width: 16px;\n    font-size: .75rem;\n    color: #94a3b8;\n    flex-shrink: 0;\n}\n.at-menu-item.danger i {\n    color: #f87171;\n}\n.at-menu-item.danger:hover i {\n    color: #dc2626;\n}\n\n/* ── Animations ─────────────────────────────────────────────── */\n@keyframes atMenuPop {\n    from {\n        opacity: 0;\n        transform: scale(0.92) translateY(6px);\n    }\n    to {\n        opacity: 1;\n        transform: scale(1) translateY(0);\n    }\n}\n@keyframes atFadeIn {\n    from {\n        opacity: 0;\n        transform: translateY(4px);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n@keyframes atBounce {\n    0%, 100% { transform: translateY(0); }\n    50% { transform: translateY(-4px); }\n}\n\n/* ── Upload Zone ────────────────────────────────────────────── */\n.at-upload-zone {\n    border: 2px dashed #d1d5db;\n    border-radius: 12px;\n    padding: 24px 20px;\n    text-align: center;\n    cursor: pointer;\n    transition: all .2s ease;\n    background: #fafafa;\n}\n.at-upload-zone:hover,\n.at-upload-zone.dragover {\n    border-color: #6366f1;\n    background: #f5f3ff;\n}\n\n/* ── File Cards ────────────────────────────────────────────── */\n.at-file-card {\n    border: 1px solid #e5e7eb;\n    border-radius: 10px;\n    overflow: hidden;\n    background: #ffffff;\n}\n\n/* ── AI Dots ────────────────────────────────────────────────── */\n.at-ai-dot {\n    width: 6px;\n    height: 6px;\n    border-radius: 50%;\n    background: #6366f1;\n    animation: atBounce .8s infinite;\n    display: inline-block;\n}\n.at-ai-dot:nth-child(2) { animation-delay: .15s; }\n.at-ai-dot:nth-child(3) { animation-delay: .3s; }\n\n/* ── Status Pills ───────────────────────────────────────────── */\n.at-pill {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 10px;\n    border-radius: 999px;\n    font-size: .68rem;\n    font-weight: 700;\n    letter-spacing: 0.3px;\n}\n.at-pill-draft { background: #f3f4f6; color: #374151; }\n.at-pill-sent { background: #dbeafe; color: #1e40af; }\n.at-pill-moved { background: #dcfce7; color: #166534; }\n.at-pill-superseded { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }\n.at-pill-cancelled { background: #fee2e2; color: #991b1b; }\n.at-pill-tentative { background: #fef9c3; color: #854d0e; }\n.at-pill-confirmed { background: #dcfce7; color: #166534; }\n.at-pill-failed { background: #fee2e2; color: #991b1b; }\n.at-pill-refunded { background: #f3e8ff; color: #6b21a8; }\n\n/* ── Quotation Cards ────────────────────────────────────────── */\n.at-q-card {\n    border: 1.5px solid #e5e7eb;\n    border-radius: 10px;\n    padding: 12px 14px;\n    cursor: pointer;\n    transition: all .15s ease;\n    background: #fafafa;\n    margin-bottom: 8px;\n}\n.at-q-card:hover {\n    border-color: #a5b4fc;\n    background: #ffffff;\n    box-shadow: 0 2px 8px rgba(0,0,0,.04);\n}\n.at-q-card.active {\n    border-color: #6366f1;\n    background: #eef2ff;\n    box-shadow: 0 2px 12px rgba(99,102,241,.12);\n}\n.at-q-card.moved {\n    opacity: .6;\n}\n\n/* ── GDS Table ──────────────────────────────────────────────── */\n.gds-th {\n    font-size: .72rem;\n    font-weight: 700;\n    color: #6b7280;\n    text-transform: uppercase;\n    padding: 6px 8px;\n    background: #f9fafb;\n    border-bottom: 1px solid #e5e7eb;\n    white-space: nowrap;\n}\n.gds-td {\n    font-size: .82rem;\n    padding: 6px 8px;\n    border-bottom: 1px solid #f3f4f6;\n}\n.gds-input {\n    width: 100%;\n    padding: 4px 6px;\n    border: 1px solid #e5e7eb;\n    border-radius: 6px;\n    font-size: .8rem;\n    background: #ffffff;\n    outline: none;\n    transition: all .15s ease;\n}\n.gds-input:focus {\n    border-color: #6366f1;\n    box-shadow: 0 0 0 3px rgba(99,102,241,.1);\n}\n.gds-input:read-only {\n    background: #f9fafb;\n    cursor: default;\n}\n\n/* ── Scrollbar Styling ──────────────────────────────────────── */\n.at-notes-list::-webkit-scrollbar {\n    width: 4px;\n}\n.at-notes-list::-webkit-scrollbar-track {\n    background: transparent;\n}\n.at-notes-list::-webkit-scrollbar-thumb {\n    background: #d1d5db;\n    border-radius: 10px;\n}\n.at-notes-list::-webkit-scrollbar-thumb:hover {\n    background: #9ca3af;\n}\n\n/* ── Responsive ─────────────────────────────────────────────── */\n@media (max-width: 640px) {\n    .at-tab {\n        padding: 10px 14px;\n        font-size: .75rem;\n    }\n    .at-menu-dropdown {\n        min-width: 140px;\n        right: -8px;\n    }\n    .at-note-bubble {\n        max-width: 92% !important;\n    }\n}\n</style>';
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
@@ -45,8 +45,8 @@ window.initWorkAirTicketTab = async function (config) {
     if (!mount) return;
 
     mount.innerHTML = `
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden" style="display:flex;flex-direction:column;">
-        <div class="at-tab-bar px-4 pt-2" style="position:sticky;top:0;z-index:20;background:#fafafa;flex-shrink:0;">
+    <div style="display:flex;flex-direction:column;">
+        <div class="at-tab-bar px-4 pt-2" id="at-inner-tab-bar" style="position:sticky;top:42px;z-index:19;background:#fafafa;flex-shrink:0;overflow-x:auto;white-space:nowrap;border-top:1px solid #f1f5f9;">
             <button class="at-tab active" data-tab="mindboard"><i class="fas fa-brain mr-1.5"></i>Mind Board</button>
             <button class="at-tab" data-tab="quotation"><i class="fas fa-file-invoice mr-1.5"></i>Quotation</button>
             <button class="at-tab" data-tab="booking"><i class="fas fa-bookmark mr-1.5"></i>Booking</button>
@@ -103,6 +103,16 @@ async function _reload() {
         const json = await res.json();
         if (json.status === 'success' && json.data) _atData = json.data;
     } catch(e) { console.error('AT reload:', e); }
+    // Also reload confirmed_tasks from get-work
+    try {
+        const gwUrl = _cfg.api.airTickets.replace('api/air-tickets/endpoints.php','api/works/get-work.php');
+        const r2    = await fetch(`${gwUrl}?id=${encodeURIComponent(_cfg.workSysId)}`);
+        const j2    = await r2.json();
+        if (j2.status === 'success') {
+            if (!_atData) _atData = {};
+            _atData.confirmed_tasks = j2.confirmed_tasks ?? [];
+        }
+    } catch {}
 }
 
 async function _api(body) {
@@ -1010,10 +1020,16 @@ function _gdsHtml(data, pfx) {
             <i class="fas fa-save mr-1.5"></i>${pfx==='q'&&_activeQSysId ? 'Update' : pfx==='b'&&_activeBSysId ? 'Update Booking' : pfx==='q' ? 'Save Quotation' : 'Save Booking'}
         </button>
         ${pfx==='q'&&_activeQSysId ? `<button onclick="atDeleteQ()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>` : ''}
-        ${pfx==='b'&&_activeBSysId ? `
-        <button onclick="atConfirmFromBooking('${_activeBSysId}')" title="Set as Confirmation"
-            class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm"><i class="fas fa-check"></i></button>
-        <button onclick="atDeleteB()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>` : ''}
+        ${pfx==='b'&&_activeBSysId ? (() => {
+            const alreadyConf = (_atData?.at_confirmations??[]).some(c => c.booking_sys_id === _activeBSysId);
+            return alreadyConf
+                ? `<button disabled class="px-4 py-2.5 bg-gray-100 text-gray-400 rounded-lg text-sm cursor-not-allowed whitespace-nowrap text-xs font-medium"><i class="fas fa-check-circle mr-1"></i>Already in Confirmation</button>`
+                : `<button onclick="atConfirmFromBooking('${_activeBSysId}')" title="Send to Confirmation"
+                    class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition whitespace-nowrap">
+                    <i class="fas fa-check mr-1.5"></i>Send to Confirmation
+                </button>`;
+        })() : ''}
+        ${pfx==='b'&&_activeBSysId ? `<button onclick="atDeleteB()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>` : ''}
     </div>`;
 }
 
@@ -2065,15 +2081,7 @@ function _renderBBuilder(b) {
     </div>
 
     <div id="at-b-body">${type === 'soto' ? _sotoHtml(b) : _gdsHtml(b, 'b')}</div>
-
-    ${b && !(_atData?.at_confirmations??[]).some(c=>c.booking_sys_id===b.sys_id&&c.status!=='failed'&&c.status!=='cancelled') ? `
-    <div class="mb-3">
-        <button onclick="atMoveToConfirmation('${_e(b.sys_id)}')"
-            class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2">
-            <i class="fas fa-check-circle"></i>Move to Confirmation
-        </button>
-    </div>` : b ? '<div class="mb-3 text-center text-xs text-indigo-500 bg-indigo-50 py-2 rounded-lg border border-indigo-100">Already in Confirmation</div>' : ''}`;
-}
+`;}
 
 // ── Booking travelers table ───────────────────────────────────
 async function _loadBookingTravelers() {
@@ -2312,6 +2320,10 @@ function _renderConfDetail(c, b) {
     const sMap = { pending:'at-pill-tentative', confirmed:'at-pill-confirmed', failed:'at-pill-failed', cancelled:'at-pill-cancelled' };
     const type = b?.type ?? 'gds';
 
+    const hasTask = (_atData?.confirmed_tasks ?? []).some(t => t.confirmation_sys_id === c.sys_id);
+    const isPending   = (c.status ?? 'pending') === 'pending';
+    const isConfirmed = (c.status ?? 'pending') === 'confirmed';
+
     detail.innerHTML = `
     <div class="flex items-center justify-between mb-4">
         <div>
@@ -2326,10 +2338,29 @@ function _renderConfDetail(c, b) {
         </div>
         <div class="flex items-center gap-2">
             <span class="at-pill ${sMap[c.status??'pending']}" style="font-size:.6rem">${c.status??'pending'}</span>
-            <select onchange="atUpdateConfStatus('${_e(c.sys_id)}',this.value)"
-                class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-400">
-                ${['pending','confirmed','failed','cancelled'].map(s=>`<option ${(c.status??'pending')===s?'selected':''}>${s}</option>`).join('')}
-            </select>
+            ${isPending ? `
+                <button onclick="atUpdateConfStatus('${_e(c.sys_id)}','confirmed')"
+                    class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition">
+                    ✓ Confirm
+                </button>
+                <button onclick="atConfirmAndCreateTask('${_e(c.sys_id)}')"
+                    class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition whitespace-nowrap">
+                    ✓ Confirm & Create Task
+                </button>
+            ` : hasTask ? `
+                <span class="text-xs text-emerald-600 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg whitespace-nowrap">
+                    <i class="fas fa-check-double text-[9px] mr-1"></i>Confirmed · Task Created
+                </span>
+            ` : `
+                <button onclick="atUpdateConfStatus('${_e(c.sys_id)}','pending')"
+                    class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-lg transition whitespace-nowrap">
+                    ↩ Revert to Pending
+                </button>
+                <button onclick="atConfirmAndCreateTask('${_e(c.sys_id)}')"
+                    class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition whitespace-nowrap">
+                    + Create Task
+                </button>
+            `}
         </div>
     </div>
 
@@ -2430,19 +2461,19 @@ function _renderConfDetail(c, b) {
             </div>` : ''}
         </div>` : '<p class="text-[11px] text-gray-300 mt-1 text-center">No files uploaded yet</p>'}
 
-    <div class="flex gap-2">
+    <div class="flex gap-2 mt-3">
         <button onclick="atSaveConfDetails('${_e(c.sys_id)}')"
             class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
             <i class="fas fa-save mr-1.5"></i>Save Details
         </button>
         <a href="../task-air.php?task_id=${encodeURIComponent(_cfg.workSysId)}" target="_blank"
             class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition flex items-center gap-1.5">
-            <i class="fas fa-file-download text-xs"></i>Download
+            <i class="fas fa-file-download text-xs"></i>
         </a>
-        ${c.status === 'failed' || c.status === 'cancelled' ? `
+        ${(c.status === 'failed' || c.status === 'cancelled') && !hasTask ? `
         <button onclick="atRemoveConf('${_e(c.sys_id)}')"
-            class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition">
-            <i class="fas fa-trash-alt"></i>
+            class="px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg text-sm transition">
+            <i class="fas fa-trash-alt text-xs"></i>
         </button>` : ''}
     </div>`;
 }
@@ -2650,11 +2681,45 @@ window.atViewConfFiles = function(confSysId) {
     window.open(url, '_blank');
 };
 
+window.atConfirmFromBooking = async function(bSysId) {
+    if (!confirm('Send this booking to Confirmation?')) return;
+    try {
+        const json = await _api({ action:'add_to_confirmation', booking_sys_id: bSysId });
+        if (json.status === 'success') {
+            atT('success', 'Sent to Confirmation!');
+            await _reload();
+            const btn = document.querySelector('.at-tab[data-tab="confirmation"]');
+            if (btn) _switchTab('confirmation', btn);
+        } else atT('error', json.message ?? 'Failed');
+    } catch { atT('error', 'Network error'); }
+};
+
 window.atUpdateConfStatus = async function(confId, status) {
+    if (status === 'pending') {
+        const hasTask = (_atData?.confirmed_tasks ?? []).some(t => t.confirmation_sys_id === confId);
+        if (hasTask) {
+            atT('error', 'Cannot revert — a task has already been created');
+            return;
+        }
+    }
     try {
         const json = await _api({ action:'update_confirmation_status', conf_sys_id: confId, status });
         if (json.status==='success') { atT('success','Status updated'); await _reload(); _renderConfirmation(); }
         else atT('error', json.message);
+    } catch { atT('error','Network error'); }
+};
+
+window.atConfirmAndCreateTask = async function(confId) {
+    if (!confirm('Confirm this booking and create a task?')) return;
+    try {
+        const json = await _api({ action:'confirm_and_create_task', conf_sys_id: confId });
+        if (json.status === 'success') {
+            atT('success', json.auto_task_id ? `Confirmed! Task: ${json.auto_task_id}` : 'Confirmed!');
+            await _reload();
+            _renderConfirmation();
+            // Reload confirmed tasks in show-works.php
+            if (typeof window.reloadConfirmedTasks === 'function') window.reloadConfirmedTasks();
+        } else atT('error', json.message ?? 'Failed');
     } catch { atT('error','Network error'); }
 };
 

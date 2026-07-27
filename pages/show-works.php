@@ -137,11 +137,12 @@ $deepLinkSw = $_GET['sw'] ?? '';
             <!-- ── MAIN AREA ───────────────────────────────── -->
             <div id="mainArea">
 
-                <!-- Service Module Tabs -->
+                <!-- Service Module -->
                 <div class="bg-white rounded-xl shadow-sm mb-4">
-                    <div class="flex border-b border-gray-100 overflow-x-auto bg-gray-50 px-2 pt-1.5 sticky top-0 z-10" id="svcModuleTabBar"></div>
-                    <!-- Service info strip — slim single line -->
-                    <div id="svcInfoStrip" class="hidden items-center gap-3 px-4 py-1.5 border-b border-gray-100 bg-gray-50 text-xs text-gray-500 flex-wrap overflow-x-auto"></div>
+                    <!-- Service selector — sticky inside mainArea (overflow-y-auto) -->
+                    <div class="flex border-b border-gray-100 bg-gray-50 px-2 pt-1.5 sticky top-0 z-20" id="svcModuleTabBar" style="border-radius:12px 12px 0 0;"></div>
+                    <!-- Service info strip -->
+                    <div id="svcInfoStrip" class="hidden items-center gap-3 px-4 py-1.5 border-b border-gray-100 bg-gray-50 text-xs text-gray-500 flex-wrap sticky z-10" style="top:42px;"></div>
                     <div id="at-tab-mount"></div>
                     <div id="svc-module-empty" class="hidden p-10 text-center text-gray-400 text-sm">
                         <i class="fas fa-layer-group text-2xl mb-2 block opacity-30"></i>
@@ -153,8 +154,14 @@ $deepLinkSw = $_GET['sw'] ?? '';
                 <div class="bg-white rounded-xl shadow-sm p-4">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-check-circle mr-2 text-emerald-500"></i>Confirmed Tasks</h3>
-                        <span class="text-xs text-gray-400" id="confirmedTasksCount">0 tasks</span>
+                        <div class="flex items-center gap-2">
+                            <button id="mergeTasksBtn" onclick="mergeSelectedTasks()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition">
+                                <i class="fas fa-compress-arrows-alt mr-1"></i>Merge Selected
+                            </button>
+                            <span class="text-xs text-gray-400" id="confirmedTasksCount">0 tasks</span>
+                        </div>
                     </div>
+                    <p class="text-xs text-gray-400 mb-2 hidden" id="mergeHint"><i class="fas fa-info-circle mr-1"></i>Click cards to select, then merge</p>
                     <div id="confirmedTasksList">
                         <p class="text-xs text-gray-400 italic">Tasks auto-created when a confirmation is marked Confirmed.</p>
                     </div>
@@ -895,6 +902,7 @@ function loadServiceModule(slug, swSysId) {
 // Service-specific info strip — slim single/double line below tab bar
 function renderSvcInfoStrip(slug) {
     const strip   = document.getElementById('svcInfoStrip');
+    const innerTab = document.getElementById('at-inner-tab-bar');
     const segData = sp(workData.segment_data) ?? {};
     const svcData = segData[slug] ?? {};
     const chips   = [];
@@ -959,42 +967,104 @@ function renderSvcInfoStrip(slug) {
     if (!chips.length) {
         strip.classList.add('hidden');
         strip.classList.remove('flex');
+        if (innerTab) innerTab.style.top = '42px';
         return;
     }
     strip.classList.remove('hidden');
     strip.classList.add('flex');
     strip.innerHTML = chips.join(` ${dot} `);
+    if (innerTab) innerTab.style.top = '74px'; // 42px service nav + 32px info strip
 }
 
 // ════════════════════════════════════════════════════════════
 // CONFIRMED TASKS
 // ════════════════════════════════════════════════════════════
+let _selectedTaskIds = new Set();
+
 function renderConfirmedTasks() {
     const list  = document.getElementById('confirmedTasksList');
     const count = document.getElementById('confirmedTasksCount');
+    const hint  = document.getElementById('mergeHint');
+    _selectedTaskIds.clear();
+    updateMergeBtn();
+
     count.textContent = confirmedTasks.length + ' task(s)';
     if (!confirmedTasks.length) {
         list.innerHTML = '<p class="text-xs text-gray-400 italic">Tasks auto-created when a confirmation is marked Confirmed.</p>';
+        hint?.classList.add('hidden');
         return;
     }
+    if (confirmedTasks.length > 1) hint?.classList.remove('hidden');
+
     list.innerHTML = confirmedTasks.map(t => `
-        <div class="conf-task-card">
+        <div class="conf-task-card cursor-pointer select-none" id="ctc-${esc(t.sys_id)}"
+            onclick="toggleTaskSelect('${esc(t.sys_id)}')">
             <div class="flex items-start justify-between">
-                <div>
-                    <p class="text-sm font-semibold text-gray-800">${esc(t.workname??'Task')}</p>
-                    <p class="text-xs font-mono text-indigo-400 mt-0.5">${esc(t.sys_id)}</p>
+                <div class="flex items-start gap-2">
+                    <div class="w-4 h-4 rounded border-2 border-gray-300 flex-shrink-0 mt-0.5 flex items-center justify-center transition ctc-check" id="chk-${esc(t.sys_id)}"></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">${esc(t.workname ?? 'Task')}</p>
+                        <p class="text-xs font-mono text-indigo-400 mt-0.5">${esc(t.sys_id)}</p>
+                    </div>
                 </div>
-                <span class="text-[10px] font-semibold px-2 py-1 rounded-full ${t.status==='done'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">
-                    ${t.status==='done'?'Done':'Open'}
+                <span class="text-[10px] font-semibold px-2 py-1 rounded-full flex-shrink-0 ${t.status==='done'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">
+                    ${t.status === 'done' ? 'Done' : 'Open'}
                 </span>
             </div>
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
                 <span class="text-xs text-gray-400">Financial only</span>
-                <a href="show-tasks.php?id=${esc(t.sys_id)}" class="text-xs text-indigo-500 hover:text-indigo-700 font-semibold">
+                <a href="show-tasks.php?id=${esc(t.sys_id)}" onclick="event.stopPropagation()"
+                    class="text-xs text-indigo-500 hover:text-indigo-700 font-semibold">
                     Open <i class="fas fa-arrow-right ml-1 text-[9px]"></i>
                 </a>
             </div>
         </div>`).join('');
+}
+
+function toggleTaskSelect(sysId) {
+    const card = document.getElementById(`ctc-${sysId}`);
+    const chk  = document.getElementById(`chk-${sysId}`);
+    if (_selectedTaskIds.has(sysId)) {
+        _selectedTaskIds.delete(sysId);
+        card.classList.remove('border-indigo-500', 'bg-indigo-50');
+        chk.innerHTML = '';
+        chk.classList.remove('bg-indigo-500', 'border-indigo-500');
+    } else {
+        _selectedTaskIds.add(sysId);
+        card.classList.add('border-indigo-500', 'bg-indigo-50');
+        chk.innerHTML = '<i class="fas fa-check text-white text-[8px]"></i>';
+        chk.classList.add('bg-indigo-500', 'border-indigo-500');
+    }
+    updateMergeBtn();
+}
+
+function updateMergeBtn() {
+    const btn = document.getElementById('mergeTasksBtn');
+    if (!btn) return;
+    if (_selectedTaskIds.size >= 2) {
+        btn.classList.remove('hidden');
+        btn.textContent = '';
+        btn.innerHTML = `<i class="fas fa-compress-arrows-alt mr-1"></i>Merge ${_selectedTaskIds.size} Tasks`;
+    } else {
+        btn.classList.add('hidden');
+    }
+}
+
+async function mergeSelectedTasks() {
+    if (_selectedTaskIds.size < 2) return;
+    if (!confirm(`Merge ${_selectedTaskIds.size} tasks into one?`)) return;
+    try {
+        const r = await fetch(`<?php echo $ip_port; ?>api/works/merge-tasks.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ work_sys_id: WORK_SYS_ID, task_ids: [..._selectedTaskIds] }),
+        });
+        const j = await r.json();
+        if (j.status === 'success') {
+            showToast('success', `Merged! New task: ${j.new_task_id}`);
+            await reloadConfirmedTasks();
+        } else showToast('error', j.message ?? 'Merge failed');
+    } catch { showToast('error', 'Network error'); }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1798,6 +1868,18 @@ function showToast(type,msg){
         e.preventDefault();
     });
 })();
+
+// Global — called by ww-air-ticket.js after task creation
+window.reloadConfirmedTasks = async function() {
+    try {
+        const r = await fetch(API.getWork + '?id=' + encodeURIComponent(WORK_SYS_ID));
+        const j = await r.json();
+        if (j.status === 'success') {
+            confirmedTasks = j.confirmed_tasks ?? [];
+            renderConfirmedTasks();
+        }
+    } catch {}
+};
 
 loadWork();
 loadDepts();
