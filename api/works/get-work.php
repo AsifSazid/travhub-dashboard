@@ -92,7 +92,18 @@ try {
     $completedTasks = count(array_filter($tasks, fn($t) => $t['status'] === 'done'));
 
     // Confirmed tasks (auto-created, not merged)
-    $confirmedTasks = array_values(array_filter($tasks, fn($t) => !empty($t['confirmation_sys_id']) && empty($t['is_merged'])));
+    $confirmedTasks = array_values(array_filter($tasks, function($t) {
+        $hasConfId = !empty($t['confirmation_sys_id'] ?? '');
+        $isMerged  = !empty($t['is_merged'] ?? 0);
+        return $hasConfId && !$isMerged;
+    }));
+
+    // Fallback — show all tasks if none have confirmation_sys_id
+    if (empty($confirmedTasks) && !empty($tasks)) {
+        $confirmedTasks = array_values(array_filter($tasks, fn($t) => empty($t['is_merged'] ?? 0)));
+    }
+
+    error_log('[get-work] work=' . $sysId . ' total_tasks=' . count($tasks) . ' confirmed_tasks=' . count($confirmedTasks));
 
     ob_clean();
     echo json_encode([
