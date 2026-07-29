@@ -142,7 +142,7 @@ try {
             if ($remaining <= 0.009) break;
             $useAmt = min((float)$adv['amount'], $remaining);
             // Advance used credit entry (rt=6) — vendor advance consume
-            $advIds  = generateIDs('financial_entries');
+            $advIds  = generateIDsSafe('financial_entries');
             $advMeta = buildMetaData(null, $userName);
             $pdo->prepare("
                 INSERT INTO financial_entries
@@ -201,7 +201,7 @@ try {
     }
 
     // financial_entries UUID আগেই generate — ac_banking_stmts.ref এ বসাবো
-    $mainPayIds = generateIDs('financial_entries');
+    $mainPayIds = generateIDsSafe('financial_entries');
 
     /* 5. ac_banking_stmts */
     $stmtIds  = generateIDs('ac_banking_stmts');
@@ -269,7 +269,7 @@ try {
     /* 8. Advance to Vendor (no selection) */
     $advanceSysId = null;
     if ($isAdvance) {
-        $advIds  = generateIDs('financial_entries');
+        $advIds  = generateIDsSafe('financial_entries');
         $advMeta = buildMetaData(null, $userName);
         $pdo->prepare("
             INSERT INTO financial_entries

@@ -141,53 +141,51 @@ function _saveRowFull(PDO $pdo, string $id, array $quotations, array $bookings, 
 // ── Phase 6: Auto-create task when confirmation → confirmed ───
 function _autoCreateTaskOnConfirmed(PDO $pdo, array $conf, string $workSysId, string $userName): ?string
 {
-    // Check if task already exists for this confirmation
-    $check = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? LIMIT 1");
-    $check->execute([$conf['sys_id']]);
-    if ($check->fetchColumn()) return null; // already created
+    try {
+        $checkStmt = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? AND work_sys_id = ? LIMIT 1");
+        $checkStmt->execute([$conf['sys_id'], $workSysId]);
+        $check = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        // if ($check) return null;
+        // if ($check->fetchColumn()) return null;
 
-    // Fetch work to get client info
-    $ws = $pdo->prepare("SELECT client_info, service_type FROM works WHERE sys_id = ? LIMIT 1");
-    $ws->execute([$workSysId]);
-    $work = $ws->fetch(PDO::FETCH_ASSOC);
-    if (!$work) return null;
+        $ws = $pdo->prepare("SELECT client_info FROM works WHERE sys_id = ? LIMIT 1");
+        $ws->execute([$workSysId]);
+        $work = $ws->fetch(PDO::FETCH_ASSOC);
+        // var_dump($check, $work);
+        // die;
+        if (!$work) return 'NO_WORK';
 
-    $ci         = json_decode($work['client_info'], true) ?? [];
-    $svcTypes   = json_decode($work['service_type'], true) ?? [];
-    $clientName = $ci['name'] ?? 'Unknown';
-    $clientSysId= $ci['sys_id'] ?? null;
+        $ci          = json_decode($work['client_info'], true) ?? [];
+        $clientName  = $ci['name']   ?? 'Unknown';
+        $clientSysId = $ci['sys_id'] ?? null;
+        $ticketNos   = implode(', ', $conf['ticket_nos'] ?? []);
+        $taskName    = 'Air Ticket' . ($ticketNos ? ' — ' . $ticketNos : ' — ' . $conf['sys_id']);
 
-    // Build task name from confirmation
-    $ticketNos  = implode(', ', $conf['ticket_nos'] ?? []);
-    $taskName   = 'Air Ticket' . ($ticketNos ? ' — ' . $ticketNos : ' — ' . $conf['sys_id']);
+        $sw = $pdo->prepare("SELECT sys_id FROM service_works WHERE work_sys_id = ? AND service_slug = 'air_ticket' LIMIT 1");
+        $sw->execute([$workSysId]);
+        $swSysId = $sw->fetchColumn() ?: null;
 
-    // Find service_work for air_ticket
-    $sw = $pdo->prepare("SELECT sys_id FROM service_works WHERE work_sys_id = ? AND service_slug = 'air_ticket' LIMIT 1");
-    $sw->execute([$workSysId]);
-    $swSysId = $sw->fetchColumn() ?: null;
+        require_once __DIR__ . '/../../server/sys_id_generator_v2.php';
+        require_once __DIR__ . '/../../server/generate_meta_data.php';
 
-    require_once __DIR__ . '/../../server/sys_id_generator_v2.php';
-    require_once __DIR__ . '/../../server/generate_meta_data.php';
+        $taskIds  = generateV2IDs($pdo, 'tasks');
+        $taskMeta = buildMetaData(null, $userName);
 
-    $taskIds  = generateV2IDs($pdo, 'tasks');
-    $taskMeta = buildMetaData(null, $userName);
+        $pdo->prepare("
+            INSERT INTO tasks (uuid, sys_id, service_work_sys_id, work_sys_id, client_sys_id, workname, client_name, status, service_slug, confirmation_sys_id, meta_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'air_ticket', ?, ?)
+        ")->execute([
+            $taskIds['uuid'], $taskIds['sys_id'],
+            $swSysId, $workSysId, $clientSysId,
+            $taskName, $clientName,
+            $conf['sys_id'], $taskMeta,
+        ]);
 
-    $pdo->prepare("
-        INSERT INTO tasks (
-            uuid, sys_id, service_work_sys_id, work_sys_id,
-            client_sys_id, workname, client_name,
-            status, overall_status, service_slug,
-            confirmation_sys_id, meta_data
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', 'air_ticket', ?, ?)
-    ")->execute([
-        $taskIds['uuid'], $taskIds['sys_id'],
-        $swSysId, $workSysId,
-        $clientSysId, $taskName, $clientName,
-        $conf['sys_id'],
-        $taskMeta,
-    ]);
+        return $taskIds['sys_id'];
 
-    return $taskIds['sys_id'];
+    } catch (Throwable $e) {
+        return 'ERR:' . $e->getMessage();
+    }
 }
 
 // ── Helper: short local ID generator (Q-001, B-001 etc) ──────
@@ -842,9 +840,17 @@ try {
 
             ob_clean();
             echo json_encode([
-                'status'       => 'success',
-                'message'      => 'Confirmed and task created',
-                'auto_task_id' => $autoTaskSysId,
+                'status'        => 'success',
+                'message'       => 'Confirmed and task created',
+                'auto_task_id'  => $autoTaskSysId,
+                '_debug'        => [
+                    'wSysId'        => $wSysId,
+                    'workSysId'     => $workSysId,
+                    'row_work'      => $row['work_sys_id'] ?? null,
+                    'confSysId'     => $confSysId,
+                    'confirmedConf' => $confirmedConf,
+                    'byWork'        => $byWork,
+                ],
             ]);
             break;
         }
