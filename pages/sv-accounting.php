@@ -1300,7 +1300,7 @@
             if (paymentAmt > 0) {
                 banner.classList.remove('hidden');
                 banner.className = 'rounded-lg p-3 text-sm font-medium bg-indigo-50 border border-indigo-300 text-indigo-800';
-                banner.innerHTML = `<i class="fas fa-piggy-bank mr-1"></i> কোনো Purchase select করা হয়নি — এই <strong>৳${paymentAmt.toFixed(2)}</strong> Vendor কে <strong>Advance</strong> হিসেবে দেওয়া হবে`;
+                banner.innerHTML = `<i class="fas fa-list-ol mr-1"></i> কোনো Purchase select করা হয়নি — <strong>৳${paymentAmt.toFixed(2)}</strong> সব unpaid purchases এ FIFO তে apply হবে`;
             } else {
                 banner.classList.add('hidden');
             }

@@ -179,9 +179,9 @@ try {
         throw new Exception('From account not found');
     }
 
-    if ($fromAccount['balance'] < $amount) {
-        throw new Exception('Insufficient balance');
-    }
+    // if ($fromAccount['balance'] < $amount) {
+    //     throw new Exception('Insufficient balance');
+    // }
 
     $newFromBalance = $fromAccount['balance'] - $amount;
 

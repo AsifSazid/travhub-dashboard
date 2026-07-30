@@ -1,12 +1,6 @@
 <?php
 // PATH: /api/vendors/ve-ac-payment-store.php
-// v3 — finance_helpers.php use করছে
-//   - NPSB → instant
-//   - overpayment_action: 'advance' | 'baksheesh'
-//   - use_vendor_advance + vendor_advance_amount
-//   - applyPaymentToPurchases() — purchase-wise payment entries (FIFO)
-//   - Discount support (rt=5)
-//   - Cheque/BFTN-EFT → instrument only
+// v4 — FIFO payment, single rt=4 entry, no advance on no-selection
 
 session_start();
 require '../../server/db_connection.php';
@@ -16,8 +10,6 @@ require '../../server/finance_helpers.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405); echo json_encode(['success'=>false,'message'=>'Method Not Allowed']); exit;
@@ -31,7 +23,7 @@ if (!$data) {
 /* ===== INPUT ===== */
 $vendorId            = $data['vendorId']            ?? null;
 $vendorName          = $data['vendorName']          ?? null;
-$amount              = $data['amount']              ?? 0;
+$amount              = (float)($data['amount']      ?? 0);
 $particular          = $data['particular']          ?? '';
 $transactionDate     = $data['transactionDate']     ?? date('Y-m-d H:i:s');
 $transferMethod      = strtolower($data['transferMethod'] ?? 'cash');
@@ -46,21 +38,19 @@ $discountParticular  = $data['discountParticular']  ?? '';
 $useVendorAdvance    = isset($data['use_vendor_advance']) ? (bool)$data['use_vendor_advance'] : false;
 $vendorAdvanceAmount = (float)($data['vendor_advance_amount'] ?? 0);
 
-// Cheque
-$chequeNo            = $data['chequeNo']            ?? '';
-$chequeDate          = $data['chequeDate']          ?? '';
-$chequeAccountName   = $data['chequeAccountName']   ?? '';
-$bankName            = $data['bankName']            ?? '';
-// BFTN
-$bftnNo              = $data['bftnNo']              ?? '';
-$bftnAccountName     = $data['bftnAccountName']     ?? '';
-$eftBankName         = $data['eftBankName']         ?? '';
-$bftnDate            = $data['bftnDate']            ?? '';
+$chequeNo          = $data['chequeNo']          ?? '';
+$chequeDate        = $data['chequeDate']        ?? '';
+$chequeAccountName = $data['chequeAccountName'] ?? '';
+$bankName          = $data['bankName']          ?? '';
+$bftnNo            = $data['bftnNo']            ?? '';
+$bftnAccountName   = $data['bftnAccountName']   ?? '';
+$eftBankName       = $data['eftBankName']       ?? '';
+$bftnDate          = $data['bftnDate']          ?? '';
 
 $userName = $_SESSION['user_name'] ?? 'system';
 
 /* ===== VALIDATION ===== */
-if (!is_numeric($amount) || $amount <= 0) {
+if ($amount <= 0) {
     http_response_code(400); echo json_encode(['success'=>false,'message'=>'Invalid amount']); exit;
 }
 if (!$vendorId) {
@@ -69,35 +59,46 @@ if (!$vendorId) {
 $cutoff = new DateTime('2026-02-01', new DateTimeZone('Asia/Dhaka'));
 $txnDt  = new DateTime($transactionDate, new DateTimeZone('Asia/Dhaka'));
 if ($txnDt >= $cutoff && isInstantMethod($transferMethod) && (!$accountId || !$accountName)) {
-    http_response_code(400); echo json_encode(['success'=>false,'message'=>'Account is required from 1 Feb 2026']); exit;
+    http_response_code(400); echo json_encode(['success'=>false,'message'=>'Account is required']); exit;
 }
 
 /* ===== INSTRUMENT ===== */
 if (isInstrumentMethod($transferMethod)) {
-    $instUrl = "https://travhub.com.bd/travhub-admin/api/acc-instrument-tracking/store.php";
-    $instPayload = [
-        "instrument_type" => strtoupper($transferMethod),
-        "instrument_no"   => $transferMethod === 'cheque' ? $chequeNo : $bftnNo,
-        "account_name"    => $transferMethod === 'cheque' ? $chequeAccountName : $bftnAccountName,
-        "bank_name"       => $transferMethod === 'cheque' ? $bankName : $eftBankName,
-        "instrument_date" => $transferMethod === 'cheque' ? ($chequeDate ?: date('Y-m-d')) : ($bftnDate ?: date('Y-m-d')),
-        "status"          => 'pending',
-        "date"            => date('Y-m-d'),
-        "remarks"         => $particular,
-        "related_type"    => 'payment',
-        "related_from"    => $accountId . ' || ' . $accountName,
-        "related_to"      => $vendorId . ' || ' . $vendorName,
-        "amount"          => $amount
-    ];
-    $ch = curl_init($instUrl);
-    curl_setopt_array($ch, [CURLOPT_POST=>true, CURLOPT_RETURNTRANSFER=>true,
-        CURLOPT_HTTPHEADER=>['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS=>json_encode($instPayload), CURLOPT_TIMEOUT=>10]);
-    $resp = curl_exec($ch); $err = curl_error($ch); curl_close($ch);
-    if ($err) { http_response_code(500); echo json_encode(['success'=>false,'message'=>'Instrument API failed']); exit; }
-    $res = json_decode($resp, true);
-    if (!$res || !$res['success']) { http_response_code(500); echo json_encode(['success'=>false,'message'=>'Instrument store failed']); exit; }
-    echo json_encode(['success'=>true,'message'=>'Instrument recorded. Pending clearance.','instrument'=>$res['data']]);
+    try {
+        $instIds  = generateIDs('AIT');
+        $instMeta = buildMetaData(null, $userName);
+        $instAccountName = $transferMethod === 'cheque' ? $chequeAccountName : $bftnAccountName;
+        $instBankName    = $transferMethod === 'cheque' ? $bankName          : $eftBankName;
+        $instDate        = $transferMethod === 'cheque' ? ($chequeDate ?: date('Y-m-d')) : ($bftnDate ?: date('Y-m-d'));
+        $instNo          = $transferMethod === 'cheque' ? $chequeNo : $bftnNo;
+
+        // finance_data — clear API তে purchase entries clear করার জন্য
+        $financeData = json_encode([
+            'vendor_id'           => $vendorId,
+            'vendor_name'         => $vendorName,
+            'selected_purchase_ids' => $selectedPurchaseIds,
+            'overpayment_action'  => $overpaymentAction,
+        ]);
+
+        $pdo->prepare("
+            INSERT INTO ac_instrument_tracking
+            (uuid, sys_id, instrument_type, trnx_type, instrument_no, payment_to,
+             account_name, bank_name, instrument_date, amount, related_type,
+             related_from, related_to, status, date, remarks, finance_data, meta_data)
+            VALUES (?, ?, ?, 'debit', ?, 'vendor', ?, ?, ?, ?, 'payment', ?, ?, 'pending', ?, ?, ?, ?)
+        ")->execute([
+            $instIds['uuid'], $instIds['sys_id'],
+            strtoupper($transferMethod), $instNo,
+            $instAccountName, $instBankName, $instDate,
+            $amount,
+            $accountId . ' || ' . $accountName,
+            $vendorId  . ' || ' . $vendorName,
+            date('Y-m-d'), $particular, $financeData, $instMeta
+        ]);
+        echo json_encode(['success'=>true,'message'=>'Instrument recorded. Pending clearance.','data'=>['sys_id'=>$instIds['sys_id']]]);
+    } catch (Throwable $e) {
+        echo json_encode(['success'=>false,'message'=>'Instrument store failed: '.$e->getMessage()]);
+    }
     exit;
 }
 
@@ -105,14 +106,28 @@ if (isInstrumentMethod($transferMethod)) {
 try {
     $pdo->beginTransaction();
 
-    $paymentAmount = (float)$amount;
+    /* ===== 1. Determine purchase targets =====
+     * Selection আছে → selected purchases
+     * Selection নেই → সব unpaid purchases FIFO তে
+     */
+    $hasSelection = !empty($selectedPurchaseIds);
 
-    /* 1. Purchase remaining calculate */
-    $totalRemaining  = 0;
-    $hasSelection    = !empty($selectedPurchaseIds);
-    $isAdvance       = !$hasSelection;
+    if (!$hasSelection) {
+        // সব unpaid/partial purchases load করি (FIFO)
+        $allPurchStmt = $pdo->prepare("
+            SELECT sys_id FROM financial_entries
+            WHERE user_sys_id = ? AND user_type = 'vendor'
+              AND type = 'credit' AND related_type = 2
+              AND is_paid = 0
+            ORDER BY date ASC, id ASC
+        ");
+        $allPurchStmt->execute([$vendorId]);
+        $selectedPurchaseIds = $allPurchStmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 
-    if ($hasSelection) {
+    /* ===== 2. Calculate total remaining ===== */
+    $totalRemaining = 0;
+    if (!empty($selectedPurchaseIds)) {
         $ph = implode(',', array_fill(0, count($selectedPurchaseIds), '?'));
         $pr = $pdo->prepare("SELECT sys_id, amount, is_paid, is_partial, ref FROM financial_entries WHERE sys_id IN ($ph)");
         $pr->execute(array_values($selectedPurchaseIds));
@@ -121,27 +136,26 @@ try {
         }
     }
 
-    /* 2. Vendor Advance consume */
-    $advanceUsed    = 0;
-    $advUsedEntryId = null;
-    if ($useVendorAdvance && $vendorAdvanceAmount > 0 && $hasSelection) {
-        // Net available advance
+    /* ===== 3. Vendor Advance consume ===== */
+    $advanceUsed = 0;
+    if ($useVendorAdvance && $vendorAdvanceAmount > 0 && !empty($selectedPurchaseIds)) {
         $crStmt = $pdo->prepare("SELECT sys_id, amount FROM financial_entries WHERE user_sys_id=? AND user_type='vendor' AND type='debit' AND related_type=6 ORDER BY date ASC, id ASC");
         $crStmt->execute([$vendorId]);
         $advEntries = $crStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $drStmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM financial_entries WHERE user_sys_id=? AND user_type='vendor' AND type='credit' AND related_type=6");
         $drStmt->execute([$vendorId]);
-        $alreadyUsed    = (float)$drStmt->fetchColumn();
-        $totalAdvDebit  = array_sum(array_column($advEntries, 'amount'));
-        $netAvailable   = max(0, $totalAdvDebit - $alreadyUsed);
-        $toConsume      = min($vendorAdvanceAmount, $netAvailable);
-        $remaining      = $toConsume;
+        $alreadyUsed   = (float)$drStmt->fetchColumn();
+        $totalAdvDebit = array_sum(array_column($advEntries, 'amount'));
+        $netAvailable  = max(0, $totalAdvDebit - $alreadyUsed);
+        $toConsume     = min($vendorAdvanceAmount, $netAvailable);
+        $remaining     = $toConsume;
 
         foreach ($advEntries as $adv) {
             if ($remaining <= 0.009) break;
             $useAmt = min((float)$adv['amount'], $remaining);
-            // Advance used credit entry (rt=6) — vendor advance consume
+
+            // Advance credit entry (consume)
             $advIds  = generateIDsSafe('financial_entries');
             $advMeta = buildMetaData(null, $userName);
             $pdo->prepare("
@@ -153,39 +167,26 @@ try {
             ")->execute([
                 $advIds['uuid'], $advIds['sys_id'],
                 $vendorId, $vendorName,
-                $transactionDate, 'Advance Used: Purchase payment',
+                $transactionDate, 'Advance Used: ' . $particular,
                 $useAmt, $adv['sys_id'], $advMeta
             ]);
             $advanceUsed += $useAmt;
             $remaining   -= $useAmt;
         }
-
-        // Advance used এর effective payment — purchase entries এ apply করি
-        if ($advanceUsed > 0.009) {
-            $advRes = applyPaymentToPurchases(
-                $pdo, $selectedPurchaseIds, $advanceUsed,
-                $vendorId, $vendorName, $transactionDate,
-                'Vendor Advance Used: ' . $particular, $userName
-            );
-            // totalRemaining কমাই
-            $totalRemaining = max(0, $totalRemaining - $advanceUsed);
-        }
+        $totalRemaining = max(0, $totalRemaining - $advanceUsed);
     }
 
-    /* 3. Overpayment */
-    $cashPayment   = $paymentAmount; // bank থেকে যাচ্ছে
-    $clearWithCash = $hasSelection ? min($cashPayment, $totalRemaining) : $cashPayment;
-    $overpayAmount = ($hasSelection && $cashPayment > $totalRemaining + 0.009)
-        ? $cashPayment - $totalRemaining : 0;
+    /* ===== 4. Overpayment calculate ===== */
+    $cashToClear   = !empty($selectedPurchaseIds) ? min($amount, $totalRemaining) : $amount;
+    $overpayAmount = !empty($selectedPurchaseIds) && $amount > $totalRemaining + 0.009
+        ? $amount - $totalRemaining : 0;
 
-    /* 4. Bank update */
+    /* ===== 5. Bank update ===== */
     $accR = $pdo->prepare("SELECT balance FROM ac_banking WHERE sys_id = ? FOR UPDATE");
     $accR->execute([$accountId]);
     $acc = $accR->fetch(PDO::FETCH_ASSOC);
     if (!$acc) throw new Exception('Account not found');
     $curBal = (float)$acc['balance'];
-
-    if (!$isHistorical && $curBal < $paymentAmount) throw new Exception('Insufficient balance');
 
     $openR = $pdo->prepare("SELECT MIN(date) FROM ac_banking_stmts WHERE ledger_db_id=? AND particular='Opening Balance'");
     $openR->execute([$accountId]);
@@ -195,69 +196,94 @@ try {
     $daysDiff = (int)$pdo->query("SELECT DATEDIFF(NOW(), '{$transactionDate}')")->fetchColumn();
     if (!$isHistorical && $daysDiff > 10) throw new Exception('Backdated entry limit is 10 days.');
 
-    $newBal = $isHistorical ? $curBal : ($curBal - $paymentAmount);
+    $newBal = $isHistorical ? $curBal : ($curBal - $amount);
     if (!$isHistorical) {
         $pdo->prepare("UPDATE ac_banking SET balance=? WHERE sys_id=?")->execute([$newBal, $accountId]);
     }
 
-    // financial_entries UUID আগেই generate — ac_banking_stmts.ref এ বসাবো
-    $mainPayIds = generateIDsSafe('financial_entries');
-
-    /* 5. ac_banking_stmts */
-    $stmtIds  = generateIDs('ac_banking_stmts');
+    /* ===== 6. ac_banking_stmts ===== */
+    $stmtIds  = generateIDsSafe('ac_banking_stmts');
     $stmtMeta = buildMetaData(null, $userName);
     $pdo->prepare("
         INSERT INTO ac_banking_stmts
         (uuid, sys_id, ledger_db_id, name, date, particular,
-         withdraw, deposit, balance, transfer_method, related_type, meta_data, is_historical, ref)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 2, ?, ?, ?)
+         withdraw, deposit, balance, transfer_method, related_type, meta_data, is_historical)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 2, ?, ?)
     ")->execute([
         $stmtIds['uuid'], $stmtIds['sys_id'],
         $accountId, $accountName, $transactionDate, $particular,
-        $paymentAmount, $newBal, $transferMethod, $stmtMeta, $isHistorical,
-        $mainPayIds['sys_id']
+        $amount, $newBal, $transferMethod, $stmtMeta, $isHistorical
     ]);
     $stmtSysId = $stmtIds['sys_id'];
 
-    /* 6. Purchase-wise payment entries via helper (FIFO, per-purchase) */
-    $payEntryIds = [];
-    $appliedAmt  = 0;
-    if ($hasSelection && $clearWithCash > 0.009) {
-        $res = applyPaymentToPurchases(
-            $pdo, $selectedPurchaseIds, $clearWithCash,
-            $vendorId, $vendorName, $transactionDate, $particular, $userName
-        );
-        $payEntryIds = $res['payment_entry_ids'];
-        $appliedAmt  = $res['applied'];
+    /* ===== 7. FIFO purchase status update =====
+     * applyPaymentToPurchases() বাদ দিয়ে manually করছি
+     * কারণ Option B: একটাই rt=4 entry চাই
+     */
+    $appliedAmt = 0;
+    if (!empty($selectedPurchaseIds) && $cashToClear > 0.009) {
+        $ph = implode(',', array_fill(0, count($selectedPurchaseIds), '?'));
+        $purchStmt = $pdo->prepare("SELECT sys_id, amount, is_paid, is_partial, ref FROM financial_entries WHERE sys_id IN ($ph) ORDER BY date ASC, id ASC");
+        $purchStmt->execute(array_values($selectedPurchaseIds));
+        $purchases = $purchStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $remaining = $cashToClear;
+        foreach ($purchases as $purch) {
+            if ($remaining <= 0.009) break;
+            if ((int)$purch['is_paid'] === 1) continue;
+
+            $purchRemaining = getPurchaseRemaining($pdo, $purch);
+            if ($purchRemaining <= 0.009) {
+                $pdo->prepare("UPDATE financial_entries SET is_paid=1, is_partial=0 WHERE sys_id=?")
+                    ->execute([$purch['sys_id']]);
+                continue;
+            }
+
+            $payThis   = min($purchRemaining, $remaining);
+            $fullCover = ($payThis >= $purchRemaining - 0.009);
+
+            if ($fullCover) {
+                $pdo->prepare("UPDATE financial_entries SET is_paid=1, is_partial=0 WHERE sys_id=?")
+                    ->execute([$purch['sys_id']]);
+            } else {
+                $pdo->prepare("UPDATE financial_entries SET is_partial=1 WHERE sys_id=?")
+                    ->execute([$purch['sys_id']]);
+            }
+
+            $appliedAmt += $payThis;
+            $remaining  -= $payThis;
+        }
     }
 
-    // Main summary payment entry (rt=4) — ac_banking_stmts.ref এ এটার sys_id বসানো হয়েছে
-    if (!$isAdvance) {
-        $isPartial  = $hasSelection && ($paymentAmount < $totalRemaining - 0.009);
-        $payEntAmt  = $hasSelection ? min($paymentAmount, $totalRemaining) : $paymentAmount;
-        $payRef     = !empty($selectedPurchaseIds) ? json_encode(array_values($selectedPurchaseIds)) : $stmtSysId;
-        $payMeta2   = buildMetaData(null, $userName);
-        $pdo->prepare("
-            INSERT INTO financial_entries
-            (uuid, sys_id, user_sys_id, user_name, user_type,
-             date, purpose, type, related_type,
-             is_paid, is_partial, is_discounted, amount, ref, meta_data)
-            VALUES (?, ?, ?, ?, 'vendor', ?, ?, 'debit', 4, 1, ?, 0, ?, ?, ?)
-        ")->execute([
-            $mainPayIds['uuid'], $mainPayIds['sys_id'],
-            $vendorId, $vendorName,
-            $transactionDate, $particular,
-            $isPartial ? 1 : 0,
-            $payEntAmt,
-            $payRef,
-            $payMeta2
-        ]);
-        $payEntryIds[] = $mainPayIds['sys_id'];
-    }
+    /* ===== 8. Single rt=4 payment entry ===== */
+    $payIds  = generateIDsSafe('financial_entries');
+    $payMeta = buildMetaData(null, $userName);
+    $payRef  = !empty($selectedPurchaseIds) ? json_encode(array_values($selectedPurchaseIds)) : $stmtSysId;
+    $isPartial = !empty($selectedPurchaseIds) && ($cashToClear < $totalRemaining - 0.009);
 
-    /* 7. Discount */
+    $pdo->prepare("
+        INSERT INTO financial_entries
+        (uuid, sys_id, user_sys_id, user_name, user_type,
+         date, purpose, type, related_type,
+         is_paid, is_partial, is_discounted, amount, ref, meta_data)
+        VALUES (?, ?, ?, ?, 'vendor', ?, ?, 'debit', 4, 1, ?, 0, ?, ?, ?)
+    ")->execute([
+        $payIds['uuid'], $payIds['sys_id'],
+        $vendorId, $vendorName,
+        $transactionDate, $particular,
+        $isPartial ? 1 : 0,
+        $amount,  // full amount (bank statement এর সাথে match)
+        $payRef,
+        $payMeta
+    ]);
+
+    // ac_banking_stmts.ref update
+    $pdo->prepare("UPDATE ac_banking_stmts SET ref=? WHERE sys_id=?")
+        ->execute([$payIds['sys_id'], $stmtSysId]);
+
+    /* ===== 9. Discount ===== */
     $discountSysId = null;
-    if ($withDiscount && $discountAmount > 0 && $hasSelection) {
+    if ($withDiscount && $discountAmount > 0 && !empty($selectedPurchaseIds)) {
         $discountSysId = insertDiscountEntry(
             $pdo, $discountAmount, 'vendor',
             $vendorId, $vendorName, $transactionDate,
@@ -266,27 +292,7 @@ try {
         );
     }
 
-    /* 8. Advance to Vendor (no selection) */
-    $advanceSysId = null;
-    if ($isAdvance) {
-        $advIds  = generateIDsSafe('financial_entries');
-        $advMeta = buildMetaData(null, $userName);
-        $pdo->prepare("
-            INSERT INTO financial_entries
-            (uuid, sys_id, user_sys_id, user_name, user_type,
-             date, purpose, type, related_type,
-             is_paid, is_partial, is_discounted, amount, ref, meta_data)
-            VALUES (?, ?, ?, ?, 'vendor', ?, ?, 'debit', 6, 1, 0, 0, ?, ?, ?)
-        ")->execute([
-            $advIds['uuid'], $advIds['sys_id'],
-            $vendorId, $vendorName,
-            $transactionDate, 'Advance to Vendor: ' . $particular,
-            $paymentAmount, $stmtSysId, $advMeta
-        ]);
-        $advanceSysId = $advIds['sys_id'];
-    }
-
-    /* 9. Overpayment → Advance or Baksheesh */
+    /* ===== 10. Overpayment ===== */
     $overpayEntrySysId = null;
     if ($overpayAmount > 0.009) {
         $overpayEntrySysId = handleOverpayment(
@@ -296,33 +302,45 @@ try {
         );
     }
 
-    /* 10. Backdated recalc */
+    /* ===== 11. Backdated recalc ===== */
     if (!$isHistorical && $daysDiff > 0) {
         recalculateBalances($pdo, $accountId, $transactionDate);
     }
 
     $pdo->commit();
 
+    // Remaining due calculate
+    $totalDue = 0;
+    if (!empty($selectedPurchaseIds)) {
+        $ph2 = implode(',', array_fill(0, count($selectedPurchaseIds), '?'));
+        $remStmt = $pdo->prepare("SELECT sys_id, amount, is_paid, is_partial, ref FROM financial_entries WHERE sys_id IN ($ph2)");
+        $remStmt->execute(array_values($selectedPurchaseIds));
+        foreach ($remStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $totalDue += getPurchaseRemaining($pdo, $row);
+        }
+    }
+
+    $message = $isHistorical
+        ? 'Historical entry recorded'
+        : ($totalDue > 0.009
+            ? "Payment recorded. Remaining due: ৳" . number_format($totalDue, 2)
+            : 'Payment recorded successfully — all selected purchases cleared');
+
     echo json_encode([
-        'success'            => true,
-        'message'            => $isHistorical ? 'Historical entry recorded'
-            : ($isAdvance ? 'Advance to vendor recorded (৳' . number_format($paymentAmount, 2) . ')'
-                : ($overpayAmount > 0.009
-                    ? 'Payment recorded. Overpayment ৳' . number_format($overpayAmount, 2) . ' → ' . ucfirst($overpaymentAction)
-                    : 'Payment recorded successfully')),
-        'is_historical'      => $isHistorical,
-        'is_advance'         => $isAdvance,
-        'advance_used'       => $advanceUsed,
-        'overpayment_amount' => $overpayAmount,
-        'overpayment_action' => $overpaymentAction,
+        'success'           => true,
+        'message'           => $message,
+        'is_historical'     => $isHistorical,
+        'advance_used'      => $advanceUsed,
+        'overpayment_amount'=> $overpayAmount,
+        'remaining_due'     => $totalDue,
         'data' => [
-            'bank_stmt_id'       => $stmtSysId,
-            'payment_entry_ids'  => $payEntryIds,
-            'discount_entry_id'  => $discountSysId,
-            'advance_entry_id'   => $advanceSysId,
-            'overpay_entry_id'   => $overpayEntrySysId,
-            'new_balance'        => $newBal,
-            'applied_amount'     => $appliedAmt,
+            'bank_stmt_id'      => $stmtSysId,
+            'payment_entry_id'  => $payIds['sys_id'],
+            'payment_entry_ids' => [$payIds['sys_id']],
+            'discount_entry_id' => $discountSysId,
+            'overpay_entry_id'  => $overpayEntrySysId,
+            'new_balance'       => $newBal,
+            'applied_amount'    => $appliedAmt,
         ]
     ]);
 
