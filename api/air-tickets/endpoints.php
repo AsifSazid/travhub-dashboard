@@ -91,6 +91,8 @@ function _decodeRow(array $row): array
     foreach (['at_quotations', 'at_bookings', 'at_confirmations'] as $col) {
         $row[$col] = (isset($row[$col]) && $row[$col]) ? json_decode($row[$col], true) : [];
     }
+    // Decode commands
+    $row['commands'] = (isset($row['commands']) && $row['commands']) ? json_decode($row['commands'], true) : null;
     // Legacy at_confirmation (single object) → migrate to array
     if (isset($row['at_confirmation']) && $row['at_confirmation']) {
         $single = json_decode($row['at_confirmation'], true);
@@ -142,17 +144,14 @@ function _saveRowFull(PDO $pdo, string $id, array $quotations, array $bookings, 
 function _autoCreateTaskOnConfirmed(PDO $pdo, array $conf, string $workSysId, string $userName): ?string
 {
     try {
-        $checkStmt = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? AND work_sys_id = ? LIMIT 1");
-        $checkStmt->execute([$conf['sys_id'], $workSysId]);
+        $checkStmt = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? LIMIT 1");
+        $checkStmt->execute([$conf['sys_id']]);
         $check = $checkStmt->fetch(PDO::FETCH_ASSOC);
-        // if ($check) return null;
-        // if ($check->fetchColumn()) return null;
+        if ($check) return null;
 
         $ws = $pdo->prepare("SELECT client_info FROM works WHERE sys_id = ? LIMIT 1");
         $ws->execute([$workSysId]);
         $work = $ws->fetch(PDO::FETCH_ASSOC);
-        // var_dump($check, $work);
-        // die;
         if (!$work) return 'NO_WORK';
 
         $ci          = json_decode($work['client_info'], true) ?? [];

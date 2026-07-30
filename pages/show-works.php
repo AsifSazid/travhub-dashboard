@@ -34,7 +34,7 @@ $deepLinkSw = $_GET['sw'] ?? '';
         /* ── Layout ─────────────────────────────────────────── */
         #pageContent { display:flex; flex-direction:column; height:calc(100vh - 64px); }
         #bodyWrap    { display:flex; flex:1; overflow:hidden; }
-        #mainArea    { flex:1; overflow-y:auto; padding:0px 16px 16px 16px; }
+        #mainArea    { flex:1; overflow-y:auto; padding:16px; }
         #rightSidebar{
             width:288px; flex-shrink:0;
             border-left:1px solid #f1f5f9;
@@ -913,14 +913,23 @@ function renderSvcInfoStrip(slug) {
         if (svcData.segment_type) chips.push(`<span class="font-medium text-sky-600">${segLabels[svcData.segment_type] ?? svcData.segment_type}</span>`);
         const segs = svcData.segments ?? [];
         segs.forEach(seg => {
-            const from  = seg.from_city  || seg.from  || '';
-            const to    = seg.to_city    || seg.to    || '';
-            const route = from && to ? `${from} → ${to}` : (seg.route || '');
-            const date  = seg.travel_date || seg.date || '';
-            if (route) chips.push(`<span class="flex items-center gap-1"><i class="fas fa-plane text-sky-400 text-[9px]"></i>${esc(route)}${date ? ' <span class="text-gray-400">'+esc(date)+'</span>' : ''}</span>`);
+            const from = seg.from_city || seg.from || (seg.route?.split(/[=\-→]/)[0]?.trim()) || '';
+            const to   = seg.to_city   || seg.to   || (seg.route?.split(/[=\-→]/).pop()?.trim()) || '';
+            const date = seg.departure_date || seg.travel_date || seg.date || '';
+            const dateStr = date ? ` <span class="text-gray-400">(${fmtDateShort(date)})</span>` : '';
+            if (from || to) chips.push(`<span class="flex items-center gap-1"><i class="fas fa-plane text-sky-400 text-[9px]"></i>${esc(from)} → ${esc(to)}${dateStr}</span>`);
         });
-        if (svcData.pax)          chips.push(`<span><i class="fas fa-user text-gray-300 mr-1"></i>${esc(String(svcData.pax))} Pax</span>`);
-        if (svcData.cabin_class)  chips.push(`<span class="capitalize">${esc(svcData.cabin_class)}</span>`);
+        // Pax breakdown
+        const pa = svcData.pax_adult ?? '', pc = svcData.pax_child ?? '', pi = svcData.pax_infant ?? '';
+        if (pa !== '' || pc !== '' || pi !== '') {
+            const paxStr = [pa !== '' ? `${pa}A` : '', pc !== '' ? `${pc}C` : '', pi !== '' ? `${pi}I` : ''].filter(Boolean).join(' ');
+            chips.push(`<span class="text-gray-600 font-medium">${paxStr}</span>`);
+        } else if (svcData.pax) {
+            chips.push(`<span><i class="fas fa-user text-gray-300 mr-1"></i>${esc(String(svcData.pax))} Pax</span>`);
+        }
+        // Flexibility from first segment
+        const flex = segs[0]?.date_flexibility || '';
+        if (flex) chips.push(`<span class="text-gray-400 text-[10px]">${esc(flex)}</span>`);
 
     } else if (slug === 'hotel') {
         const segs = svcData.segments ?? [];
@@ -1821,6 +1830,7 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function badgeHtml(status){const m={open:['badge-open','🟡 Open'],in_progress:['badge-in_progress','🔵 In Progress'],done:['badge-done','✅ Done'],cancelled:['badge-cancelled','❌ Cancelled']};const[cls,label]=m[status]??['',status];return`<span class="badge ${cls}">${label}</span>`;}
 function fmtDate(s){if(!s)return'—';const m=s.match(/^(\d{2})-(\d{2})-(\d{4})/);if(m)return`${m[1]} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[3]}`;return s;}
+function fmtDateShort(s){if(!s)return'';const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)||s.match(/^(\d{2})-(\d{2})-(\d{4})/);if(!m)return s;const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];if(s.match(/^\d{4}/))return`${+m[3]} ${months[+m[2]-1]}`;return`${+m[1]} ${months[+m[2]-1]}`;}
 
 function showToast(type,msg){
     const inner=document.getElementById('toastInner');

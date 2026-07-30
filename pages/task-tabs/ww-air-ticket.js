@@ -239,6 +239,47 @@ function _renderMindboard() {
 
     // ── Close menus — handled by _attachMenuDelegation IIFE ──
     atLoadNotes();
+
+    // ── GDS Panel: wrap mindboard in flex row ─────────────────
+    const mbPanel = document.getElementById('at-panel-mindboard');
+    if (mbPanel && !mbPanel.querySelector('#at-gds-panel')) {
+        const saved = localStorage.getItem('at_gds_width');
+        const gdsW  = saved ? saved + 'px' : '340px';
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;height:100%;';
+        // Move panel children into left div
+        const leftDiv = document.createElement('div');
+        leftDiv.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;';
+        while (mbPanel.firstChild) leftDiv.appendChild(mbPanel.firstChild);
+        // Divider
+        const divider = document.createElement('div');
+        divider.id = 'at-gds-divider';
+        divider.style.cssText = 'width:4px;background:#f1f5f9;cursor:col-resize;flex-shrink:0;transition:background .15s;';
+        divider.onmouseover = () => divider.style.background = '#6366f1';
+        divider.onmouseout  = () => divider.style.background = '#f1f5f9';
+        // GDS panel
+        const gdsDiv = document.createElement('div');
+        gdsDiv.id = 'at-gds-panel';
+        gdsDiv.style.cssText = `width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow:hidden;`;
+        gdsDiv.innerHTML = `
+            <div style="background:#1C2340;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <div style="flex:1;"><div style="color:#fff;font-size:12px;font-weight:700;">GDS Commands</div>
+                <div style="color:#50BC81;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Stage — Research</div></div>
+                <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
+            </div>
+            <div style="overflow-y:auto;flex:1;">
+                <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(_gdsGetDerivedFacts())}</div>
+                ${_atData?.commands?.mindboard
+                    ? _gdsRenderStoredCommands(_atData.commands.mindboard)
+                    : _gdsCommandsHtml('1', _gdsGetDerivedFacts())}
+            </div>`;
+        wrapper.appendChild(leftDiv);
+        wrapper.appendChild(divider);
+        wrapper.appendChild(gdsDiv);
+        mbPanel.style.cssText = 'display:flex;flex-direction:column;padding:0;overflow:hidden;';
+        mbPanel.appendChild(wrapper);
+        _gdsInitDivider(divider, gdsDiv);
+    }
 }
 
 // ── File select handler ──────────────────────────────────────
@@ -1781,6 +1822,8 @@ function _renderQuotation() {
             </div>
         </div>
     </div>`;
+
+    _gdsInjectPanel(panel, '2');
 }
 
 function _qPhaseInfo(q) {
@@ -1983,6 +2026,8 @@ function _renderBooking() {
             </div>
         </div>
     </div>`;
+
+    _gdsInjectPanel(panel, '3');
 }
 
 function _bCard(b) {
@@ -2257,6 +2302,8 @@ function _renderConfirmation() {
             </div>
         </div>
     </div>`;
+
+    _gdsInjectPanel(panel, '4');
 }
 
 function _confCard(c, bookings) {
@@ -3057,5 +3104,369 @@ window.atT = function(type, msg) {
     if (typeof showToast === 'function') { showToast(type, msg); return; }
     console.log(`[${type}] ${msg}`);
 };
+
+
+// ════════════════════════════════════════════════════════════
+// GDS COMMAND GENERATOR
+// ════════════════════════════════════════════════════════════
+
+function _gdsInjectPanel(panel, stage) {
+    const stageMap = {'1':'mindboard','2':'quotation','3':'booking','4':'confirmation'};
+    const stageKey = stageMap[stage] ?? 'mindboard';
+
+    // Use stored commands from DB if available
+    const storedCmds = _atData?.commands?.[stageKey] ?? null;
+
+    const existing = panel.innerHTML;
+    const saved = localStorage.getItem('at_gds_width');
+    const gdsW = saved ? saved + 'px' : '340px';
+
+    const facts = _gdsGetDerivedFacts();
+    const cmdHtml = storedCmds
+        ? _gdsRenderStoredCommands(storedCmds)
+        : _gdsCommandsHtml(stage, facts);
+
+    panel.innerHTML = `
+    <div style="display:flex;gap:0;align-items:stretch;height:100%;min-height:400px;">
+        <div style="flex:1;min-width:0;overflow-y:auto;">${existing}</div>
+        <div style="display:flex;align-items:stretch;">
+            <div id="at-gds-divider-${stage}" style="width:4px;background:#f1f5f9;cursor:col-resize;flex-shrink:0;transition:background .15s;"
+                onmouseover="this.style.background='#6366f1'"
+                onmouseout="this.style.background='#f1f5f9'"></div>
+            <div id="at-gds-panel-${stage}" style="width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="background:#1C2340;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <div style="flex:1;">
+                        <div style="color:#fff;font-size:12px;font-weight:700;">GDS Commands</div>
+                        <div style="color:#50BC81;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Stage — ${{'1':'Research','2':'Quotation','3':'Booking','4':'Documents'}[stage]??stage}</div>
+                    </div>
+                    <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
+                </div>
+                <div style="overflow-y:auto;flex:1;">
+                    <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>
+                    ${cmdHtml}
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    setTimeout(() => {
+        const divider  = document.getElementById(`at-gds-divider-${stage}`);
+        const gdsPanel = document.getElementById(`at-gds-panel-${stage}`);
+        _gdsInitDivider(divider, gdsPanel);
+    }, 0);
+}
+
+let _gdsNotesVisible = true;
+function _gdsRenderStoredCommands(cmds) {
+    if (!cmds || !cmds.length) return '<div style="padding:16px;color:#4A5372;font-size:12px;">No commands generated yet.</div>';
+
+    const tok = s => String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    let n = 0;
+    const allCmds = cmds.filter(c => !c.divider).map(c => c.cmd || '');
+    const copyAll = JSON.stringify(allCmds);
+
+    const html = cmds.map(c => {
+        if (c.divider) return `<div style="padding:10px 14px 4px;color:#4A5372;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;">${tok(c.label??'')}</div>`;
+        n++;
+        const cmd = tok(c.cmd ?? '');
+        const note = tok(c.note ?? '');
+        return `<div class="gds-cmd-row" style="display:flex;align-items:baseline;padding:3px 14px;border-left:2px solid transparent;cursor:pointer;"
+            onclick="(function(t){if(navigator.clipboard)navigator.clipboard.writeText(t);var el=document.getElementById('at-gds-toast');if(el){el.textContent=t+' copied';el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})(${JSON.stringify(c.cmd??'')})"
+            onmouseover="this.style.background='rgba(255,255,255,.045)';this.style.borderLeftColor='rgba(80,188,129,.5)'"
+            onmouseout="this.style.background='';this.style.borderLeftColor='transparent'">
+            <span style="color:#4A5372;width:24px;flex-shrink:0;font-size:10px;font-family:monospace;">${String(n).padStart(2,'0')}</span>
+            <span style="color:#E8ECF5;white-space:pre;letter-spacing:.02em;font-family:monospace;font-size:13px;">${cmd}</span>
+            <span class="gds-note" style="color:#5E6883;font-size:11px;margin-left:auto;padding-left:20px;white-space:nowrap;flex-shrink:0;">${note}</span>
+        </div>`;
+    }).join('');
+
+    return `
+    <div style="background:rgba(0,0,0,.15);padding:8px 14px;display:flex;align-items:center;gap:8px;">
+        <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
+        <button onclick="(function(){var c=${copyAll};if(navigator.clipboard)navigator.clipboard.writeText(c.join('\\n'));var el=document.getElementById('at-gds-toast');if(el){el.textContent=c.length+' lines copied';el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})()"
+            style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">
+            Copy all
+        </button>
+    </div>
+    <div style="font-family:monospace;padding:4px 0 12px;">${html}</div>
+    <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
+}
+
+function _gdsToggleNotes() {
+    _gdsNotesVisible = !_gdsNotesVisible;
+    const btn = document.getElementById('at-gds-notes-btn');
+    if (btn) btn.textContent = _gdsNotesVisible ? 'Notes on' : 'Notes off';
+    document.querySelectorAll('.gds-note').forEach(el => {
+        el.style.display = _gdsNotesVisible ? '' : 'none';
+    });
+}
+
+function _gdsInitDivider(divider, gdsPanel) {
+    if (!divider || !gdsPanel) return;
+    let startX, startW;
+    divider.addEventListener('mousedown', e => {
+        startX = e.clientX; startW = gdsPanel.offsetWidth;
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+        function onMove(e) {
+            const newW = Math.min(600, Math.max(180, startW - (e.clientX - startX)));
+            gdsPanel.style.width = newW + 'px';
+        }
+        function onUp() {
+            localStorage.setItem('at_gds_width', gdsPanel.offsetWidth);
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        e.preventDefault();
+    });
+}
+
+function _gdsGetDerivedFacts() {
+    const atData  = _atData ?? {};
+    const segs    = atData.segments_json ?? // from quotation
+                    (atData.at_quotations?.[0]?.segments_json ?? []);
+    const pricingJson = atData.at_quotations?.[0]?.pricing_json ?? [];
+
+    // Pax breakdown from pricing
+    let adtCount = 0, chdCount = 0, infCount = 0;
+    pricingJson.forEach(p => {
+        if (p.type === 'ADT') adtCount = p.pax ?? 1;
+        if (p.type === 'CHD') chdCount = p.pax ?? 0;
+        if (p.type === 'INF') infCount = p.pax ?? 0;
+    });
+    const totalPax  = adtCount + chdCount + infCount;
+    const seatCount = adtCount + chdCount; // infants take no seat
+
+    // Carrier from first segment
+    const firstSeg  = segs[0] ?? {};
+    const airline   = atData.at_quotations?.[0]?.airline ?? firstSeg.airline ?? firstSeg.carrier ?? '??';
+    const airlineCode = airline.length > 2 ? airline.substring(0,2).toUpperCase() : airline.toUpperCase();
+
+    // Route
+    const routes = segs.map(s => (s.from || s.origin || '') + '-' + (s.to || s.destination || '')).filter(Boolean);
+
+    // Traveler names from _cfg
+    const travelers = _cfg?.travelers ?? [];
+    const agent = (window.CURRENT_USER ?? 'AGENT').split(' ').map(w=>w[0]).join('').toUpperCase() || 'AGENT';
+
+    // Booking ref
+    const booking = atData.at_bookings?.[0] ?? {};
+    const pnr = booking.pnr ?? booking.locator ?? '';
+
+    // Dates from segments
+    const dates = segs.map(s => s.date || s.departure_date || '').filter(Boolean);
+
+    return { adtCount, chdCount, infCount, totalPax, seatCount, airlineCode, airline, routes, segs, travelers, agent, pnr, dates };
+}
+
+function _gdsDerivedFactsHtml(facts) {
+    const { adtCount, chdCount, infCount, totalPax, seatCount, airlineCode, routes, segs, agent, pnr } = facts;
+    const paxBreak = [adtCount&&`${adtCount} ADT`, chdCount&&`${chdCount} CHD`, infCount&&`${infCount} INF`].filter(Boolean).join(' · ');
+
+    const factsData = [
+        { label:'Passengers', value: totalPax, sub: paxBreak },
+        { label:'Seats to sell', value: seatCount, sub: 'infant takes no seat', flag: true },
+        { label:'Carrier', value: airlineCode, sub: 'plating carrier', flag: true },
+        { label:'Segments', value: segs.length, sub: routes.join(' · ') },
+        { label:'Agent', value: agent, sub: `saves as R.${agent}` },
+        pnr ? { label:'PNR', value: pnr, sub: 'record locator' } : null,
+    ].filter(Boolean);
+
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:1px;background:#E2E6EE;border:1px solid #E2E6EE;margin-bottom:12px;">
+        ${factsData.map(f=>`
+        <div style="background:#fff;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#8A93A8;margin-bottom:3px;">${f.label}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:${f.flag?'#2E8F5B':'#1A2039'};">${f.value||'—'}</div>
+            ${f.sub?`<div style="font-size:10px;color:#8A93A8;margin-top:2px;">${f.sub}</div>`:''}
+        </div>`).join('')}
+    </div>`;
+}
+
+function _gdsCommandsHtml(stage, facts) {
+    const { adtCount, chdCount, infCount, seatCount, airlineCode, segs, routes, agent, pnr, dates } = facts;
+    const q = _atData?.at_quotations?.[0] ?? {};
+    const totalFare = q.gross_fare ? Number(q.gross_fare).toLocaleString('en-BD') : '???';
+
+    const STAGES = {
+        '1': {
+            title: 'Research',
+            warning: { type:'note', text:'Fares are a snapshot — prices can move before booking.' },
+            lines: [
+                ['d', 'Schedules'],
+                ...segs.map((s,i) => {
+                    const from = s.from || s.origin || 'DAC';
+                    const to   = s.to   || s.destination || '???';
+                    const date = s.date || s.departure_date || '???';
+                    const carr = s.airline || s.carrier || airlineCode;
+                    return [`TT${date}${from}${to}/${carr}`, `Timetable ${from}-${to}`];
+                }),
+                ['d', 'Live seat availability'],
+                ...segs.map((s,i) => {
+                    const from = s.from || s.origin || 'DAC';
+                    const to   = s.to   || s.destination || '???';
+                    const date = s.date || s.departure_date || '???';
+                    const carr = s.airline || s.carrier || airlineCode;
+                    return [`A${date}${from}${to}*${carr}`, `Sector ${i+1}`];
+                }),
+                ['d', 'Priced shopping'],
+                ...segs.map((s,i) => {
+                    const from = s.from || s.origin || 'DAC';
+                    const to   = s.to   || s.destination || '???';
+                    const date = s.date || s.departure_date || '???';
+                    const carr = s.airline || s.carrier || airlineCode;
+                    const paxStr = [
+                        adtCount > 1 ? `*P1-${adtCount}` : '*P1',
+                        chdCount ? `*C0${chdCount}` : '',
+                        infCount ? `*INF` : '',
+                    ].filter(Boolean).join('');
+                    return [`FS<t>${seatCount}</t>${from}${date}${to}/${carr}<t>${paxStr}</t>`, `${from}-${to} ${seatCount} seats`];
+                }),
+                ['d', 'Fare conditions'],
+                [`FQPDAC${routes.map(r=>r.split('-')[1]).join('')}+<t>${airlineCode}</t>`, 'Through-fare on carrier'],
+                ['FQL', 'Fare and tax'],
+                [`FN*1/ALL`, 'Baggage, changes, refunds'],
+            ]
+        },
+        '2': {
+            title: 'Quotation',
+            warning: { type:'block', text:'Do not create a booking yet — wait for written client confirmation.' },
+            nocmd: {
+                h: 'Nothing to paste at this stage',
+                p: 'The quotation is a client document. Below is what to include in the PDF.',
+                items: [
+                    ['ROUTE', routes.join(' · ')],
+                    ['PASSENGERS', [adtCount&&`${adtCount} Adults`, chdCount&&`${chdCount} Child`, infCount&&`${infCount} Infant`].filter(Boolean).join(', ')],
+                    ['FARE', `BDT ${totalFare} total, taxes included`],
+                    ['VALIDITY', '48 hours from quotation date'],
+                    ['MUST SAY', 'Fare subject to availability until ticket issued'],
+                ]
+            }
+        },
+        '3': {
+            title: 'Booking',
+            warning: { type:'note', text:`Compare the fare before saving — quoted BDT ${totalFare}.` },
+            lines: [
+                ['d', 'Sell the itinerary'],
+                ...segs.map((s,i) => {
+                    const from = s.from || s.origin || 'DAC';
+                    const to   = s.to   || s.destination || '???';
+                    const date = s.date || s.departure_date || '???';
+                    const carr = s.airline || s.carrier || airlineCode;
+                    return [`A${date}${from}${to}*${carr}`, `Sector ${i+1}`];
+                }),
+                ...segs.map(() => [`N<t>${seatCount}</t>M1`, `Sell ${seatCount} seats`]),
+                ['d', 'Names (adults, children, infants)'],
+                ...(adtCount > 0 ? [['N.SURNAME/FIRSTNAME <t>MR</t>', 'Adult — edit name']] : []),
+                ...(chdCount > 0 ? [['N.SURNAME/FIRSTNAME <t>MSTR</t>*P-C<t>0X</t>', 'Child — edit name + age']] : []),
+                ...(infCount > 0 ? [['N.I/SURNAME/FIRSTNAME <t>MISS</t>*DDMMMYY', 'Infant — DOB required']] : []),
+                ['d', 'Agency, time limit, save'],
+                ['P.T*TRAVHUB', 'Agency phone line'],
+                ['T.T*', 'Ticketing time limit'],
+                [`<s>R.${agent}</s>`, 'Receive'],
+                [`<s>ER</s>`, 'Saved — PNR created'],
+                ['d', 'Price'],
+                [`FQC<t>${airlineCode}</t>/ET`, 'Quote on carrier'],
+                ['FQL', 'Fare — read back'],
+                [`<s>R.${agent}</s>`, 'Receive'],
+                [`<s>ER</s>`, 'Fare saved'],
+            ]
+        },
+        '4': {
+            title: 'Documents',
+            warning: { type:'block', text:'Every DOCS line uses YY so all carriers receive the data.' },
+            lines: [
+                ['d', 'Passports — one per passenger'],
+                ...Array.from({length: adtCount}, (_,i) =>
+                    [`SI.P${i+1}/SSRDOCS<t>YY</t>HK1/P/BD/PASSPORT/BD/DOB/<t>M or F</t>/EXPIRY/SURNAME/GIVEN`, `Adult ${i+1}`]),
+                ...Array.from({length: chdCount}, (_,i) =>
+                    [`SI.P${adtCount+i+1}/SSRDOCS<t>YY</t>HK1/P/BD/PASSPORT/BD/DOB/<t>M or F</t>/EXPIRY/SURNAME/GIVEN`, `Child ${i+1}`]),
+                ...Array.from({length: infCount}, (_,i) =>
+                    [`SI.P${adtCount+chdCount+i+1}/SSRDOCS<t>YY</t>HK1/P/BD/PASSPORT/BD/DOB/<t>FI</t>/EXPIRY/SURNAME/GIVEN`, `Infant ${i+1} — use FI`]),
+                ['d', 'Emergency contact'],
+                ['SI.SSRPCTC<t>YY</t>HK1/CTC NAME TEL NUMBER', 'No symbols in number'],
+                ['d', 'Meals'],
+                ...Array.from({length: adtCount}, (_,i) => [`SI.P${i+1}/MOML`, `Muslim meal — adult ${i+1}`]),
+                ...Array.from({length: chdCount}, (_,i) => [`SI.P${adtCount+i+1}/CHML`, `Child meal`]),
+                ...(infCount > 0 ? [['SI.P{mother}/BSCT*INFANT', 'Bassinet — against mother']] : []),
+                ['d', 'Save and verify'],
+                [`<s>R.${agent}</s>`, 'Receive'],
+                [`<s>ER</s>`, 'Saved'],
+                ['*SI', 'All lines must read HK'],
+            ]
+        }
+    };
+
+    const st = STAGES[stage];
+    if (!st) return '';
+
+    const tok = s => s
+        .replace(/<t>/g, '<span style="color:#50BC81;font-weight:700;background:rgba(80,188,129,.1);border-radius:2px;padding:0 2px;">')
+        .replace(/<\/t>/g, '</span>')
+        .replace(/<s>/g, '<span style="color:#7C86A3;">')
+        .replace(/<\/s>/g, '</span>');
+
+    // Warning
+    const warnColor = st.warning?.type === 'block' ? '#FDEDE8' : '#FCF4E4';
+    const warnBorder = st.warning?.type === 'block' ? 'rgba(228,87,46,.35)' : 'rgba(232,163,61,.4)';
+    const warnText = st.warning?.type === 'block' ? '#8A2D12' : '#7A5410';
+    const warnIcon = st.warning?.type === 'block' ? '!!' : '→';
+    const warningHtml = st.warning ? `
+        <div style="display:flex;gap:10px;padding:10px 12px;background:${warnColor};border:1px solid ${warnBorder};color:${warnText};font-size:12px;border-radius:3px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-weight:700;flex-shrink:0;">${warnIcon}</span>
+            <span>${st.warning.text}</span>
+        </div>` : '';
+
+    // No-command stage (Quotation)
+    if (st.nocmd) {
+        return warningHtml + `
+        <div style="padding:4px 0;">
+            <h3 style="color:#fff;font-size:14px;font-weight:700;margin-bottom:6px;">${st.nocmd.h}</h3>
+            <p style="color:#8A93A8;font-size:12px;margin-bottom:14px;">${st.nocmd.p}</p>
+            <div style="display:grid;gap:8px;">
+                ${st.nocmd.items.map(it=>`
+                <div style="display:flex;gap:10px;font-size:12px;color:#D5DAE6;padding:8px 10px;background:rgba(255,255,255,.04);border-left:2px solid rgba(80,188,129,.5);border-radius:2px;">
+                    <span style="font-family:monospace;font-size:10px;color:#50BC81;flex-shrink:0;width:80px;letter-spacing:.06em;">${it[0]}</span>
+                    <span>${it[1]}</span>
+                </div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // Command list
+    let n = 0;
+    const cmdHtml = st.lines.map(l => {
+        if (l[0] === 'd') return `<div style="padding:10px 14px 4px;color:#4A5372;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;">${l[1]}</div>`;
+        n++;
+        return `<div class="gds-cmd" style="display:flex;align-items:baseline;padding:3px 14px;border-left:2px solid transparent;cursor:pointer;" 
+            onclick="(function(el){var t=el.querySelector('.gds-text').textContent;if(navigator.clipboard)navigator.clipboard.writeText(t);var toast=document.getElementById('at-gds-toast');if(toast){toast.textContent=t+' copied';toast.style.opacity='1';setTimeout(()=>toast.style.opacity='0',1500);}})(this)"
+            onmouseover="this.style.background='rgba(255,255,255,.045)';this.style.borderLeftColor='rgba(80,188,129,.5)'"
+            onmouseout="this.style.background='';this.style.borderLeftColor='transparent'">
+            <span style="color:#4A5372;width:24px;flex-shrink:0;font-size:10px;font-family:monospace;">${String(n).padStart(2,'0')}</span>
+            <span class="gds-text" style="color:#E8ECF5;white-space:pre;letter-spacing:.02em;font-family:monospace;font-size:13px;">${tok(l[0])}</span>
+            <span class="gds-note" style="color:#5E6883;font-size:11px;margin-left:auto;padding-left:20px;white-space:nowrap;flex-shrink:0;">${l[1]}</span>
+        </div>`;
+    }).join('');
+
+    const allLines = st.lines.filter(l=>l[0]!=='d').map(l=>l[0].replace(/<[^>]+>/g,''));
+
+    return warningHtml + `
+    <div style="background:rgba(0,0,0,.15);padding:8px 14px 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
+        <button onclick="(function(){var lines=${JSON.stringify(allLines)};if(navigator.clipboard)navigator.clipboard.writeText(lines.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=lines.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
+            style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:rgba(80,188,129,1);color:#12172B;cursor:pointer;">
+            Copy all
+        </button>
+    </div>
+    <div style="font-family:monospace;padding:6px 0 12px;overflow-x:auto;">${cmdHtml}</div>
+    <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
+}
+
+
 
 })(); // end IIFE
