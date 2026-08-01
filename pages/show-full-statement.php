@@ -269,26 +269,28 @@ if (empty($acc_id)) {
                 showNoData();
                 return;
             }
-
+        
             // Calculate totals
             let totalDeposit = 0;
             let totalWithdraw = 0;
-            let currentBalance = 0;
-
+            
+            // ✅ প্রথম item থেকে balance নিন (কারণ ডেটা LIFO অর্ডারে আসছে)
+            const firstItem = data[0];
+            const currentBalance = parseFloat(firstItem?.balance || 0);
+        
             // Clear table
             tableBody.innerHTML = '';
-
+        
             // Add rows
             data.forEach(item => {
                 const deposit = parseFloat(item.deposit || 0);
                 const withdraw = parseFloat(item.withdraw || 0);
                 const balance = parseFloat(item.balance || 0);
                 const reconciliation = parseFloat(item.reconsilation || 0);
-
+        
                 totalDeposit += deposit;
                 totalWithdraw += withdraw;
-                currentBalance = balance; // Last item's balance is current balance
-
+        
                 const row = document.createElement('tr');
                 row.className = 'no-break';
                 row.innerHTML = `
@@ -309,14 +311,14 @@ if (empty($acc_id)) {
                 `;
                 tableBody.appendChild(row);
             });
-
+        
             // Update summary
             document.getElementById('fullCurrentBalance').textContent = formatCurrency(currentBalance);
             document.getElementById('totalTransactions').textContent = data.length;
             document.getElementById('totalDeposit').textContent = formatCurrency(totalDeposit);
             document.getElementById('totalWithdraw').textContent = formatCurrency(totalWithdraw);
             document.getElementById('netChange').textContent = formatCurrency(totalDeposit - totalWithdraw);
-
+        
             // Show content
             statementContent.classList.remove('hidden');
         }

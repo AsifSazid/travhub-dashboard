@@ -1830,7 +1830,7 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function badgeHtml(status){const m={open:['badge-open','🟡 Open'],in_progress:['badge-in_progress','🔵 In Progress'],done:['badge-done','✅ Done'],cancelled:['badge-cancelled','❌ Cancelled']};const[cls,label]=m[status]??['',status];return`<span class="badge ${cls}">${label}</span>`;}
 function fmtDate(s){if(!s)return'—';const m=s.match(/^(\d{2})-(\d{2})-(\d{4})/);if(m)return`${m[1]} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[3]}`;return s;}
-function fmtDateShort(s){if(!s)return'';const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)||s.match(/^(\d{2})-(\d{2})-(\d{4})/);if(!m)return s;const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];if(s.match(/^\d{4}/))return`${+m[3]} ${months[+m[2]-1]}`;return`${+m[1]} ${months[+m[2]-1]}`;}
+function fmtDateShort(s){if(!s)return'';const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)||s.match(/^(\d{2})-(\d{2})-(\d{4})/);if(!m)return s;const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];if(s.match(/^\d{4}/))return `${+m[3]} ${months[+m[2]-1]}`;return `${+m[1]} ${months[+m[2]-1]}`;}
 
 function showToast(type,msg){
     const inner=document.getElementById('toastInner');

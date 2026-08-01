@@ -12,6 +12,8 @@ function _generateSop(PDO $pdo, string $workSysId, string $userName): void {
     require_once __DIR__ . '/../../server/sys_id_generator_v2.php';
     require_once __DIR__ . '/../../server/generate_meta_data.php';
 
+    error_log("[generate-sop] Starting for work: {$workSysId}");
+
     $ws = $pdo->prepare("SELECT client_info, segment_data, service_type FROM works WHERE sys_id = ? LIMIT 1");
     $ws->execute([$workSysId]);
     $work = $ws->fetch(PDO::FETCH_ASSOC);
@@ -32,6 +34,10 @@ No markdown, no headers — just numbered steps.";
     foreach ($services as $slug) {
         $svcData = $segData[$slug] ?? [];
         if (empty($svcData)) continue;
+
+        // Merge common section (pax_adult, pax_child, pax_infant, budget etc.)
+        $common = $segData['common'] ?? [];
+        $svcData = array_merge($common, $svcData);
 
         $svcLabel = ucwords(str_replace('_', ' ', $slug));
         $segs = $svcData['segments'] ?? [$svcData];
@@ -65,6 +71,7 @@ Work ID: {$workSysId}"
 . "\nGenerate the operations workflow/SOP for processing this {$svcLabel} booking.";
 
         $result = geminiCall($system, $userPrompt, 800, 0.3);
+        error_log("[generate-sop] Gemini result for {$slug}: " . ($result['success'] ? 'success' : ($result['error'] ?? 'failed')));
         if (!($result['success'] ?? false)) continue;
 
         $sopText = trim($result['text'] ?? '');

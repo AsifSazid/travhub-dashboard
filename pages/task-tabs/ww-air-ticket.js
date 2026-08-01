@@ -3182,14 +3182,16 @@ function _gdsRenderStoredCommands(cmds) {
         </div>`;
     }).join('');
 
+    const allId = 'gds-stored-cmds-' + Date.now();
     return `
     <div style="background:rgba(0,0,0,.15);padding:8px 14px;display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
-        <button onclick="(function(){var c=${copyAll};if(navigator.clipboard)navigator.clipboard.writeText(c.join('\\n'));var el=document.getElementById('at-gds-toast');if(el){el.textContent=c.length+' lines copied';el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})()"
+        <button onclick="(function(){var el=document.getElementById('${allId}');if(!el)return;var c=JSON.parse(el.textContent);if(navigator.clipboard)navigator.clipboard.writeText(c.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=c.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
             style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">
             Copy all
         </button>
     </div>
+    <script type="application/json" id="${allId}">${JSON.stringify(allCmds)}<\/script>
     <div style="font-family:monospace;padding:4px 0 12px;">${html}</div>
     <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
 }
@@ -3454,15 +3456,17 @@ function _gdsCommandsHtml(stage, facts) {
     }).join('');
 
     const allLines = st.lines.filter(l=>l[0]!=='d').map(l=>l[0].replace(/<[^>]+>/g,''));
+    const allId = 'gds-cmds-' + stage;
 
     return warningHtml + `
     <div style="background:rgba(0,0,0,.15);padding:8px 14px 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
-        <button onclick="(function(){var lines=${JSON.stringify(allLines)};if(navigator.clipboard)navigator.clipboard.writeText(lines.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=lines.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
+        <button onclick="(function(){var el=document.getElementById('${allId}');if(!el)return;var lines=JSON.parse(el.textContent);if(navigator.clipboard)navigator.clipboard.writeText(lines.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=lines.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
             style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:rgba(80,188,129,1);color:#12172B;cursor:pointer;">
             Copy all
         </button>
     </div>
+    <script type="application/json" id="${allId}">${JSON.stringify(allLines)}<\/script>
     <div style="font-family:monospace;padding:6px 0 12px;overflow-x:auto;">${cmdHtml}</div>
     <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
 }
