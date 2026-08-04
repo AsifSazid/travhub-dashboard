@@ -11,7 +11,7 @@ $employeeId = $_GET['employee_id'];
 $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employeeId";
 $getEmployeeFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$employeeId";
 
-$API_BASE = "https://travhub.com.bd/travhub-admin/";
+$API_BASE = "https://dev.travhub.com.bd/";
 $getEmployeeApi = $API_BASE . "api/employees/get-employee.php?employee_id=" . urlencode($employeeId);
 
 // Server-side API call (for OG meta)

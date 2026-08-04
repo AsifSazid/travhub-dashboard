@@ -73,8 +73,8 @@ function _fetchRow(PDO $pdo, string $taskSysId): ?array
 
 // ── Helper: fetch by task or work — whichever is available ───
 function _fetchByContext(PDO $pdo, string $taskSysId, string $workSysId): ?array {
-    if ($taskSysId) return _fetchByContext($pdo, $taskSysId, $workSysId);
     if ($workSysId) return _fetchRowByWork($pdo, $workSysId);
+    if ($taskSysId) return _fetchRow($pdo, $taskSysId);
     return null;
 }
 function _fetchRowByWork(PDO $pdo, string $workSysId): ?array
@@ -144,10 +144,11 @@ function _saveRowFull(PDO $pdo, string $id, array $quotations, array $bookings, 
 function _autoCreateTaskOnConfirmed(PDO $pdo, array $conf, string $workSysId, string $userName): ?string
 {
     try {
-        $checkStmt = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? LIMIT 1");
-        $checkStmt->execute([$conf['sys_id']]);
-        $check = $checkStmt->fetch(PDO::FETCH_ASSOC);
-        if ($check) return null;
+        // confirmation_sys_id + work_sys_id দুটো দিয়েই check — C-001 সব work এ থাকে
+        $checkStmt = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? AND work_sys_id = ? LIMIT 1");
+        $checkStmt->execute([$conf['sys_id'], $workSysId]);
+        $existing = $checkStmt->fetchColumn();
+        if ($existing) return $existing; // existing task sys_id return করো, null না
 
         $ws = $pdo->prepare("SELECT client_info FROM works WHERE sys_id = ? LIMIT 1");
         $ws->execute([$workSysId]);
@@ -831,25 +832,24 @@ try {
             $id = $byWork ? $workSysId : $taskSysId;
             _saveRowFull($pdo, $id, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
-            $autoTaskSysId = null;
             $wSysId = $row['work_sys_id'] ?? $workSysId;
+            $autoTaskResult = null;
             if ($wSysId) {
-                $autoTaskSysId = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $wSysId, $userName);
+                $autoTaskResult = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $wSysId, $userName);
             }
+
+            // ERR: বা NO_WORK string মানে failure — null বা valid sys_id মানে success
+            $taskOk    = $autoTaskResult !== null
+                      && !str_starts_with((string)$autoTaskResult, 'ERR:')
+                      && $autoTaskResult !== 'NO_WORK';
 
             ob_clean();
             echo json_encode([
-                'status'        => 'success',
-                'message'       => 'Confirmed and task created',
-                'auto_task_id'  => $autoTaskSysId,
-                '_debug'        => [
-                    'wSysId'        => $wSysId,
-                    'workSysId'     => $workSysId,
-                    'row_work'      => $row['work_sys_id'] ?? null,
-                    'confSysId'     => $confSysId,
-                    'confirmedConf' => $confirmedConf,
-                    'byWork'        => $byWork,
-                ],
+                'status'       => 'success',
+                'message'      => 'Confirmed' . ($taskOk ? ' and task created' : ' (task creation failed)'),
+                'task_created' => $taskOk,
+                'auto_task_id' => $taskOk    ? $autoTaskResult : null,
+                'task_error'   => !$taskOk   ? $autoTaskResult : null,
             ]);
             break;
         }
@@ -1151,9 +1151,6 @@ try {
             } catch (Exception $aiErr) {
                 error_log('[conf upload AI] ' . $aiErr->getMessage());
             }
-
-            // temp file delete করো
-            if (file_exists($tempLocal)) unlink($tempLocal);
 
             // temp file delete করো
             if (file_exists($tempLocal)) unlink($tempLocal);

@@ -30,7 +30,7 @@ $SERVICE_NAME_MAP = [
     'visa'         => 'Visa',
     'hotel'        => 'Hotel',
     'tour_package' => 'Tour Package',
-    'package'      => 'Tour Package',
+    'package'      => 'Package',
     'umrah'        => 'Umrah',
     'transport'    => 'Transport',
 ];
@@ -190,7 +190,8 @@ try {
     // Run SOP generation directly (no HTTP round-trip needed)
     try {
         require_once __DIR__ . '/../works/generate-sop.php';
-        _generateSop($pdo, $workSysId, $userName);
+        _generateSop($pdo, 'THR-A26-WK-000E', $userName);
+        echo json_encode(['status' => 'success', 'msg' => 'SOP done']);
     } catch (Throwable $bgErr) {
         error_log('[move-to-work] SOP generation failed: ' . $bgErr->getMessage());
     }

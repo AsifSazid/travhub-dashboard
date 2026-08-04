@@ -3140,6 +3140,7 @@ function _gdsInjectPanel(panel, stage) {
                         <div style="color:#50BC81;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Stage — ${{'1':'Research','2':'Quotation','3':'Booking','4':'Documents'}[stage]??stage}</div>
                     </div>
                     <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
+                    ${(stage === '3' || stage === '4') ? `<button id="at-gds-regen-btn-${stage}" onclick="_gdsRegenerate('${stage}')" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">🔄 Regenerate</button>` : ''}
                 </div>
                 <div style="overflow-y:auto;flex:1;">
                     <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>
@@ -3156,6 +3157,63 @@ function _gdsInjectPanel(panel, stage) {
     }, 0);
 }
 
+// ── GDS Regenerate — Stage 3 / 4 traveler data দিয়ে ─────────────────────────
+async function _gdsRegenerate(stage) {
+    const btn = document.getElementById(`at-gds-regen-btn-${stage}`);
+    if (btn) { btn.textContent = '⏳ Generating...'; btn.disabled = true; }
+
+    try {
+        const regenUrl = (_cfg.api.airTickets ?? '').replace(
+            'api/air-tickets/endpoints.php',
+            'api/air-tickets/regenerate-gds.php'
+        );
+
+        const res  = await fetch(regenUrl, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                work_sys_id: _cfg.workSysId,
+                stages:      [parseInt(stage)],
+            }),
+        });
+        const json = await res.json();
+
+        if (json.status !== 'success') throw new Error(json.message ?? 'Regenerate failed');
+
+        // _atData.commands update করো
+        if (!_atData) _atData = {};
+        if (!_atData.commands) _atData.commands = {};
+
+        const stageMap = { '3': 'booking', '4': 'confirmation' };
+        const key = stageMap[stage];
+        if (key && json.commands?.[key]) {
+            _atData.commands[key] = json.commands[key];
+        }
+
+        // GDS panel inner content re-render (full re-inject ছাড়াই)
+        const gdsPanelEl = document.getElementById(`at-gds-panel-${stage}`);
+        if (gdsPanelEl) {
+            const facts       = _gdsGetDerivedFacts();
+            const newCmds     = _atData.commands[key] ?? [];
+            const innerScroll = gdsPanelEl.querySelector('[style*="overflow-y:auto;flex:1"]');
+            if (innerScroll) {
+                innerScroll.innerHTML = `
+                    <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>
+                    ${_gdsRenderStoredCommands(newCmds)}`;
+            }
+        }
+
+        const count = json.traveler_count ?? 0;
+        atT('success', `Stage ${stage} regenerated` + (count ? ` with ${count} traveler(s)` : ''));
+
+    } catch (err) {
+        console.error('[gdsRegenerate]', err);
+        atT('error', err.message ?? 'Regenerate failed');
+    } finally {
+        if (btn) { btn.textContent = '🔄 Regenerate'; btn.disabled = false; }
+    }
+}
+
 let _gdsNotesVisible = true;
 function _gdsRenderStoredCommands(cmds) {
     if (!cmds || !cmds.length) return '<div style="padding:16px;color:#4A5372;font-size:12px;">No commands generated yet.</div>';
@@ -3164,11 +3222,12 @@ function _gdsRenderStoredCommands(cmds) {
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     let n = 0;
-    const allCmds = cmds.filter(c => !c.divider).map(c => c.cmd || '');
+    const allCmds = cmds.filter(c => !c.divider && !c.note_only && c.cmd).map(c => c.cmd || '');
     const copyAll = JSON.stringify(allCmds);
 
     const html = cmds.map(c => {
-        if (c.divider) return `<div style="padding:10px 14px 4px;color:#4A5372;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;">${tok(c.label??'')}</div>`;
+        if (c.divider)   return `<div style="padding:10px 14px 4px;color:#4A5372;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;">${tok(c.label??'')}</div>`;
+        if (c.note_only) return `<div style="margin:8px 10px;padding:8px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;color:#FBD56A;font-size:11px;line-height:1.5;">${tok(c.note??'')}</div>`;
         n++;
         const cmd = tok(c.cmd ?? '');
         const note = tok(c.note ?? '');
@@ -3182,16 +3241,14 @@ function _gdsRenderStoredCommands(cmds) {
         </div>`;
     }).join('');
 
-    const allId = 'gds-stored-cmds-' + Date.now();
     return `
     <div style="background:rgba(0,0,0,.15);padding:8px 14px;display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
-        <button onclick="(function(){var el=document.getElementById('${allId}');if(!el)return;var c=JSON.parse(el.textContent);if(navigator.clipboard)navigator.clipboard.writeText(c.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=c.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
+        <button onclick="(function(){var c=${copyAll};if(navigator.clipboard)navigator.clipboard.writeText(c.join('\\n'));var el=document.getElementById('at-gds-toast');if(el){el.textContent=c.length+' lines copied';el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})()"
             style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">
             Copy all
         </button>
     </div>
-    <script type="application/json" id="${allId}">${JSON.stringify(allCmds)}<\/script>
     <div style="font-family:monospace;padding:4px 0 12px;">${html}</div>
     <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
 }
@@ -3456,17 +3513,15 @@ function _gdsCommandsHtml(stage, facts) {
     }).join('');
 
     const allLines = st.lines.filter(l=>l[0]!=='d').map(l=>l[0].replace(/<[^>]+>/g,''));
-    const allId = 'gds-cmds-' + stage;
 
     return warningHtml + `
     <div style="background:rgba(0,0,0,.15);padding:8px 14px 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
-        <button onclick="(function(){var el=document.getElementById('${allId}');if(!el)return;var lines=JSON.parse(el.textContent);if(navigator.clipboard)navigator.clipboard.writeText(lines.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=lines.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
+        <button onclick="(function(){var lines=${JSON.stringify(allLines)};if(navigator.clipboard)navigator.clipboard.writeText(lines.join('\\n'));var t=document.getElementById('at-gds-toast');if(t){t.textContent=lines.length+' lines copied';t.style.opacity='1';setTimeout(()=>t.style.opacity='0',1500);}})()"
             style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:rgba(80,188,129,1);color:#12172B;cursor:pointer;">
             Copy all
         </button>
     </div>
-    <script type="application/json" id="${allId}">${JSON.stringify(allLines)}<\/script>
     <div style="font-family:monospace;padding:6px 0 12px;overflow-x:auto;">${cmdHtml}</div>
     <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
 }
