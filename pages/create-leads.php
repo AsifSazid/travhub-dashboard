@@ -350,14 +350,6 @@ textarea.f-input{resize:vertical;}
                     <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-info-circle mr-1"></i>Only countries enabled for work are listed. Select one or more.</p>
                 </div>
                 <div>
-                    <label class="f-label">Tentative Start Date <span class="opt">(optional)</span></label>
-                    <input type="date" id="tentativeStart" class="f-input">
-                </div>
-                <div>
-                    <label class="f-label">Tentative End Date <span class="opt">(optional)</span></label>
-                    <input type="date" id="tentativeEnd" class="f-input">
-                </div>
-                <div>
                     <label class="f-label">Adult(s)</label>
                     <input type="number" id="paxAdult" min="0" value="1" class="f-input">
                 </div>
@@ -3056,8 +3048,6 @@ async function submitLead() {
     const common={
         title:           document.getElementById('commonTitle').value.trim(),
         countries:       countries,
-        tentative_start: document.getElementById('tentativeStart').value,
-        tentative_end:   document.getElementById('tentativeEnd').value,
         pax_adult:   parseInt(document.getElementById('paxAdult').value)||0,
         pax_child:   parseInt(document.getElementById('paxChild').value)||0,
         pax_infant:  parseInt(document.getElementById('paxInfant').value)||0,
@@ -3185,8 +3175,6 @@ async function loadLeadData() {
         const $el = id => document.getElementById(id);
         if ($el('commonTitle')    && common.title)           $el('commonTitle').value    = common.title;
         if ($el('commonBudget')   && common.budget)          $el('commonBudget').value   = common.budget;
-        if ($el('tentativeStart') && common.tentative_start) $el('tentativeStart').value = common.tentative_start;
-        if ($el('tentativeEnd')   && common.tentative_end)   $el('tentativeEnd').value   = common.tentative_end;
         if ($el('paxAdult'))  $el('paxAdult').value  = common.pax_adult  ?? 1;
         if ($el('paxChild'))  $el('paxChild').value  = common.pax_child  ?? 0;
         if ($el('paxInfant')) $el('paxInfant').value = common.pax_infant ?? 0;

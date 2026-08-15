@@ -193,7 +193,7 @@ try {
             $taskSysId   = $_GET['task_sys_id']  ?? '';
             $workSysId   = $_GET['work_sys_id']   ?? '';
             $serviceSlug = $_GET['service_slug']  ?? 'air_ticket';
-            $boardName   = $_GET['board']         ?? 'noteboard'; // mindboard | noteboard
+            $boardName   = $_GET['board']         ?? 'mindboard'; // mindboard | noteboard — default mindboard কারণ SOP এখানেই save হয়
             $byWork      = !$taskSysId && $workSysId;
 
             if (!$taskSysId && !$workSysId) throw new Exception('task_sys_id or work_sys_id required');

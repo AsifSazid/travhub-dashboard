@@ -56,13 +56,14 @@ foreach ($deptStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 }
 
 try {
-    // 1. Fetch lead
-    $stmt = $pdo->prepare("SELECT * FROM leads WHERE sys_id = ?");
+    // 1. Fetch lead — FOR UPDATE locks the row to prevent race conditions
+    $pdo->beginTransaction();
+    $stmt = $pdo->prepare("SELECT * FROM leads WHERE sys_id = ? FOR UPDATE");
     $stmt->execute([$sys_id]);
     $lead = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$lead) { ob_clean(); echo json_encode(['success' => false, 'message' => 'Lead not found.']); exit; }
-    if ($lead['lead_status'] === 'converted') { ob_clean(); echo json_encode(['success' => false, 'message' => 'Lead already converted.']); exit; }
+    if (!$lead) { $pdo->rollBack(); ob_clean(); echo json_encode(['success' => false, 'message' => 'Lead not found.']); exit; }
+    if ($lead['lead_status'] === 'converted') { $pdo->rollBack(); ob_clean(); echo json_encode(['success' => false, 'message' => 'Lead already converted.']); exit; }
 
     $clientInfo  = json_decode($lead['client_info'],  true) ?? [];
     $serviceType = json_decode($lead['service_type'], true) ?? [];
@@ -72,6 +73,7 @@ try {
     $services = array_values(array_unique(array_filter(
         is_array($serviceType) ? $serviceType : [$serviceType]
     )));
+    
     $userName    = $_SESSION['user_name'] ?? 'system';
     $SERVER_CUS_PATH = trim(@file_get_contents('../../server-name.txt') ?? '');
 
@@ -162,6 +164,9 @@ try {
     $pdo->prepare("UPDATE leads SET lead_status='converted', meta_data=? WHERE sys_id=?")
         ->execute([$leadMeta, $sys_id]);
 
+    // Commit transaction — row lock released after this
+    $pdo->commit();
+
     $responseJson = json_encode([
         'success'               => true,
         'status'                => 'success',
@@ -190,13 +195,14 @@ try {
     // Run SOP generation directly (no HTTP round-trip needed)
     try {
         require_once __DIR__ . '/../works/generate-sop.php';
-        _generateSop($pdo, 'THR-A26-WK-000E', $userName);
+        _generateSop($pdo, $workSysId, $userName);
         echo json_encode(['status' => 'success', 'msg' => 'SOP done']);
     } catch (Throwable $bgErr) {
         error_log('[move-to-work] SOP generation failed: ' . $bgErr->getMessage());
     }
 
 } catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     ob_clean();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

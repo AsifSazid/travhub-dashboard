@@ -638,7 +638,14 @@ $deepLinkSw = $_GET['sw'] ?? '';
 
 <?php include '../elements/floating-menus.php'; ?>
 <script src="../assets/js/script.js?t=<?php echo time(); ?>"></script>
-<script src="../pages/task-tabs/ww-air-ticket.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/_state.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/gds-panel.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/mindboard.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/quotation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/booking.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/confirmation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-air-tickets/index.js?t=<?php echo time(); ?>"></script>
 <script>
 const WORK_SYS_ID  = "<?php echo htmlspecialchars($workSysId); ?>";
 const DEEP_LINK_SW = "<?php echo htmlspecialchars($deepLinkSw); ?>";
@@ -881,6 +888,8 @@ function loadServiceModule(slug, swSysId) {
 
     if (slug === 'air_ticket') {
         const ci = sp(workData.client_info) ?? {};
+        const segData = sp(workData.segment_data) ?? {};
+        const common  = segData.common ?? {};
         initWorkAirTicketTab({
             workSysId:    WORK_SYS_ID,
             leadSysId:    workData.lead_sys_id ?? '',
@@ -888,6 +897,9 @@ function loadServiceModule(slug, swSysId) {
             serviceSlug:  slug,
             currentUser:  CURRENT_USER,
             atData:       airTicketData,
+            paxAdult:     common.pax_adult  ?? 0,
+            paxChild:     common.pax_child  ?? 0,
+            paxInfant:    common.pax_infant ?? 0,
             api: { airTickets:API.airTickets, notes:API.notes, workTravelers:API.workTravelers },
         });
     } else {
@@ -919,11 +931,18 @@ function renderSvcInfoStrip(slug) {
             const dateStr = date ? ` <span class="text-gray-400">(${fmtDateShort(date)})</span>` : '';
             if (from || to) chips.push(`<span class="flex items-center gap-1"><i class="fas fa-plane text-sky-400 text-[9px]"></i>${esc(from)} → ${esc(to)}${dateStr}</span>`);
         });
-        // Pax breakdown
-        const pa = svcData.pax_adult ?? '', pc = svcData.pax_child ?? '', pi = svcData.pax_infant ?? '';
+        // Pax breakdown — svcData এ না থাকলে common থেকে নাও
+        const common = segData['common'] ?? {};
+        const pa = svcData.pax_adult  ?? common.pax_adult  ?? '';
+        const pc = svcData.pax_child  ?? common.pax_child  ?? '';
+        const pi = svcData.pax_infant ?? common.pax_infant ?? '';
         if (pa !== '' || pc !== '' || pi !== '') {
-            const paxStr = [pa !== '' ? `${pa}A` : '', pc !== '' ? `${pc}C` : '', pi !== '' ? `${pi}I` : ''].filter(Boolean).join(' ');
-            chips.push(`<span class="text-gray-600 font-medium">${paxStr}</span>`);
+            const paxParts = [
+                pa ? `${pa} Adult`  : '',
+                pc ? `${pc} Child`  : '',
+                pi ? `${pi} Infant` : '',
+            ].filter(Boolean);
+            chips.push(`<span class="text-gray-600 font-medium"><i class="fas fa-users text-gray-300 mr-1 text-[9px]"></i>${paxParts.join(' · ')}</span>`);
         } else if (svcData.pax) {
             chips.push(`<span><i class="fas fa-user text-gray-300 mr-1"></i>${esc(String(svcData.pax))} Pax</span>`);
         }

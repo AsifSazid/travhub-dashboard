@@ -263,16 +263,20 @@ function _renderMindboard() {
         gdsDiv.style.cssText = `width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow:hidden;`;
         gdsDiv.innerHTML = `
             <div style="background:#1C2340;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                <div style="flex:1;"><div style="color:#fff;font-size:12px;font-weight:700;">GDS Commands</div>
-                <div style="color:#50BC81;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Stage — Research</div></div>
+                <div style="flex:1;">
+                    <div style="color:#fff;font-size:12px;font-weight:700;">GDS Commands</div>
+                    <div style="color:#50BC81;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Stage — Research</div>
+                </div>
                 <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
             </div>
-            <div style="overflow-y:auto;flex:1;">
+            <div id="at-gds-body" style="overflow-y:auto;flex:1;">
                 <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(_gdsGetDerivedFacts())}</div>
-                ${_atData?.commands?.mindboard
-                    ? _gdsRenderStoredCommands(_atData.commands.mindboard)
-                    : _gdsCommandsHtml('1', _gdsGetDerivedFacts())}
             </div>`;
+        const gdsBody = gdsDiv.querySelector('#at-gds-body');
+        const cmdHtml = _atData?.commands?.mindboard
+            ? _gdsRenderStoredCommands(_atData.commands.mindboard)
+            : _gdsCommandsHtml('1', _gdsGetDerivedFacts());
+        gdsBody.insertAdjacentHTML('beforeend', cmdHtml);
         wrapper.appendChild(leftDiv);
         wrapper.appendChild(divider);
         wrapper.appendChild(gdsDiv);
@@ -2672,7 +2676,6 @@ window.atConfUploadPending = async function(confSysId) {
         fd.append('action', 'upload_conf_file');
         fd.append('conf_sys_id', confSysId);
         fd.append('work_sys_id', _cfg.workSysId);
-        fd.append('work_sys_id', _cfg.workSysId);
         fd.append('file', file);
         try {
             const res  = await fetch(_cfg.api.airTickets, {method:'POST', body:fd});
@@ -3117,7 +3120,9 @@ function _gdsInjectPanel(panel, stage) {
     // Use stored commands from DB if available
     const storedCmds = _atData?.commands?.[stageKey] ?? null;
 
-    const existing = panel.innerHTML;
+    // const existing = panel.innerHTML;
+    const existingContent = panel.querySelector('.at-panel-content')?.innerHTML ?? panel.innerHTML;
+
     const saved = localStorage.getItem('at_gds_width');
     const gdsW = saved ? saved + 'px' : '340px';
 
@@ -3128,7 +3133,7 @@ function _gdsInjectPanel(panel, stage) {
 
     panel.innerHTML = `
     <div style="display:flex;gap:0;align-items:stretch;height:100%;min-height:400px;">
-        <div style="flex:1;min-width:0;overflow-y:auto;">${existing}</div>
+        <div style="flex:1;min-width:0;overflow-y:auto;">${existingContent}</div>
         <div style="display:flex;align-items:stretch;">
             <div id="at-gds-divider-${stage}" style="width:4px;background:#f1f5f9;cursor:col-resize;flex-shrink:0;transition:background .15s;"
                 onmouseover="this.style.background='#6366f1'"
@@ -3215,24 +3220,41 @@ async function _gdsRegenerate(stage) {
 }
 
 let _gdsNotesVisible = true;
+
+// Global store — onclick এ inline JSON safe নয়, index দিয়ে reference করা হয়
+window._gdsStoredCmds = [];
+window._gdsCopySingle = function(idx) {
+    const cmd = window._gdsStoredCmds[idx] ?? '';
+    if (navigator.clipboard) navigator.clipboard.writeText(cmd);
+    const el = document.getElementById('at-gds-toast');
+    if (el) { el.textContent = cmd + ' copied'; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 1500); }
+};
+window._gdsCopyAll = function() {
+    const lines = window._gdsStoredCmds.join('\n');
+    if (navigator.clipboard) navigator.clipboard.writeText(lines);
+    const el = document.getElementById('at-gds-toast');
+    if (el) { el.textContent = window._gdsStoredCmds.length + ' lines copied'; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 1500); }
+};
+
 function _gdsRenderStoredCommands(cmds) {
     if (!cmds || !cmds.length) return '<div style="padding:16px;color:#4A5372;font-size:12px;">No commands generated yet.</div>';
 
     const tok = s => String(s)
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-    let n = 0;
-    const allCmds = cmds.filter(c => !c.divider && !c.note_only && c.cmd).map(c => c.cmd || '');
-    const copyAll = JSON.stringify(allCmds);
+    window._gdsStoredCmds = cmds.filter(c => !c.divider && !c.note_only && c.cmd).map(c => c.cmd || '');
 
+    let n = 0;
+    let cmdIdx = 0;
     const html = cmds.map(c => {
         if (c.divider)   return `<div style="padding:10px 14px 4px;color:#4A5372;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;">${tok(c.label??'')}</div>`;
         if (c.note_only) return `<div style="margin:8px 10px;padding:8px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;color:#FBD56A;font-size:11px;line-height:1.5;">${tok(c.note??'')}</div>`;
         n++;
-        const cmd = tok(c.cmd ?? '');
+        const idx  = cmdIdx++;
+        const cmd  = tok(c.cmd ?? '');
         const note = tok(c.note ?? '');
         return `<div class="gds-cmd-row" style="display:flex;align-items:baseline;padding:3px 14px;border-left:2px solid transparent;cursor:pointer;"
-            onclick="(function(t){if(navigator.clipboard)navigator.clipboard.writeText(t);var el=document.getElementById('at-gds-toast');if(el){el.textContent=t+' copied';el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})(${JSON.stringify(c.cmd??'')})"
+            onclick="_gdsCopySingle(${idx})"
             onmouseover="this.style.background='rgba(255,255,255,.045)';this.style.borderLeftColor='rgba(80,188,129,.5)'"
             onmouseout="this.style.background='';this.style.borderLeftColor='transparent'">
             <span style="color:#4A5372;width:24px;flex-shrink:0;font-size:10px;font-family:monospace;">${String(n).padStart(2,'0')}</span>
@@ -3244,14 +3266,14 @@ function _gdsRenderStoredCommands(cmds) {
     return `
     <div style="background:rgba(0,0,0,.15);padding:8px 14px;display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
-        <button onclick="(function(){var c=${copyAll};if(navigator.clipboard)navigator.clipboard.writeText(c.join('\\n'));var el=document.getElementById('at-gds-toast');if(el){el.textContent=c.length+' lines copied';el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})()"
-            style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">
+        <button onclick="_gdsCopyAll()" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">
             Copy all
         </button>
     </div>
     <div style="font-family:monospace;padding:4px 0 12px;">${html}</div>
     <div id="at-gds-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12172B;color:#fff;padding:9px 18px;border-radius:3px;font-size:12px;font-weight:600;border-left:3px solid #50BC81;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999;"></div>`;
 }
+
 
 function _gdsToggleNotes() {
     _gdsNotesVisible = !_gdsNotesVisible;

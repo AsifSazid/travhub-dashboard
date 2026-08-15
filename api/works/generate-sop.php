@@ -12,8 +12,7 @@ function _generateSop(PDO $pdo, string $workSysId, string $userName): void {
     require_once __DIR__ . '/../../server/sys_id_generator_v2.php';
     require_once __DIR__ . '/../../server/generate_meta_data.php';
 
-    error_log("[generate-sop] START work={$workSysId} user={$userName}");
-
+    
     $ws = $pdo->prepare("SELECT client_info, segment_data, service_type FROM works WHERE sys_id = ? LIMIT 1");
     $ws->execute([$workSysId]);
     $work = $ws->fetch(PDO::FETCH_ASSOC);
@@ -29,13 +28,29 @@ function _generateSop(PDO $pdo, string $workSysId, string $userName): void {
     $clientName = $ci['name'] ?? 'Unknown';
     $common     = $segData['common'] ?? [];
 
-    error_log("[generate-sop] services=" . implode(',', $services) . " client={$clientName}");
 
-    $system = "You are an expert travel operations manager.
+    $system = "You are an expert travel operations manager at a Bangladeshi travel agency.
 Generate a concise, step-by-step workflow/SOP for processing this travel service.
 Write in plain text — numbered steps, clear and actionable.
 Keep it under 300 words. Focus on what the operations team needs to DO.
-No markdown, no headers — just numbered steps.";
+No markdown, no headers — just numbered steps.
+
+Language: Write in simple conversational Bangla mixed with common English travel terms.
+Use the language travel agency staff actually speak — NOT formal/archaic Bangla.
+
+AVOID these words, use the alternatives instead:
+- উপলব্ধ → available
+- যাচাই করুন → check করুন
+- রিজার্ভেশন → booking
+- অবহিত করুন → জানান
+- সম্পন্ন করুন → করুন / শেষ করুন
+- চিহ্নিত করুন → খুঁজে বের করুন
+- ইস্যুকৃত → দেওয়া
+- প্রক্রিয়া করুন → process করুন
+- অনুমোদন → approval / OK
+- বিবরণ → details
+- অনুরোধ → request
+- নির্বাচিত → selected / chosen";
 
     $noteCount  = 0;
     $gdsWritten = false;
@@ -43,8 +58,7 @@ No markdown, no headers — just numbered steps.";
     foreach ($services as $slug) {
         $svcData = $segData[$slug] ?? [];
         if (empty($svcData)) {
-            error_log("[generate-sop] SKIP {$slug} — no segment data");
-            continue;
+                    continue;
         }
 
         // common (pax, budget) merge করো
@@ -56,19 +70,18 @@ No markdown, no headers — just numbered steps.";
         $segText = '';
         foreach ($segs as $i => $seg) {
             $parts = array_filter([
-                isset($seg['from'])          ? "From: {$seg['from']}"            : '',
-                isset($seg['to'])            ? "To: {$seg['to']}"                : '',
-                isset($seg['from_city'])     ? "From: {$seg['from_city']}"       : '',
-                isset($seg['to_city'])       ? "To: {$seg['to_city']}"           : '',
-                isset($seg['departure_date'])? "Date: {$seg['departure_date']}"  : '',
-                isset($seg['date'])          ? "Date: {$seg['date']}"            : '',
-                isset($seg['travel_date'])   ? "Date: {$seg['travel_date']}"     : '',
-                isset($seg['hotel_name'])    ? "Hotel: {$seg['hotel_name']}"     : '',
-                isset($seg['city_name'])     ? "City: {$seg['city_name']}"       : '',
-                isset($seg['nights'])        ? "Nights: {$seg['nights']}"        : '',
-                isset($seg['country_name'])  ? "Country: {$seg['country_name']}" : '',
-                isset($seg['airline'])       ? "Airline: {$seg['airline']}"      : '',
-                isset($seg['class'])         ? "Class: {$seg['class']}"          : '',
+                isset($seg['from'])           ? "From: {$seg['from']}"            : '',
+                isset($seg['to'])             ? "To: {$seg['to']}"                : '',
+                isset($seg['from_city'])      ? "From: {$seg['from_city']}"       : '',
+                isset($seg['to_city'])        ? "To: {$seg['to_city']}"           : '',
+                isset($seg['departure_date']) ? "Date: {$seg['departure_date']}"  : '',
+                isset($seg['date'])           ? "Date: {$seg['date']}"            : '',
+                isset($seg['hotel_name'])     ? "Hotel: {$seg['hotel_name']}"     : '',
+                isset($seg['city_name'])      ? "City: {$seg['city_name']}"       : '',
+                isset($seg['nights'])         ? "Nights: {$seg['nights']}"        : '',
+                isset($seg['country_name'])   ? "Country: {$seg['country_name']}" : '',
+                isset($seg['airline'])        ? "Airline: {$seg['airline']}"      : '',
+                isset($seg['class'])          ? "Class: {$seg['class']}"          : '',
             ]);
             if ($parts) $segText .= "Segment " . ($i + 1) . ": " . implode(', ', $parts) . "\n";
         }
@@ -86,40 +99,34 @@ Pax: {$paxStr}"
 . ($segText                    ? "\nItinerary:\n{$segText}"        : '')
 . "\nGenerate the operations workflow/SOP for processing this {$svcLabel} booking.";
 
-        $result = geminiCall($system, $userPrompt, 800, 0.3);
-        if (!($result['success'] ?? false)) {
-            error_log("[generate-sop] SKIP {$slug} SOP — Gemini failed: " . ($result['error'] ?? 'unknown'));
-            continue;
+        $sopText = '';
+        $result  = geminiCall($system, $userPrompt, 1500, 0.3);
+        if ($result['success'] ?? false) {
+            $sopText = trim($result['text'] ?? '');
         }
 
-        $sopText = trim($result['text'] ?? '');
-        if (!$sopText) {
-            error_log("[generate-sop] SKIP {$slug} SOP — empty response");
-            continue;
-        }
+        if ($sopText) {
+            $ids  = generateV2IDs($pdo, 'task_notes');
+            $meta = buildMetaData(null, $userName);
+            $pdo->prepare("
+                INSERT INTO task_notes
+                    (uuid, sys_id, task_sys_id, work_sys_id, board_type, service_slug, board_name,
+                     note_type, content, sort_order, created_by, meta_data)
+                VALUES (?, ?, NULL, ?, 'work', ?, 'mindboard', 'text', ?, 1, ?, ?)
+            ")->execute([
+                $ids['uuid'], $ids['sys_id'],
+                $workSysId, $slug,
+                "🤖 AI Generated SOP:\n\n" . $sopText,
+                $userName, $meta,
+            ]);
+            $noteCount++;
+        } else {
+                }
 
-        $ids  = generateV2IDs($pdo, 'task_notes');
-        $meta = buildMetaData(null, $userName);
-
-        $pdo->prepare("
-            INSERT INTO task_notes
-                (uuid, sys_id, task_sys_id, work_sys_id, board_type, service_slug, board_name,
-                 note_type, content, sort_order, created_by, meta_data)
-            VALUES (?, ?, NULL, ?, 'work', ?, 'mindboard', 'text', ?, 1, ?, ?)
-        ")->execute([
-            $ids['uuid'], $ids['sys_id'],
-            $workSysId, $slug,
-            "🤖 AI Generated SOP:\n\n" . $sopText,
-            $userName, $meta,
-        ]);
-        $noteCount++;
-        error_log("[generate-sop] SOP note saved for {$slug}");
-
-        // ── GDS Commands (air_ticket only) ────────────────────────────────
+        // ── GDS Commands (air_ticket only) ──────────────────────────────────
         if ($slug === 'air_ticket') {
             $commands = _buildAllGdsCommands($pdo, $svcData, $workSysId, $userName);
-
-            $cmdJson = json_encode($commands, JSON_UNESCAPED_UNICODE);
+            $cmdJson  = json_encode($commands, JSON_UNESCAPED_UNICODE);
 
             $atCheck = $pdo->prepare("SELECT id FROM air_tickets WHERE work_sys_id = ? LIMIT 1");
             $atCheck->execute([$workSysId]);
@@ -127,7 +134,6 @@ Pax: {$paxStr}"
             if ($atCheck->fetchColumn()) {
                 $pdo->prepare("UPDATE air_tickets SET commands = ? WHERE work_sys_id = ?")
                     ->execute([$cmdJson, $workSysId]);
-                error_log("[generate-sop] GDS commands updated in existing air_tickets row");
             } else {
                 $atIds  = generateV2IDs($pdo, 'air_tickets');
                 $atMeta = buildMetaData(null, $userName);
@@ -135,74 +141,224 @@ Pax: {$paxStr}"
                     INSERT INTO air_tickets (uuid, sys_id, work_sys_id, commands, meta_data)
                     VALUES (?, ?, ?, ?, ?)
                 ")->execute([$atIds['uuid'], $atIds['sys_id'], $workSysId, $cmdJson, $atMeta]);
-                error_log("[generate-sop] GDS commands saved in new air_tickets row");
-            }
+                    }
             $gdsWritten = true;
         }
     }
 
-    error_log("[generate-sop] DONE work={$workSysId} notes={$noteCount} gds=" . ($gdsWritten ? 'yes' : 'no'));
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// GDS COMMAND BUILDER — সব 4 stage এক জায়গায়
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// GDS COMMAND BUILDER
+// ══════════════════════════════════════════════════════════════════════════════
 
 function _buildAllGdsCommands(PDO $pdo, array $svcData, string $workSysId, string $userName): array {
-    $__gdsStage1 =_gdsStage1_AI($svcData);
-    $__gdsStage2 =_gdsStage1_AI($svcData);
-
-    // var_dump($__gdsStage1, $__gdsStage2);
-    // die;
+    // Mindboard = Research (Stage 1) + Quotation Checklist (Stage 2) — দুইটাই একসাথে
+    $mindboard = array_merge(
+        _gdsStage1_Code($svcData),
+        _gdsStage2_AI($svcData)
+    );
 
     return [
-        'mindboard'    => $__gdsStage1,         // Research     — AI
-        'quotation'    => $__gdsStage2,         // Checklist    — AI
-        'booking'      => _gdsStage3_Skeleton($svcData),   // Booking      — Skeleton (traveler দরকার)
-        'confirmation' => _gdsStage4_Skeleton($svcData),   // Documents    — Skeleton (passport দরকার)
+        'mindboard'    => $mindboard,                     // Mind Board   — Research + Checklist
+        'quotation'    => _gdsStage3_Skeleton($svcData),  // Quotation tab — Booking commands
+        'booking'      => _gdsStage4_Skeleton($svcData),  // Booking tab   — Confirmation/DOCS
+        'confirmation' => [],                             // Confirmation tab — (traveler data এর পরে)
     ];
-
 }
 
-// ── Stage 1: Research — Gemini দিয়ে GDS commands ────────────────────────────
-function _gdsStage1_AI(array $svcData): array {
-    $prompt = _buildGdsPrompt($svcData, 1);
-    $result = geminiJSON(
-        _gdsSystemPrompt(),
-        $prompt,
-        1500
-    );
+// ── Stage 1: Research — Pure code, guaranteed complete ────────────────────────
+function _gdsStage1_Code(array $svcData): array {
+    $segs  = $svcData['segments'] ?? [];
+    $paxA  = (int)($svcData['pax_adult']  ?? 1);
+    $paxC  = (int)($svcData['pax_child']  ?? 0);
+    $paxI  = (int)($svcData['pax_infant'] ?? 0);
+    $seats = $paxA + $paxC;
 
-    if (!($result['success'] ?? false) || empty($result['data'])) {
-        error_log("[generate-sop] Stage 1 AI failed: " . ($result['error'] ?? 'empty'));
-        return _gdsStage1_Fallback($svcData);
+    $d = fn($l)             => ['divider'  => true,  'label' => $l];
+    $c = fn($cmd, $note='') => ['cmd'      => $cmd,  'note'  => $note];
+
+    // ── Infant DOB calculation ─────────────────────────────────────────────
+    // Return date থাকলে সেখান থেকে, না থাকলে departure থেকে 265 দিন বিয়োগ
+    $infantDob = '';
+    if ($paxI > 0) {
+        $refRaw = (count($segs) >= 2 ? ($segs[count($segs)-1]['departure_date'] ?? '') : '')
+               ?: ($segs[0]['departure_date'] ?? $segs[0]['date'] ?? '');
+        if ($refRaw && ($ts = strtotime($refRaw))) {
+            $dobTs = $ts - (265 * 86400);
+            static $mon = ['','JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            $infantDob = sprintf('%02d', (int)date('d', $dobTs))
+                       . ($mon[(int)date('m', $dobTs)] ?? '')
+                       . date('y', $dobTs);
+        }
     }
 
-    $cmds = _normalizeGdsCmds($result['data']);
-    error_log("[generate-sop] Stage 1 AI OK — " . count($cmds) . " items");
+    // ── FS pax string ──────────────────────────────────────────────────────
+    $adultNums = implode('.', range(1, $paxA));
+    $childNums = $paxC > 0 ? implode('.', range($paxA + 1, $paxA + $paxC)) : '';
+    $paxStrFS  = '+P' . $adultNums;
+    if ($paxC > 0) $paxStrFS .= '*CNN10.' . $childNums . '*CNN10';
+    if ($paxI > 0 && $infantDob) {
+        $infStart = $paxA + $paxC + 1;
+        for ($ii = 0; $ii < $paxI; $ii++) {
+            $paxStrFS .= '.P' . ($infStart + $ii) . '*INF*' . $infantDob;
+        }
+    }
+
+    // ── Carrier — first segment ────────────────────────────────────────────
+    $carrier = strtoupper(trim($segs[0]['airline'] ?? $segs[0]['carrier'] ?? ''));
+
+    $cmds = [];
+
+    // ── SECTION 1: Timetable ───────────────────────────────────────────────
+    $cmds[] = $d('Timetable');
+    foreach ($segs as $seg) {
+        [$from, $to] = _parseSegFromTo($seg);
+        $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
+        if ($from && $to && $dt)
+            $cmds[] = $c("TT{$dt}{$from}{$to}", "{$from}→{$to}");
+    }
+
+    // ── SECTION 2: Live Availability ──────────────────────────────────────
+    $cmds[] = $d('Live Availability');
+
+    // a) Core neutral
+    foreach ($segs as $seg) {
+        [$from, $to] = _parseSegFromTo($seg);
+        $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
+        if ($from && $to && $dt)
+            $cmds[] = $c("A{$dt}{$from}{$to}", "{$from}→{$to} neutral display");
+    }
+
+    // b) Direct access (most accurate)
+    if ($carrier) {
+        foreach ($segs as $seg) {
+            [$from, $to] = _parseSegFromTo($seg);
+            $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
+            if ($from && $to && $dt)
+                $cmds[] = $c("A{$dt}{$from}{$to}*{$carrier}", "{$from}→{$to} direct — most accurate");
+        }
+    }
+
+    // c) Round trip combined ++ (if 2 segs)
+    if (count($segs) === 2) {
+        [$f1, $t1] = _parseSegFromTo($segs[0]); $d1 = _formatDateGDS($segs[0]['departure_date'] ?? '');
+        [$f2, $t2] = _parseSegFromTo($segs[1]); $d2 = _formatDateGDS($segs[1]['departure_date'] ?? '');
+        if ($f1 && $t1 && $d1 && $f2 && $t2 && $d2)
+            $cmds[] = $c("A{$d1}{$f1}{$t1}++{$d2}{$f2}{$t2}", "Round trip combined");
+    }
+
+    // d) Time bias — first segment
+    if (!empty($segs[0])) {
+        [$from, $to] = _parseSegFromTo($segs[0]);
+        $dt = _formatDateGDS($segs[0]['departure_date'] ?? $segs[0]['date'] ?? '');
+        if ($from && $to && $dt) {
+            $cmds[] = $c("A{$dt}{$from}{$to}.0600", "Early morning flights");
+            $cmds[] = $c("A{$dt}{$from}{$to}.1200", "Midday flights");
+            $cmds[] = $c("A{$dt}{$from}{$to}.1800", "Evening flights");
+        }
+    }
+
+    // e) Cabin class — first segment
+    if ($carrier && !empty($segs[0])) {
+        [$from, $to] = _parseSegFromTo($segs[0]);
+        $dt = _formatDateGDS($segs[0]['departure_date'] ?? $segs[0]['date'] ?? '');
+        if ($from && $to && $dt) {
+            $cmds[] = $c("A{$dt}{$from}{$to}/{$carrier}-F", "First class");
+            $cmds[] = $c("A{$dt}{$from}{$to}/{$carrier}-C", "Business class");
+            $cmds[] = $c("A{$dt}{$from}{$to}/{$carrier}-W", "Premium economy");
+            $cmds[] = $c("A{$dt}{$from}{$to}/{$carrier}-Y", "Economy");
+        }
+    }
+
+    // f) Navigation helpers — always static
+    $cmds[] = $c('A*O',  'Return availability — reverse city pair');
+    $cmds[] = $c('A#',   'Move forward 1 day');
+    $cmds[] = $c('A#3',  'Move forward 3 days');
+    $cmds[] = $c('A-',   'Move back 1 day');
+    $cmds[] = $c('AN',   'Next screen');
+    $cmds[] = $c('AY',   'Previous screen');
+    $cmds[] = $c('A*C',  'Expand connection details');
+    $cmds[] = $c('A*1',  'Expand line 1 (change number as needed)');
+
+    // ── SECTION 3: Priced Shopping ─────────────────────────────────────────
+    $cmds[] = $d('Priced Shopping');
+
+    if (count($segs) === 2) {
+        // Round trip — both legs in ONE FS command
+        [$f1, $t1] = _parseSegFromTo($segs[0]); $d1 = _formatDateGDS($segs[0]['departure_date'] ?? '');
+        [$f2, $t2] = _parseSegFromTo($segs[1]); $d2 = _formatDateGDS($segs[1]['departure_date'] ?? '');
+        if ($f1 && $t1 && $d1 && $d2)
+            $cmds[] = $c("FS{$seats}{$f1}{$d1}{$t1}{$d2}{$f1}{$paxStrFS}", "Round trip {$seats} seats");
+    } else {
+        // One way or multi-city — one FS per segment
+        foreach ($segs as $i => $seg) {
+            [$from, $to] = _parseSegFromTo($seg);
+            $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
+            if ($from && $to && $dt)
+                $cmds[] = $c("FS{$seats}{$from}{$dt}{$to}{$paxStrFS}", "Seg " . ($i+1) . " {$seats} seats");
+        }
+    }
+
+    // ── SECTION 4: Fare Display ───────────────────────────────────────────
+    $cmds[] = $d('Fare Display');
+
+    // First segment থেকে date/from/to নাও
+    [$fdFrom, $fdTo] = _parseSegFromTo($segs[0]);
+    $fdDt = _formatDateGDS($segs[0]['departure_date'] ?? $segs[0]['date'] ?? '');
+
+    if ($fdFrom && $fdTo && $fdDt) {
+        $cmds[] = $c("FD{$fdDt}{$fdFrom}{$fdTo}",               'Fare display — all carriers');
+        $cmds[] = $c("FD{$fdDt}{$fdFrom}{$fdTo}" . ($carrier ? "/{$carrier}" : ''), 'Restricted to carrier');
+        // Round trip with return date
+        if (count($segs) === 2) {
+            [$f2, $t2] = _parseSegFromTo($segs[1]);
+            $d2 = _formatDateGDS($segs[1]['departure_date'] ?? '');
+            if ($d2) $cmds[] = $c("FD{$fdDt}{$fdFrom}{$fdTo}.{$d2}", 'With return date — round trip fares');
+        }
+    }
+    $cmds[] = $c('FDC1',   'Fare rule text for line 1 (change number as needed)');
+    $cmds[] = $c('FN*1',   'Rule categories menu for fare line 1');
+
+    // ── SECTION 5: Fare Rules ─────────────────────────────────────────────
+    $cmds[] = $d('Fare Rules');
+    $cmds[] = $c('FN*1/16', '⭐ Penalties — MOST IMPORTANT — read before quoting');
+    $cmds[] = $c('FN*1/05', 'Advance reservation / ticketing requirements');
+    $cmds[] = $c('FN*1/06', 'Minimum stay');
+    $cmds[] = $c('FN*1/07', 'Maximum stay');
+    $cmds[] = $c('FN*1/31', 'Voluntary changes');
+    $cmds[] = $c('FN*1/33', 'Voluntary refunds');
+    $cmds[] = $c('FN*1/ALL','Baggage · Refund · Changes — full summary');
+
+    // ── SECTION 6: Fare Quote ─────────────────────────────────────────────
+    $cmds[] = $d('Fare Quote');
+    [$allFrom] = _parseSegFromTo($segs[0]);
+    $allVia = implode('', array_map(fn($s) => _parseSegFromTo($s)[1], $segs));
+    if ($allFrom && $allVia)
+        $cmds[] = $c("FQPQ{$allFrom}{$allVia}", 'Through fare on all carriers');
+    $cmds[] = $c('FQL',    'Fare + taxes breakdown');
+    $cmds[] = $c('FQBB',   'Best Buy — lowest fare without rebooking');
+    $cmds[] = $c('FQBA',   'Best Buy + rebook — lowest fare, auto rebooks');
+    if ($carrier) $cmds[] = $c("FQ/{$carrier}", 'Quote plated on carrier');
+    if ($paxC > 0) $cmds[] = $c('FQ*C05', 'Child discount — age 5 default');
+    if ($paxI > 0) $cmds[] = $c('FQ*INF', 'Infant fare quote');
+
     return $cmds;
 }
 
-// ── Stage 2: Quotation Checklist — Gemini দিয়ে ──────────────────────────────
+// ── Stage 2: Quotation Checklist — AI (visa/destination rules) ───────────────
 function _gdsStage2_AI(array $svcData): array {
-    $prompt = _buildGdsPrompt($svcData, 2);
-    $result = geminiJSON(
-        _gdsSystemPrompt(),
-        $prompt,
-        1200
-    );
+    $result = geminiJSON(_gdsSystemPrompt(), _buildStage2Prompt($svcData), 1200);
 
     if (!($result['success'] ?? false) || empty($result['data'])) {
-        error_log("[generate-sop] Stage 2 AI failed: " . ($result['error'] ?? 'empty'));
-        return _gdsStage2_Fallback($svcData);
+            return _gdsStage2_Fallback($svcData);
     }
 
     $cmds = _normalizeGdsCmds($result['data']);
-    error_log("[generate-sop] Stage 2 AI OK — " . count($cmds) . " items");
     return $cmds;
 }
 
-// ── Stage 3: Booking — Skeleton, traveler entry এর পরে Regenerate করতে হবে ──
+// ── Stage 3: Booking Skeleton ────────────────────────────────────────────────
 function _gdsStage3_Skeleton(array $svcData): array {
     $paxA  = (int)($svcData['pax_adult']  ?? 1);
     $paxC  = (int)($svcData['pax_child']  ?? 0);
@@ -210,22 +366,20 @@ function _gdsStage3_Skeleton(array $svcData): array {
     $seats = $paxA + $paxC;
     $segs  = $svcData['segments'] ?? [];
 
-    $d = fn($label)         => ['divider' => true,  'label' => $label];
-    $c = fn($cmd, $note='') => ['cmd'     => $cmd,  'note'  => $note];
-    $n = fn($note)          => ['note_only' => true, 'note'  => $note];
+    $d = fn($l)             => ['divider'   => true,  'label' => $l];
+    $c = fn($cmd, $note='') => ['cmd'       => $cmd,  'note'  => $note];
+    $n = fn($note)          => ['note_only' => true,  'note'  => $note];
 
-    $cmds = [];
-    $cmds[] = $n('⚠️ Traveler entry দেওয়ার পরে "Regenerate" করুন — তাহলে real name দিয়ে commands আসবে');
+    $cmds   = [];
+    $cmds[] = $n('⚠️ Traveler entry দেওয়ার পরে "Regenerate" করুন — real name দিয়ে commands আসবে');
 
     $cmds[] = $d('Sell itinerary');
     foreach ($segs as $i => $seg) {
-        $from = strtoupper($seg['from'] ?? $seg['from_city'] ?? '');
-        $to   = strtoupper($seg['to']   ?? $seg['to_city']   ?? '');
-        $dateRaw = $seg['departure_date'] ?? $seg['date'] ?? '';
-        $dateGDS = _formatDateGDS($dateRaw);
-        $carr    = $seg['airline'] ?? '';
-        if ($from && $to && $dateGDS)
-            $cmds[] = $c("A{$dateGDS}{$from}{$to}" . ($carr ? "*{$carr}" : ''), "Seg " . ($i + 1) . " — line select করুন");
+        [$from, $to] = _parseSegFromTo($seg);
+        $dt   = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
+        $carr = strtoupper($seg['airline'] ?? '');
+        if ($from && $to && $dt)
+            $cmds[] = $c("A{$dt}{$from}{$to}" . ($carr ? "*{$carr}" : ''), "Seg " . ($i+1) . " — line select করুন");
     }
     $cmds[] = $c("N{$seats}M1", "{$seats} seat sell");
 
@@ -244,41 +398,32 @@ function _gdsStage3_Skeleton(array $svcData): array {
 
     $cmds[] = $d('Price');
     $cmds[] = $c('FQC/ET',  'Carrier দিয়ে price করুন');
-    $cmds[] = $c('FQL',     'Fare breakdown — client কে confirm করুন');
+    $cmds[] = $c('FQL',     'Fare breakdown');
     $cmds[] = $c('ER',      'Save priced itinerary');
 
     return $cmds;
 }
 
-// ── Stage 4: Confirmation/Documents — Skeleton ───────────────────────────────
+// ── Stage 4: Confirmation/Documents Skeleton ─────────────────────────────────
 function _gdsStage4_Skeleton(array $svcData): array {
-    $paxA  = (int)($svcData['pax_adult']  ?? 1);
-    $paxC  = (int)($svcData['pax_child']  ?? 0);
-    $paxI  = (int)($svcData['pax_infant'] ?? 0);
+    $paxA = (int)($svcData['pax_adult']  ?? 1);
+    $paxC = (int)($svcData['pax_child']  ?? 0);
+    $paxI = (int)($svcData['pax_infant'] ?? 0);
 
-    $d = fn($label)         => ['divider'   => true, 'label' => $label];
+    $d = fn($l)             => ['divider'   => true, 'label' => $l];
     $c = fn($cmd, $note='') => ['cmd'       => $cmd, 'note'  => $note];
     $n = fn($note)          => ['note_only' => true, 'note'  => $note];
 
-    $cmds = [];
+    $cmds   = [];
     $cmds[] = $n('⚠️ Traveler passport info দেওয়ার পরে "Regenerate" করুন — real passport commands আসবে');
 
     $cmds[] = $d('Passport (DOCS) — একজন per pax');
     for ($i = 1; $i <= $paxA; $i++)
-        $cmds[] = $c(
-            "SI.P{$i}/SSRDOCSYYHK1/P/BD/PASSPORTNO/BD/DOB/M-F/EXPIRY/SURNAME/GIVEN",
-            "Adult {$i} — placeholder"
-        );
+        $cmds[] = $c("SI.P{$i}/SSRDOCSYYHK1/P/BD/PASSPORTNO/BD/DOB/M-F/EXPIRY/SURNAME/GIVEN", "Adult {$i}");
     for ($i = 1; $i <= $paxC; $i++)
-        $cmds[] = $c(
-            "SI.P" . ($paxA + $i) . "/SSRDOCSYYHK1/P/BD/PASSPORTNO/BD/DOB/M-F/EXPIRY/SURNAME/GIVEN",
-            "Child {$i} — placeholder"
-        );
+        $cmds[] = $c("SI.P" . ($paxA+$i) . "/SSRDOCSYYHK1/P/BD/PASSPORTNO/BD/DOB/M-F/EXPIRY/SURNAME/GIVEN", "Child {$i}");
     for ($i = 1; $i <= $paxI; $i++)
-        $cmds[] = $c(
-            "SI.P" . ($paxA + $paxC + $i) . "/SSRDOCSYYHK1/P/BD/PASSPORTNO/BD/DOB/FI/EXPIRY/SURNAME/GIVEN",
-            "Infant {$i} — gender FI"
-        );
+        $cmds[] = $c("SI.P" . ($paxA+$paxC+$i) . "/SSRDOCSYYHK1/P/BD/PASSPORTNO/BD/DOB/FI/EXPIRY/SURNAME/GIVEN", "Infant {$i} — gender FI");
 
     $cmds[] = $d('Contact');
     $cmds[] = $c('SI.SSRPCTCYYHK1/CTC NAME/NUMBER', 'Emergency contact');
@@ -287,198 +432,107 @@ function _gdsStage4_Skeleton(array $svcData): array {
     for ($i = 1; $i <= $paxA; $i++)
         $cmds[] = $c("SI.P{$i}/MOML", "Muslim meal — Adult {$i}");
     for ($i = 1; $i <= $paxC; $i++)
-        $cmds[] = $c("SI.P" . ($paxA + $i) . "/CHML", "Child meal — Child {$i}");
+        $cmds[] = $c("SI.P" . ($paxA+$i) . "/CHML", "Child meal — Child {$i}");
     if ($paxI)
         $cmds[] = $c('SI.P{mother}/BSCT*INFANT', 'Bassinet — mother এর pax number দিন');
 
     $cmds[] = $d('Save & Verify');
-    $cmds[] = $c('ER',   'End record');
-    $cmds[] = $c('*SI',  'সব line HK status এ আছে কিনা check করুন');
+    $cmds[] = $c('ER',  'End record');
+    $cmds[] = $c('*SI', 'সব line HK status এ আছে কিনা check করুন');
 
     return $cmds;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // PROMPT BUILDERS
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 
 function _gdsSystemPrompt(): string {
     return <<<PROMPT
 You are a senior Galileo GDS expert working for a travel agency in Bangladesh.
-Your job is to generate accurate GDS command arrays for travel bookings.
 
-IMPORTANT RULES:
-- Return ONLY a valid JSON array — no explanation, no markdown, no backticks
-- Each item is either a COMMAND object or a DIVIDER object:
-  Command:  {"cmd": "A14AUGDACBKK*BG", "note": "DAC→BKK availability"}
-  Divider:  {"divider": true, "label": "Live Availability"}
-- Use real IATA airport codes (3-letter) and airline codes (2-letter)
-- If airline name is given (e.g. "Biman Bangladesh"), convert to IATA code (BG)
-- For unknown airlines, use the most likely IATA code based on the name
-- Date format in GDS: DDMMM (e.g. 14AUG, 03JAN)
-- Galileo GDS syntax — not Amadeus or Sabre
+RULES:
+1. Return ONLY a valid JSON array — no explanation, no markdown, no backticks
+2. Each item: {"cmd":"...","note":"..."} or {"divider":true,"label":"..."} or {"note_only":true,"note":"..."}
+3. Galileo GDS syntax ONLY — NOT Amadeus, NOT Sabre
 PROMPT;
 }
 
-function _buildGdsPrompt(array $svcData, int $stage): string {
+function _buildStage2Prompt(array $svcData): string {
     $segs        = $svcData['segments'] ?? [];
-    $segmentType = $svcData['segment_type'] ?? (count($segs) > 1 ? 'multi_city' : 'one_way');
+    $segmentType = $svcData['segment_type'] ?? 'one_way';
     $paxA        = (int)($svcData['pax_adult']  ?? 1);
     $paxC        = (int)($svcData['pax_child']  ?? 0);
     $paxI        = (int)($svcData['pax_infant'] ?? 0);
-    $seats       = $paxA + $paxC;
     $budget      = $svcData['budget'] ?? '';
 
-    // Segment list build করো
     $segLines = [];
     foreach ($segs as $i => $seg) {
         [$from, $to] = _parseSegFromTo($seg);
-
-        $date    = $seg['departure_date']  ?? $seg['date'] ?? '';
-        $airline = $seg['airline'] ?? '';
-        $class   = $seg['class']   ?? 'Economy';
-        $flex    = $seg['date_flexibility'] ?? '';
-
-        $line = "  Segment " . ($i + 1) . ": {$from} → {$to}";
-        if ($date)    $line .= " | Date: {$date}";
-        if ($airline) $line .= " | Airline: {$airline}";
-        if ($class)   $line .= " | Class: {$class}";
-        if ($flex)    $line .= " | Flexibility: {$flex}";
+        $date  = $seg['departure_date'] ?? $seg['date'] ?? '';
+        $flex  = $seg['date_flexibility'] ?? '';
+        $line  = "  Seg " . ($i+1) . ": {$from}→{$to}" . ($date ? " {$date}" : '') . ($flex ? " [{$flex}]" : '');
         $segLines[] = $line;
     }
 
-    $paxLine = "Pax: {$paxA} Adult" . ($paxC ? ", {$paxC} Child" : '') . ($paxI ? ", {$paxI} Infant" : '');
-    $seatsLine = "Seats to sell: {$seats}";
-    $segLinesStr = implode("\n", $segLines);
+    $paxLine = "Pax: {$paxA}A / {$paxC}C / {$paxI}I";
+    $segsStr = implode("\n", $segLines);
 
-    if ($stage === 1) {
-        return <<<PROMPT
-Generate Galileo GDS commands for Stage 1: RESEARCH (Mind Board tab).
+    // Destinations for visa context
+    $destinations = array_unique(array_filter(array_map(fn($s) => _parseSegFromTo($s)[1], $segs)));
+    $destStr = implode(', ', $destinations);
 
-Trip type: {$segmentType}
+    return <<<PROMPT
+Generate Stage 2: QUOTATION CHECKLIST for this air ticket booking.
+
+Trip: {$segmentType}
 {$paxLine}
-{$seatsLine}
-Itinerary:
-{$segLinesStr}
-
-Generate these 4 sections (use dividers):
-1. "Timetable" — TT commands to check schedules
-2. "Live Availability" — A commands
-   - One way: ADateFromTo*CarrierCode
-   - Round trip: ADateFromTo*CarrierCode++DateFromTo*CarrierCode (one combined command)
-   - Multi-city: chain with ++ for each leg
-3. "Priced Shopping" — FS commands with pax string
-4. "Fare & Conditions" — FQPQ, FQL, FN*1/ALL
-
-Include useful notes for each command. Return JSON array only.
-PROMPT;
-    }
-
-    if ($stage === 2) {
-        return <<<PROMPT
-Generate Galileo GDS commands for Stage 2: QUOTATION CHECKLIST.
-
-Trip type: {$segmentType}
-{$paxLine}
-Itinerary:
-{$segLinesStr}
+Destinations: {$destStr}
 Budget: {$budget}
+Itinerary:
+{$segsStr}
 
-Generate a practical checklist that the agent should verify before quoting:
-- Passenger document requirements (passport validity, visa needs per destination)
-- Pax count confirmation
-- Fare validity warning
-- Budget alignment
-- Per-segment confirmation with date flexibility if any
-- Any special notes for the specific route/airline
+Generate a practical pre-quotation checklist covering:
+1. "Passenger Checklist" — passport validity (min 6 months past return), visa requirements for {$destStr} from Bangladesh, health/insurance
+2. "Fare & Budget" — fare validity (48hrs), budget alignment, refund/change conditions
+3. "Segment Confirmation" — per-segment date confirmation, flexibility if any
+4. "Special Notes" — any destination-specific requirements
 
-Use dividers to group sections. Return JSON array only.
+Use dividers. Return JSON array only.
 PROMPT;
-    }
-
-    return '[]';
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// FALLBACK — AI fail হলে basic algorithmic commands
-// ════════════════════════════════════════════════════════════════════════════
-
-function _gdsStage1_Fallback(array $svcData): array {
-    $segs  = $svcData['segments'] ?? [];
-    $paxA  = (int)($svcData['pax_adult']  ?? 1);
-    $paxC  = (int)($svcData['pax_child']  ?? 0);
-    $paxI  = (int)($svcData['pax_infant'] ?? 0);
-    $seats = $paxA + $paxC;
-    $paxStr = '*P1' . ($paxA > 1 ? "-{$paxA}" : '') . ($paxC ? "*C0{$paxC}" : '') . ($paxI ? '*INF' : '');
-
-    $d = fn($l)          => ['divider' => true, 'label' => $l];
-    $c = fn($cmd, $note='') => ['cmd' => $cmd, 'note' => $note];
-    $cmds = [];
-
-    $cmds[] = $d('Timetable');
-    foreach ($segs as $seg) {
-        [$from, $to] = _parseSegFromTo($seg);
-        $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
-        if ($from && $to && $dt) $cmds[] = $c("TT{$dt}{$from}{$to}", "{$from}→{$to}");
-    }
-
-    $cmds[] = $d('Live Availability');
-    // Round trip → ++ chain
-    if (count($segs) === 2) {
-        [$f1, $t1] = _parseSegFromTo($segs[0]); $d1 = _formatDateGDS($segs[0]['departure_date'] ?? '');
-        [$f2, $t2] = _parseSegFromTo($segs[1]); $d2 = _formatDateGDS($segs[1]['departure_date'] ?? '');
-        if ($f1 && $t1 && $d1 && $f2 && $t2 && $d2)
-            $cmds[] = $c("A{$d1}{$f1}{$t1}++{$d2}{$f2}{$t2}", "Round trip availability");
-    } else {
-        foreach ($segs as $seg) {
-            [$from, $to] = _parseSegFromTo($seg);
-            $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
-            if ($from && $to && $dt) $cmds[] = $c("A{$dt}{$from}{$to}", "{$from}→{$to}");
-        }
-    }
-
-    $cmds[] = $d('Priced Shopping');
-    foreach ($segs as $seg) {
-        [$from, $to] = _parseSegFromTo($seg);
-        $dt = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
-        if ($from && $to && $dt) $cmds[] = $c("FS{$seats}{$from}{$dt}{$to}{$paxStr}", "{$seats} seats {$from}→{$to}");
-    }
-
-    $cmds[] = $d('Fare & Conditions');
-    [$allFrom] = _parseSegFromTo($segs[0]);
-    $allVia = implode('', array_map(fn($s) => _parseSegFromTo($s)[1], $segs));
-    if ($allFrom && $allVia) $cmds[] = $c("FQPQ{$allFrom}{$allVia}", 'Through fare');
-    $cmds[] = $c('FQL',      'Fare + taxes');
-    $cmds[] = $c('FN*1/ALL', 'Baggage · Refund · Changes');
-
-    return $cmds;
-}
+// ══════════════════════════════════════════════════════════════════════════════
+// FALLBACK — Stage 2 AI fail হলে
+// ══════════════════════════════════════════════════════════════════════════════
 
 function _gdsStage2_Fallback(array $svcData): array {
-    $segs  = $svcData['segments'] ?? [];
-    $paxA  = (int)($svcData['pax_adult']  ?? 1);
-    $paxC  = (int)($svcData['pax_child']  ?? 0);
-    $paxI  = (int)($svcData['pax_infant'] ?? 0);
+    $segs   = $svcData['segments'] ?? [];
+    $paxA   = (int)($svcData['pax_adult']  ?? 1);
+    $paxC   = (int)($svcData['pax_child']  ?? 0);
+    $paxI   = (int)($svcData['pax_infant'] ?? 0);
     $budget = $svcData['budget'] ?? '';
 
-    $d = fn($l)          => ['divider' => true, 'label' => $l];
-    $c = fn($cmd, $note='') => ['cmd' => $cmd, 'note' => $note];
+    $d = fn($l)             => ['divider' => true, 'label' => $l];
+    $c = fn($cmd, $note='') => ['cmd'     => $cmd, 'note'  => $note];
     $cmds = [];
 
-    $cmds[] = $d('Passenger checklist');
+    $cmds[] = $d('Passenger Checklist');
     $cmds[] = $c("PAX: {$paxA}A / {$paxC}C / {$paxI}I", 'Client এর সাথে confirm করুন');
-    $cmds[] = $c('PASSPORT',      'Minimum 6 months validity past last travel date');
-    $cmds[] = $c('VISA',          'Destination visa requirement check করুন');
+    $cmds[] = $c('PASSPORT', 'Min 6 months validity past last travel date');
+    $cmds[] = $c('VISA',     'Destination visa requirement check করুন');
+
+    $cmds[] = $d('Fare & Budget');
     $cmds[] = $c('FARE VALIDITY', '48 ঘণ্টা — client কে জানান');
     if ($budget) $cmds[] = $c("BUDGET: {$budget}", 'Client এর সাথে align করুন');
 
-    $cmds[] = $d('Segment confirmation');
+    $cmds[] = $d('Segment Confirmation');
     foreach ($segs as $i => $seg) {
         [$from, $to] = _parseSegFromTo($seg);
         $dt   = _formatDateGDS($seg['departure_date'] ?? $seg['date'] ?? '');
         $flex = $seg['date_flexibility'] ?? '';
         $cmds[] = $c(
-            "SEG " . ($i + 1) . ": {$from}→{$to}" . ($dt ? " {$dt}" : ''),
+            "SEG " . ($i+1) . ": {$from}→{$to}" . ($dt ? " {$dt}" : ''),
             $flex ? "Flexibility: {$flex}" : 'Fixed date'
         );
     }
@@ -486,12 +540,10 @@ function _gdsStage2_Fallback(array $svcData): array {
     return $cmds;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 
-
-// segment থেকে from/to parse — route field fallback সহ
 function _parseSegFromTo(array $seg): array {
     $from = strtoupper(trim($seg['from'] ?? $seg['from_city'] ?? ''));
     $to   = strtoupper(trim($seg['to']   ?? $seg['to_city']   ?? ''));
@@ -511,28 +563,18 @@ function _formatDateGDS(string $dateRaw): string {
     return '';
 }
 
-// AI response normalize — {cmd, note} বা {divider, label} format নিশ্চিত করো
 function _normalizeGdsCmds(array $raw): array {
     $out = [];
     foreach ($raw as $item) {
         if (!is_array($item)) continue;
-        if (!empty($item['divider'])) {
-            $out[] = ['divider' => true, 'label' => (string)($item['label'] ?? '')];
-        } elseif (isset($item['cmd'])) {
-            $out[] = ['cmd' => (string)$item['cmd'], 'note' => (string)($item['note'] ?? '')];
-        } elseif (isset($item['note_only'])) {
-            $out[] = ['note_only' => true, 'note' => (string)($item['note'] ?? '')];
-        }
+        if (!empty($item['divider']))   $out[] = ['divider'  => true, 'label' => (string)($item['label'] ?? '')];
+        elseif (isset($item['cmd']))    $out[] = ['cmd'      => (string)$item['cmd'], 'note' => (string)($item['note'] ?? '')];
+        elseif (isset($item['note_only'])) $out[] = ['note_only' => true, 'note' => (string)($item['note'] ?? '')];
     }
     return $out;
 }
 
-// heredoc এ array implode করার helper (closure scope issue এড়াতে)
-function this_implode(array $arr, string $sep = "\n"): string {
-    return implode($sep, $arr);
-}
-
-// ── Standalone HTTP mode ─────────────────────────────────────────────────────
+// ── Standalone HTTP mode ──────────────────────────────────────────────────────
 if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'generate-sop.php') {
     ob_start();
     session_start();

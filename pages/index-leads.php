@@ -855,9 +855,25 @@ function openMoveModal(sysId) {
         <div class="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700"><i class="fas fa-info-circle mr-1.5"></i>Lead status → <strong>Converted</strong> after moving.</div>`;
     document.getElementById('moveModal').classList.remove('hidden');
 }
+let _moveInProgress = false;
 async function confirmMove() {
-    if(!moveLeadSysId)return; closeModal('moveModal');
-    try{const r=await fetch(API.move,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sys_id:moveLeadSysId})});const j=await r.json();if(j.success||j.status==='success'){showToast('success','Lead moved to workboard!');setTimeout(()=>{window.location.href='index-works.php';},1200);}else showToast('error',j.message||'Failed.');}catch{showToast('error','Network error.');}
+    if (!moveLeadSysId || _moveInProgress) return;
+    _moveInProgress = true;
+    const btn = document.querySelector('#moveModal button[onclick="confirmMove()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Moving…'; }
+    closeModal('moveModal');
+    try {
+        const r = await fetch(API.move, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({sys_id:moveLeadSysId})});
+        const j = await r.json();
+        if (j.success || j.status === 'success') {
+            showToast('success', 'Lead moved to workboard!');
+            setTimeout(() => { window.location.href = 'index-works.php'; }, 1200);
+        } else {
+            showToast('error', j.message || 'Failed.');
+        }
+    } catch { showToast('error', 'Network error.'); }
+    _moveInProgress = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-arrow-right mr-1"></i> Move to Work'; }
 }
 
 /* ══════════════════════════════════════════

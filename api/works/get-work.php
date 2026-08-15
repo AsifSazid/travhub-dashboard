@@ -77,6 +77,8 @@ try {
         foreach (['at_quotations','at_bookings','at_confirmations','meta_data'] as $col) {
             $atRow[$col] = ($atRow[$col] ?? null) ? json_decode($atRow[$col], true) : [];
         }
+        // commands decode — না করলে JS এ string হিসেবে যায়, commands.mindboard falsy হয়
+        $atRow['commands'] = (!empty($atRow['commands'])) ? json_decode($atRow['commands'], true) : null;
         // Legacy at_confirmation (single) → at_confirmations array
         if (!empty($atRow['at_confirmation']) && empty($atRow['at_confirmations'])) {
             $single = is_string($atRow['at_confirmation']) ? json_decode($atRow['at_confirmation'], true) : $atRow['at_confirmation'];

@@ -793,11 +793,27 @@ try {
             $id = $byWork ? $workSysId : $taskSysId;
             _saveRowFull($pdo, $id, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
+            // ── confirmed হলে task auto-create করো ───────────
+            $autoTaskResult = null;
+            $taskOk         = false;
+            if ($confirmedConf) {
+                $wSysId = $row['work_sys_id'] ?? $workSysId;
+                if ($wSysId) {
+                    $autoTaskResult = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $wSysId, $userName);
+                    $taskOk = $autoTaskResult !== null
+                           && !str_starts_with((string)$autoTaskResult, 'ERR:')
+                           && $autoTaskResult !== 'NO_WORK';
+                }
+            }
+
             ob_clean();
-            echo json_encode([
-                'status'  => 'success',
-                'message' => 'Confirmation status updated',
-            ]);
+            $resp = ['status' => 'success', 'message' => 'Confirmation status updated'];
+            if ($confirmedConf) {
+                $resp['task_created'] = $taskOk;
+                $resp['auto_task_id'] = $taskOk  ? $autoTaskResult : null;
+                $resp['task_error']   = !$taskOk ? $autoTaskResult : null;
+            }
+            echo json_encode($resp);
             break;
         }
 
