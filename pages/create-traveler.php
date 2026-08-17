@@ -121,6 +121,48 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                             <div id="extractionSuccess" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                                 <i class="fas fa-check-circle mr-2"></i><span id="extractionSuccessText"></span>
                             </div>
+                            <!-- Extra fields after extraction -->
+                            <div id="extraFieldsAfterExtract" class="hidden mt-4 space-y-4">
+                                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Additional Info <span class="text-gray-400 font-normal normal-case">(optional)</span></p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                        <input type="text" id="phoneExtract"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                            placeholder="+880 1XXX-XXXXXX">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                        <input type="email" id="emailExtract"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                            placeholder="email@example.com">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Present Address</label>
+                                        <textarea id="presentAddressExtract" rows="2"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
+                                            placeholder="House, Road, Area, City"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Father's Name</label>
+                                        <input type="text" id="fatherNameExtract"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Father's full name">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Mother's Name</label>
+                                        <input type="text" id="motherNameExtract"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Mother's full name">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                                        <input type="text" id="emergencyContactExtract"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Name & Phone">
+                                    </div>
+                                </div>
+                            </div>
                             <div id="extractionError" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                                 <i class="fas fa-exclamation-circle mr-2"></i><span id="extractionErrorText"></span>
                             </div>
@@ -145,7 +187,9 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Section: Identity -->
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Identity</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">
                                     Full Name <span class="text-red-500">*</span>
@@ -170,11 +214,93 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                                     placeholder="Enter document number">
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                                <select id="gender" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
+                                <select id="bloodGroup" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select</option>
+                                    <option>A+</option><option>A-</option>
+                                    <option>B+</option><option>B-</option>
+                                    <option>AB+</option><option>AB-</option>
+                                    <option>O+</option><option>O-</option>
+                                </select>
+                            </div>
                         </div>
-                        
+
+                        <!-- Section: Contact -->
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 mt-4">Contact</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                <input type="text" id="phone"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="+880 1XXX-XXXXXX">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="email"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="email@example.com">
+                            </div>
+                        </div>
+
+                        <!-- Section: Address -->
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 mt-4">Address</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Present Address</label>
+                                <textarea id="presentAddress" rows="2"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
+                                    placeholder="House, Road, Area, City"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Permanent Address</label>
+                                <textarea id="permanentAddress" rows="2"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
+                                    placeholder="House, Road, Area, City"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Section: Family -->
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 mt-4">Family</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Father's Name</label>
+                                <input type="text" id="fatherName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Father's full name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Mother's Name</label>
+                                <input type="text" id="motherName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Mother's full name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Spouse Name <span class="text-gray-400 text-xs">(if married)</span></label>
+                                <input type="text" id="spouseName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Spouse's full name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                                <input type="text" id="emergencyContact"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Name & Phone">
+                            </div>
+                        </div>
+
                         <!-- Check Duplicate Button -->
                         <button type="button" onclick="checkDuplicate()" id="checkDuplicateBtn"
-                            class="mt-4 px-4 py-2 border border-yellow-300 bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100">
+                            class="mt-2 px-4 py-2 border border-yellow-300 bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100">
                             <i class="fas fa-search mr-2"></i>Check for Duplicates
                         </button>
                     </div>
@@ -579,6 +705,19 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
             btn.disabled = true;
             btn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white inline-block mr-2"></div>Creating...';
     
+            // Extra fields — mode অনুযায়ী নাও
+            const isUpload = currentMode === 'upload';
+            const phone           = (isUpload ? document.getElementById('phoneExtract') : document.getElementById('phone'))?.value.trim();
+            const email           = (isUpload ? document.getElementById('emailExtract') : document.getElementById('email'))?.value.trim();
+            const presentAddress  = (isUpload ? document.getElementById('presentAddressExtract') : document.getElementById('presentAddress'))?.value.trim();
+            const permanentAddress= isUpload ? '' : (document.getElementById('permanentAddress')?.value.trim() || '');
+            const fatherName      = (isUpload ? document.getElementById('fatherNameExtract') : document.getElementById('fatherName'))?.value.trim();
+            const motherName      = (isUpload ? document.getElementById('motherNameExtract') : document.getElementById('motherName'))?.value.trim();
+            const spouseName      = isUpload ? '' : (document.getElementById('spouseName')?.value.trim() || '');
+            const emergencyContact= (isUpload ? document.getElementById('emergencyContactExtract') : document.getElementById('emergencyContact'))?.value.trim();
+            const gender          = isUpload ? '' : (document.getElementById('gender')?.value || '');
+            const bloodGroup      = isUpload ? '' : (document.getElementById('bloodGroup')?.value || '');
+
             const travelerData = {
                 full_name: fullName,
                 date_of_birth: dateOfBirth || null,
@@ -586,7 +725,18 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                 document_number: documentNumber || null,
                 file_path: null,
                 extracted_data: null,
-                force_create: forceCreate
+                force_create: forceCreate,
+                // Extra fields
+                phone: phone || null,
+                email: email || null,
+                address: presentAddress ? { present: presentAddress, permanent: permanentAddress } : null,
+                personal_info: (gender || bloodGroup) ? { gender, blood_group: bloodGroup } : null,
+                family_info: (fatherName || motherName || spouseName || emergencyContact) ? {
+                    father_name: fatherName,
+                    mother_name: motherName,
+                    spouse_name: spouseName,
+                    emergency_contact: emergencyContact,
+                } : null,
             };
     
             if (currentMode === 'upload' && isExtractionDone && uploadedFilePath) {
@@ -606,7 +756,7 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                 if (result.success) {
                     showMessage('Traveler created successfully! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = 'index-travelers.php';
+                        window.location.href = result.traveler_id ? `show-travelers.php?traveler_id=${result.traveler_id}` : 'index-travelers.php';
                     }, 1500);
                 } else {
                     showMessage(result.message || 'Failed to create traveler', 'error');

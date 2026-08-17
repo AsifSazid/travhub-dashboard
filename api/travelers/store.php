@@ -13,7 +13,7 @@ require_once '../../server/live_storage.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -165,14 +165,73 @@ try {
     }
     
     // Insert into database
+    // Extra fields from create form
+    $phoneVal = $data['phone']
+        ? json_encode(['primary_no' => $data['phone'], 'secondary_no' => []])
+        : json_encode(['primary_no' => '', 'secondary_no' => []]);
+
+    $emailVal = $data['email']
+        ? json_encode(['primary' => $data['email'], 'secondary' => []])
+        : json_encode(['primary' => '', 'secondary' => []]);
+
+    // passport bio_info থেকে auto-populate করো (form এ fill না করলেও)
+    $bio = [];
+    if (!empty($extractedData)) {
+        // upload mode — extracted_data এ bio আছে
+        $bio = $extractedData['passport_info']['bio_info']
+            ?? $extractedData['bio_info']
+            ?? $extractedData
+            ?? [];
+    }
+    // passport_info array এর first entry থেকেও নাও
+    if (empty($bio) && !empty($docArray)) {
+        $bio = $docArray[0]['bio_info'] ?? [];
+    }
+
+    // Address — form এ দিলে সেটা, না হলে bio থেকে
+    $presentAddr   = $data['address']['present']   ?? '';
+    $permanentAddr = $data['address']['permanent']  ?? ($bio['permanent_address'] ?? '');
+    $addressVal    = json_encode(['present' => $presentAddr, 'permanent' => $permanentAddr]);
+
+    // personal_info — form এ দিলে সেটা, না হলে bio থেকে
+    $personalData = $data['personal_info'] ?? [];
+    if (empty($personalData['gender']) && !empty($bio['sex'])) {
+        $sex = strtolower($bio['sex']);
+        $personalData['gender'] = $sex === 'm' ? 'male' : ($sex === 'f' ? 'female' : $sex);
+    }
+    if (empty($personalData['place_of_birth']) && !empty($bio['place_of_birth'])) {
+        $personalData['place_of_birth'] = $bio['place_of_birth'];
+    }
+    $personalInfo = !empty($personalData) ? json_encode($personalData) : null;
+
+    // family_info — form এ দিলে সেটা, না হলে bio থেকে
+    $familyData = $data['family_info'] ?? [];
+    if (empty($familyData['father_name']) && !empty($bio['father_name'])) {
+        $familyData['father_name'] = $bio['father_name'];
+    }
+    if (empty($familyData['mother_name']) && !empty($bio['mother_name'])) {
+        $familyData['mother_name'] = $bio['mother_name'];
+    }
+    if (empty($familyData['spouse_name']) && !empty($bio['spouse_name'])) {
+        $familyData['spouse_name'] = $bio['spouse_name'];
+    }
+    if (empty($familyData['emergency_contact']) && !empty($bio['emergency_contact'])) {
+        $ec = $bio['emergency_contact'];
+        $familyData['emergency_contact'] = is_array($ec)
+            ? ($ec['name'] ?? '') . ' — ' . ($ec['telephone'] ?? '')
+            : (string)$ec;
+    }
+    $familyInfo = !empty($familyData) ? json_encode($familyData) : null;
+
     $stmt = $pdo->prepare("
         INSERT INTO travelers (
             uuid, sys_id, name, date_of_birth,
             phone, email, address, status,
             smb_path, server_path, meta_data,
-            passport_no, nid_no, passport_info, nid_info
+            passport_no, nid_no, passport_info, nid_info,
+            personal_info, family_info
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     
     $stmt->execute([
@@ -180,9 +239,9 @@ try {
         $cleanSysId,
         $data['full_name'],
         $data['date_of_birth'] ?? null,
-        json_encode(['primary_no' => '', 'secondary_no' => []]),
-        json_encode(['primary' => '', 'secondary' => []]),
-        json_encode(['address_line_1' => '', 'address_line_2' => '', 'city' => '', 'state' => '', 'zip_code' => '']),
+        $phoneVal,
+        $emailVal,
+        $addressVal,
         $data['status'] ?? 'active',
         $cloud_traveler_path,
         $server_traveler_path,
@@ -190,7 +249,9 @@ try {
         $passportNo,
         $nidNo,
         $passportInfo,
-        $nidInfo
+        $nidInfo,
+        $personalInfo,
+        $familyInfo,
     ]);
     
     $travelerId = $pdo->lastInsertId();
@@ -216,7 +277,7 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Traveler created successfully',
-        'traveler_id' => $travelerId,
+        'traveler_id' => $cleanSysId,
         'sys_id' => $cleanSysId,
         'folder' => $travelerFolderName
     ]);

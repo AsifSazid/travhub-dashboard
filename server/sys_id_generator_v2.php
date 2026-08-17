@@ -49,7 +49,10 @@ function _v2Registry(): array
         'notifications' => ['table' => 'notifications', 'short' => 'NT'],
         'task_notes'    => ['table' => 'task_notes',    'short' => 'TN'],
         'sm_posts'       => ['table' => 'sm_posts',       'short' => 'SM'],
-        'air_tickets'       => ['table' => 'air_tickets',       'short' => 'AT'],
+        'air_tickets'         => ['table' => 'air_tickets',         'short' => 'AT'],
+        'traveler_documents'  => ['table' => 'traveler_documents',  'short' => 'DC'],
+        'travelers'           => ['table' => 'travelers',           'short' => 'TR'],
+        'batches'             => ['table' => 'batches',             'short' => 'BT'],
     ];
 }
 

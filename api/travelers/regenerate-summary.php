@@ -1,0 +1,226 @@
+<?php
+/**
+ * FILE PATH: api/travelers/regenerate-summary.php
+ *
+ * Phase 3 — Step 4: Committed documents থেকে traveler living summary rebuild করো
+ *
+ * smart-upload.php commit এর পরে এটা call করে।
+ * traveler_documents table থেকে সব active document এর summary নিয়ে
+ * Gemini দিয়ে একটা merged living summary বানায়।
+ *
+ * INPUT (JSON body):
+ *   traveler_sys_id        — travelers.sys_id
+ *   trigger                — 'document_upload' | 'manual'
+ *   information_updated_for — human-readable reason (e.g. "3 documents uploaded")
+ *
+ * OUTPUT (JSON):
+ *   success, traveler_id, summary, history_count, summary_info
+ */
+
+require_once '../../server/api_bootstrap.php';
+require_once '../../server/db_connection.php';
+
+set_time_limit(120);
+
+$GEMINI_API_KEY = trim(@file_get_contents('../../gemini-apikey.txt'));
+if (!$GEMINI_API_KEY) {
+    jsonOut(['success' => false, 'message' => 'Gemini API key not configured']);
+}
+
+// ── Input ────────────────────────────────────────────────────────────────────
+$body          = json_decode(file_get_contents('php://input'), true) ?: [];
+$travelerSysId = trim($body['traveler_sys_id'] ?? '');
+$trigger       = trim($body['trigger'] ?? 'manual');
+$reason        = trim($body['information_updated_for'] ?? 'Manual regeneration');
+
+if (!$travelerSysId) {
+    jsonOut(['success' => false, 'message' => 'traveler_sys_id is required']);
+}
+
+// ── Traveler fetch ────────────────────────────────────────────────────────────
+$stmt = $pdo->prepare("
+    SELECT sys_id, name, summary, history_summary, meta_data
+    FROM travelers WHERE sys_id = ? LIMIT 1
+");
+$stmt->execute([$travelerSysId]);
+$traveler = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$traveler) {
+    jsonOut(['success' => false, 'message' => 'Traveler not found']);
+}
+
+// ── সব active documents এর summary collect করো ───────────────────────────────
+$stmt = $pdo->prepare("
+    SELECT doc_type, doc_number, issue_date, expiry_date, summary, doc_data
+    FROM traveler_documents
+    WHERE traveler_id = ? AND status = 'active' AND summary IS NOT NULL AND summary != ''
+    ORDER BY doc_type, created_at DESC
+");
+$stmt->execute([$travelerSysId]);
+$documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+if (empty($documents)) {
+    jsonOut(['success' => false, 'message' => 'No documents with summaries found for this traveler']);
+}
+
+// ── Document summaries একটা context string এ জোড়া দাও ───────────────────────
+$docContext = buildDocumentContext($documents);
+
+// ── Old summary history তে archive করো ───────────────────────────────────────
+date_default_timezone_set('Asia/Dhaka');
+$now        = date('d-m-Y H:i');
+$oldSummary = trim($traveler['summary'] ?? '');
+$history    = json_decode($traveler['history_summary'] ?? '[]', true) ?: [];
+
+if ($oldSummary !== '') {
+    $history[] = ['text' => $oldSummary, 'date' => $now, 'trigger' => $trigger];
+    // Max 10 history entries রাখো
+    if (count($history) > 10) {
+        $history = array_slice($history, -10);
+    }
+}
+
+// ── Gemini call — নতুন summary বানাও ─────────────────────────────────────────
+$gemResult = generateSummary($GEMINI_API_KEY, $traveler['name'], $docContext, $oldSummary);
+
+if (!$gemResult['success']) {
+    jsonOut(['success' => false, 'message' => 'Gemini error: ' . $gemResult['error']]);
+}
+
+$newSummary  = $gemResult['summary'];
+$summaryInfo = $gemResult['summary_info'];
+
+// ── travelers table update ────────────────────────────────────────────────────
+$pdo->prepare("
+    UPDATE travelers
+    SET summary          = ?,
+        history_summary  = ?,
+        summary_info     = ?
+    WHERE sys_id = ?
+")->execute([
+    $newSummary,
+    json_encode($history, JSON_UNESCAPED_UNICODE),
+    json_encode($summaryInfo, JSON_UNESCAPED_UNICODE),
+    $travelerSysId,
+]);
+
+jsonOut([
+    'success'       => true,
+    'traveler_id'   => $travelerSysId,
+    'summary'       => $newSummary,
+    'history_count' => count($history),
+    'summary_info'  => $summaryInfo,
+    'doc_count'     => count($documents),
+]);
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Documents থেকে Gemini এর জন্য context string বানাও
+ */
+function buildDocumentContext(array $documents): string
+{
+    $lines = [];
+    foreach ($documents as $doc) {
+        $line = "[{$doc['doc_type']}]";
+        if ($doc['doc_number'])  $line .= " #{$doc['doc_number']}";
+        if ($doc['expiry_date']) $line .= " (expires {$doc['expiry_date']})";
+        if ($doc['issue_date'])  $line .= " (issued {$doc['issue_date']})";
+        $line .= ": " . trim($doc['summary']);
+        $lines[] = $line;
+    }
+    return implode("\n", $lines);
+}
+
+/**
+ * Gemini call — traveler living summary generate করো
+ */
+function generateSummary(
+    string $apiKey,
+    string $travelerName,
+    string $docContext,
+    string $oldSummary
+): array {
+
+    $model = 'gemini-2.5-flash';
+
+    $existingPart = $oldSummary
+        ? "=== EXISTING PROFILE ===\n{$oldSummary}\n\n"
+        : "";
+
+    $prompt = <<<PROMPT
+You are maintaining a living traveler profile for a Bangladeshi travel agency CRM.
+
+Traveler name: {$travelerName}
+
+{$existingPart}=== DOCUMENTS ON FILE ===
+{$docContext}
+
+Task: Write a concise, factual, third-person profile narrative of this traveler based on all the documents above.
+- Merge existing profile with new document information
+- Keep everything still true, add what is new, correct anything superseded
+- Include: identity, passport details, visa status, travel history, financial standing if known
+- Do NOT invent facts. Use only what the documents state.
+- Write in neutral third-person, 3-6 sentences.
+- Return ONLY a JSON object:
+
+{ "summary": "...the updated profile narrative..." }
+PROMPT;
+
+    $payload = json_encode([
+        'contents' => [['parts' => [['text' => $prompt]]]],
+        'generationConfig' => [
+            'responseMimeType' => 'application/json',
+            'temperature'      => 0.2,
+            'maxOutputTokens'  => 1024,
+        ],
+    ], JSON_UNESCAPED_UNICODE);
+
+    $start = microtime(true);
+    $ch    = curl_init("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 90,
+    ]);
+    $raw  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+    $elapsed = round(microtime(true) - $start, 2);
+
+    if ($err)       return ['success' => false, 'error' => 'cURL: ' . $err];
+    if ($code != 200) {
+        $b = json_decode($raw, true);
+        return ['success' => false, 'error' => $b['error']['message'] ?? "HTTP {$code}"];
+    }
+
+    $body       = json_decode($raw, true);
+    $text       = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    $tokenCount = (int)($body['usageMetadata']['totalTokenCount'] ?? 0);
+
+    $clean   = trim(preg_replace('/^```json\s*|\s*```$/m', '', $text));
+    $parsed  = json_decode($clean, true);
+    $summary = trim($parsed['summary'] ?? $text);
+
+    if (!$summary) {
+        return ['success' => false, 'error' => 'Empty summary from Gemini'];
+    }
+
+    return [
+        'success'      => true,
+        'summary'      => $summary,
+        'summary_info' => ['taken_token' => $tokenCount, 'time' => $elapsed],
+    ];
+}
+
+function jsonOut(array $data): never
+{
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}

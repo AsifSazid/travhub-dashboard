@@ -88,7 +88,7 @@ $travelerId = $_GET['traveler_id'] ?? $_GET['id'];
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300">
         <div class="p-6">
-            <div class="bg-white rounded-lg shadow p-4 flex flex-col h-[400px] md:h-[calc(100vh-8rem)]">
+            <div class="bg-white rounded-lg shadow p-4 flex flex-col h-[calc(100vh-8rem)]">
                 <!-- Header -->
                 <div class="mb-2">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center">
@@ -129,7 +129,7 @@ $travelerId = $_GET['traveler_id'] ?? $_GET['id'];
                 </div>
 
                 <!-- Tab Content Area -->
-                <div class="flex-1 min-h-0 mt-4">
+                <div class="flex-1 min-h-0 mt-4 overflow-hidden pr-1">
                     <!-- Details Tab -->
                     <div id="details" class="tab-content active h-full min-h-0">
                         <?php include('st-details.php') ?>
@@ -145,22 +145,16 @@ $travelerId = $_GET['traveler_id'] ?? $_GET['id'];
                     </div>
 
                     <!-- Information Tab -->
-                    <div id="information" class="tab-content">
-                        <div class="h-full w-full">
+                    <div id="information" class="tab-content h-full overflow-y-auto">
+                        <div class="pr-2">
                             <?php include('tp-combine-form.php') ?> <!-- tp means Traveller Profile -->
                         </div>
                     </div>
 
                     <!-- Work Board Tab -->
                     <div id="work-board" class="tab-content">
-                        <div class="grid grid-cols-2 gap-6 h-full">
-                            <div class="flex items-center justify-center h-full">
-                                <div class="text-center">
-                                    <i class="fas fa-clipboard-list text-4xl text-purple-500 mb-4"></i>
-                                    <h3 class="text-xl font-semibold mb-2">Work Board Content</h3>
-                                    <p class="text-gray-600">Work board tasks will be displayed here</p>
-                                </div>
-                            </div>
+                        <div class="h-full overflow-y-auto">
+                            <?php include('st-work-board.php') ?>
                         </div>
                     </div>
 
@@ -173,8 +167,8 @@ $travelerId = $_GET['traveler_id'] ?? $_GET['id'];
 
                     <!-- Credentials Tab -->
                     <div id="credentials" class="tab-content">
-                        <div class="h-full w-full">
-                            <?php include('credentials.php') ?> <!-- sc means show client -->
+                        <div class="h-full w-full overflow-y-auto">
+                            <?php include('st-credentials.php') ?>
                         </div>
                     </div>
                 </div>

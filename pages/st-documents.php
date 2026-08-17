@@ -1,686 +1,320 @@
 <?php
-    // $docStore = '../api/travelers/doc_store.php';
-    $docStore = '../api/travelers/document_store_v2.php';
+/**
+ * FILE PATH: pages/st-documents.php
+ * Documents tab — show-travelers.php এ include হয়।
+ * traveler_documents table থেকে documents দেখায়।
+ * smart-upload.php এ যাওয়ার button আছে।
+ */
 ?>
 
-<div class="bg-white rounded-lg shadow px-4 flex flex-col text-left">
-    
-    <button class="bg-green-500 text-white px-4 py-2 my-2 rounded hover:bg-green-600" onclick="showFileUploadModal()" title="File Upload"><i class="fas fa-upload mr-2"></i> Upload File/s</button>
+<div class="h-full flex flex-col overflow-hidden">
 
-    <div class="mb-4">
-        <!--<h3 class="text-xl font-semibold mb-2">Files Are Shown here-</h3>-->
-        <?php include('std-folders.php'); ?>
+    <!-- Header bar -->
+    <div class="flex items-center justify-between mb-3 flex-shrink-0">
+        <h3 class="text-sm font-semibold text-gray-700">Documents</h3>
+        <a href="smart-upload.php?traveler=<?= htmlspecialchars($travelerId) ?>"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700">
+            <i class="fas fa-upload"></i> Smart Upload
+        </a>
     </div>
 
-</div>
-
-<!-- Upload Modal -->
-<div class="fixed inset-0 bg-white z-50 hidden flex flex-col" id="file-upload-modal">
-    
-    <div class="flex items-center justify-between p-4 border-b border-gray-200">
-        <h3 class="text-xl font-bold text-gray-800">File Upload</h3>
-        <button onclick="closeFileUploadModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
-            <i class="fas fa-times"></i>
-        </button>
+    <!-- Loading state -->
+    <div id="docsLoading" class="flex items-center gap-2 text-sm text-gray-500 py-4">
+        <span class="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></span>
+        Loading documents...
     </div>
 
-    <form id="docsForm" class="flex-1 overflow-y-auto p-6 md:p-10">
-        <div class="max-w-4xl mx-auto"> <div class="mb-6">
-                <label class="block mb-2 text-lg font-medium text-gray-700">
-                    Select Document
-                </label>
-                <select
-                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none">
-                    <option value="" selected disabled>-- Select --</option>
-                    <option value="nid">NID</option>
-                    <option value="passports">Passports</option>
-                    <option value="office_docs">Office Documents</option>
-                    <option value="trade_license">Trade License</option>
-                    <option value="trade_license_translated">Trade License (Translated and Notarized)</option>
-                    <option value="company_letterhead">Company Letterhead</option>
-                    <option value="common">Just Common</option>
-                    <option value="moa">MOA</option>
-                    <option value="form_xii">Form XII</option>
-                    <option value="tin">TIN</option>
-                    <option value="tax_return">Tax Return</option>
-                    <option value="schedule_x">Schedule-X</option>
-                </select>
-            </div>
+    <!-- Expiring soon strip -->
+    <div id="expiringSoonStrip" class="hidden mb-3 flex-shrink-0"></div>
 
-            <label class="block text-lg font-medium text-gray-700 my-4">Upload or Paste Your Documents</label>
+    <!-- Summary panel -->
+    <div id="docsSummaryPanel" class="hidden mb-3 flex-shrink-0"></div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div id="dragDropArea" class="rounded-xl border-2 border-dashed border-blue-300 p-10 flex flex-col items-center justify-center hover:bg-blue-50 transition-colors cursor-pointer">
-                    <i class="fas fa-cloud-upload-alt text-6xl text-blue-400 mb-4"></i>
-                    <p class="mb-4 text-gray-600">Drag and drop files here</p>
-                    <input type="file" id="fileInput" multiple class="hidden">
-                    <button
-                        type="button"
-                        onclick="document.getElementById('fileInput').click()"
-                        class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md">
-                        <i class="fas fa-folder-open mr-2"></i> Browse Files
-                    </button>
-                </div>
+    <!-- Documents grid -->
+    <div id="docsGrid" class="hidden flex-1 overflow-y-auto space-y-4"></div>
 
-                <textarea id="pasteArea"
-                    placeholder="Paste your content or text data here..."
-                    class="w-full h-64 md:h-full min-h-[250px] p-4 border-2 border-dashed border-gray-300 rounded-xl focus:border-blue-500 outline-none"></textarea>
-            </div>
+    <!-- Empty state -->
+    <div id="docsEmpty" class="hidden flex-1 flex flex-col items-center justify-center text-center text-gray-400 py-12">
+        <i class="fas fa-folder-open text-4xl mb-3"></i>
+        <p class="font-medium">No documents uploaded yet</p>
+        <p class="text-sm mt-1">Use Smart Upload to add passport, visa, NID and other documents</p>
+        <a href="smart-upload.php?traveler=<?= htmlspecialchars($travelerId) ?>"
+           class="mt-4 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700">
+            Upload Now
+        </a>
+    </div>
 
-            <div class="mt-8 p-4 bg-gray-50 rounded-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h4 class="font-semibold text-gray-700">Dropped or Pasted Files</h4>
-                    <span id="fileCount" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">0 files</span>
-                </div>
-                <div id="droppedFilesList" class="text-gray-500 italic">
-                    No files added yet
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-4 mt-10 mb-10">
-                <button type="button" class="px-8 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-all" onclick="closeFileUploadModal()">Cancel</button>
-                <button type="submit" class="px-10 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg transition-all">Upload Everything</button>
-            </div>
-        </div>
-    </form>
 </div>
 
 <script>
-    const API_URL_FOR_DOC_STORE = '<?php echo $docStore; ?>?traveler_id=<? echo $travelerId ?>';
+(function() {
+    const TRAVELER_ID = <?= json_encode($travelerId) ?>;
 
-    // File Management Variables
-    let droppedFiles = [];
-    let pastedItems = [];
-    
-    function showFileUploadModal() {
-        document.getElementById('file-upload-modal').classList.remove('hidden');
-    }
-    
-    // Modal Functions
-    function showFileUploadModal() {
-        document.getElementById('file-upload-modal').classList.remove('hidden');
-    }
-    
-    function closeFileUploadModal() {
-        document.getElementById('file-upload-modal').classList.add('hidden');
-    }
+    // Doc type display labels
+    const DOC_LABELS = {
+        passport:             'Passport',
+        nid:                  'National ID',
+        visa:                 'Visa',
+        visa_stamp:           'Visa Stamp / Entry-Exit',
+        air_ticket:           'Air Ticket',
+        hotel_voucher:        'Hotel Voucher',
+        invitation_letter:    'Invitation Letter',
+        bank_statement:       'Bank Statement',
+        sponsor_letter:       'Sponsor Letter',
+        employment_letter:    'Employment Letter',
+        education_certificate:'Education Certificate',
+        medical_report:       'Medical Report',
+        vaccination_card:     'Vaccination Card',
+        marriage_certificate: 'Marriage Certificate',
+        birth_certificate:    'Birth Certificate',
+        photo:                'Photograph',
+        signature:            'Signature',
+        other:                'Other',
+    };
 
-    // Initialize Drag & Drop
-    function initDragDrop() {
-        const dragDropArea = document.getElementById('dragDropArea');
-        const fileInput = document.getElementById('fileInput');
+    const DOC_ICONS = {
+        passport:             'fa-passport',
+        nid:                  'fa-id-card',
+        visa:                 'fa-stamp',
+        visa_stamp:           'fa-stamp',
+        air_ticket:           'fa-plane',
+        hotel_voucher:        'fa-hotel',
+        bank_statement:       'fa-university',
+        sponsor_letter:       'fa-file-signature',
+        employment_letter:    'fa-briefcase',
+        education_certificate:'fa-graduation-cap',
+        medical_report:       'fa-notes-medical',
+        vaccination_card:     'fa-syringe',
+        marriage_certificate: 'fa-ring',
+        birth_certificate:    'fa-baby',
+        photo:                'fa-image',
+        signature:            'fa-signature',
+        other:                'fa-file',
+    };
 
-        // Drag over event
-        dragDropArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dragDropArea.classList.add('dragover');
-        });
+    // ── Load documents ────────────────────────────────────────────────────────
+    async function loadDocuments() {
+        try {
+            const res = await fetch(
+                `/api/travelers/list-documents.php?traveler_sys_id=${TRAVELER_ID}&include_pages=1`
+            );
+            const data = await res.json();
 
-        // Drag leave event
-        dragDropArea.addEventListener('dragleave', () => {
-            dragDropArea.classList.remove('dragover');
-        });
+            document.getElementById('docsLoading').classList.add('hidden');
 
-        // Drop event
-        dragDropArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dragDropArea.classList.remove('dragover');
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFiles(files);
+            if (!data.success) {
+                showError(data.error || 'Failed to load documents');
+                return;
             }
-        });
 
-        // File input change event
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFiles(e.target.files);
-                e.target.value = ''; // Reset input
+            if (data.total_docs === 0) {
+                document.getElementById('docsEmpty').classList.remove('hidden');
+                return;
             }
-        });
 
-        // Click on drag drop area to trigger file input
-        // Modified version with proper event handling
-        dragDropArea.addEventListener('click', (e) => {
-            // Check if the click is directly on the area (not on any child elements)
-            if (e.currentTarget === e.target) {
-                fileInput.click();
-            }
-        });
-        
-        // Browse button handler
-        // browseButton.addEventListener('click', (e) => {
-        //     e.preventDefault();
-        //     e.stopPropagation();
-        //     fileInput.click();
-        // });
-    }
+            renderExpiringSoon(data.expiring_soon || []);
+            renderGroups(data.groups || {});
 
-    // Handle dropped/browsed files
-    function handleFiles(files) {
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const existingIndex = droppedFiles.findIndex(f => f.name === file.name && f.size === file.size);
-
-            if (existingIndex === -1) {
-                droppedFiles.push(file);
-                addFileToList(file);
-            } else {
-                alert(`File "${file.name}" already exists!`);
-            }
+        } catch (err) {
+            document.getElementById('docsLoading').classList.add('hidden');
+            showError('Network error: ' + err.message);
         }
-        updateFileCount();
     }
 
-    // Add file to dropped files list
-    function addFileToList(file) {
-        const filesList = document.getElementById('droppedFilesList');
+    // ── Expiring soon strip ───────────────────────────────────────────────────
+    function renderExpiringSoon(items) {
+        if (!items.length) return;
+        const strip = document.getElementById('expiringSoonStrip');
+        strip.classList.remove('hidden');
 
-        // Clear placeholder if exists
-        if (filesList.children.length === 1 && filesList.children[0].classList.contains('text-center')) {
-            filesList.innerHTML = '';
-        }
+        strip.innerHTML = `
+            <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 flex flex-wrap gap-2 items-center">
+                <span class="text-xs font-semibold text-amber-800 uppercase tracking-wide">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> Attention
+                </span>
+                ${items.map(item => {
+                    const isExp = item.is_expired;
+                    const color = isExp ? 'red' : 'amber';
+                    const label = isExp
+                        ? `Expired ${Math.abs(item.days_left)}d ago`
+                        : `${item.days_left}d left`;
+                    return `
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-${color}-100 text-${color}-800 font-medium">
+                            ${DOC_LABELS[item.doc_type] || item.doc_type}
+                            ${item.doc_number ? `· ${item.doc_number}` : ''}
+                            · <strong>${label}</strong>
+                        </span>`;
+                }).join('')}
+            </div>`;
+    }
 
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition duration-200 cursor-pointer';
-        fileItem.dataset.fileName = file.name;
-        fileItem.dataset.fileSize = file.size;
-        fileItem.dataset.fileType = file.type;
+    // ── Document groups ───────────────────────────────────────────────────────
+    function renderGroups(groups) {
+        const grid = document.getElementById('docsGrid');
+        grid.classList.remove('hidden');
+        grid.innerHTML = '';
 
-        const fileIcon = getFileIcon(file.type);
-        const isImage = file.type.startsWith('image/');
+        Object.entries(groups).forEach(([docType, docs]) => {
+            const section = document.createElement('div');
+            section.className = 'bg-white border border-gray-200 rounded-xl overflow-hidden';
 
-        fileItem.innerHTML = `
-            <div class="flex items-center justify-between">
-                <div class="flex items-center flex-1">
-                    <i class="${fileIcon} text-xl mr-3 ${isImage ? 'text-blue-500' : 'text-gray-500'}"></i>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-800 truncate" title="${file.name}">${file.name}</div>
-                        <div class="text-xs text-gray-500">${formatFileSize(file.size)} • ${file.type || 'Unknown type'}</div>
+            const icon = DOC_ICONS[docType] || 'fa-file';
+            const label = DOC_LABELS[docType] || docType;
+            const count = docs.length;
+
+            section.innerHTML = `
+                <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fas ${icon} text-gray-500 w-4 text-center"></i>
+                        <span class="font-medium text-gray-800 text-sm">${label}</span>
+                        <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">${count}</span>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button onclick="previewInNewTab('${file.name}')" class="text-blue-500 hover:text-blue-700" title="Preview in New Tab">
-                        <i class="fas fa-external-link-alt"></i>
-                    </button>
-                    <button onclick="downloadFile('${file.name}')" class="text-green-500 hover:text-green-700" title="Download">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button onclick="removeFile('${file.name}')" class="text-red-500 hover:text-red-700" title="Remove">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-        `;
+                <div class="divide-y divide-gray-100">
+                    ${docs.map(doc => renderDocCard(doc)).join('')}
+                </div>`;
 
-        // Click to open in new tab
-        fileItem.addEventListener('click', (e) => {
-            if (!e.target.closest('button')) {
-                previewInNewTab(file.name);
-            }
+            grid.appendChild(section);
         });
-
-        filesList.appendChild(fileItem);
     }
 
-    // Preview in new tab
-    function previewInNewTab(fileName) {
-        const file = droppedFiles.find(f => f.name === fileName);
-        if (!file) return;
-
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const newTab = window.open('', '_blank');
-                newTab.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>Preview: ${file.name}</title>
-                        <style>
-                            body { 
-                                margin: 0; 
-                                padding: 20px; 
-                                background: #f0f0f0; 
-                                display: flex; 
-                                justify-content: center; 
-                                align-items: center; 
-                                min-height: 100vh;
-                            }
-                            .preview-container {
-                                max-width: 90%;
-                                max-height: 90vh;
-                                background: white;
-                                padding: 20px;
-                                border-radius: 10px;
-                                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                                text-align: center;
-                            }
-                            img { 
-                                max-width: 100%; 
-                                max-height: 70vh; 
-                                border-radius: 5px;
-                            }
-                            .file-info {
-                                margin-top: 15px;
-                                padding: 10px;
-                                background: #f8f9fa;
-                                border-radius: 5px;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="preview-container">
-                            <img src="${e.target.result}" alt="${file.name}">
-                            <div class="file-info">
-                                <h3>${file.name}</h3>
-                                <p>Size: ${formatFileSize(file.size)} | Type: ${file.type}</p>
-                                <button onclick="window.print()" style="margin-top: 10px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                    <i class="fas fa-print"></i> Print
-                                </button>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                `);
-                newTab.document.close();
-            };
-            reader.readAsDataURL(file);
-        } else if (file.type.startsWith('text/') || file.type.includes('pdf') ||
-            file.type.includes('word') || file.type.includes('excel')) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const newTab = window.open('', '_blank');
-                if (file.type.includes('pdf')) {
-                    // For PDF, create an iframe
-                    const pdfUrl = URL.createObjectURL(file);
-                    newTab.document.write(`
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <title>PDF Preview: ${file.name}</title>
-                            <style>
-                                body { margin: 0; padding: 20px; background: #f0f0f0; }
-                                .pdf-container { 
-                                    width: 100%; 
-                                    height: 90vh; 
-                                    background: white; 
-                                    border-radius: 10px; 
-                                    overflow: hidden;
-                                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                                }
-                                iframe { width: 100%; height: 100%; border: none; }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="pdf-container">
-                                <iframe src="${pdfUrl}"></iframe>
-                            </div>
-                        </body>
-                        </html>
-                    `);
-                } else {
-                    // For text files
-                    newTab.document.write(`
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <title>Preview: ${file.name}</title>
-                            <style>
-                                body { 
-                                    margin: 0; 
-                                    padding: 20px; 
-                                    background: #f0f0f0; 
-                                    font-family: monospace;
-                                }
-                                .preview-container {
-                                    max-width: 90%;
-                                    background: white;
-                                    padding: 20px;
-                                    border-radius: 10px;
-                                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                                    overflow-x: auto;
-                                }
-                                pre { 
-                                    white-space: pre-wrap; 
-                                    word-wrap: break-word; 
-                                    margin: 0;
-                                    font-size: 14px;
-                                }
-                                .file-header {
-                                    background: #f8f9fa;
-                                    padding: 10px;
-                                    border-radius: 5px;
-                                    margin-bottom: 15px;
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="preview-container">
-                                <div class="file-header">
-                                    <div>
-                                        <h3 style="margin: 0;">${file.name}</h3>
-                                        <p style="margin: 5px 0 0 0; color: #666;">Size: ${formatFileSize(file.size)}</p>
-                                    </div>
-                                    <button onclick="window.print()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                        <i class="fas fa-print"></i> Print
-                                    </button>
-                                </div>
-                                <pre>${e.target.result}</pre>
-                            </div>
-                        </body>
-                        </html>
-                    `);
-                }
-                newTab.document.close();
-            };
-            if (file.type.startsWith('text/')) {
-                reader.readAsText(file);
+    // ── Single doc card ───────────────────────────────────────────────────────
+    function renderDocCard(doc) {
+        // Expiry badge
+        let expiryBadge = '';
+        if (doc.expiry_date) {
+            if (doc.is_expired) {
+                expiryBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Expired</span>`;
+            } else if (doc.is_expiring_soon) {
+                expiryBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">${doc.days_until_expiry}d left</span>`;
             } else {
-                reader.readAsDataURL(file);
+                expiryBadge = `<span class="text-xs text-gray-400">Exp: ${formatDate(doc.expiry_date)}</span>`;
             }
-        } else {
-            // For other file types
-            const newTab = window.open('', '_blank');
-            newTab.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>File Info: ${file.name}</title>
-                    <style>
-                        body { 
-                            margin: 0; 
-                            padding: 20px; 
-                            background: #f0f0f0; 
-                            display: flex; 
-                            justify-content: center; 
-                            align-items: center; 
-                            min-height: 100vh;
-                        }
-                        .info-container {
-                            background: white;
-                            padding: 30px;
-                            border-radius: 10px;
-                            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                            text-align: center;
-                            max-width: 500px;
-                        }
-                        .file-icon {
-                            font-size: 48px;
-                            color: #666;
-                            margin-bottom: 20px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="info-container">
-                        <div class="file-icon">
-                            <i class="${getFileIcon(file.type)}"></i>
-                        </div>
-                        <h2>${file.name}</h2>
-                        <p><strong>Type:</strong> ${file.type || 'Unknown'}</p>
-                        <p><strong>Size:</strong> ${formatFileSize(file.size)}</p>
-                        <p><strong>Last Modified:</strong> ${new Date(file.lastModified).toLocaleString()}</p>
-                        <p style="margin-top: 20px; color: #666;">
-                            This file type cannot be previewed in the browser.
-                            Please download the file to view it.
-                        </p>
-                        <button onclick="window.location.href='${URL.createObjectURL(file)}';" 
-                            style="margin-top: 20px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                            <i class="fas fa-download"></i> Download File
-                        </button>
+        }
+
+        // Passport status badge
+        let passportBadge = '';
+        if (doc.passport_status) {
+            const colors = { current: 'emerald', previous: 'gray', historical: 'gray' };
+            const c = colors[doc.passport_status] || 'gray';
+            passportBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-${c}-100 text-${c}-700 capitalize">${doc.passport_status}</span>`;
+        }
+
+        // Confidence badge
+        const confPct = doc.confidence ? Math.round(doc.confidence * 100) : null;
+        const confBadge = confPct
+            ? `<span class="text-xs text-gray-400">${confPct}% confidence</span>`
+            : '';
+
+        // Pages
+        const pages = doc.pages || [];
+        const pageBadges = pages.map(p => {
+            const label = p.country ? `${p.page_type} · ${p.country}` : p.page_type;
+            return `<span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">${escHtml(label)}</span>`;
+        }).join(' ');
+
+        // Thumbnail — first page image
+        let thumbnail = '';
+        if (pages.length && pages[0].url) {
+            const pagesJson = escHtml(JSON.stringify(pages.map(p => p.url).filter(Boolean)));
+            thumbnail = `
+                <div class="flex-shrink-0">
+                    <img src="${escHtml(pages[0].url)}"
+                         alt="preview"
+                         class="w-16 h-20 object-cover rounded border border-gray-200 cursor-pointer"
+                         onclick="openDocViewer('${escHtml(doc.sys_id)}', ${pagesJson})"
+                         onerror="this.parentNode.innerHTML='<div class=\'w-16 h-20 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-gray-400 text-xl\'><i class=\'fas fa-file\'></i></div>'">
+                </div>`;
+        }
+
+        return `
+            <div class="flex items-start gap-4 px-4 py-3 hover:bg-gray-50">
+                ${thumbnail}
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center flex-wrap gap-1.5 mb-1">
+                        ${doc.doc_number
+                            ? `<span class="font-mono text-sm font-semibold text-gray-800">${escHtml(doc.doc_number)}</span>`
+                            : `<span class="text-sm text-gray-500 italic">No document number</span>`}
+                        ${passportBadge}
+                        ${expiryBadge}
+                        ${doc.needs_review ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Review</span>' : ''}
                     </div>
-                </body>
-                </html>
-            `);
-            newTab.document.close();
-        }
-    }
-
-    // Get file icon based on type
-    function getFileIcon(fileType) {
-        if (fileType.startsWith('image/')) return 'fas fa-file-image';
-        if (fileType.startsWith('video/')) return 'fas fa-file-video';
-        if (fileType.startsWith('audio/')) return 'fas fa-file-audio';
-        if (fileType.includes('pdf')) return 'fas fa-file-pdf';
-        if (fileType.includes('word')) return 'fas fa-file-word';
-        if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'fas fa-file-excel';
-        if (fileType.includes('zip') || fileType.includes('compressed')) return 'fas fa-file-archive';
-        if (fileType.startsWith('text/')) return 'fas fa-file-alt';
-        return 'fas fa-file';
-    }
-
-    // Format file size
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Update file count
-    function updateFileCount() {
-        const countElement = document.getElementById('fileCount');
-        const fileCount = droppedFiles.length;
-        countElement.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
-
-        // Update count color based on number of files
-        if (fileCount === 0) {
-            countElement.className = 'text-xs bg-gray-200 px-2 py-1 rounded';
-        } else if (fileCount < 5) {
-            countElement.className = 'text-xs bg-green-100 text-green-800 px-2 py-1 rounded';
-        } else {
-            countElement.className = 'text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded';
-        }
-    }
-
-    // Remove file from list
-    function removeFile(fileName) {
-        if (!confirm('Are you sure you want to remove this file?')) return;
-
-        droppedFiles = droppedFiles.filter(file => file.name !== fileName);
-        updateFileCount();
-
-        const filesList = document.getElementById('droppedFilesList');
-        const fileItems = filesList.getElementsByClassName('file-item');
-
-        for (let i = 0; i < fileItems.length; i++) {
-            if (fileItems[i].dataset.fileName === fileName) {
-                fileItems[i].remove();
-                break;
-            }
-        }
-
-        // Show placeholder if no files
-        if (droppedFiles.length === 0) {
-            filesList.innerHTML = `
-                <div class="text-center text-gray-500 py-4 text-sm">
-                    <i class="fas fa-file mb-1"></i>
-                    <p>No files added yet</p>
-                </div>
-            `;
-        }
-    }
-    
-    // Add this HTML for conversion status display - put it near the upload button
-    // Add this div somewhere in your modal:
-    // <div id="conversionStatus" class="hidden mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"></div>
-    
-    // Replace the existing form submit handler with this:
-    const form = document.getElementById('docsForm');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-    
-        // Create FormData
-        const formData = new FormData();
-        const pasteArea = document.getElementById('pasteArea').value;
-        formData.append('pasted_text', pasteArea);
-    
-        // Append files
-        if (droppedFiles.length > 0) {
-            droppedFiles.forEach(file => {
-                formData.append('files[]', file);
-            });
-        }
-    
-        // Show loading state with detailed status
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing files (PDFs will be converted to images)...';
-        submitBtn.disabled = true;
-        
-        // Show conversion status area
-        const statusDiv = document.getElementById('conversionStatus') || createStatusDiv();
-        statusDiv.innerHTML = '<div class="flex items-center"><i class="fas fa-sync-alt fa-spin mr-2"></i> Uploading and converting files...</div>';
-        statusDiv.classList.remove('hidden');
-    
-        // Send to API
-        fetch(API_URL_FOR_DOC_STORE, {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return res.json();
-        })
-        .then(data => {
-            console.log('API Response:', data);
-    
-            if (data.success) {
-                // Show conversion details if any PDFs were converted
-                if (data.conversions && data.conversions.length > 0) {
-                    let conversionHtml = '<div class="text-sm"><i class="fas fa-file-image text-green-600 mr-2"></i> <strong>PDF Conversions:</strong><ul class="mt-2 ml-6 list-disc">';
-                    data.conversions.forEach(conv => {
-                        conversionHtml += `<li>${conv.original_pdf} → ${conv.converted_to} (Page ${conv.page})</li>`;
-                    });
-                    conversionHtml += '</ul></div>';
-                    statusDiv.innerHTML = conversionHtml;
-                    statusDiv.className = 'mt-4 p-3 bg-green-50 border border-green-200 rounded-lg';
-                    
-                    // Auto hide after 5 seconds
-                    setTimeout(() => {
-                        statusDiv.classList.add('hidden');
-                    }, 5000);
-                } else {
-                    statusDiv.innerHTML = '<div class="text-sm"><i class="fas fa-check-circle text-green-600 mr-2"></i> ' + data.message + '</div>';
-                    statusDiv.className = 'mt-4 p-3 bg-green-50 border border-green-200 rounded-lg';
-                    setTimeout(() => {
-                        statusDiv.classList.add('hidden');
-                    }, 3000);
-                }
-                
-                // Show warnings if any
-                if (data.warnings && data.warnings.length > 0) {
-                    let warningHtml = '<div class="text-sm text-yellow-700"><i class="fas fa-exclamation-triangle mr-2"></i> <strong>Warnings:</strong><ul class="mt-2 ml-6 list-disc">';
-                    data.warnings.forEach(warning => {
-                        warningHtml += `<li>${warning}</li>`;
-                    });
-                    warningHtml += '</ul></div>';
-                    
-                    // Append warnings below success message
-                    const warningDiv = document.createElement('div');
-                    warningDiv.innerHTML = warningHtml;
-                    warningDiv.className = 'mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg';
-                    statusDiv.appendChild(warningDiv);
-                }
-                
-                alert('✅ ' + data.message);
-                
-                // Reset form
-                form.reset();
-                droppedFiles = [];
-                document.getElementById('droppedFilesList').innerHTML = `
-                    <div class="text-center text-gray-500 py-4 text-sm">
-                        <i class="fas fa-file mb-1"></i>
-                        <p>No files added yet</p>
+                    ${doc.summary
+                        ? `<p class="text-xs text-gray-600 line-clamp-2 mb-1">${escHtml(doc.summary)}</p>`
+                        : ''}
+                    <div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                        ${doc.page_count > 1 ? `<span>${doc.page_count} pages</span>` : ''}
+                        ${doc.issue_date ? `<span>Issued: ${formatDate(doc.issue_date)}</span>` : ''}
+                        ${doc.country ? `<span>${escHtml(doc.country)}</span>` : ''}
+                        ${confBadge}
                     </div>
-                `;
-                updateFileCount();
-                document.getElementById('pasteArea').value = '';
-    
-            } else {
-                statusDiv.innerHTML = '<div class="text-sm text-red-600"><i class="fas fa-exclamation-circle mr-2"></i> ' + (data.message || 'Upload failed') + '</div>';
-                statusDiv.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded-lg';
-                alert('❌ Error: ' + (data.message || 'Something went wrong'));
-            }
-        })
-        .catch(err => {
-            console.error('Error:', err);
-            statusDiv.innerHTML = '<div class="text-sm text-red-600"><i class="fas fa-exclamation-circle mr-2"></i> Server error: ' + err.message + '</div>';
-            statusDiv.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded-lg';
-            alert('Server or network error. Please try again.\n' + err.message);
-        })
-        .finally(() => {
-            // Reset button state
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-            
-            // Hide status after 8 seconds if not already hidden
-            setTimeout(() => {
-                if (statusDiv && !statusDiv.classList.contains('hidden')) {
-                    statusDiv.classList.add('hidden');
-                }
-            }, 8000);
-        });
-    });
-    
-    // Helper function to create status div if it doesn't exist
-    function createStatusDiv() {
-        let statusDiv = document.getElementById('conversionStatus');
-        if (!statusDiv) {
-            statusDiv = document.createElement('div');
-            statusDiv.id = 'conversionStatus';
-            statusDiv.className = 'hidden mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg';
-            // Insert it after the submit button or in a suitable place
-            const form = document.getElementById('docsForm');
-            const submitBtn = form.querySelector('button[type="submit"]');
-            submitBtn.parentNode.insertBefore(statusDiv, submitBtn.nextSibling);
-        }
-        return statusDiv;
-    }
-
-    // Download file
-    function downloadFile(fileName) {
-        const file = droppedFiles.find(f => f.name === fileName);
-        if (!file) return;
-
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    // Clear all files
-    function clearAllFiles() {
-        if (droppedFiles.length === 0) {
-            alert('No files to clear!');
-            return;
-        }
-
-        if (confirm(`Are you sure you want to remove all ${droppedFiles.length} files?`)) {
-            droppedFiles = [];
-            document.getElementById('droppedFilesList').innerHTML = `
-                <div class="text-center text-gray-500 py-4 text-sm">
-                    <i class="fas fa-file mb-1"></i>
-                    <p>No files added yet</p>
+                    ${pageBadges ? `<div class="mt-1 flex flex-wrap gap-1">${pageBadges}</div>` : ''}
                 </div>
-            `;
-            updateFileCount();
-        }
+            </div>`;
     }
-    
-    document.addEventListener('DOMContentLoaded', function () {
-        initDragDrop();
-    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr;
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function escHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+        }[c]));
+    }
+
+    function showError(msg) {
+        document.getElementById('docsGrid').innerHTML =
+            `<div class="text-red-600 text-sm py-4"><i class="fas fa-exclamation-circle mr-1"></i>${msg}</div>`;
+        document.getElementById('docsGrid').classList.remove('hidden');
+    }
+
+    // ── Document viewer ──────────────────────────────────────────────────────
+    window.openDocViewer = function(docSysId, pageUrls) {
+        const urls = Array.isArray(pageUrls) && pageUrls.length ? pageUrls : [];
+        if (!urls.length) return;
+
+        let currentPage = 0;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4';
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+        function render() {
+            overlay.innerHTML = `
+                <div class="relative max-w-4xl max-h-full flex flex-col items-center gap-3" onclick="event.stopPropagation()">
+                    <img src="${escHtml(urls[currentPage])}"
+                         class="max-w-full max-h-[80vh] object-contain rounded-lg bg-white"
+                         onerror="this.src=''; this.alt='Could not load file'">
+                    ${urls.length > 1 ? `
+                    <div class="flex items-center gap-4">
+                        <button onclick="window._docViewerPrev()"
+                                class="px-3 py-1 bg-white/20 text-white rounded hover:bg-white/40 disabled:opacity-30"
+                                ${currentPage === 0 ? 'disabled' : ''}>← Prev</button>
+                        <span class="text-white text-sm">${currentPage + 1} / ${urls.length}</span>
+                        <button onclick="window._docViewerNext()"
+                                class="px-3 py-1 bg-white/20 text-white rounded hover:bg-white/40 disabled:opacity-30"
+                                ${currentPage === urls.length - 1 ? 'disabled' : ''}>Next →</button>
+                    </div>` : ''}
+                    <button onclick="document.querySelector('.fixed.z-50').remove()"
+                            class="absolute top-0 right-0 w-8 h-8 bg-white/20 text-white rounded-full flex items-center justify-center hover:bg-white/40">
+                        ✕
+                    </button>
+                </div>`;
+        }
+
+        window._docViewerPrev = () => { if (currentPage > 0) { currentPage--; render(); } };
+        window._docViewerNext = () => { if (currentPage < urls.length - 1) { currentPage++; render(); } };
+
+        render();
+        document.body.appendChild(overlay);
+    };
+
+    // Load on init
+    loadDocuments();
+})();
 </script>

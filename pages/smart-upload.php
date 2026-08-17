@@ -667,7 +667,7 @@ window.approveDiff = () => {
 // ============================================================================
 $commitBtn.addEventListener('click', async () => {
   const items = [];
-  document.querySelectorAll('#reviewCards [data-token]').forEach(card => {
+  document.querySelectorAll('#reviewCards > [data-token]').forEach(card => {
     const token = card.dataset.token;
     const original = pending.get(token);
     if (!original) return;

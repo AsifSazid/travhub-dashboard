@@ -91,7 +91,7 @@ const MdActivities = (() => {
             return;
         }
         
-        // শহরগুলो সিলেক্টে দেখানো
+        // শহরগুলো সিলেক্টে দেখানো
         citySelect.innerHTML = '<option value="">Select city</option>' +
             country.cities.map(city => 
                 `<option value="${city.sys_id || city.id || city.name}" data-name="${esc(city.name)}">
@@ -371,7 +371,10 @@ const MdActivities = (() => {
                             <input id="fVCost" type="number" step="0.01" placeholder="0.00" class="th-input">
                         </div>
                         <div>
-                            <label class="th-label">Sell Price <span class="text-red-500">*</span></label>
+                            <label class="th-label">
+                                Sell Price <span class="text-red-500">*</span>
+                                <span id="fVSellAutoTag" class="hidden ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#50BC81]/20 text-[#2e9460]">auto</span>
+                            </label>
                             <input id="fVSell" type="number" step="0.01" placeholder="0.00" class="th-input">
                         </div>
                     </div>
@@ -678,6 +681,7 @@ const MdActivities = (() => {
             .desc-point-row .ql-editor.ql-blank::before{color:#9ca3af;font-style:normal;}
             .desc-point-row .quill-wrap{border:1px solid #e5e7eb;border-radius:.75rem;overflow:hidden;flex:1;background:#fff;transition:border-color .15s,box-shadow .15s;}
             .desc-point-row .quill-wrap:focus-within{border-color:#50BC81;box-shadow:0 0 0 2px rgba(80,188,129,.25);}
+            #fVSell.auto-calculated{border-color:#50BC81;background:#f0fdf7;}
         </style>`);
     }
 
@@ -734,6 +738,57 @@ const MdActivities = (() => {
             thCloseModal('aiPreviewModal');
             openActForm(null, _aiExtractedData);
         };
+
+        // ── Variant: Auto Sell Price calculation ──────────────────────
+        // Net Cost বা Markup change হলে Sell Price auto-calculate হবে
+        ['fVCost', 'fVMkType', 'fVMkVal'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input',  _calcVariantSellPrice);
+            document.getElementById(id)?.addEventListener('change', _calcVariantSellPrice);
+        });
+
+        // User নিজে Sell Price type করলে auto-fill বন্ধ হবে
+        document.getElementById('fVSell')?.addEventListener('input', function () {
+            this.dataset.manualEdit = 'true';
+            this.classList.remove('auto-calculated');
+            const tag = document.getElementById('fVSellAutoTag');
+            if (tag) tag.classList.add('hidden');
+        });
+    }
+
+    // ── Variant Sell Price Auto-Calculator ───────────────────────────
+    function _calcVariantSellPrice() {
+        const sellEl = document.getElementById('fVSell');
+        if (!sellEl) return;
+
+        // User manually type করলে override করবে না
+        if (sellEl.dataset.manualEdit === 'true') return;
+
+        const cost   = parseFloat(document.getElementById('fVCost')?.value  || 0);
+        const mkType = document.getElementById('fVMkType')?.value || 'percent';
+        const mkVal  = parseFloat(document.getElementById('fVMkVal')?.value || 0);
+
+        if (cost <= 0) {
+            sellEl.value = '';
+            sellEl.classList.remove('auto-calculated');
+            const tag = document.getElementById('fVSellAutoTag');
+            if (tag) tag.classList.add('hidden');
+            return;
+        }
+
+        let sell = 0;
+        if (mkType === 'percent') {
+            sell = cost + (cost * mkVal / 100);
+        } else {
+            // fixed markup
+            sell = cost + mkVal;
+        }
+
+        sellEl.value = sell > 0 ? sell.toFixed(2) : '';
+        sellEl.classList.add('auto-calculated');
+
+        // "auto" badge দেখানো
+        const tag = document.getElementById('fVSellAutoTag');
+        if (tag) tag.classList.remove('hidden');
     }
 
     // ── Load Activities ──────────────────────────────────────────────────────────
@@ -1375,6 +1430,16 @@ const MdActivities = (() => {
         ['fVMealB','fVMealL','fVMealD','fVTicket','fVGuide'].forEach(id => {
             const el = document.getElementById(id); if (el) el.checked = false;
         });
+
+        // Sell Price auto-fill flag reset
+        const sellEl = document.getElementById('fVSell');
+        if (sellEl) {
+            sellEl.dataset.manualEdit = '';
+            sellEl.classList.remove('auto-calculated');
+        }
+        const autoTag = document.getElementById('fVSellAutoTag');
+        if (autoTag) autoTag.classList.add('hidden');
+
         document.getElementById('varFormTitle').textContent = v ? 'Edit Variant' : 'Add Variant';
         if (v) {
             thSetVal('fVSysId',        v.sys_id);
@@ -1410,6 +1475,11 @@ const MdActivities = (() => {
             document.getElementById('fVMealD').checked  = !!v.meal_dinner;
             document.getElementById('fVTicket').checked = !!v.ticket_included;
             document.getElementById('fVGuide').checked  = !!v.guide_included;
+
+            // Edit mode: sell price already saved, treat as manual so auto-calc won't override
+            if (v.sell_price) {
+                if (sellEl) sellEl.dataset.manualEdit = 'true';
+            }
         }
         if (!v) {
             thSetVal('fVCcy', st.viewActivityCurrency || '');
@@ -1520,7 +1590,7 @@ const MdActivities = (() => {
                         value="${esc(duration)}">
                 </div>
 
-                <!-- ডান পাশের অংশ: Text Editor (বাকি পুরো জায়গা নিবে) -->
+                <!-- ডান পাশের অংশ: Text Editor (বাকি পুরো জায়গা নিবে) -->
                 <div class="quill-wrap flex-1">
                     <div class="desc-point-quill" style="min-height: 86px;"></div>
                 </div>

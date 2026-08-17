@@ -1,3 +1,8 @@
+<?php
+if (empty($travelerId)) {
+    $travelerId = $_GET['traveler_id'] ?? $_GET['id'] ?? '';
+}
+?>
     <style>
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;
@@ -94,23 +99,15 @@
         }
     </style>
 
-    <!-- Header -->
-    <header class="text-center mb-12">
-        <div class="flex items-center justify-center mb-4">
-            <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                <i class="fas fa-info-circle text-white text-xl"></i>
-            </div>
-            <h1 class="text-3xl font-bold text-gray-800">Traveller Information Form</h1>
-        </div>
-    </header>
-
-    <!-- Main Application Container -->
-    <div class="bg-white rounded-xl shadow-lg">
-        <!-- PNR Display -->
-        <div class="px-8 pt-8 flex justify-between items-center">
+    <!-- Traveller Information Form -->
+    <div>
+        <!-- Header bar -->
+        <div class="flex justify-between items-center mb-4">
             <div>
-                <h2 class="text-xl font-bold text-gray-800">Traveller PNR: <span id="pnr-display" class="font-mono text-blue-600"></span></h2>
-                <p class="text-gray-600 text-sm">Your form data is automatically saved to Local Storage</p>
+                <h2 class="text-xl font-bold text-gray-800">
+                    Traveller: <span id="traveler-name-display" class="font-mono text-blue-600"><?= htmlspecialchars($travelerId ?? '') ?></span>
+                </h2>
+                <p class="text-gray-600 text-sm" id="save-status">Loading...</p>
             </div>
             <div class="flex space-x-2">
                 <button id="save-exit" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 text-sm">
@@ -120,7 +117,7 @@
         </div>
 
         <!-- Progress -->
-        <div class="px-8 pt-4">
+        <div class="pt-2 pb-4">
             <div class="flex justify-between mb-2">
                 <span class="text-sm font-medium text-gray-700">Progress</span>
                 <span class="text-sm font-medium text-gray-500"><span id="current-step">1</span> of <span id="total-steps">16</span></span>
@@ -131,10 +128,10 @@
         </div>
 
         <!-- Main Content Area -->
-        <div class="flex flex-col md:flex-row p-8">
+        <div class="flex flex-col md:flex-row pt-4 gap-4">
             <!-- Step Navigation Sidebar -->
-            <div class="w-full md:w-1/4 mb-6 md:mb-0 md:pr-6">
-                <div class="bg-gray-50 rounded-lg p-4 sticky top-4">
+            <div class="w-full md:w-64 flex-shrink-0 mb-6 md:mb-0">
+                <div class="bg-gray-50 rounded-lg p-4 sticky top-4 max-h-[70vh] overflow-y-auto">
                     <h3 class="font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-list-ol mr-2 text-blue-500"></i>
                         Form Steps
@@ -146,13 +143,13 @@
             </div>
 
             <!-- Form Steps -->
-            <div id="form-steps" class="w-full md:w-3/4">
+            <div id="form-steps" class="flex-1 min-w-0">
                 <!-- Steps will be dynamically generated here -->
             </div>
         </div>
 
         <!-- Navigation Buttons -->
-        <div class="flex justify-between px-8 pb-8">
+        <div class="flex justify-between pt-4 pb-2">
             <button id="prev-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-6 rounded-lg transition duration-300 flex items-center">
                 <i class="fas fa-arrow-left mr-2"></i> Previous
             </button>
@@ -169,10 +166,12 @@
 
 
     <script>
+        const TRAVELER_SYS_ID = <?= json_encode($travelerId ?? '') ?>;
+
         // Application state
         const state = {
             currentStep: 0,
-            totalSteps: 16,
+            totalSteps: 10,
             pnr: '',
             applicant: {
                 id: '',
@@ -391,152 +390,50 @@
                     }]
                 }
             },
-            steps: [{
-                    name: 'Passport Information',
-                    icon: 'fa-passport',
-                    description: 'Provide your passport details'
-                },
-                {
-                    name: 'Personal & Contact Information',
-                    icon: 'fa-address-book',
-                    description: 'Your contact details'
-                },
-                {
-                    name: 'NID Information',
-                    icon: 'fa-id-card',
-                    description: 'National Identity Card details'
-                },
-                {
-                    name: 'Family Information',
-                    icon: 'fa-users',
-                    description: 'Information about your family'
-                },
-                {
-                    name: 'Accommodation Details',
-                    icon: 'fa-hotel',
-                    description: 'Where you will stay in the UK'
-                },
-                {
-                    name: 'Employment Information',
-                    icon: 'fa-briefcase',
-                    description: 'Your employment details'
-                },
-                {
-                    name: 'Income & Expenditure',
-                    icon: 'fa-chart-line',
-                    description: 'Financial information'
-                },
-                {
-                    name: 'Travel Information',
-                    icon: 'fa-plane',
-                    description: 'Your travel plans'
-                },
-                {
-                    name: 'Travel History',
-                    icon: 'fa-globe-americas',
-                    description: 'Previous travel history'
-                },
-                {
-                    name: 'Travel Information (TI) for USA',
-                    icon: 'fa-plane',
-                    description: 'Travel plans and purpose'
-                },
-                {
-                    name: 'Travel Companion Information (TCI) for USA',
-                    icon: 'fa-users',
-                    description: 'Travel companions details'
-                },
-                {
-                    name: 'Previous U.S. Travel (PUST)',
-                    icon: 'fa-history',
-                    description: 'Previous travel history to USA'
-                },
-                {
-                    name: 'U.S. Contact Information (USCI)',
-                    icon: 'fa-address-book',
-                    description: 'Contacts in USA'
-                },
-                {
-                    name: 'Work Information (WI)',
-                    icon: 'fa-briefcase',
-                    description: 'Employment and work history'
-                },
-                {
-                    name: 'Educational Information (EDI)',
-                    icon: 'fa-graduation-cap',
-                    description: 'Educational background'
-                },
-                {
-                    name: 'Other Information (OI)',
-                    icon: 'fa-info-circle',
-                    description: 'Additional information'
-                }
+            steps: [
+                { name: 'Passport Information',    icon: 'fa-passport',        description: 'Passport details' },
+                { name: 'Personal Information',    icon: 'fa-user',            description: 'Personal & identity details' },
+                { name: 'Contact Information',     icon: 'fa-address-card',    description: 'Phone, email & address' },
+                { name: 'NID Information',         icon: 'fa-id-card',         description: 'National Identity Card details' },
+                { name: 'Family Information',      icon: 'fa-users',           description: 'Family members & details' },
+                { name: 'Employment Information',  icon: 'fa-briefcase',       description: 'Job & work details' },
+                { name: 'Income & Expenditure',    icon: 'fa-chart-line',      description: 'Financial information' },
+                { name: 'Travel History',          icon: 'fa-history',         description: 'Previous travel history' },
+                { name: 'Educational Information', icon: 'fa-graduation-cap',  description: 'Educational background' },
+                { name: 'Other Information',       icon: 'fa-info-circle',     description: 'Languages & additional info' },
             ]
         };
 
         // Country data
-        const countries = [{
-                code: 'USA',
-                name: 'United States'
-            },
-            {
-                code: 'UK',
-                name: 'United Kingdom'
-            },
-            {
-                code: 'BD',
-                name: 'Bangladesh'
-            },
-            {
-                code: 'IN',
-                name: 'India'
-            },
-            {
-                code: 'CA',
-                name: 'Canada'
-            },
-            {
-                code: 'AU',
-                name: 'Australia'
-            },
-            {
-                code: 'DE',
-                name: 'Germany'
-            },
-            {
-                code: 'FR',
-                name: 'France'
-            }
+        const countries = [
+            { code: 'BD', name: 'Bangladesh' },
+            { code: 'USA', name: 'United States' },
+            { code: 'UK', name: 'United Kingdom' },
+            { code: 'IN', name: 'India' },
+            { code: 'CA', name: 'Canada' },
+            { code: 'AU', name: 'Australia' },
+            { code: 'DE', name: 'Germany' },
+            { code: 'FR', name: 'France' },
+            { code: 'TH', name: 'Thailand' },
+            { code: 'MY', name: 'Malaysia' },
+            { code: 'SA', name: 'Saudi Arabia' },
+            { code: 'AE', name: 'UAE' },
+            { code: 'SG', name: 'Singapore' },
         ];
 
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            // Generate PNR
-            state.pnr = generatePNR();
-            state.applicant.id = state.pnr + '-APPT-001';
-            document.getElementById('pnr-display').textContent = state.pnr;
-
-            // Set up event listeners
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async function() {
             document.getElementById('prev-btn').addEventListener('click', previousStep);
             document.getElementById('next-btn').addEventListener('click', nextStep);
             document.getElementById('submit-btn').addEventListener('click', submitForm);
             document.getElementById('save-exit').addEventListener('click', saveAndExit);
 
-            // Generate initial form
             generateFormSteps();
             generateStepNavigation();
             updateUI();
 
-            // Load saved data if exists
-            loadFromLocalStorage();
+            if (TRAVELER_SYS_ID) await loadFromDB();
         });
-
-        // Generate a unique PNR
-        function generatePNR() {
-            const timestamp = Date.now().toString().slice(-6);
-            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-            return `TRH-PNR-${timestamp}K${random}`;
-        }
 
         // Generate step navigation sidebar
         function generateStepNavigation() {
@@ -578,31 +475,17 @@
             const applicant = state.applicant;
 
             switch (stepIndex) {
-                case 0: // Passport Information
-                    return applicant.passportInfo.pp_given_name &&
-                        applicant.passportInfo.pp_family_name &&
-                        applicant.passportInfo.pp_number;
-                case 1: // Contact Information
-                    return applicant.contactInfo.emails[0] &&
-                        applicant.contactInfo.phones[0] &&
-                        applicant.contactInfo.addresses[0].line1;
-                case 2: // NID Information
-                    return applicant.nidInfo.has_nid !== null;
-                case 3: // Family Information
-                    return applicant.familyInfo.relationshipStatus;
-                case 4: // Accommodation Details
-                    return applicant.accommodationDetails.hasAddress !== null;
-                case 5: // Employment Information
-                    return applicant.employmentInfo.employmentStatus;
-                case 6: // Income & Expenditure
-                    return applicant.incomeExpenditure.planningToExpense;
-                case 7: // Travel Information
-                    return applicant.travelInfo.visitMainReason &&
-                        applicant.travelInfo.arrivalDate;
-                case 8: // Travel History
-                    return true; // This is optional
-                default:
-                    return true; // All other steps are optional for completion check
+                case 0: return !!(applicant.passportInfo.pp_given_name && applicant.passportInfo.pp_family_name && applicant.passportInfo.pp_number);
+                case 1: return !!(applicant.passportInfo.pi_marital_status);
+                case 2: return !!(applicant.contactInfo.phones[0] || applicant.contactInfo.emails[0]);
+                case 3: return applicant.nidInfo.has_nid !== null;
+                case 4: return applicant.familyInfo.familyMembers.length > 0;
+                case 5: return !!(applicant.employmentInfo.employmentStatus);
+                case 6: return applicant.incomeExpenditure.haveSavings !== null;
+                case 7: return true;
+                case 8: return applicant.educationalInfo.edi_have_attended_secondary_level !== null;
+                case 9: return true;
+                default: return false;
             }
         }
 
@@ -642,42 +525,18 @@
         // Generate content for each step
         function generateStepContent(stepIndex) {
             const applicant = state.applicant;
-
             switch (stepIndex) {
-                case 0: // Passport Information
-                    return generatePassportInfoStep(applicant);
-                case 1: // Personal & Contact Information
-                    return generateContactInfoStep(applicant);
-                case 2: // NID Information
-                    return generateNIDInfoStep(applicant);
-                case 3: // Family Information
-                    return generateFamilyInfoStep(applicant);
-                case 4: // Accommodation Details
-                    return generateAccommodationDetailsStep(applicant);
-                case 5: // Employment Information
-                    return generateEmploymentInfoStep(applicant);
-                case 6: // Income & Expenditure
-                    return generateIncomeExpenditureStep(applicant);
-                case 7: // Travel Information
-                    return generateTravelInfoStep(applicant);
-                case 8: // Travel History
-                    return generateTravelHistoryStep(applicant);
-                case 9: // Travel Information for USA
-                    return generatetravelInfoForUSAStep(applicant);
-                case 10: // Travel Companion Information for USA
-                    return generateTravelCompanionStepForUSA(applicant);
-                case 11: // Previous U.S. Travel Step
-                    return generatePreviousTravelStepForUSA(applicant);
-                case 12: // U.S. Contact Information Step
-                    return generateUSContactStep(applicant);
-                case 13: // Work Information Step
-                    return generateWorkInfoStepForUSA(applicant);
-                case 14: // Educational Information Step
-                    return generateEducationInfoStepForUSA(applicant);
-                case 15: // Other Information Step
-                    return generateOtherInfoStepForUSA(applicant);
-                default:
-                    return '<p>Step content not defined.</p>';
+                case 0: return generatePassportInfoStep(applicant);
+                case 1: return generatePersonalStep(applicant);
+                case 2: return generateContactInfoStep(applicant);
+                case 3: return generateNIDInfoStep(applicant);
+                case 4: return generateFamilyInfoStep(applicant);
+                case 5: return generateEmploymentInfoStep(applicant);
+                case 6: return generateIncomeExpenditureStep(applicant);
+                case 7: return generateTravelHistoryStep(applicant);
+                case 8: return generateEducationInfoStepForUSA(applicant);
+                case 9: return generateOtherInfoStepForUSA(applicant);
+                default: return '<p>Step content not defined.</p>';
             }
         }
 
@@ -756,6 +615,77 @@
                 </div>
                 <p class="text-sm text-gray-500 mt-4">* Required fields</p>
             `;
+        }
+
+        // ── Step 1: Personal Information ─────────────────────────────────────────
+        function generatePersonalStep(applicant) {
+            const pi = applicant.passportInfo || {};
+            const wi = applicant.workInfoForUSA || {};
+            return `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Other Name / Nickname?</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="pi_have_other_name" value="yes"
+                                           ${pi.pi_have_other_name === 'yes' ? 'checked' : ''}
+                                           onchange="updateApplicantData('passportInfo', 'pi_have_other_name', 'yes'); generateFormSteps();">
+                                    <span class="ml-2">Yes</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="pi_have_other_name" value="no"
+                                           ${!pi.pi_have_other_name || pi.pi_have_other_name === 'no' ? 'checked' : ''}
+                                           onchange="updateApplicantData('passportInfo', 'pi_have_other_name', 'no'); generateFormSteps();">
+                                    <span class="ml-2">No</span>
+                                </label>
+                            </div>
+                            ${pi.pi_have_other_name === 'yes' ? `
+                            <div class="mt-3 grid grid-cols-2 gap-2">
+                                <input type="text" placeholder="Other Given Name"
+                                       value="${pi.pi_other_given_name || ''}"
+                                       class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       onchange="updateApplicantData('passportInfo', 'pi_other_given_name', this.value)">
+                                <input type="text" placeholder="Other Surname"
+                                       value="${pi.pi_other_sur_name || ''}"
+                                       class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       onchange="updateApplicantData('passportInfo', 'pi_other_sur_name', this.value)">
+                            </div>` : ''}
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Marital / Relationship Status *</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    onchange="updateApplicantData('passportInfo', 'pi_marital_status', this.value)" required>
+                                <option value="">Select Marital Status</option>
+                                <option value="Single"   ${pi.pi_marital_status === 'Single'   ? 'selected' : ''}>Single</option>
+                                <option value="Married"  ${pi.pi_marital_status === 'Married'  ? 'selected' : ''}>Married</option>
+                                <option value="Divorced" ${pi.pi_marital_status === 'Divorced' ? 'selected' : ''}>Divorced</option>
+                                <option value="Widowed"  ${pi.pi_marital_status === 'Widowed'  ? 'selected' : ''}>Widowed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Country of Birth *</label>
+                            <input type="text" placeholder="e.g. Bangladesh"
+                                   value="${pi.pi_cob || ''}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onchange="updateApplicantData('passportInfo', 'pi_cob', this.value)">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Occupation Type</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    onchange="updateApplicantData('workInfoForUSA', 'wi_primary_occupation_type', this.value)">
+                                <option value="">Select</option>
+                                <option value="Student"        ${wi.wi_primary_occupation_type === 'Student'        ? 'selected' : ''}>Student</option>
+                                <option value="Homemaker"      ${wi.wi_primary_occupation_type === 'Homemaker'      ? 'selected' : ''}>Homemaker</option>
+                                <option value="Retired"        ${wi.wi_primary_occupation_type === 'Retired'        ? 'selected' : ''}>Retired</option>
+                                <option value="Government"     ${wi.wi_primary_occupation_type === 'Government'     ? 'selected' : ''}>Government</option>
+                                <option value="Private Sector" ${wi.wi_primary_occupation_type === 'Private Sector' ? 'selected' : ''}>Private Sector</option>
+                                <option value="Business"       ${wi.wi_primary_occupation_type === 'Business'       ? 'selected' : ''}>Business</option>
+                                <option value="Unemployed"     ${wi.wi_primary_occupation_type === 'Unemployed'     ? 'selected' : ''}>Unemployed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
         }
 
         // Generate Contact Information step
@@ -1057,61 +987,7 @@
                         </button>
                     </div>
                     
-                    <div>
-                        <label class="block text-gray-700 mb-2">Do you have any family in the UK?</label>
-                        <div class="flex space-x-4">
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="has_relative_in_uk" value="yes" class="h-4 w-4 text-blue-600" 
-                                       ${applicant.familyInfo.hasRelativeInUK === true ? 'checked' : ''}
-                                       onchange="updateApplicantData('familyInfo', 'hasRelativeInUK', this.value === 'yes')">
-                                <span class="ml-2">Yes</span>
-                            </label>
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="has_relative_in_uk" value="no" class="h-4 w-4 text-blue-600"
-                                       ${applicant.familyInfo.hasRelativeInUK === false ? 'checked' : ''}
-                                       onchange="updateApplicantData('familyInfo', 'hasRelativeInUK', this.value === 'yes')">
-                                <span class="ml-2">No</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    ${applicant.familyInfo.hasRelativeInUK ? `
-                        <div class="address-group">
-                            <h4 class="font-medium text-gray-700 mb-4">Relative's Address in UK</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="md:col-span-2">
-                                    <label class="block text-gray-700 mb-2">Line 1</label>
-                                    <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                           value="${applicant.familyInfo.relativeAddress.line1 || ''}" 
-                                           onchange="updateFamilyRelativeAddress('line1', this.value)">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-gray-700 mb-2">Line 2</label>
-                                    <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                           value="${applicant.familyInfo.relativeAddress.line2 || ''}" 
-                                           onchange="updateFamilyRelativeAddress('line2', this.value)">
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 mb-2">City</label>
-                                    <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                           value="${applicant.familyInfo.relativeAddress.city || ''}" 
-                                           onchange="updateFamilyRelativeAddress('city', this.value)">
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 mb-2">State</label>
-                                    <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                           value="${applicant.familyInfo.relativeAddress.state || ''}" 
-                                           onchange="updateFamilyRelativeAddress('state', this.value)">
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 mb-2">Postal Code</label>
-                                    <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                           value="${applicant.familyInfo.relativeAddress.postalCode || ''}" 
-                                           onchange="updateFamilyRelativeAddress('postalCode', this.value)">
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
+
                 </div>
             `;
         }
@@ -1836,18 +1712,17 @@
             updateProgressIndicators();
         }
 
-        function nextStep() {
+        async function nextStep() {
+            await saveSectionToDB(state.currentStep);
             if (state.currentStep < state.totalSteps - 1) {
                 state.currentStep++;
                 generateFormSteps();
                 generateStepNavigation();
                 updateUI();
             } else {
-                // Last step - show submit button
                 document.getElementById('submit-btn').classList.remove('hidden');
                 document.getElementById('next-btn').classList.add('hidden');
             }
-            saveToLocalStorage();
         }
 
         function previousStep() {
@@ -1909,48 +1784,379 @@
             }
         }
 
-        function saveToLocalStorage() {
-            const formData = {
-                pnr: state.pnr,
-                applicant: state.applicant,
-                currentStep: state.currentStep,
-                timestamp: new Date().toISOString()
+        function saveToLocalStorage() {}
+        function loadFromLocalStorage() {}
+
+        // ── Step → category mapping ────────────────────────────────────────────
+        function getStepCategory(stepIndex) {
+            const map = {
+                0: { category: 'passport_info',   getData: () => state.applicant.passportInfo },
+                1: { category: 'personal_info',   getData: () => ({
+                        ...state.applicant.passportInfo,
+                        occupation_type: (state.applicant.workInfoForUSA || {}).wi_primary_occupation_type,
+                    })},
+                2: { category: 'personal_info',   getData: () => ({
+                        phone:   state.applicant.contactInfo.phones,
+                        email:   state.applicant.contactInfo.emails,
+                        address: state.applicant.contactInfo.addresses,
+                    })},
+                3: { category: 'nid_info',         getData: () => state.applicant.nidInfo },
+                4: { category: 'family_info',      getData: () => state.applicant.familyInfo },
+                5: { category: 'employment_info',  getData: () => state.applicant.employmentInfo },
+                6: { category: 'employment_info',  getData: () => ({
+                        ...state.applicant.employmentInfo,
+                        ...state.applicant.incomeExpenditure,
+                    })},
+                7: { category: 'others_info',      getData: () => ({
+                        ...state.applicant.otherInfo,
+                        travelHistory: state.applicant.travelHistory.history,
+                    })},
+                8: { category: 'educational_info', getData: () => state.applicant.educationalInfo },
+                9: { category: 'others_info',      getData: () => state.applicant.otherInfo },
             };
-            localStorage.setItem('formData-' + state.pnr, JSON.stringify(formData));
+            return map[stepIndex] || { category: null, getData: () => null };
         }
 
-        function loadFromLocalStorage() {
-            const savedData = localStorage.getItem('formData-' + state.pnr);
-            if (savedData) {
-                const formData = JSON.parse(savedData);
-                state.applicant = formData.applicant;
-                state.currentStep = formData.currentStep;
-                generateFormSteps();
-                generateStepNavigation();
-                updateUI();
-                updateProgressIndicators();
+        // ── saveSectionToDB ────────────────────────────────────────────────────
+        async function saveSectionToDB(stepIndex) {
+            if (!TRAVELER_SYS_ID) return true;
+            const { category, getData } = getStepCategory(stepIndex);
+            if (!category) return true;
+            const sectionData = getData();
+            if (!sectionData) return true;
+            setSaveStatus('Saving...', 'blue');
+            try {
+                const res = await fetch('/api/travelers/update_info.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ traveler_id: TRAVELER_SYS_ID, category, data: sectionData }),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    setSaveStatus('Saved ✓', 'green');
+                    setTimeout(() => setSaveStatus('', 'gray'), 1500);
+                    return true;
+                }
+                setSaveStatus('Save failed', 'red');
+                return false;
+            } catch(err) {
+                setSaveStatus('Error: ' + err.message, 'red');
+                return false;
             }
         }
 
-        function saveAndExit() {
-            saveToLocalStorage();
-            alert('Your form data has been saved. You can return later to complete it.');
+        // ── setSaveStatus ──────────────────────────────────────────────────────
+        function setSaveStatus(msg, color) {
+            const el = document.getElementById('save-status');
+            if (!el) return;
+            const colors = { green:'text-green-600', red:'text-red-600', blue:'text-blue-600', gray:'text-gray-500' };
+            el.className = 'text-sm ' + (colors[color] || 'text-gray-500');
+            el.textContent = msg;
         }
 
-        function submitForm() {
-            const formData = {
-                pnr: state.pnr,
-                applicant: state.applicant,
-                timestamp: new Date().toISOString()
-            };
+        // ── toInputDate helper ─────────────────────────────────────────────────
+        function toInputDate(raw) {
+            if (!raw) return '';
+            raw = String(raw).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+            const m = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+            if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+            return '';
+        }
 
-            console.log('Form data to submit:', formData);
+        // ── loadFromDB ─────────────────────────────────────────────────────────
+        async function loadFromDB() {
+            setSaveStatus('Loading...', 'gray');
+            try {
+                const res  = await fetch(`/api/travelers/get_info.php?traveler_id=${TRAVELER_SYS_ID}`);
+                const data = await res.json();
+                if (!data.success) { setSaveStatus('Load failed', 'red'); return; }
 
-            // Here you would typically send the data to your server
-            // For now, just show a success message
-            alert(`Form submitted successfully with PNR: ${state.pnr}`);
+                const nameEl = document.getElementById('traveler-name-display');
+                if (nameEl && data.name) nameEl.textContent = data.name;
 
-            // Clear localStorage after successful submission
-            localStorage.removeItem('formData-' + state.pnr);
+                // passport_info bio_info → Step 0
+                const bio = (Array.isArray(data.passport_info) && data.passport_info.length)
+                    ? (data.passport_info[0].bio_info || {}) : {};
+                if (bio.given_names)       state.applicant.passportInfo.pp_given_name       = bio.given_names;
+                if (bio.surname)           state.applicant.passportInfo.pp_family_name       = bio.surname;
+                if (bio.passport_number)   state.applicant.passportInfo.pp_number            = bio.passport_number;
+                if (bio.date_of_birth)     state.applicant.passportInfo.pp_dob              = toInputDate(bio.date_of_birth);
+                if (bio.date_of_issue)     state.applicant.passportInfo.pp_issue_date        = toInputDate(bio.date_of_issue);
+                if (bio.date_of_expiry)    state.applicant.passportInfo.pp_expiry_date       = toInputDate(bio.date_of_expiry);
+                if (bio.place_of_birth)    state.applicant.passportInfo.pp_pob              = bio.place_of_birth;
+                if (bio.issuing_authority) state.applicant.passportInfo.pp_issuing_authority = bio.issuing_authority;
+                if (bio.sex) {
+                    const s = bio.sex.toLowerCase();
+                    state.applicant.passportInfo.pp_gender = s === 'm' ? 'male' : s === 'f' ? 'female' : s;
+                }
+
+                // personal_info → Step 1
+                const pi = data.personal_info || {};
+                if (pi.gender)         state.applicant.passportInfo.pp_gender         = pi.gender;
+                if (pi.place_of_birth) state.applicant.passportInfo.pp_pob            = pi.place_of_birth;
+                if (pi.marital_status) state.applicant.passportInfo.pi_marital_status = pi.marital_status;
+                if (pi.country_of_birth) state.applicant.passportInfo.pi_cob          = pi.country_of_birth;
+                else if (bio.nationality) state.applicant.passportInfo.pi_cob = bio.nationality === 'BANGLADESHI' ? 'Bangladesh' : (bio.nationality || '');
+                if (pi.occupation_type) {
+                    if (!state.applicant.workInfoForUSA) state.applicant.workInfoForUSA = {};
+                    state.applicant.workInfoForUSA.wi_primary_occupation_type = pi.occupation_type;
+                }
+
+                // Contact → Step 2
+                const phoneData = data.phone || {};
+                if (phoneData.primary_no) state.applicant.contactInfo.phones[0] = phoneData.primary_no;
+                const emailData = data.email || {};
+                if (emailData.primary) state.applicant.contactInfo.emails[0] = emailData.primary;
+                const addr = data.address || {};
+                if (addr.present) state.applicant.contactInfo.addresses[0].line1 = addr.present;
+                else if (addr.permanent) state.applicant.contactInfo.addresses[0].line1 = addr.permanent;
+
+                // nid_info → Step 3
+                if (Array.isArray(data.nid_info) && data.nid_info.length) {
+                    const nid = data.nid_info[0].bio_info || {};
+                    state.applicant.nidInfo.has_nid = true;
+                    if (nid.nid_number) state.applicant.nidInfo.nid_number = nid.nid_number;
+                }
+
+                // family_info → Step 4
+                const fi = data.family_info || {};
+                const members = Array.isArray(fi.familyMembers) ? fi.familyMembers : [];
+                function splitName(full) {
+                    if (!full) return { givenName: '', familyName: '' };
+                    const parts = full.trim().split(/\s+/);
+                    const fn = parts.length > 1 ? parts.pop() : '';
+                    return { givenName: parts.join(' '), familyName: fn };
+                }
+                [['father', fi.father_name || bio.father_name],
+                 ['mother', fi.mother_name || bio.mother_name],
+                 ['spouse', fi.spouse_name || bio.spouse_name]].forEach(([rel, name]) => {
+                    if (name && !members.find(m => m.relation === rel)) {
+                        const n = splitName(name);
+                        members.push({ relation: rel, givenName: n.givenName, familyName: n.familyName, dob: '', nationality: 'Bangladeshi' });
+                    }
+                });
+                if (members.length) state.applicant.familyInfo.familyMembers = members;
+
+                // employment_info → Step 5
+                const ei = data.employment_info || {};
+                if (ei.employmentStatus) state.applicant.employmentInfo.employmentStatus = ei.employmentStatus;
+                if (ei.jobTitle)         state.applicant.employmentInfo.jobTitle          = ei.jobTitle;
+                if (ei.jobDetails)       state.applicant.employmentInfo.jobDetails        = ei.jobDetails;
+                if (ei.monthlyIncome)    state.applicant.employmentInfo.monthlyIncome     = ei.monthlyIncome;
+                if (ei.yearlyEarning)    state.applicant.employmentInfo.yearlyEarning     = ei.yearlyEarning;
+
+                // educational_info → Step 8
+                const edi = data.educational_info || {};
+                if (Array.isArray(edi) && edi.length) {
+                    state.applicant.educationalInfo.edi_have_attended_secondary_level = true;
+                    state.applicant.educationalInfo.institutions = edi;
+                } else if (edi.institutions) {
+                    state.applicant.educationalInfo.institutions = edi.institutions;
+                    state.applicant.educationalInfo.edi_have_attended_secondary_level = true;
+                }
+
+                // others_info → Step 7, 9
+                const oi = data.others_info || {};
+                if (oi.travelHistory) state.applicant.travelHistory.history = oi.travelHistory;
+                Object.assign(state.applicant.otherInfo, oi);
+
+                generateFormSteps();
+                generateStepNavigation();
+                updateUI();
+                setSaveStatus('Loaded ✓', 'green');
+                setTimeout(() => setSaveStatus('', 'gray'), 2000);
+            } catch(err) {
+                setSaveStatus('Error: ' + err.message, 'red');
+                console.error('loadFromDB error:', err);
+            }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+        function setSaveStatus(msg, color) {
+            const el = document.getElementById('save-status');
+            if (!el) return;
+            const colors = { green:'text-green-600', red:'text-red-600', blue:'text-blue-600', gray:'text-gray-500' };
+            el.className = 'text-sm ' + (colors[color] || 'text-gray-500');
+            el.textContent = msg;
+        }
+
+        function toInputDate(raw) {
+            if (!raw) return '';
+            raw = raw.trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+            const m = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+            if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+            return '';
+        }
+
+        // ── loadFromDB ────────────────────────────────────────────────────────
+        async function loadFromDB() {
+            setSaveStatus('Loading...', 'gray');
+            try {
+                const res  = await fetch(`/api/travelers/get_info.php?traveler_id=${TRAVELER_SYS_ID}`);
+                const data = await res.json();
+                if (!data.success) { setSaveStatus('Load failed', 'red'); return; }
+
+                const nameEl = document.getElementById('traveler-name-display');
+                if (nameEl && data.name) nameEl.textContent = data.name;
+
+                // passport_info bio_info → Step 0
+                const bio = (Array.isArray(data.passport_info) && data.passport_info.length)
+                    ? (data.passport_info[0].bio_info || {}) : {};
+                if (bio.given_names)       state.applicant.passportInfo.pp_given_name       = bio.given_names;
+                if (bio.surname)           state.applicant.passportInfo.pp_family_name       = bio.surname;
+                if (bio.passport_number)   state.applicant.passportInfo.pp_number            = bio.passport_number;
+                if (bio.date_of_birth)     state.applicant.passportInfo.pp_dob              = toInputDate(bio.date_of_birth);
+                if (bio.date_of_issue)     state.applicant.passportInfo.pp_issue_date        = toInputDate(bio.date_of_issue);
+                if (bio.date_of_expiry)    state.applicant.passportInfo.pp_expiry_date       = toInputDate(bio.date_of_expiry);
+                if (bio.place_of_birth)    state.applicant.passportInfo.pp_pob              = bio.place_of_birth;
+                if (bio.issuing_authority) state.applicant.passportInfo.pp_issuing_authority = bio.issuing_authority;
+                if (bio.sex) {
+                    const s = bio.sex.toLowerCase();
+                    state.applicant.passportInfo.pp_gender = s === 'm' ? 'male' : s === 'f' ? 'female' : s;
+                }
+
+                // personal_info → Step 1
+                const pi = data.personal_info || {};
+                if (pi.gender)         state.applicant.passportInfo.pp_gender         = pi.gender;
+                if (pi.place_of_birth) state.applicant.passportInfo.pp_pob            = pi.place_of_birth;
+                if (pi.marital_status) state.applicant.passportInfo.pi_marital_status = pi.marital_status;
+                if (pi.country_of_birth || bio.nationality) {
+                    state.applicant.passportInfo.pi_cob = pi.country_of_birth || (bio.nationality === 'BANGLADESHI' ? 'Bangladesh' : bio.nationality || '');
+                }
+                if (pi.occupation_type) {
+                    state.applicant.workInfoForUSA = state.applicant.workInfoForUSA || {};
+                    state.applicant.workInfoForUSA.wi_primary_occupation_type = pi.occupation_type;
+                }
+
+                // Contact → Step 2
+                const phoneData = data.phone || {};
+                if (phoneData.primary_no) state.applicant.contactInfo.phones[0] = phoneData.primary_no;
+                const emailData = data.email || {};
+                if (emailData.primary)    state.applicant.contactInfo.emails[0] = emailData.primary;
+                const addr = data.address || {};
+                if (addr.present) {
+                    state.applicant.contactInfo.addresses[0].line1 = addr.present;
+                }
+                if (addr.permanent && !addr.present) {
+                    state.applicant.contactInfo.addresses[0].line1 = addr.permanent;
+                }
+
+                // nid_info → Step 3
+                if (Array.isArray(data.nid_info) && data.nid_info.length) {
+                    const nid = data.nid_info[0].bio_info || {};
+                    state.applicant.nidInfo.has_nid = true;
+                    if (nid.nid_number) state.applicant.nidInfo.nid_number = nid.nid_number;
+                }
+
+                // family_info → Step 4
+                const fi = data.family_info || {};
+                const familyMembers = Array.isArray(fi.familyMembers) ? fi.familyMembers : [];
+                function splitName(full) {
+                    if (!full) return { givenName: '', familyName: '' };
+                    const parts = full.trim().split(/\s+/);
+                    const familyName = parts.length > 1 ? parts.pop() : '';
+                    return { givenName: parts.join(' '), familyName };
+                }
+                if (fi.father_name || bio.father_name) {
+                    const n = splitName(fi.father_name || bio.father_name);
+                    if (!familyMembers.find(m => m.relation === 'father'))
+                        familyMembers.push({ relation:'father', givenName:n.givenName, familyName:n.familyName, dob:'', nationality:'Bangladeshi' });
+                }
+                if (fi.mother_name || bio.mother_name) {
+                    const n = splitName(fi.mother_name || bio.mother_name);
+                    if (!familyMembers.find(m => m.relation === 'mother'))
+                        familyMembers.push({ relation:'mother', givenName:n.givenName, familyName:n.familyName, dob:'', nationality:'Bangladeshi' });
+                }
+                if (fi.spouse_name || bio.spouse_name) {
+                    const n = splitName(fi.spouse_name || bio.spouse_name);
+                    if (!familyMembers.find(m => m.relation === 'spouse'))
+                        familyMembers.push({ relation:'spouse', givenName:n.givenName, familyName:n.familyName, dob:'', nationality:'Bangladeshi' });
+                }
+                if (familyMembers.length) state.applicant.familyInfo.familyMembers = familyMembers;
+                if (fi.marital_status) state.applicant.familyInfo.relationshipStatus = fi.marital_status;
+
+                // employment_info → Step 5
+                const ei = data.employment_info || {};
+                if (ei.employmentStatus) state.applicant.employmentInfo.employmentStatus = ei.employmentStatus;
+                if (ei.jobTitle)         state.applicant.employmentInfo.jobTitle          = ei.jobTitle;
+                if (ei.jobDetails)       state.applicant.employmentInfo.jobDetails        = ei.jobDetails;
+                if (ei.monthlyIncome)    state.applicant.employmentInfo.monthlyIncome     = ei.monthlyIncome;
+                if (ei.yearlyEarning)    state.applicant.employmentInfo.yearlyEarning     = ei.yearlyEarning;
+
+                // educational_info → Step 8
+                const edi = data.educational_info || {};
+                if (Array.isArray(edi) && edi.length) {
+                    state.applicant.educationalInfo.edi_have_attended_secondary_level = true;
+                    state.applicant.educationalInfo.institutions = edi;
+                } else if (edi.institutions) {
+                    state.applicant.educationalInfo.institutions = edi.institutions;
+                    state.applicant.educationalInfo.edi_have_attended_secondary_level = true;
+                }
+
+                // others_info → Step 7, 9
+                const oi = data.others_info || {};
+                if (oi.travelHistory) state.applicant.travelHistory.history = oi.travelHistory;
+                Object.assign(state.applicant.otherInfo, oi);
+
+                // documents_data fallback
+                const docs = data.documents_data || {};
+                if (docs.passport && docs.passport.doc_data && !state.applicant.passportInfo.pp_number) {
+                    const db = docs.passport.doc_data;
+                    if (db.given_names)    state.applicant.passportInfo.pp_given_name  = db.given_names;
+                    if (db.surname)        state.applicant.passportInfo.pp_family_name = db.surname;
+                    if (db.passport_number) state.applicant.passportInfo.pp_number     = db.passport_number;
+                }
+
+                generateFormSteps();
+                generateStepNavigation();
+                updateUI();
+                setSaveStatus('Data loaded ✓', 'green');
+                setTimeout(() => setSaveStatus('', 'gray'), 2000);
+            } catch(err) {
+                setSaveStatus('Load error: ' + err.message, 'red');
+            }
+        }
+
+        // ── saveSectionToDB ───────────────────────────────────────────────────
+        async function saveSectionToDB(stepIndex) {
+            if (!TRAVELER_SYS_ID) return true;
+            const { category, getData } = getStepCategory(stepIndex);
+            if (!category) return true;
+            const sectionData = getData();
+            if (!sectionData) return true;
+            setSaveStatus('Saving...', 'blue');
+            try {
+                const res = await fetch('/api/travelers/update_info.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ traveler_id: TRAVELER_SYS_ID, category, data: sectionData }),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    setSaveStatus('Saved ✓', 'green');
+                    setTimeout(() => setSaveStatus('', 'gray'), 1500);
+                    return true;
+                }
+                setSaveStatus('Save failed', 'red');
+                return false;
+            } catch(err) {
+                setSaveStatus('Error: ' + err.message, 'red');
+                return false;
+            }
+        }
+
+        async function saveAndExit() {
+            await saveSectionToDB(state.currentStep);
+            alert('Saved successfully.');
+        }
+
+        async function submitForm() {
+            await saveSectionToDB(state.currentStep);
+            alert('All information saved successfully!');
+            if (TRAVELER_SYS_ID) {
+                window.location.href = `show-travelers.php?traveler_id=${TRAVELER_SYS_ID}`;
+            }
         }
     </script>

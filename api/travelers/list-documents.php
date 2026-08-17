@@ -59,7 +59,7 @@ if (empty($statuses)) $statuses = ['active'];
 // ============================================================================
 // Fetch traveler
 // ============================================================================
-$stmt = $pdo->prepare("SELECT id, sys_id, name FROM travelers WHERE sys_id = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT sys_id, name FROM travelers WHERE sys_id = ? LIMIT 1");
 $stmt->execute([$travelerSysId]);
 $traveler = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$traveler) {
@@ -75,8 +75,8 @@ $cols = [
     'confidence', 'classification_mode', 'passport_status',
     'original_filename', 'file_size', 'mime_type',
     'page_count', 'smb_folder', 'server_path',
-    'stored_basename', 'summary', 'language',
-    'country', 'validity_from', 'validity_to', 'linked_passport_number',
+    'summary', 'language',
+    'country', 'validity_from', 'validity_to',
     'issue_date', 'expiry_date',
     'verification_status', 'verified_at', 'verified_by',
     'is_primary', 'status', 'created_at', 'updated_at',
@@ -110,7 +110,7 @@ $sql = "SELECT {$colSql}
           END,
           created_at DESC";
 
-$params = array_merge([$traveler['id']], $statuses);
+$params = array_merge([$traveler['sys_id']], $statuses);
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -126,13 +126,10 @@ foreach ($docs as &$doc) {
     // Parse pages JSON
     if (isset($doc['pages']) && $doc['pages']) {
         $pages = json_decode($doc['pages'], true) ?: [];
-        // Build URLs to thumbnails: first page = preview
-        if (!empty($pages) && !empty($doc['server_path'])) {
-            $firstPage = $pages[0];
-            $doc['thumbnail_url'] = buildFileUrl($doc['server_path'], $firstPage['filename']);
-            // Map page filenames to full URLs
+        // Build URLs via serve.php?doc_id=SYS_ID&file=FILENAME
+        if (!empty($pages) && !empty($doc['sys_id'])) {
             foreach ($pages as &$p) {
-                $p['url'] = buildFileUrl($doc['server_path'], $p['filename']);
+                $p['url'] = buildFileUrl($doc['sys_id'], $p['filename'] ?? '');
             }
             unset($p);
         }
@@ -200,13 +197,10 @@ echo json_encode([
 // ============================================================================
 
 /**
- * Convert an absolute server_path + filename into a URL the browser can fetch.
- * Server paths like '../../travelers/{folder}/passport_identity' become
- * '/travelers/{folder}/passport_identity/{file}'.
+ * SMB file URL — serve.php?doc_id=SYS_ID&file=FILENAME
+ * _serveDoc() handler use করে traveler_documents থেকে path resolve করে
  */
-function buildFileUrl($serverPath, $filename) {
-    // Strip leading '../../' and any leading slashes
-    $clean = preg_replace('#^(\.\./)+#', '', $serverPath);
-    $clean = ltrim($clean, '/');
-    return '/' . $clean . '/' . $filename;
+function buildFileUrl($docSysId, $filename) {
+    if (!$docSysId || !$filename) return null;
+    return '/api/file/serve.php?doc_id=' . urlencode($docSysId) . '&file=' . urlencode($filename);
 }

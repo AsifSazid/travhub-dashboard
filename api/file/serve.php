@@ -217,10 +217,10 @@ function _serveDoc(string $docId, bool $dl): void
         ob_clean(); http_response_code(400); echo 'file param required for doc_id'; return;
     }
 
-    // Resolve doc_type and traveler from documents table
+    // Resolve doc_type and traveler from traveler_documents table
     $stmt = $pdo->prepare("
-        SELECT d.doc_type, t.sys_id AS traveler_sys_id, t.name AS traveler_name
-        FROM documents d
+        SELECT d.doc_type, d.smb_folder, t.sys_id AS traveler_sys_id, t.name AS traveler_name
+        FROM traveler_documents d
         JOIN travelers t ON t.sys_id = d.traveler_id
         WHERE d.sys_id = ? LIMIT 1
     ");
@@ -235,10 +235,11 @@ function _serveDoc(string $docId, bool $dl): void
     $cleanSysId      = preg_replace('/\s+/u', '', $doc['traveler_sys_id']);
     $cleanName       = preg_replace('/\s+/u', '', $doc['traveler_name']);
     $travelerFolder  = "{$cleanSysId}_{$cleanName}";
-    $docType         = $doc['doc_type'] ?: 'all_documents';
+    // smb_folder from doc_type_registry (e.g. passport_identity, countries_documents)
+    $smbFolder       = $doc['smb_folder'] ?: ($doc['doc_type'] ?: 'all_documents');
 
-    // SMB path: dev_travelers/{sysId}_{Name}/{doc_type}/{file}
-    $smbPath = "{$SERVER_CUS_PATH}_travelers/{$travelerFolder}/{$docType}/" . basename($fileName);
+    // SMB path: dev_travelers/{sysId}_{Name}/{smb_folder}/{file}
+    $smbPath = "{$SERVER_CUS_PATH}_travelers/{$travelerFolder}/{$smbFolder}/" . basename($fileName);
 
     $omv      = new OMV_SMB_Manager();
     $ext      = strtolower(pathinfo($smbPath, PATHINFO_EXTENSION));
