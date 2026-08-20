@@ -69,8 +69,14 @@ $docContext = buildDocumentContext($documents);
 // ── Old summary history তে archive করো ───────────────────────────────────────
 date_default_timezone_set('Asia/Dhaka');
 $now        = date('d-m-Y H:i');
-$oldSummary = trim($traveler['summary'] ?? '');
-$history    = json_decode($traveler['history_summary'] ?? '[]', true) ?: [];
+// summary JSON বা plain text হতে পারে — extract করো
+$rawSummary = trim($traveler['summary'] ?? '');
+$decoded    = json_decode($rawSummary, true);
+$oldSummary = is_array($decoded) && isset($decoded['summary'])
+    ? trim($decoded['summary'])
+    : $rawSummary;
+
+$history = json_decode($traveler['history_summary'] ?? '[]', true) ?: [];
 
 if ($oldSummary !== '') {
     $history[] = ['text' => $oldSummary, 'date' => $now, 'trigger' => $trigger];
@@ -204,9 +210,33 @@ PROMPT;
     $text       = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
     $tokenCount = (int)($body['usageMetadata']['totalTokenCount'] ?? 0);
 
-    $clean   = trim(preg_replace('/^```json\s*|\s*```$/m', '', $text));
-    $parsed  = json_decode($clean, true);
-    $summary = trim($parsed['summary'] ?? $text);
+    // Raw Gemini text log করো
+    error_log('[regenerate-summary] raw text: ' . substr($text, 0, 500));
+
+    $clean  = trim(preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $text));
+    $parsed = json_decode($clean, true);
+
+    error_log('[regenerate-summary] parsed type: ' . gettype($parsed));
+    error_log('[regenerate-summary] parsed: ' . substr(print_r($parsed, true), 0, 300));
+
+    // Plain text extract
+    if (is_array($parsed) && isset($parsed['summary'])) {
+        $summaryRaw = $parsed['summary'];
+        // Double parse — nested JSON হলে
+        if (is_string($summaryRaw)) {
+            $inner = json_decode($summaryRaw, true);
+            if (is_array($inner) && isset($inner['summary'])) {
+                $summaryRaw = $inner['summary'];
+            }
+        }
+        $summary = trim((string)$summaryRaw);
+    } elseif (is_string($parsed)) {
+        $summary = trim($parsed);
+    } else {
+        $summary = trim($clean);
+    }
+
+    error_log('[regenerate-summary] final summary: ' . substr($summary, 0, 200));
 
     if (!$summary) {
         return ['success' => false, 'error' => 'Empty summary from Gemini'];

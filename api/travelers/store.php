@@ -13,7 +13,7 @@ require_once '../../server/live_storage.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -60,7 +60,7 @@ try {
     // Create subdirectories
     $subDirectories = [
         'all_documents', 'passport_identity', 'personal_documents',
-        'professional_documents', 'financial_documents', 'travel_history',
+        'professional_documents', 'financial_documents', 'travel_history', 'travel_documents',
         'photos_signature', 'countries_documents', 'nid'
     ];
     
@@ -164,7 +164,6 @@ try {
         }
     }
     
-    // Insert into database
     // Extra fields from create form
     $phoneVal = $data['phone']
         ? json_encode(['primary_no' => $data['phone'], 'secondary_no' => []])
@@ -174,26 +173,19 @@ try {
         ? json_encode(['primary' => $data['email'], 'secondary' => []])
         : json_encode(['primary' => '', 'secondary' => []]);
 
-    // passport bio_info থেকে auto-populate করো (form এ fill না করলেও)
+    // passport bio_info থেকে auto-populate
     $bio = [];
     if (!empty($extractedData)) {
-        // upload mode — extracted_data এ bio আছে
-        $bio = $extractedData['passport_info']['bio_info']
-            ?? $extractedData['bio_info']
-            ?? $extractedData
-            ?? [];
+        $bio = $extractedData['bio_info'] ?? $extractedData ?? [];
     }
-    // passport_info array এর first entry থেকেও নাও
     if (empty($bio) && !empty($docArray)) {
         $bio = $docArray[0]['bio_info'] ?? [];
     }
 
-    // Address — form এ দিলে সেটা, না হলে bio থেকে
     $presentAddr   = $data['address']['present']   ?? '';
     $permanentAddr = $data['address']['permanent']  ?? ($bio['permanent_address'] ?? '');
     $addressVal    = json_encode(['present' => $presentAddr, 'permanent' => $permanentAddr]);
 
-    // personal_info — form এ দিলে সেটা, না হলে bio থেকে
     $personalData = $data['personal_info'] ?? [];
     if (empty($personalData['gender']) && !empty($bio['sex'])) {
         $sex = strtolower($bio['sex']);
@@ -204,7 +196,6 @@ try {
     }
     $personalInfo = !empty($personalData) ? json_encode($personalData) : null;
 
-    // family_info — form এ দিলে সেটা, না হলে bio থেকে
     $familyData = $data['family_info'] ?? [];
     if (empty($familyData['father_name']) && !empty($bio['father_name'])) {
         $familyData['father_name'] = $bio['father_name'];
@@ -223,6 +214,7 @@ try {
     }
     $familyInfo = !empty($familyData) ? json_encode($familyData) : null;
 
+    // Insert into database
     $stmt = $pdo->prepare("
         INSERT INTO travelers (
             uuid, sys_id, name, date_of_birth,

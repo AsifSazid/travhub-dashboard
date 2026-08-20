@@ -373,24 +373,77 @@ function validateFile(file) {
 
 async function classifyOne(file, rowIdx) {
   const passportStatus = document.querySelector('input[name="passportStatus"]:checked')?.value || 'auto';
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
 
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('traveler_sys_id', TRAVELER_SYS_ID);
-  fd.append('passport_status', passportStatus);
+  if (ext === 'pdf') {
+    // PDF: Step 1 — split into pages
+    const fd = new FormData();
+    fd.append('action', 'split');
+    fd.append('file', file);
 
-  try {
-    const res = await fetch('/api/travelers/classify-document.php', { method: 'POST', body: fd });
-    const data = await res.json();
-
-    if (!data.success) {
-      renderError(rowIdx, data.message || 'Failed', data.duplicate, data.layer);
+    let splitData;
+    try {
+      const res = await fetch('/api/travelers/classify-document.php', { method: 'POST', body: fd });
+      splitData = await res.json();
+    } catch (err) {
+      renderError(rowIdx, 'Split failed: ' + err.message);
       return;
     }
-    pending.set(data.token, { ...data, _userPassportStatus: passportStatus });
-    renderCard(rowIdx, data);
-  } catch (err) {
-    renderError(rowIdx, err.message);
+
+    if (!splitData.success) {
+      renderError(rowIdx, splitData.message || 'Split failed');
+      return;
+    }
+
+    const pageTokens = splitData.page_tokens || [];
+    if (!pageTokens.length) {
+      renderError(rowIdx, 'No pages found in PDF');
+      return;
+    }
+
+    // Step 2 — classify each page in parallel
+    const classifyPromises = pageTokens.map(async ([pageToken, pagePath, pageNo], i) => {
+      const targetIdx = i === 0 ? rowIdx : insertSkeleton({ name: file.name + ' p' + pageNo, size: file.size });
+
+      const fd2 = new FormData();
+      fd2.append('action', 'classify');
+      fd2.append('traveler_sys_id', TRAVELER_SYS_ID);
+      fd2.append('passport_status', passportStatus);
+      fd2.append('page_path', pagePath);
+      fd2.append('original_filename', file.name);
+      fd2.append('file_size', file.size);
+      fd2.append('page_no', pageNo);
+
+      try {
+        const res2 = await fetch('/api/travelers/classify-document.php', { method: 'POST', body: fd2 });
+        const doc  = await res2.json();
+        if (!doc.success) { renderError(targetIdx, doc.message || 'Classify failed'); return; }
+        pending.set(doc.token, { ...doc, _userPassportStatus: passportStatus });
+        renderCard(targetIdx, doc);
+      } catch (err) {
+        renderError(targetIdx, 'Page error: ' + err.message);
+      }
+    });
+
+    await Promise.all(classifyPromises);
+
+  } else {
+    // Image: single classify
+    const fd = new FormData();
+    fd.append('action', 'classify');
+    fd.append('file', file);
+    fd.append('traveler_sys_id', TRAVELER_SYS_ID);
+    fd.append('passport_status', passportStatus);
+
+    try {
+      const res  = await fetch('/api/travelers/classify-document.php', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success) { renderError(rowIdx, data.message || 'Failed', data.duplicate, data.layer); return; }
+      pending.set(data.token, { ...data, _userPassportStatus: passportStatus });
+      renderCard(rowIdx, data);
+    } catch (err) {
+      renderError(rowIdx, err.message);
+    }
   }
 }
 
@@ -667,7 +720,7 @@ window.approveDiff = () => {
 // ============================================================================
 $commitBtn.addEventListener('click', async () => {
   const items = [];
-  document.querySelectorAll('#reviewCards > [data-token]').forEach(card => {
+  document.querySelectorAll('#reviewCards [data-token]').forEach(card => {
     const token = card.dataset.token;
     const original = pending.get(token);
     if (!original) return;
@@ -748,7 +801,7 @@ $commitBtn.addEventListener('click', async () => {
   let msg = `Committed ${commitData.committed} of ${commitData.total} documents.`;
   if (failed > 0) {
     msg += `\n\n${failed} failed:\n` +
-           commitData.results.filter(r => !r.success).map(r => `• ${r.error}`).join('\n');
+           commitData.results.filter(r => !r.success).map(r => `• ${r.message || r.error || 'Unknown error'}`).join('\n');
   }
   alert(msg);
 

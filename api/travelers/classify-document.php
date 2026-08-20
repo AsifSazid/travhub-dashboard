@@ -2,344 +2,262 @@
 /**
  * FILE PATH: api/travelers/classify-document.php
  *
- * Phase 3 — Step 2: File receive → Gemini classify → token return
+ * Two modes:
  *
- * smart-upload.php থেকে একটা file আসে (multipart/form-data)।
- * Gemini দিয়ে classify + extract করে result classify_tokens table এ
- * রাখে, frontend কে একটা token দেয়।
- * File টা tmp তে থাকে — commit না হওয়া পর্যন্ত NAS এ যায় না।
+ * Mode 1: action=split (POST, multipart)
+ *   PDF → PNG pages → save to tmp → return page tokens[]
+ *   No Gemini call here.
  *
- * INPUT (multipart/form-data):
- *   file              — uploaded file (image/pdf)
- *   traveler_sys_id   — travelers.sys_id
- *   passport_status   — auto | current | previous (user এর radio choice)
+ * Mode 2: action=classify (POST, JSON)
+ *   Single page token → Gemini classify → save result → return doc data
  *
- * OUTPUT (JSON):
- *   success, token, doc_type, doc_number, suggested_filename_stem,
- *   issue_date, expiry_date, summary, confidence, needs_review,
- *   language, page_count, pages[],
- *   original_filename, file_size, mime_type,
- *   passport_analysis (passport এর জন্য),
- *   merge_analysis (duplicate doc এর জন্য)
+ * Mode 3: action=classify (POST, multipart, image file)
+ *   Single image → Gemini classify → save result → return doc data
  */
-
-session_start();
-date_default_timezone_set('Asia/Dhaka');
-ini_set('display_errors', 0);
-ini_set('memory_limit', '512M');
-set_time_limit(120);
 
 require_once '../../server/api_bootstrap.php';
 require_once '../../server/db_connection.php';
 
-// api_bootstrap.php already sets Content-Type: application/json
+ini_set('memory_limit', '512M');
+set_time_limit(120);
 
-// ── Gemini direct call (ai-gemini.php এর geminiCallWithFile use করব) ──────
 $GEMINI_API_KEY = trim(@file_get_contents('../../gemini-apikey.txt'));
-$GEMINI_MODEL   = 'gemini-2.5-flash';
+$GEMINI_MODEL   = trim(@file_get_contents('../../gemini-model.txt')) ?: 'gemini-2.5-flash';
 
-// ── Allowed types ───────────────────────────────────────────────────────────
-const ALLOWED_EXTS  = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
-const MAX_BYTES     = 100 * 1024 * 1024; // 100 MB
-
-// ── Valid doc_types — must match doc_type_registry.doc_type exactly ──────────
-// Valid doc_types — must match doc_type_registry.doc_type exactly
+const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+const MAX_BYTES    = 100 * 1024 * 1024;
 const VALID_DOC_TYPES = [
-    'passport', 'nid',
-    'visa', 'visa_stamp',
+    'passport', 'nid', 'visa', 'visa_stamp',
     'air_ticket', 'hotel_voucher', 'invitation_letter',
     'bank_statement', 'sponsor_letter',
     'employment_letter', 'education_certificate',
     'medical_report', 'vaccination_card', 'marriage_certificate', 'birth_certificate',
-    'photo', 'signature',
-    'other',
+    'photo', 'signature', 'other',
 ];
 
-// ════════════════════════════════════════════════════════════════════════════
-// INPUT VALIDATION
-// ════════════════════════════════════════════════════════════════════════════
+if (!$GEMINI_API_KEY) jsonError('Gemini API key not configured');
 
-if (empty($GEMINI_API_KEY)) {
-    jsonError('Gemini API key not configured');
-}
+// ── Route by action ───────────────────────────────────────────────────────────
+$action = $_POST['action'] ?? $_GET['action'] ?? 'classify';
 
-$travelerSysId  = trim($_POST['traveler_sys_id'] ?? '');
-$passportStatus = trim($_POST['passport_status']  ?? 'auto'); // auto|current|previous
-
-if (!$travelerSysId) {
-    jsonError('traveler_sys_id is required');
-}
-
-// Traveler exist করে কিনা confirm করো
-$stmt = $pdo->prepare("SELECT sys_id, name, passport_no, passport_info FROM travelers WHERE sys_id = ? LIMIT 1");
-$stmt->execute([$travelerSysId]);
-$traveler = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$traveler) {
-    jsonError('Traveler not found');
-}
-
-// File validation
-if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-    $errCode = $_FILES['file']['error'] ?? -1;
-    jsonError('File upload failed (error code: ' . $errCode . ')');
-}
-
-$file     = $_FILES['file'];
-$origName = $file['name'];
-$fileSize = $file['size'];
-$tmpSrc   = $file['tmp_name'];
-$ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-
-if (!in_array($ext, ALLOWED_EXTS, true)) {
-    jsonError('Unsupported file type: .' . $ext);
-}
-if ($fileSize > MAX_BYTES) {
-    jsonError('File too large (' . round($fileSize / 1024 / 1024, 1) . ' MB, max 100 MB)');
+if ($action === 'split') {
+    handleSplit();
+} else {
+    handleClassify();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// STEP 1 — Stage file to tmp
+// handleSplit — PDF → PNG pages → return page_tokens[]
 // ════════════════════════════════════════════════════════════════════════════
-
-$token   = bin2hex(random_bytes(24)); // 48-char hex token
-$tmpDir  = rtrim(sys_get_temp_dir(), '/') . '/travhub_classify/';
-if (!is_dir($tmpDir)) mkdir($tmpDir, 0775, true);
-
-$safeName = $token . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
-$tmpPath  = $tmpDir . $safeName;
-
-if (!move_uploaded_file($tmpSrc, $tmpPath)) {
-    jsonError('Failed to stage file to tmp');
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// STEP 2 — Build Gemini parts (image → base64, PDF → rasterize up to 4 pages)
-// ════════════════════════════════════════════════════════════════════════════
-
-try {
-    [$geminiParts, $pageCount, $mimeType] = buildGeminiParts($tmpPath, $ext);
-} catch (Throwable $e) {
-    @unlink($tmpPath);
-    jsonError('File processing failed: ' . $e->getMessage());
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// STEP 3 — Gemini classify + extract
-// ════════════════════════════════════════════════════════════════════════════
-
-$prompt  = buildClassifyPrompt($traveler, $passportStatus);
-$gemResp = callGeminiVision($GEMINI_API_KEY, $GEMINI_MODEL, $geminiParts, $prompt);
-
-if (!$gemResp['success']) {
-    @unlink($tmpPath);
-    jsonError('Gemini classification failed: ' . ($gemResp['error'] ?? 'unknown'));
-}
-
-$extracted = $gemResp['data'];
-
-// doc_type validate + fallback
-$docType = strtolower(trim($extracted['doc_type'] ?? ''));
-if (!in_array($docType, VALID_DOC_TYPES, true)) {
-    $docType = 'all_documents';
-}
-
-$confidence   = min(1.0, max(0.0, (float)($extracted['confidence'] ?? 0.5)));
-$needsReview  = $confidence < 0.6 || !empty($extracted['needs_review']);
-$language     = trim($extracted['language'] ?? 'unknown');
-$docNumber    = trim($extracted['doc_number'] ?? '');
-$issueDate    = formatDateForDb($extracted['issue_date'] ?? '');
-$expiryDate   = formatDateForDb($extracted['expiry_date'] ?? '');
-$summary      = trim($extracted['summary'] ?? '');
-$filenameStem = sanitizeStem($extracted['suggested_filename_stem'] ?? '');
-$pages        = normalizePages($extracted['pages'] ?? [], $pageCount);
-$docData      = $extracted['doc_data'] ?? [];
-
-if ($filenameStem === '') {
-    // Fallback: traveler name + doc type
-    $filenameStem = sanitizeStem(strtolower($traveler['name']) . '_' . $docType);
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// STEP 4 — Passport analysis (passport_identity এর জন্য special logic)
-// ════════════════════════════════════════════════════════════════════════════
-
-$passportAnalysis = null;
-if ($docType === 'passport') {
-    $passportAnalysis = analyzePassport(
-        $pdo,
-        $travelerSysId,
-        $traveler,
-        $docNumber,
-        $expiryDate,
-        $passportStatus,
-        $docData
-    );
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// STEP 5 — Duplicate document check (same doc_number + same doc_type already?)
-// ════════════════════════════════════════════════════════════════════════════
-
-$mergeAnalysis = null;
-if ($docNumber && $docType !== 'passport') {
-    // passport এর merge analysis উপরে আলাদাভাবে হয়
-    $mergeAnalysis = checkDocDuplicate($pdo, $travelerSysId, $docType, $docNumber);
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// STEP 6 — classify_tokens table এ save করো
-// ════════════════════════════════════════════════════════════════════════════
-
-$expiresAt = date('Y-m-d H:i:s', strtotime('+2 hours'));
-
-$stmt = $pdo->prepare("
-    INSERT INTO classify_tokens
-        (token, traveler_id, tmp_path, original_filename, file_size, mime_type,
-         page_count, classify_result, passport_analysis, merge_analysis, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-");
-$stmt->execute([
-    $token,
-    $travelerSysId,
-    $tmpPath,
-    $origName,
-    $fileSize,
-    $mimeType,
-    $pageCount,
-    json_encode([
-        'doc_type'               => $docType,
-        'doc_number'             => $docNumber,
-        'suggested_filename_stem'=> $filenameStem,
-        'issue_date'             => $issueDate,
-        'expiry_date'            => $expiryDate,
-        'summary'                => $summary,
-        'confidence'             => $confidence,
-        'needs_review'           => $needsReview,
-        'language'               => $language,
-        'pages'                  => $pages,
-        'doc_data'               => $docData,
-    ], JSON_UNESCAPED_UNICODE),
-    $passportAnalysis ? json_encode($passportAnalysis, JSON_UNESCAPED_UNICODE) : null,
-    $mergeAnalysis    ? json_encode($mergeAnalysis,    JSON_UNESCAPED_UNICODE) : null,
-    $expiresAt,
-]);
-
-// ── Cleanup: পুরনো expired tokens + তাদের tmp files delete করো ──────────────
-cleanupExpiredTokens($pdo);
-
-// ════════════════════════════════════════════════════════════════════════════
-// RESPONSE — frontend এর renderCard() এ যা লাগে সব পাঠাও
-// ════════════════════════════════════════════════════════════════════════════
-
-echo json_encode([
-    'success'                 => true,
-    'token'                   => $token,
-
-    // Classification
-    'doc_type'                => $docType,
-    'doc_number'              => $docNumber,
-    'suggested_filename_stem' => $filenameStem,
-    'issue_date'              => $issueDate,
-    'expiry_date'             => $expiryDate,
-    'summary'                 => $summary,
-    'confidence'              => $confidence,
-    'needs_review'            => $needsReview,
-    'language'                => $language,
-
-    // File info
-    'original_filename'       => $origName,
-    'file_size'               => $fileSize,
-    'mime_type'               => $mimeType,
-    'page_count'              => $pageCount,
-    'pages'                   => $pages,
-
-    // Special analysis
-    'passport_analysis'       => $passportAnalysis,
-    'merge_analysis'          => $mergeAnalysis,
-], JSON_UNESCAPED_UNICODE);
-
-
-// ════════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * File → Gemini parts array + metadata
- * Image: 1 part (base64)
- * PDF: Imagick দিয়ে rasterize, max 4 pages পাঠাও
- * Returns: [parts[], pageCount, mimeType]
- */
-function buildGeminiParts(string $path, string $ext): array
+function handleSplit(): never
 {
-    if ($ext === 'pdf') {
-        if (!extension_loaded('imagick')) {
-            throw new Exception('PDF processing requires Imagick extension');
-        }
-        $imagick = new Imagick();
-        $imagick->setResolution(150, 150);
-        $imagick->readImage($path);
-        $totalPages = $imagick->getNumberImages();
-        $sendPages  = min($totalPages, 4); // max 4 page Gemini তে
-
-        $parts = [];
-        for ($i = 0; $i < $sendPages; $i++) {
-            $imagick->setIteratorIndex($i);
-            $imagick->setImageFormat('png');
-            $b64 = base64_encode($imagick->getImageBlob());
-            if ($b64 !== '') {
-                $parts[] = ['inline_data' => ['mime_type' => 'image/png', 'data' => $b64]];
-            }
-        }
-        $imagick->clear();
-        $imagick->destroy();
-
-        if (empty($parts)) {
-            throw new Exception('Failed to rasterize PDF');
-        }
-
-        return [$parts, $totalPages, 'application/pdf'];
+    if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        jsonError('File upload failed');
     }
 
-    // Image
-    $mimeMap = [
-        'jpg'  => 'image/jpeg', 'jpeg' => 'image/jpeg',
-        'png'  => 'image/png',  'webp' => 'image/webp',
-    ];
-    $mime = $mimeMap[$ext] ?? 'image/jpeg';
-    $b64  = base64_encode(file_get_contents($path));
-    if ($b64 === '') {
-        throw new Exception('Failed to encode image');
+    $file    = $_FILES['file'];
+    $origName= $file['name'];
+    $fileSize= $file['size'];
+    $tmpSrc  = $file['tmp_name'];
+    $ext     = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+    if (!in_array($ext, ALLOWED_EXTS, true)) jsonError('Unsupported file type');
+    if ($fileSize > MAX_BYTES) jsonError('File too large');
+
+    // Image হলে split দরকার নেই — directly classify এ পাঠাও
+    if ($ext !== 'pdf') {
+        $pageToken = stageSingleImage($tmpSrc, $ext, $origName, $fileSize);
+        echo json_encode([
+            'success'    => true,
+            'type'       => 'image',
+            'page_tokens'=> [[$pageToken, $origName, 1]],
+            'total_pages'=> 1,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
-    return [
-        [['inline_data' => ['mime_type' => $mime, 'data' => $b64]]],
-        1,
-        $mime,
-    ];
+    // PDF → pages
+    if (!extension_loaded('imagick')) jsonError('Imagick not available');
+
+    $batchDir = rtrim(sys_get_temp_dir(), '/') . '/travhub_classify/' . bin2hex(random_bytes(8)) . '/';
+    mkdir($batchDir, 0775, true);
+
+    // Stage original PDF
+    $pdfPath = $batchDir . 'original.pdf';
+    move_uploaded_file($tmpSrc, $pdfPath);
+
+    $imagick = new Imagick();
+    $imagick->setResolution(150, 150);
+    $imagick->readImage($pdfPath);
+    $totalPages = $imagick->getNumberImages();
+
+    $pageTokens = [];
+    for ($i = 0; $i < $totalPages; $i++) {
+        $imagick->setIteratorIndex($i);
+        $imagick->setImageFormat('png');
+        $w = $imagick->getImageWidth();
+        if ($w > 1200) $imagick->resizeImage(1200, 0, Imagick::FILTER_LANCZOS, 1);
+
+        $pagePath = $batchDir . 'page_' . ($i + 1) . '.png';
+        file_put_contents($pagePath, $imagick->getImageBlob());
+
+        // প্রতিটা page এর জন্য একটা tmp token (Gemini call নেই এখনো)
+        $pageToken  = bin2hex(random_bytes(16));
+        $pageTokens[] = [$pageToken, $pagePath, $i + 1];
+    }
+    $imagick->clear();
+    $imagick->destroy();
+
+    echo json_encode([
+        'success'    => true,
+        'type'       => 'pdf',
+        'page_tokens'=> $pageTokens,
+        'total_pages'=> $totalPages,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-/**
- * Gemini vision call — multipart (text prompt + image parts)
- */
-function callGeminiVision(string $apiKey, string $model, array $imageParts, string $textPrompt): array
+// ════════════════════════════════════════════════════════════════════════════
+// handleClassify — single image/page → Gemini → token save → return
+// ════════════════════════════════════════════════════════════════════════════
+function handleClassify(): never
 {
-    $parts = array_merge(
-        [['text' => $textPrompt]],
-        $imageParts
-    );
+    global $pdo, $GEMINI_API_KEY, $GEMINI_MODEL;
 
+    $travelerSysId  = trim($_POST['traveler_sys_id'] ?? '');
+    $passportStatus = trim($_POST['passport_status']  ?? 'auto');
+
+    if (!$travelerSysId) jsonError('traveler_sys_id is required');
+
+    $stmt = $pdo->prepare("SELECT sys_id, name, passport_no, passport_info FROM travelers WHERE sys_id = ? LIMIT 1");
+    $stmt->execute([$travelerSysId]);
+    $traveler = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$traveler) jsonError('Traveler not found');
+
+    // Image source — either uploaded file or staged page path
+    $stagedPath = trim($_POST['page_path'] ?? '');
+    $origName   = trim($_POST['original_filename'] ?? 'document');
+    $fileSize   = (int)($_POST['file_size'] ?? 0);
+    $pageNo     = (int)($_POST['page_no'] ?? 1);
+    $mime       = 'image/png';
+
+    if ($stagedPath && file_exists($stagedPath)) {
+        // Staged PNG from split
+        $b64 = base64_encode(file_get_contents($stagedPath));
+    } elseif (!empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+        // Direct image upload
+        $file     = $_FILES['file'];
+        $origName = $file['name'];
+        $fileSize = $file['size'];
+        $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        if (!in_array($ext, ALLOWED_EXTS, true)) jsonError('Unsupported file type');
+        if ($fileSize > MAX_BYTES) jsonError('File too large');
+
+        $mimeMap = ['jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','webp'=>'image/webp'];
+        $mime    = $mimeMap[$ext] ?? 'image/jpeg';
+        $b64     = base64_encode(file_get_contents($file['tmp_name']));
+        $stagedPath = $file['tmp_name'];
+    } else {
+        jsonError('No image provided');
+    }
+
+    // Gemini classify
+    $prompt = buildClassifyPrompt($traveler, $passportStatus);
+    $result = callGemini($GEMINI_API_KEY, $GEMINI_MODEL, $b64, $mime, $prompt);
+
+    if (!$result['success']) {
+        jsonError('Gemini classification failed: ' . $result['error']);
+    }
+
+    $data    = $result['data'];
+    $docType = sanitizeDocType($data['doc_type'] ?? 'other');
+
+    // Token save
+    $token     = bin2hex(random_bytes(24));
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+2 hours'));
+
+    $passportAnalysis = null;
+    if ($docType === 'passport') {
+        $docNumber = $data['doc_number'] ?? $data['doc_data']['passport_number'] ?? '';
+        $expiry    = formatDateForDb($data['expiry_date'] ?? '');
+        $passportAnalysis = analyzePassport($pdo, $travelerSysId, $traveler, $docNumber, $expiry, $passportStatus, $data['doc_data'] ?? []);
+    }
+
+    $pdo->prepare("
+        INSERT INTO classify_tokens
+            (token, traveler_id, tmp_path, original_filename, file_size, mime_type,
+             page_count, classify_result, passport_analysis, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+    ")->execute([
+        $token, $travelerSysId, $stagedPath, $origName, $fileSize, $mime,
+        json_encode([
+            'doc_type'               => $docType,
+            'doc_number'             => $data['doc_number'] ?? '',
+            'suggested_filename_stem'=> sanitizeStem($data['suggested_filename_stem'] ?? $traveler['name'] . '_' . $docType),
+            'issue_date'             => formatDateForDb($data['issue_date'] ?? ''),
+            'expiry_date'            => formatDateForDb($data['expiry_date'] ?? ''),
+            'summary'                => $data['summary'] ?? '',
+            'confidence'             => (float)($data['confidence'] ?? 0.7),
+            'needs_review'           => ($data['confidence'] ?? 0.7) < 0.6,
+            'language'               => $data['language'] ?? 'English',
+            'pages'                  => [['page_no' => $pageNo, 'page_type' => $data['page_type'] ?? 'unknown', 'country' => $data['country'] ?? null]],
+            'doc_data'               => $data['doc_data'] ?? [],
+        ], JSON_UNESCAPED_UNICODE),
+        $passportAnalysis ? json_encode($passportAnalysis, JSON_UNESCAPED_UNICODE) : null,
+        $expiresAt,
+    ]);
+
+    cleanupExpiredTokens($pdo);
+
+    echo json_encode([
+        'success'                 => true,
+        'token'                   => $token,
+        'doc_type'                => $docType,
+        'doc_number'              => $data['doc_number'] ?? '',
+        'suggested_filename_stem' => sanitizeStem($data['suggested_filename_stem'] ?? ''),
+        'issue_date'              => formatDateForDb($data['issue_date'] ?? ''),
+        'expiry_date'             => formatDateForDb($data['expiry_date'] ?? ''),
+        'summary'                 => $data['summary'] ?? '',
+        'confidence'              => (float)($data['confidence'] ?? 0.7),
+        'needs_review'            => ($data['confidence'] ?? 0.7) < 0.6,
+        'language'                => $data['language'] ?? 'English',
+        'original_filename'       => $origName,
+        'file_size'               => $fileSize,
+        'mime_type'               => $mime,
+        'page_count'              => 1,
+        'pages'                   => [['page_no' => $pageNo, 'page_type' => $data['page_type'] ?? 'unknown', 'country' => $data['country'] ?? null]],
+        'passport_analysis'       => $passportAnalysis,
+        'merge_analysis'          => null,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// stageSingleImage — image file tmp তে stage করো
+// ════════════════════════════════════════════════════════════════════════════
+function stageSingleImage(string $tmpSrc, string $ext, string $origName, int $fileSize): array
+{
+    $dir  = rtrim(sys_get_temp_dir(), '/') . '/travhub_classify/' . bin2hex(random_bytes(8)) . '/';
+    mkdir($dir, 0775, true);
+    $dest = $dir . 'original.' . $ext;
+    move_uploaded_file($tmpSrc, $dest);
+    return [$dest, $origName, 1];
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// callGemini
+// ════════════════════════════════════════════════════════════════════════════
+function callGemini(string $apiKey, string $model, string $b64, string $mime, string $prompt): array
+{
     $payload = json_encode([
-        'contents' => [['role' => 'user', 'parts' => $parts]],
-        'generationConfig' => [
-            'responseMimeType' => 'application/json',
-            'temperature'      => 0.1,
-            'maxOutputTokens'  => 4096,
-        ],
+        'contents' => [['role' => 'user', 'parts' => [
+            ['text' => $prompt],
+            ['inline_data' => ['mime_type' => $mime, 'data' => $b64]],
+        ]]],
+        'generationConfig' => ['temperature' => 0.1, 'maxOutputTokens' => 4096],
     ], JSON_UNESCAPED_UNICODE);
 
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-
-    $ch = curl_init($url);
+    $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}");
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $payload,
@@ -352,359 +270,140 @@ function callGeminiVision(string $apiKey, string $model, array $imageParts, stri
     $err  = curl_error($ch);
     curl_close($ch);
 
-    if ($err) return ['success' => false, 'error' => 'cURL: ' . $err];
-    if ($code !== 200) {
+    if ($err || $code !== 200) {
         $b = json_decode($raw, true);
-        return ['success' => false, 'error' => $b['error']['message'] ?? "HTTP {$code}"];
+        return ['success' => false, 'error' => $err ?: ($b['error']['message'] ?? "HTTP {$code}")];
     }
 
     $body = json_decode($raw, true);
     $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    if (trim($text) === '') {
-        return ['success' => false, 'error' => 'Gemini returned empty response'];
-    }
+    $data = parseGeminiJson($text);
 
-    // responseMimeType: application/json হলে clean JSON আসে সরাসরি
-    $clean = trim(preg_replace('/^```json\s*|\s*```$/m', '', $text));
-    $data  = json_decode($clean, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        return ['success' => false, 'error' => 'JSON parse failed: ' . json_last_error_msg(), 'raw' => $text];
-    }
-
-    return ['success' => true, 'data' => $data];
+    return $data ? ['success' => true, 'data' => $data] : ['success' => false, 'error' => 'JSON parse failed: ' . substr($text, 0, 200)];
 }
 
-/**
- * Gemini prompt — document classify + extract
- * Traveler context দিলে Gemini আরো accurate হয়
- */
+// ════════════════════════════════════════════════════════════════════════════
+// parseGeminiJson
+// ════════════════════════════════════════════════════════════════════════════
+function parseGeminiJson(string $text): ?array
+{
+    $clean = trim(preg_replace('/^```(?:json)?[\r\n\s]*|[\r\n\s]*```$/m', '', $text));
+    $clean = preg_replace('/[\x00-\x08\x0b\x0c\x0e-\x1f]/', '', $clean);
+    $first = strpos($clean, '{');
+    $last  = strrpos($clean, '}');
+    if ($first !== false && $last !== false && $last > $first) {
+        $clean = substr($clean, $first, $last - $first + 1);
+    }
+    $data = json_decode($clean, true);
+    if (json_last_error() === JSON_ERROR_NONE) return $data;
+    $clean = iconv('UTF-8', 'UTF-8//IGNORE', $clean);
+    $data  = json_decode($clean, true);
+    return json_last_error() === JSON_ERROR_NONE ? $data : null;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// buildClassifyPrompt
+// ════════════════════════════════════════════════════════════════════════════
 function buildClassifyPrompt(array $traveler, string $passportStatusHint): string
 {
-    $travelerCtx = "Traveler name: {$traveler['name']}";
-    if ($traveler['passport_no']) {
-        $travelerCtx .= " | Known passport no: {$traveler['passport_no']}";
-    }
+    $hint = $passportStatusHint === 'current' ? 'User says this is CURRENT passport.' :
+            ($passportStatusHint === 'previous' ? 'User says this is PREVIOUS passport.' : '');
 
-    $passportHint = '';
-    if ($passportStatusHint === 'current') {
-        $passportHint = 'The user has indicated this is their CURRENT passport.';
-    } elseif ($passportStatusHint === 'previous') {
-        $passportHint = 'The user has indicated this is a PREVIOUS/OLD passport.';
-    }
-
+    $name = $traveler['name'];
     return <<<PROMPT
-You are an expert travel document classifier and data extractor for a Bangladeshi travel agency.
+Analyze this document for traveler: {$name}. {$hint}
 
-TRAVELER CONTEXT: {$travelerCtx}
-{$passportHint}
-
-Analyze the document image(s) and return ONLY a valid JSON object with this exact structure:
-
+Return ONLY a JSON object:
 {
-  "doc_type": "<one of the 9 valid types>",
-  "doc_number": "<primary document number or null>",
-  "suggested_filename_stem": "<short_descriptive_snake_case_name>",
+  "doc_type": "<passport|nid|visa|visa_stamp|air_ticket|hotel_voucher|invitation_letter|bank_statement|sponsor_letter|employment_letter|education_certificate|medical_report|vaccination_card|marriage_certificate|birth_certificate|photo|signature|other>",
+  "doc_number": "<document number or null>",
+  "suggested_filename_stem": "<short_snake_case_name>",
   "issue_date": "<DD-MM-YYYY or null>",
   "expiry_date": "<DD-MM-YYYY or null>",
-  "language": "<detected language, e.g. English, Bengali, Arabic>",
+  "language": "<English|Bengali|Arabic|etc>",
   "confidence": <0.0 to 1.0>,
-  "needs_review": <true if unsure, false if confident>,
-  "summary": "<2-4 sentence factual narrative about this document in third person>",
-  "pages": [
-    {
-      "page_no": 1,
-      "page_type": "<bio_page | visa_stamp | entry_stamp | exit_stamp | renewal_page | nid_front | nid_back | other>",
-      "country": "<country name if applicable, else null>"
-    }
-  ],
-  "doc_data": {
-    "<all structured fields you can read — see rules below>"
-  }
+  "needs_review": <true|false>,
+  "summary": "<2-4 sentence narrative>",
+  "page_type": "<bio_page|visa_page|visa_stamp|entry_stamp|exit_stamp|nid_front|nid_back|other>",
+  "country": "<country name or null>",
+  "doc_data": { "<all structured fields>" }
 }
-
-VALID DOC TYPES (choose exactly one):
-- passport            → passport bio page, renewal pages, old passports
-- nid                 → Bangladesh National ID Card (front or back)
-- visa                → visa sticker with validity dates
-- visa_stamp          → entry/exit stamp, arrival/departure stamp
-- air_ticket          → flight ticket, boarding pass, e-ticket
-- hotel_voucher       → hotel booking confirmation, voucher
-- invitation_letter   → invitation letter for visa application
-- bank_statement      → bank account statement, solvency certificate
-- sponsor_letter      → financial sponsor letter
-- employment_letter   → employment certificate, NOC, salary certificate
-- education_certificate → degree, transcript, school certificate
-- medical_report      → medical fitness certificate, health report
-- vaccination_card    → vaccine certificate, immunization record
-- marriage_certificate → marriage certificate, nikah certificate
-- birth_certificate   → birth registration certificate
-- photo               → passport-size photo, portrait photo
-- signature           → signature scan
-- other               → anything that does not fit above categories
-
-DOC_DATA RULES by doc_type:
-
-For passport:
-{
-  "full_name": "", "surname": "", "given_names": "",
-  "passport_number": "", "nationality": "", "gender": "M or F",
-  "date_of_birth": "DD-MM-YYYY", "place_of_birth": "",
-  "issue_date": "DD-MM-YYYY", "expiry_date": "DD-MM-YYYY",
-  "issuing_authority": "", "place_of_issue": "",
-  "mrz_line1": "", "mrz_line2": ""
-}
-
-For nid:
-{
-  "full_name": "", "name_bengali": "", "nid_number": "",
-  "date_of_birth": "DD-MM-YYYY", "father_name": "", "mother_name": "",
-  "address": "", "blood_group": ""
-}
-
-For visa:
-{
-  "visa_type": "", "visa_number": "", "country": "",
-  "issue_date": "DD-MM-YYYY", "expiry_date": "DD-MM-YYYY",
-  "validity_from": "DD-MM-YYYY", "validity_to": "DD-MM-YYYY",
-  "entries": "Single or Double or Multiple",
-  "duration_of_stay": "", "issued_at": "", "applicant_name": ""
-}
-
-For visa_stamp:
-{
-  "stamp_type": "entry or exit", "country": "",
-  "date": "DD-MM-YYYY", "port_of_entry": ""
-}
-
-For air_ticket:
-{
-  "passenger_name": "", "ticket_number": "", "pnr": "",
-  "airline": "", "flight_number": "",
-  "departure_city": "", "arrival_city": "",
-  "departure_date": "DD-MM-YYYY", "departure_time": ""
-}
-
-For hotel_voucher:
-{
-  "guest_name": "", "hotel_name": "", "city": "",
-  "check_in": "DD-MM-YYYY", "check_out": "DD-MM-YYYY",
-  "booking_reference": "", "room_type": ""
-}
-
-For bank_statement:
-{
-  "bank_name": "", "account_holder": "", "account_number": "",
-  "period_from": "DD-MM-YYYY", "period_to": "DD-MM-YYYY",
-  "closing_balance": "", "currency": ""
-}
-
-For employment_letter:
-{
-  "employer_name": "", "employee_name": "", "designation": "",
-  "issue_date": "DD-MM-YYYY", "document_title": ""
-}
-
-For other types: extract all visible structured fields as key-value pairs.
-
-RULES:
-- ALL dates must be DD-MM-YYYY format
-- null for any field you cannot read clearly
-- suggested_filename_stem: lowercase, underscores, no extension, max 60 chars
-  Example: "ahmed_karim_passport_BD1234567" or "uk_tourist_visa_2026"
-- confidence: 0.9+ if very clear, 0.6-0.9 if readable, below 0.6 if unclear
-- needs_review: true if confidence < 0.6 OR if you are unsure about doc_type
-- Do NOT invent data. Use null for anything unreadable.
-- Return ONLY the JSON object. No explanation, no markdown fences.
+Dates in DD-MM-YYYY. Return ONLY JSON.
 PROMPT;
 }
 
-/**
- * Passport-specific analysis:
- * এই passport টা traveler এর existing passport এর সাথে কী relation?
- * Scenario:
- *   first_time             → এই traveler এর আগে কোনো passport নেই
- *   matches_existing_current → same passport number, already current
- *   renewal_demote_old     → নতুন passport, পুরানোটা previous হবে
- *   historical_upload      → পুরানো passport upload (user said "previous")
- */
-function analyzePassport(
-    PDO    $pdo,
-    string $travelerSysId,
-    array  $traveler,
-    string $newPassportNo,
-    string $newExpiry,
-    string $userHint,      // auto|current|previous
-    array  $docData
-): array {
-
-    // Existing passport info
-    $existingPassportNo = $traveler['passport_no'] ?? '';
-    $existingPassportInfo = json_decode($traveler['passport_info'] ?? '[]', true);
+// ════════════════════════════════════════════════════════════════════════════
+// analyzePassport
+// ════════════════════════════════════════════════════════════════════════════
+function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, string $newPassportNo, string $newExpiry, string $userHint, array $docData): array
+{
+    $existingNo   = $traveler['passport_no'] ?? '';
+    $existingInfo = json_decode($traveler['passport_info'] ?? '[]', true) ?: [];
     $existingExpiry = '';
-
-    if (!empty($existingPassportInfo[0]['bio_info']['expiry_date'])) {
-        $existingExpiry = $existingPassportInfo[0]['bio_info']['expiry_date'];
+    if (!empty($existingInfo[0]['bio_info']['date_of_expiry'])) {
+        $existingExpiry = formatDateForDb($existingInfo[0]['bio_info']['date_of_expiry']);
     }
 
-    // Bio diff — কোন fields আলাদা?
-    $bioDiff = [];
-    if (!empty($existingPassportInfo[0]['bio_info'])) {
-        $existingBio = $existingPassportInfo[0]['bio_info'];
-        $checkFields = ['full_name', 'surname', 'given_names', 'date_of_birth', 'nationality', 'place_of_birth'];
-        foreach ($checkFields as $field) {
-            $oldVal = trim((string)($existingBio[$field] ?? ''));
-            $newVal = trim((string)($docData[$field] ?? ''));
-            if ($oldVal !== '' && $newVal !== '' && strtolower($oldVal) !== strtolower($newVal)) {
-                $bioDiff[$field] = ['old' => $oldVal, 'new' => $newVal];
-            }
-        }
-    }
-
-    // Scenario determine করো
-    if (!$existingPassportNo) {
-        // এই traveler এর কোনো passport নেই
-        $scenario       = 'first_time';
-        $resolvedStatus = 'current';
-
-    } elseif ($existingPassportNo === $newPassportNo) {
-        // Same passport already on file
-        $scenario       = 'matches_existing_current';
-        $resolvedStatus = 'current';
-
-    } elseif ($userHint === 'previous') {
-        // User explicitly বলেছে এটা পুরানো passport
-        $scenario       = 'historical_upload';
-        $resolvedStatus = 'previous';
-
-    } else {
-        // Different passport number → renewal (নতুনটা current, পুরানোটা previous)
-        // Auto-detect: নতুন expiry পুরানোর চেয়ে পরে হলে renewal
-        $scenario       = 'renewal_demote_old';
-        $resolvedStatus = 'current';
-
-        // যদি user বলে current অথবা auto এবং new expiry আগে → historical
+    if (!$existingNo)                        $scenario = 'first_time';
+    elseif ($existingNo === $newPassportNo)  $scenario = 'matches_existing_current';
+    elseif ($userHint === 'previous')       $scenario = 'historical_upload';
+    else {
+        $scenario = 'renewal_demote_old';
         if ($userHint === 'auto' && $newExpiry && $existingExpiry) {
-            // formatDateForDb() দিয়ে YYYY-MM-DD এ convert করো তারপর strtotime
-            $newTs      = strtotime(formatDateForDb($newExpiry));
-            $existingTs = strtotime(formatDateForDb($existingExpiry));
-            if ($newTs && $existingTs && $newTs < $existingTs) {
-                $scenario       = 'historical_upload';
-                $resolvedStatus = 'previous';
-            }
+            $newTs = strtotime(str_replace(['.','/'], '-', $newExpiry));
+            $oldTs = strtotime(str_replace(['.','/'], '-', $existingExpiry));
+            if ($newTs && $oldTs && $newTs < $oldTs) $scenario = 'historical_upload';
         }
     }
 
+    $resolvedStatus = in_array($scenario, ['first_time', 'matches_existing_current', 'renewal_demote_old']) ? 'current' : 'previous';
+
     return [
-        'scenario'        => $scenario,
-        'resolved_status' => $resolvedStatus,
-        'new_passport_no' => $newPassportNo,
-        'existing_passport_no' => $existingPassportNo,
-        'bio_diff'        => $bioDiff,
+        'scenario'             => $scenario,
+        'resolved_status'      => $resolvedStatus,
+        'new_passport_no'      => $newPassportNo,
+        'existing_passport_no' => $existingNo,
+        'bio_diff'             => [],
     ];
 }
 
-/**
- * Duplicate document check — same doc_number + doc_type already আছে কিনা
- */
-function checkDocDuplicate(PDO $pdo, string $travelerSysId, string $docType, string $docNumber): ?array
+// ════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════════════════
+function sanitizeDocType(string $t): string
 {
-    if (!$docNumber) return null;
-
-    $stmt = $pdo->prepare("
-        SELECT sys_id, page_count, status
-        FROM traveler_documents
-        WHERE traveler_id = ? AND doc_type = ? AND doc_number = ?
-          AND status != 'deleted'
-        LIMIT 1
-    ");
-    $stmt->execute([$travelerSysId, $docType, $docNumber]);
-    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$existing) return null;
-
-    return [
-        'existing_sys_id'  => $existing['sys_id'],
-        'existing_pages'   => (int)$existing['page_count'],
-        'duplicate_pages'  => 0,   // commit এ real page comparison হবে
-        'new_pages_to_add' => 1,   // optimistic — commit এ verify হবে
-    ];
+    return in_array($t, VALID_DOC_TYPES, true) ? $t : 'other';
 }
 
-/**
- * Cleanup expired tokens + তাদের tmp files
- */
-function cleanupExpiredTokens(PDO $pdo): void
-{
-    try {
-        $stmt = $pdo->query("SELECT tmp_path FROM classify_tokens WHERE expires_at < NOW()");
-        $old  = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($old as $path) {
-            if ($path && file_exists($path)) @unlink($path);
-        }
-        $pdo->exec("DELETE FROM classify_tokens WHERE expires_at < NOW()");
-    } catch (Throwable $e) {
-        error_log('[classify-document] cleanup error: ' . $e->getMessage());
-    }
-}
-
-/**
- * DD-MM-YYYY বা YYYY-MM-DD → MySQL DATE format (YYYY-MM-DD)
- * Invalid হলে null return করো
- */
 function formatDateForDb(string $raw): string
 {
     $raw = trim($raw);
     if (!$raw) return '';
-
-    // DD-MM-YYYY
-    if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $raw, $m)) {
-        return "{$m[3]}-{$m[2]}-{$m[1]}";
-    }
-    // YYYY-MM-DD — already correct
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
-        return $raw;
-    }
+    if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $raw, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) return $raw;
     return '';
 }
 
-/**
- * Filename stem sanitize — lowercase alphanumeric + underscore, max 80 chars
- */
 function sanitizeStem(string $name): string
 {
-    $name = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', $name));
-    $name = trim($name, '_');
-    return substr($name, 0, 80);
+    return substr(trim(preg_replace('/[^a-zA-Z0-9]+/', '_', strtolower($name)), '_'), 0, 80);
 }
 
-/**
- * Pages array normalize — Gemini output থেকে clean array
- */
-function normalizePages(array $raw, int $totalPages): array
+function cleanupExpiredTokens(PDO $pdo): void
 {
-    if (empty($raw)) {
-        return [['page_no' => 1, 'page_type' => 'unknown', 'country' => null]];
-    }
-    $out = [];
-    foreach ($raw as $i => $p) {
-        $out[] = [
-            'page_no'   => (int)($p['page_no']   ?? $i + 1),
-            'page_type' => (string)($p['page_type'] ?? 'unknown'),
-            'country'   => $p['country'] ? (string)$p['country'] : null,
-        ];
-    }
-    return $out;
+    try {
+        $stmt = $pdo->query("SELECT tmp_path FROM classify_tokens WHERE expires_at < NOW()");
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $path) {
+            foreach (explode('|', $path) as $p) {
+                if ($p && file_exists($p)) @unlink($p);
+            }
+        }
+        $pdo->exec("DELETE FROM classify_tokens WHERE expires_at < NOW()");
+    } catch (Throwable $e) {}
 }
 
-/**
- * Error response helper
- */
-function jsonError(string $msg, bool $duplicate = false, ?int $layer = null): never
+function jsonError(string $msg): never
 {
-    echo json_encode([
-        'success'   => false,
-        'message'   => $msg,
-        'duplicate' => $duplicate,
-        'layer'     => $layer,
-    ]);
+    echo json_encode(['success' => false, 'message' => $msg, 'duplicate' => false, 'layer' => null]);
     exit;
 }
