@@ -212,24 +212,34 @@ function _serveDoc(string $docId, bool $dl): void
 {
     global $pdo;
 
-    $fileName = $_GET['file'] ?? '';
+    $fileName = basename($_GET['file'] ?? '');
     if (!$fileName) {
         ob_clean(); http_response_code(400); echo 'file param required for doc_id'; return;
     }
 
+    error_log("[serve.php] _serveDoc doc_id={$docId} file={$fileName}");
+
     // Resolve doc_type and traveler from traveler_documents table
-    $stmt = $pdo->prepare("
-        SELECT d.doc_type, d.smb_folder, t.sys_id AS traveler_sys_id, t.name AS traveler_name
-        FROM traveler_documents d
-        JOIN travelers t ON t.sys_id = d.traveler_id
-        WHERE d.sys_id = ? LIMIT 1
-    ");
-    $stmt->execute([$docId]);
-    $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $pdo->prepare("
+            SELECT d.doc_type, d.smb_folder, t.sys_id AS traveler_sys_id, t.name AS traveler_name
+            FROM traveler_documents d
+            JOIN travelers t ON t.sys_id = d.traveler_id
+            WHERE d.sys_id = ? LIMIT 1
+        ");
+        $stmt->execute([$docId]);
+        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        error_log("[serve.php] _serveDoc DB error: " . $e->getMessage());
+        ob_clean(); http_response_code(500); echo 'DB error'; return;
+    }
 
     if (!$doc) {
+        error_log("[serve.php] _serveDoc not found: {$docId}");
         ob_clean(); http_response_code(404); echo 'Document record not found'; return;
     }
+
+    error_log("[serve.php] _serveDoc found: smb_folder=" . ($doc['smb_folder'] ?? 'null') . " traveler=" . ($doc['traveler_sys_id'] ?? 'null'));
 
     $SERVER_CUS_PATH = trim(@file_get_contents(__DIR__ . '/../../server-name.txt'));
     $cleanSysId      = preg_replace('/\s+/u', '', $doc['traveler_sys_id']);

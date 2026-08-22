@@ -219,7 +219,9 @@
                         : `<i class="fas fa-file text-gray-400 text-2xl"></i>`}
                 </div>
                 <div class="w-full">
-                    <p class="text-xs font-medium text-gray-700 truncate">${escHtml(doc.doc_number || 'No number')}</p>
+                    <p class="text-xs font-medium text-gray-700 truncate" title="${escHtml(doc.suggested_filename_stem || doc.doc_number || '')}">
+                        ${escHtml(doc.suggested_filename_stem || doc.doc_number || 'unnamed')}
+                    </p>
                     ${expBadge}
                 </div>`;
 

@@ -71,7 +71,7 @@ if (!$traveler) {
 // Build column list (skip heavy columns unless requested)
 // ============================================================================
 $cols = [
-    'sys_id', 'doc_type', 'doc_subtype', 'doc_number',
+    'sys_id', 'doc_type', 'doc_subtype', 'doc_number', 'suggested_filename_stem',
     'confidence', 'classification_mode', 'passport_status',
     'original_filename', 'file_size', 'mime_type',
     'page_count', 'smb_folder', 'server_path',
