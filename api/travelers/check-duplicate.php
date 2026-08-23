@@ -18,8 +18,40 @@ $fullName = trim($data['full_name'] ?? '');
 $documentNumber = trim($data['document_number'] ?? '');
 $documentType = $data['document_type'] ?? 'passport';
 $dateOfBirth = trim($data['date_of_birth'] ?? '');
+$previousPassportNo = trim($data['previous_passport_no'] ?? '');
 
 $duplicates = [];
+
+// Match Type 0: Previous Passport No. matches an existing traveler's current
+// passport_no — এটা document-verified renewal প্রমাণ, নাম/DOB heuristic না।
+// সবচেয়ে reliable, তাই সবার আগে check করা হয়।
+if (!empty($previousPassportNo)) {
+    $stmt = $pdo->prepare("
+        SELECT sys_id, name, passport_no, nid_no, date_of_birth, status, meta_data,
+               'passport_no' as column_name
+        FROM travelers
+        WHERE passport_no = ?
+    ");
+    $stmt->execute([$previousPassportNo]);
+    $renewalMatches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($renewalMatches as $match) {
+        $metaData = parseMetaData($match['meta_data']);
+
+        $duplicates[] = [
+            'sys_id' => $match['sys_id'],
+            'name' => $match['name'],
+            'document_number' => $match['passport_no'],
+            'date_of_birth' => $match['date_of_birth'],
+            'status' => $match['status'],
+            'created_at' => $metaData['created_at'] ?? 'N/A',
+            'created_by' => $metaData['created_by'] ?? 'system',
+            'column' => 'passport_no',
+            'match_type' => 'confirmed_renewal',
+            'match_reason' => 'Previous Passport No. আগের এই traveler-এর current passport-এর সাথে মিলেছে — নিশ্চিত renewal'
+        ];
+    }
+}
 
 // Match Type 1: Name + Document Number match (exact match - BLOCK)
 if (!empty($fullName) && !empty($documentNumber)) {
@@ -138,7 +170,7 @@ if (!empty($fullName) && !empty($dateOfBirth)) {
                 'created_by' => $metaData['created_by'] ?? 'system',
                 'column' => $match['passport_no'] ? 'passport_no' : 'nid_no',
                 'match_type' => 'partial',
-                'match_reason' => 'Name and date of birth match (different document)'
+                'match_reason' => 'Name and date of birth match, different document — সম্ভবত একই traveler-এর passport renewal'
             ];
         }
     }

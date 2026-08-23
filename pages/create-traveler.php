@@ -214,6 +214,14 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                                     placeholder="Enter document number">
                             </div>
+                            <div id="previousPassportNoWrap">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Previous Passport No. <span class="text-xs text-gray-400">(optional — renewal হলে)</span>
+                                </label>
+                                <input type="text" id="previousPassportNo" name="previous_passport_no"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    placeholder="আগের পাসপোর্ট নম্বর যদি জানা থাকে">
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                                 <select id="gender" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
@@ -308,13 +316,14 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
 
                 <!-- Duplicate Results Section -->
                 <div id="duplicateResults" class="hidden bg-white rounded-lg shadow mb-6 p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>Potential Duplicates Found
+                    <h3 id="duplicateResultsHeading" class="text-lg font-semibold text-gray-800 mb-1">
+                        <i id="duplicateResultsIcon" class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i><span id="duplicateResultsHeadingText">Potential Duplicates Found</span>
                     </h3>
+                    <p id="duplicateResultsSubtext" class="text-sm text-gray-500 mb-4"></p>
                     <div id="duplicateList" class="space-y-3 mb-4"></div>
                     
                     <div class="border-t pt-4">
-                        <p class="text-sm text-gray-600 mb-3">What would you like to do?</p>
+                        <p id="duplicateActionPrompt" class="text-sm text-gray-600 mb-3">What would you like to do?</p>
                         <div class="flex gap-3 flex-wrap">
                             <button onclick="proceedWithCreation()" 
                                 class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2">
@@ -384,13 +393,17 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
             const docType = getSelectedDocumentType();
             const label = document.getElementById('documentNumberLabel');
             const input = document.getElementById('documentNumber');
+            const prevWrap = document.getElementById('previousPassportNoWrap');
             
             if (docType === 'passport') {
                 label.textContent = 'Passport Number';
                 input.placeholder = 'Enter passport number';
+                if (prevWrap) prevWrap.classList.remove('hidden');
             } else {
                 label.textContent = 'NID Number';
                 input.placeholder = 'Enter NID number';
+                // NID-তে "previous passport" প্রাসঙ্গিক না
+                if (prevWrap) prevWrap.classList.add('hidden');
             }
         }
     
@@ -548,6 +561,7 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
             const documentNumber = document.getElementById('documentNumber').value.trim();
             const dateOfBirth = document.getElementById('dateOfBirth').value.trim();
             const documentType = getSelectedDocumentType();
+            const previousPassportNo = document.getElementById('previousPassportNo')?.value.trim() || '';
     
             if (!fullName && !documentNumber && !dateOfBirth) {
                 showMessage('Please enter at least one field to check for duplicates.', 'warning');
@@ -566,7 +580,8 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                         full_name: fullName,
                         document_number: documentNumber,
                         document_type: documentType,
-                        date_of_birth: dateOfBirth
+                        date_of_birth: dateOfBirth,
+                        previous_passport_no: previousPassportNo
                     })
                 });
     
@@ -577,10 +592,13 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                     duplicateData = result.duplicates;
                     showDuplicateResults(result.duplicates);
                     
+                    const renewalMatches = result.duplicates.filter(d => d.match_type === 'confirmed_renewal');
                     const exactMatches = result.duplicates.filter(d => d.match_type === 'exact');
                     const partialMatches = result.duplicates.filter(d => d.match_type === 'partial');
                     
-                    if (exactMatches.length > 0) {
+                    if (renewalMatches.length > 0) {
+                        showMessage(`✅ Previous Passport No. মিলেছে — এটা একটা confirmed renewal, নতুন traveler বানানোর দরকার নেই।`, 'success');
+                    } else if (exactMatches.length > 0) {
                         showMessage(`⚠️ Found ${exactMatches.length} exact match(es)! This traveler already exists.`, 'warning');
                     } else if (partialMatches.length > 0) {
                         showMessage(`🔍 Found ${partialMatches.length} partial match(es). Please verify if this is the same person.`, 'info');
@@ -602,18 +620,60 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
         function showDuplicateResults(duplicates) {
             const container = document.getElementById('duplicateResults');
             const list = document.getElementById('duplicateList');
+
+            // Heading, subtext, action-prompt — match type অনুযায়ী পরিষ্কার ভাষায়
+            // বলে দেওয়া হচ্ছে ইউজারকে কী করতে হবে, শুধু "duplicate found" বলে
+            // ছেড়ে দেওয়া হচ্ছে না
+            const confirmedRenewal = duplicates.find(d => d.match_type === 'confirmed_renewal');
+            const hasExact = duplicates.some(d => d.match_type === 'exact');
+            const hasPartial = duplicates.some(d => d.match_type === 'partial');
+
+            const icon = document.getElementById('duplicateResultsIcon');
+            const headingText = document.getElementById('duplicateResultsHeadingText');
+            const subtext = document.getElementById('duplicateResultsSubtext');
+            const actionPrompt = document.getElementById('duplicateActionPrompt');
+
+            if (confirmedRenewal) {
+                // এটা অনুমান না — document-এ ছাপা Previous Passport No. সরাসরি
+                // এই traveler-এর current passport-এর সাথে মিলেছে, তাই স্পষ্ট করে
+                // সেই নাম্বারটাই দেখিয়ে দেওয়া হচ্ছে
+                icon.className = 'fas fa-check-circle text-green-600 mr-2';
+                headingText.textContent = '✅ একই ব্যক্তি — Previous Passport No. মিলে গেছে';
+                subtext.textContent = `আপনার দেওয়া Previous Passport No. (${confirmedRenewal.document_number || ''}) সরাসরি এই traveler-এর বর্তমান passport number-এর সাথে হুবহু মিলেছে — এটা অনুমান না, নিশ্চিত প্রমাণ যে এটা একই ব্যক্তির passport renewal। নিচের কার্ডে "এই মানুষটাই" বাটন চাপুন — নতুন প্রোফাইল বানাবেন না।`;
+                actionPrompt.textContent = 'অন্য কেউ হলে (খুবই অসম্ভাব্য) নিচে থেকে option বেছে নিন:';
+            } else if (hasExact) {
+                icon.className = 'fas fa-exclamation-triangle text-red-600 mr-2';
+                headingText.textContent = 'এই Traveler ইতিমধ্যে সিস্টেমে আছে';
+                subtext.textContent = 'নাম ও document number হুবহু মিলে গেছে — একই ব্যক্তির জন্য দ্বিতীয় প্রোফাইল বানানোর দরকার নেই।';
+                actionPrompt.textContent = 'নিচে থেকে একটা option বেছে নিন:';
+            } else if (hasPartial) {
+                icon.className = 'fas fa-passport text-yellow-600 mr-2';
+                headingText.textContent = 'এটা কি Passport Renewal?';
+                subtext.textContent = 'নাম ও জন্মতারিখ আগের একজন traveler-এর সাথে মিলেছে কিন্তু passport number আলাদা — এটা শুধু সম্ভাবনা, নিশ্চিত না (Previous Passport No. দেওয়া হয়নি বা মেলেনি)। সাধারণত এর মানে passport renewal, নতুন মানুষ না। যদি তাই মনে হয়, নিচের কার্ডে "এই মানুষটাই" বাটন চাপুন। সত্যিই আলাদা মানুষ হলে "Yes, Create Anyway" চাপুন।';
+                actionPrompt.textContent = 'একই মানুষ না হলে নিচে থেকে option বেছে নিন:';
+            } else {
+                icon.className = 'fas fa-exclamation-triangle text-yellow-600 mr-2';
+                headingText.textContent = 'Potential Duplicates Found';
+                subtext.textContent = '';
+                actionPrompt.textContent = 'What would you like to do?';
+            }
             
             list.innerHTML = duplicates.map(dup => `
-                <div class="border ${dup.match_type === 'exact' ? 'border-red-300 bg-red-50' : 'border-yellow-300 bg-yellow-50'} rounded-lg p-4">
+                <div class="border ${
+                    dup.match_type === 'confirmed_renewal' ? 'border-green-300 bg-green-50' :
+                    dup.match_type === 'exact' ? 'border-red-300 bg-red-50' : 'border-yellow-300 bg-yellow-50'
+                } rounded-lg p-4">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-xs font-bold uppercase px-2 py-1 rounded-full ${
+                                    dup.match_type === 'confirmed_renewal' ? 'bg-green-200 text-green-800' :
                                     dup.match_type === 'exact' 
                                         ? 'bg-red-200 text-red-800' 
                                         : 'bg-yellow-200 text-yellow-800'
                                 }">
-                                    ${dup.match_type === 'exact' ? '⚠️ Exact Match' : '🔍 Partial Match'}
+                                    ${dup.match_type === 'confirmed_renewal' ? '✅ Confirmed Renewal' :
+                                      dup.match_type === 'exact' ? '⚠️ Exact Match' : '🔍 Partial Match'}
                                 </span>
                                 <span class="text-xs text-gray-500">${dup.match_reason || ''}</span>
                             </div>
@@ -650,12 +710,30 @@ $checkDuplicateApi = $ip_port . "api/travelers/check-duplicate.php";
                             <div class="mt-2 text-xs text-gray-400">
                                 Sys ID: ${dup.sys_id}
                             </div>
+
+                            ${(dup.match_type === 'partial' || dup.match_type === 'confirmed_renewal') ? `
+                            <div class="mt-3 pt-3 border-t ${dup.match_type === 'confirmed_renewal' ? 'border-green-200' : 'border-yellow-200'}">
+                                <button type="button" onclick="goToRenewalUpload('${dup.sys_id}')"
+                                    class="text-xs ${dup.match_type === 'confirmed_renewal' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-3 py-1.5 rounded-lg font-medium">
+                                    <i class="fas fa-id-card mr-1"></i> এই মানুষটাই — নতুন Passport Upload করো
+                                </button>
+                                <span class="text-xs text-gray-400 ml-2">নতুন traveler না বানিয়ে এই প্রোফাইলেই renewed passport যোগ হবে</span>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
             `).join('');
             
             container.classList.remove('hidden');
+        }
+
+        // Partial-match কে renewal ধরে নিয়ে সরাসরি সেই existing traveler এর
+        // Smart Upload এ পাঠিয়ে দেওয়া — Smart Upload এ already কাজ করা
+        // renewal-demote logic (analyzePassport / demoteOldPassport) নিজে থেকেই
+        // পুরনো passport কে 'previous' আর নতুনটাকে 'current' করে দেবে
+        function goToRenewalUpload(travelerSysId) {
+            window.location.href = `smart-upload.php?traveler=${encodeURIComponent(travelerSysId)}`;
         }
     
         // Proceed with creation despite duplicates

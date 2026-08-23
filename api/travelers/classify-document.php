@@ -156,7 +156,19 @@ function handleClassify(): never
         $mimeMap = ['jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','webp'=>'image/webp'];
         $mime    = $mimeMap[$ext] ?? 'image/jpeg';
         $b64     = base64_encode(file_get_contents($file['tmp_name']));
-        $stagedPath = $file['tmp_name'];
+
+        // ⚠️ $file['tmp_name'] হলো PHP-এর নিজস্ব upload tmp file — request শেষ হলেই
+        // এটা auto-delete হয়ে যায়। কিন্তু commit-documents.php পরে (user Review পেজ থেকে
+        // Confirm চাপার পরে) এই path থেকেই ফাইল পড়ে NAS এ পাঠায়। তাই এখানেই এটাকে
+        // persistent staging folder এ কপি করে রাখতে হবে, নাহলে commit সবসময় "Staged
+        // file not found (expired?)" দিয়ে fail করবে।
+        $persistDir = rtrim(sys_get_temp_dir(), '/') . '/travhub_classify/' . bin2hex(random_bytes(8)) . '/';
+        if (!is_dir($persistDir)) mkdir($persistDir, 0775, true);
+        $persistPath = $persistDir . 'page_' . $pageNo . '.' . $ext;
+        if (!copy($file['tmp_name'], $persistPath)) {
+            jsonError('Failed to stage uploaded file');
+        }
+        $stagedPath = $persistPath;
     } else {
         jsonError('No image provided');
     }
@@ -180,7 +192,8 @@ function handleClassify(): never
     if ($docType === 'passport') {
         $docNumber = $data['doc_number'] ?? $data['doc_data']['passport_number'] ?? '';
         $expiry    = formatDateForDb($data['expiry_date'] ?? '');
-        $passportAnalysis = analyzePassport($pdo, $travelerSysId, $traveler, $docNumber, $expiry, $passportStatus, $data['doc_data'] ?? []);
+        $prevPassportNo = trim($data['previous_passport_no'] ?? '');
+        $passportAnalysis = analyzePassport($pdo, $travelerSysId, $traveler, $docNumber, $expiry, $passportStatus, $data['doc_data'] ?? [], $prevPassportNo);
     }
 
     $pdo->prepare("
@@ -193,6 +206,7 @@ function handleClassify(): never
         json_encode([
             'doc_type'               => $docType,
             'doc_number'             => $data['doc_number'] ?? '',
+            'previous_passport_no'   => $data['previous_passport_no'] ?? '',
             'suggested_filename_stem'=> sanitizeStem($data['suggested_filename_stem'] ?? $traveler['name'] . '_' . $docType),
             'issue_date'             => formatDateForDb($data['issue_date'] ?? ''),
             'expiry_date'            => formatDateForDb($data['expiry_date'] ?? ''),
@@ -317,6 +331,7 @@ Return ONLY a JSON object:
 {
   "doc_type": "<passport|nid|visa|visa_stamp|air_ticket|hotel_voucher|invitation_letter|bank_statement|sponsor_letter|employment_letter|education_certificate|medical_report|vaccination_card|marriage_certificate|birth_certificate|photo|signature|other>",
   "doc_number": "<document number or null>",
+  "previous_passport_no": "<if this is a passport and it shows a 'Previous/Old Passport No.' field or annotation, extract that number here, else null>",
   "suggested_filename_stem": "<short_snake_case_name>",
   "issue_date": "<DD-MM-YYYY or null>",
   "expiry_date": "<DD-MM-YYYY or null>",
@@ -335,7 +350,7 @@ PROMPT;
 // ════════════════════════════════════════════════════════════════════════════
 // analyzePassport
 // ════════════════════════════════════════════════════════════════════════════
-function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, string $newPassportNo, string $newExpiry, string $userHint, array $docData): array
+function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, string $newPassportNo, string $newExpiry, string $userHint, array $docData, string $prevPassportNo = ''): array
 {
     $existingNo   = $traveler['passport_no'] ?? '';
     $existingInfo = json_decode($traveler['passport_info'] ?? '[]', true) ?: [];
@@ -344,8 +359,14 @@ function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, strin
         $existingExpiry = formatDateForDb($existingInfo[0]['bio_info']['date_of_expiry']);
     }
 
+    // ── Confirmed renewal: passport-এ ছাপা "Previous Passport No." যদি এই
+    // traveler-এর existing passport_no-র সাথে exact মেলে, তাহলে এটা document
+    // দিয়ে প্রমাণিত renewal — কোনো heuristic/expiry-guess লাগবে না
+    $confirmedRenewal = $prevPassportNo && $existingNo && ($prevPassportNo === $existingNo);
+
     if (!$existingNo)                        $scenario = 'first_time';
     elseif ($existingNo === $newPassportNo)  $scenario = 'matches_existing_current';
+    elseif ($confirmedRenewal)               $scenario = 'renewal_demote_old';
     elseif ($userHint === 'previous')       $scenario = 'historical_upload';
     else {
         $scenario = 'renewal_demote_old';
@@ -363,6 +384,8 @@ function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, strin
         'resolved_status'      => $resolvedStatus,
         'new_passport_no'      => $newPassportNo,
         'existing_passport_no' => $existingNo,
+        'previous_passport_no' => $prevPassportNo,
+        'confirmed_renewal'    => $confirmedRenewal,
         'bio_diff'             => [],
     ];
 }

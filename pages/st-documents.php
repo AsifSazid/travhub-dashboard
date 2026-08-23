@@ -69,18 +69,18 @@
 (function() {
     const TRAVELER_ID = <?= json_encode($travelerId) ?>;
 
-    // SMB folder order + labels
+    // SMB folder order — label = smb_folder name অবিকল (doc requirement অনুযায়ী)
     const FOLDERS = [
-        { key: 'passport_identity',      label: 'Passport',               icon: 'fa-passport',         color: 'blue' },
-        { key: 'nid',                    label: 'National ID',             icon: 'fa-id-card',          color: 'indigo' },
-        { key: 'countries_documents',    label: 'Visa & Country Docs',    icon: 'fa-stamp',            color: 'green' },
-        { key: 'travel_documents',       label: 'Travel Documents',        icon: 'fa-plane',            color: 'cyan' },
-        { key: 'financial_documents',    label: 'Financial',               icon: 'fa-university',       color: 'yellow' },
-        { key: 'professional_documents', label: 'Professional',            icon: 'fa-briefcase',        color: 'orange' },
-        { key: 'personal_documents',     label: 'Personal',                icon: 'fa-file-alt',         color: 'pink' },
-        { key: 'photos_signature',       label: 'Photos & Signature',      icon: 'fa-image',            color: 'purple' },
-        { key: 'travel_history',         label: 'Travel History',          icon: 'fa-history',          color: 'teal' },
-        { key: 'all_documents',          label: 'Other',                   icon: 'fa-folder',           color: 'gray' },
+        { key: 'passport_identity',      icon: 'fa-passport',    color: 'blue' },
+        { key: 'nid',                    icon: 'fa-id-card',     color: 'indigo' },
+        { key: 'countries_documents',    icon: 'fa-stamp',       color: 'green' },
+        { key: 'travel_documents',       icon: 'fa-plane',       color: 'cyan' },
+        { key: 'financial_documents',    icon: 'fa-university',  color: 'yellow' },
+        { key: 'professional_documents', icon: 'fa-briefcase',   color: 'orange' },
+        { key: 'personal_documents',     icon: 'fa-file-alt',    color: 'pink' },
+        { key: 'photos_signature',       icon: 'fa-image',       color: 'purple' },
+        { key: 'travel_history',         icon: 'fa-history',     color: 'teal' },
+        // 'all_documents' folder সরিয়ে দেওয়া হয়েছে — session doc "Design/UX" নোট অনুযায়ী
     ];
 
     let allDocs = {};       // smb_folder → docs[]
@@ -110,9 +110,12 @@
 
             document.getElementById('docsExplorer').classList.remove('hidden');
 
-            // Auto-select first non-empty folder
-            const first = FOLDERS.find(f => allDocs[f.key]?.length);
-            if (first) selectFolder(first.key);
+            // Auto-select first non-empty folder — FOLDERS প্রথমে, তারপর কোনো
+            // extra/unlisted folder (যেমন all_documents) থাকলে সেটাও fallback হিসেবে
+            const knownFirst = FOLDERS.find(f => allDocs[f.key]?.length);
+            const anyFirst   = knownFirst?.key
+                || Object.keys(allDocs).find(k => allDocs[k]?.length);
+            if (anyFirst) selectFolder(anyFirst);
 
         } catch (err) {
             document.getElementById('docsLoading').classList.add('hidden');
@@ -147,7 +150,14 @@
         const list = document.getElementById('folderList');
         list.innerHTML = '';
 
-        FOLDERS.forEach(folder => {
+        // all_documents folder-এ কোনো data না থাকলে list-এ দেখাবো না, কিন্তু data
+        // থাকলে অবশ্যই দেখাবো — নাহলে সেই doc গুলো UI থেকে হারিয়ে যায়
+        const knownKeys = new Set(FOLDERS.map(f => f.key));
+        const extraFolders = Object.keys(allDocs)
+            .filter(k => !knownKeys.has(k) && (allDocs[k]?.length > 0))
+            .map(k => ({ key: k, icon: 'fa-folder', color: 'gray' }));
+
+        [...FOLDERS, ...extraFolders].forEach(folder => {
             const docs  = allDocs[folder.key] || [];
             const count = docs.length;
 
@@ -158,7 +168,7 @@
             item.onclick   = () => count && selectFolder(folder.key);
             item.innerHTML = `
                 <i class="fas ${folder.icon} w-4 text-center text-${folder.color}-500 text-xs"></i>
-                <span class="flex-1 text-xs truncate">${folder.label}</span>
+                <span class="flex-1 text-xs truncate">${folder.key}</span>
                 ${count ? `<span class="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">${count}</span>` : ''}`;
 
             list.appendChild(item);
@@ -250,7 +260,7 @@
         panel.classList.remove('hidden');
 
         const pages   = doc.pages || [];
-        const folder  = FOLDERS.find(f => f.key === doc.smb_folder) || { label: doc.smb_folder };
+        const folder  = FOLDERS.find(f => f.key === doc.smb_folder) || { key: doc.smb_folder };
 
         // Expiry badge
         let expBadge = '';
@@ -298,7 +308,7 @@
                 </div>` : ''}
                 <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Folder</p>
-                    <p class="text-gray-700">${escHtml(folder.label)}</p>
+                    <p class="text-gray-700">${escHtml(folder.key)}</p>
                 </div>
                 <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Confidence</p>

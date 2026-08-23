@@ -9,6 +9,7 @@ require '../../server/generate_meta_data.php';
 require '../../server/make-dir.php';
 require '../../server/make-smb-dir.php';
 require_once '../../server/live_storage.php';
+require_once '../../server/sys_id_generator_v2.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -88,10 +89,11 @@ try {
     if ($filePath && file_exists($filePath) && $documentType) {
         $targetSubDir = ($documentType === 'passport') ? 'passport_identity' : 'nid';
         
-        // Clean filename
-        $originalFileName = basename($filePath);
-        $cleanFileName = preg_replace('/^tmp_[a-f0-9]+_/', '', $originalFileName);
-        $cleanFileName = preg_replace('/\s+/u', '', $cleanFileName);
+        // Systematic filename — Smart Upload (commit-documents.php)-এর একই convention:
+        // {stem}_p1.{ext}, যেমন current_passport_bio_page_p1.jpg / nid_p1.jpg
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) ?: 'jpg';
+        $stem = ($documentType === 'passport') ? 'current_passport_bio_page' : 'nid';
+        $cleanFileName = "{$stem}_p1.{$ext}";
         
         // Build target path
         $targetDir = $server_traveler_path . '/' . $targetSubDir;
@@ -128,7 +130,7 @@ try {
             }
         }
     }
-    
+
     // Prepare document info for DB
     $passportInfo = null;
     $nidInfo = null;
@@ -163,7 +165,26 @@ try {
             $nidNo = $data['document_number'];
         }
     }
-    
+
+    // ── traveler_documents row (initial passport/NID scan) ──────────────────
+    // শুধু SMB upload সফল হলেই row বসাবো — যাতে Documents tab এ orphan/broken
+    // entry না দেখায় (commit-documents.php এর একই discipline অনুসরণ করে)
+    $initialDocSysId = null;
+    if ($movedCloudPath && $documentType) {
+        $docNumberForInsert = ($documentType === 'passport') ? $passportNo : $nidNo;
+        $initialDocSysId = insertInitialTravelerDocument(
+            $pdo,
+            $cleanSysId,
+            $documentType,
+            $targetSubDir,
+            $docNumberForInsert,
+            $extractedData ?? [],
+            $cleanFileName ?? null,
+            $movedFilePath,
+            $_SESSION['user_name'] ?? 'system'
+        );
+    }
+
     // Extra fields from create form
     $phoneVal = $data['phone']
         ? json_encode(['primary_no' => $data['phone'], 'secondary_no' => []])
@@ -271,11 +292,86 @@ try {
         'message' => 'Traveler created successfully',
         'traveler_id' => $cleanSysId,
         'sys_id' => $cleanSysId,
-        'folder' => $travelerFolderName
+        'folder' => $travelerFolderName,
+        'initial_document_sys_id' => $initialDocSysId
     ]);
     
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+}
+
+/**
+ * insertInitialTravelerDocument — traveler create সময় passport/NID scan এর জন্য
+ * traveler_documents এ একটা row বসায়, ঠিক যেভাবে commit-documents.php Smart Upload
+ * এর সময় করে (একই টেবিল, একই smb_folder convention)।
+ */
+function insertInitialTravelerDocument(
+    PDO $pdo,
+    string $travelerSysId,
+    string $documentType,      // 'passport' | 'nid'
+    string $smbFolder,         // 'passport_identity' | 'nid'
+    ?string $docNumber,
+    array  $extractedData,
+    ?string $filename,
+    ?string $serverFilePath,
+    string $createdBy
+): ?string {
+    try {
+        $v2    = generateV2IDs($pdo, 'traveler_documents');
+        $uuid  = $v2['uuid'];
+        $sysId = $v2['sys_id'];
+
+        $now = date('Y-m-d H:i:s');
+        $metaData = json_encode([
+            'created_by_date' => ['by' => $createdBy, 'date' => $now],
+            'updated_by_date' => [],
+        ]);
+
+        $summary = $extractedData['summary'] ?? null;
+        $docData = $extractedData ? json_encode($extractedData, JSON_UNESCAPED_UNICODE) : null;
+
+        $filenameStem = $filename
+            ? preg_replace('/\.[^.]+$/', '', $filename)
+            : null;
+
+        $stmt = $pdo->prepare("
+            INSERT INTO traveler_documents (
+                uuid, sys_id, traveler_id, batch_id,
+                doc_type, doc_number,
+                passport_status, summary, doc_data,
+                confidence, needs_review, classification_mode,
+                original_filename, suggested_filename_stem,
+                smb_folder, server_path,
+                page_count, pages,
+                is_primary, status, meta_data
+            ) VALUES (
+                ?, ?, ?, NULL,
+                ?, ?,
+                ?, ?, ?,
+                ?, 0, 'manual',
+                ?, ?,
+                ?, ?,
+                1, NULL,
+                1, 'active', ?
+            )
+        ");
+
+        $stmt->execute([
+            $uuid, $sysId, $travelerSysId,
+            $documentType, $docNumber ?: null,
+            $documentType === 'passport' ? 'current' : null,
+            $summary, $docData,
+            1.0,
+            $filename, $filenameStem,
+            $smbFolder, $serverFilePath,
+            $metaData,
+        ]);
+
+        return $sysId;
+    } catch (Throwable $e) {
+        error_log('[store.php] insertInitialTravelerDocument failed: ' . $e->getMessage());
+        return null;
+    }
 }
 
 function checkForDuplicates($pdo, $data) {
