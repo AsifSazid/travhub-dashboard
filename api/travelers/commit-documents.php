@@ -153,6 +153,14 @@ function processItem(PDO $pdo, array $traveler, array $registry, array $item): a
         );
     }
 
+    // Passport-এর filename সবসময় systematic — Gemini-suggested নাম উপেক্ষা করে
+    // 'current_passport_bio_page' ব্যবহার হবে (Traveler Create flow-এর সাথে সামঞ্জস্যপূর্ণ)।
+    // renewal হলে demoteOldPassport() পরে পুরনোটাকে 'previous_passport_bio_page_p{n}' এ
+    // rename করে দেবে, তাই এখানে সবসময় 'current' ধরেই এগোনো নিরাপদ।
+    if ($docType === 'passport') {
+        $filenameStem = 'current_passport_bio_page';
+    }
+
     // ── File: tmp → NAS ──────────────────────────────────────────────────────
     $tmpPath = $ct['tmp_path'];
     if (!file_exists($tmpPath)) {
@@ -251,16 +259,20 @@ function processItem(PDO $pdo, array $traveler, array $registry, array $item): a
     // ── travelers table mirror update ────────────────────────────────────────
     // doc_type_registry.updates_traveler_column অনুযায়ী
     $travelerCol = $reg['updates_traveler_column'] ?? null;
-    if ($travelerCol) {
+    if ($travelerCol === 'passport_info' || $travelerCol === 'nid_info') {
+        // Passport/NID — complex current/previous demote logic
         updateTravelerColumn($pdo, $traveler, $travelerCol, $docType, $docData, $docNumber,
                              $passportStatus, $approveBioUpdate, $approvedBioFields);
+    } elseif ($travelerCol) {
+        // employment_info, educational_info ইত্যাদি — সহজ append (multi-entry history)
+        appendTravelerInfoEntry($pdo, $traveler, $travelerCol, $docType, $docData, $docNumber, $issueDate, $expiryDate);
     }
 
     // ── Passport renewal: পুরানো passport demote করো ────────────────────────
     if ($docType === 'passport' && $passportStatus === 'current' && $passportAnalysis) {
         $scenario = $passportAnalysis['scenario'] ?? '';
         if ($scenario === 'renewal_demote_old') {
-            demoteOldPassport($pdo, $traveler['sys_id'], $sysId);
+            demoteOldPassport($pdo, $traveler, $sysId);
         }
     }
 
@@ -485,25 +497,170 @@ function updateTravelerColumn(
         ->execute([json_encode($existing, JSON_UNESCAPED_UNICODE), $traveler['sys_id']]);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// appendTravelerInfoEntry — employment_letter, education_certificate ইত্যাদি
+// non-passport/nid document দিয়ে travelers.{column} আপডেট করা।
+//
+// get_info.php-এর ইতিমধ্যে-থাকা fallback logic (যেটা traveler_documents থেকে
+// সরাসরি পড়ে employment_info/educational_info বানায়) যেই exact structure
+// আশা করে, এখানেও ঠিক সেই structure ব্যবহার করা হচ্ছে — যাতে tp-combine-form.php
+// (Information tab-এর form) দুই পথ থেকেই একই shape পায়, ভেঙে না যায়।
+// ════════════════════════════════════════════════════════════════════════════
+function appendTravelerInfoEntry(
+    PDO    $pdo,
+    array  $traveler,
+    string $column,       // 'employment_info' | 'educational_info'
+    string $docType,
+    array  $docData,
+    string $docNumber,
+    string $issueDate,
+    string $expiryDate
+): void {
+    if (!$docData) return; // Gemini structured data না পেলে update করার কিছু নেই
+
+    if ($column === 'employment_info') {
+        // get_info.php fallback structure: single object, {employmentStatus, jobTitle, employer, issue_date}
+        $newValue = array_filter([
+            'employmentStatus' => 'employed',
+            'jobTitle'         => $docData['designation']   ?? '',
+            'employer'         => $docData['employer_name'] ?? '',
+            'issue_date'       => $issueDate ?: ($docData['issue_date'] ?? ''),
+        ]);
+        if (!$newValue) return;
+
+        $pdo->prepare("UPDATE travelers SET `employment_info` = ? WHERE sys_id = ?")
+            ->execute([json_encode($newValue, JSON_UNESCAPED_UNICODE), $traveler['sys_id']]);
+
+    } elseif ($column === 'educational_info') {
+        // get_info.php fallback structure: array of {name, course, attendanceFrom, attendanceTo}
+        $newEntry = array_filter([
+            'name'           => $docData['institution_name'] ?? '',
+            'course'         => $docData['course']            ?? '',
+            'attendanceFrom' => $docData['from_date']         ?? '',
+            'attendanceTo'   => $docData['to_date']           ?? '',
+        ]);
+        if (!$newEntry) return;
+
+        $existing = json_decode($traveler[$column] ?? '[]', true) ?: [];
+        $existing[] = $newEntry;
+
+        $pdo->prepare("UPDATE travelers SET `educational_info` = ? WHERE sys_id = ?")
+            ->execute([json_encode($existing, JSON_UNESCAPED_UNICODE), $traveler['sys_id']]);
+    }
+}
+
 
 // ════════════════════════════════════════════════════════════════════════════
 // demoteOldPassport — renewal এ পুরানো current passport কে previous করো
-// traveler_documents table এ
+// traveler_documents table এ + SMB তে actual ফাইলও rename করো
+// (current_passport_bio_page_p{n}.ext → previous_passport_bio_page_p{n}.ext)
 // ════════════════════════════════════════════════════════════════════════════
-function demoteOldPassport(PDO $pdo, string $travelerSysId, string $newDocSysId): void
+function demoteOldPassport(PDO $pdo, array $traveler, string $newDocSysId): void
 {
-    $pdo->prepare("
-        UPDATE traveler_documents
-        SET passport_status = 'previous', is_primary = 0
+    $travelerSysId = $traveler['sys_id'];
+
+    // ইতিমধ্যে কতগুলো 'previous' passport আছে গুনে নাও — নতুন demote হওয়া
+    // পাসপোর্টের rename-index (n) ঠিক করার জন্য
+    $countStmt = $pdo->prepare("
+        SELECT COUNT(*) FROM traveler_documents
+        WHERE traveler_id = ? AND doc_type = 'passport' AND passport_status = 'previous'
+    ");
+    $countStmt->execute([$travelerSysId]);
+    $previousIndex = (int)$countStmt->fetchColumn() + 1;
+
+    // পুরানো current passport row(গুলো) বের করো — filename rename করার জন্য
+    $oldStmt = $pdo->prepare("
+        SELECT sys_id, smb_folder, pages FROM traveler_documents
         WHERE traveler_id = ? AND doc_type = 'passport'
           AND passport_status = 'current' AND sys_id != ?
-    ")->execute([$travelerSysId, $newDocSysId]);
+    ");
+    $oldStmt->execute([$travelerSysId, $newDocSysId]);
+    $oldDocs = $oldStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($oldDocs as $oldDoc) {
+        $updatedPages = renamePassportFilesOnSmb(
+            $traveler, $oldDoc['smb_folder'], $oldDoc['pages'], $previousIndex
+        );
+
+        // SMB rename সফল হলে নতুন filenames DB তে sync করো, যাতে Documents tab
+        // ও actual SMB ফাইল mismatch না হয়
+        if ($updatedPages !== null) {
+            $pdo->prepare("
+                UPDATE traveler_documents
+                SET passport_status = 'previous', is_primary = 0,
+                    suggested_filename_stem = ?, pages = ?
+                WHERE sys_id = ?
+            ")->execute([
+                "previous_passport_bio_page",
+                json_encode($updatedPages, JSON_UNESCAPED_UNICODE),
+                $oldDoc['sys_id'],
+            ]);
+        } else {
+            // SMB rename fail করলে DB তে পুরনো filename রেখেই status বদলাও —
+            // নাহলে DB বলবে 'previous' কিন্তু SMB তে এখনো 'current_...' নামে
+            // ফাইল থাকবে, যেটা আরও বড় mismatch তৈরি করবে
+            error_log("[demoteOldPassport] SMB rename failed for {$oldDoc['sys_id']}, keeping old filename in DB");
+            $pdo->prepare("
+                UPDATE traveler_documents
+                SET passport_status = 'previous', is_primary = 0
+                WHERE sys_id = ?
+            ")->execute([$oldDoc['sys_id']]);
+        }
+    }
 
     // নতুনটা primary করো
     $pdo->prepare("
         UPDATE traveler_documents SET is_primary = 1, passport_status = 'current'
         WHERE sys_id = ?
     ")->execute([$newDocSysId]);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// renamePassportFilesOnSmb — SMB তে actual passport file(গুলো) rename করে
+// current_passport_bio_page_p{n}.ext → previous_passport_bio_page_p{n}.ext
+// সব page সফলভাবে rename হলে updated pages array রিটার্ন করে, নাহলে null
+// (partial rename এড়াতে — হয় সব নয়তো কিছুই না, DB এর সাথে mismatch এড়াতে)
+// ════════════════════════════════════════════════════════════════════════════
+function renamePassportFilesOnSmb(array $traveler, string $smbFolder, ?string $pagesJson, int $previousIndex): ?array
+{
+    if (!class_exists('OMV_SMB_Manager')) return null;
+
+    $pages = json_decode($pagesJson ?? '[]', true) ?: [];
+    if (!$pages) return null;
+
+    $SERVER_CUS_PATH = trim(@file_get_contents(__DIR__ . '/../../server-name.txt') ?? 'dev');
+    $cleanSysId = preg_replace('/\s+/u', '', $traveler['sys_id']);
+    $cleanName  = preg_replace('/\s+/u', '', $traveler['name']);
+    $smbBase    = "{$SERVER_CUS_PATH}_travelers/{$cleanSysId}_{$cleanName}/{$smbFolder}";
+
+    try {
+        $omv = new OMV_SMB_Manager();
+        $updatedPages = [];
+
+        foreach ($pages as $page) {
+            $oldFilename = $page['filename'] ?? '';
+            if (!$oldFilename) return null;
+
+            $ext = strtolower(pathinfo($oldFilename, PATHINFO_EXTENSION)) ?: 'jpg';
+            $pageNo = $page['page_no'] ?? 1;
+            $newFilename = "previous_passport_bio_page_p{$previousIndex}" .
+                           (count($pages) > 1 ? "_page{$pageNo}" : '') . ".{$ext}";
+
+            $oldPath = "{$smbBase}/{$oldFilename}";
+            $newPath = "{$smbBase}/{$newFilename}";
+
+            $renamed = $omv->rename_item($oldPath, $newPath);
+            if (!$renamed) return null; // fail হলে পুরো batch বাতিল — partial rename এড়াতে
+
+            $page['filename'] = $newFilename;
+            $updatedPages[] = $page;
+        }
+
+        return $updatedPages;
+    } catch (Throwable $e) {
+        error_log("[renamePassportFilesOnSmb] Error: " . $e->getMessage());
+        return null;
+    }
 }
 
 

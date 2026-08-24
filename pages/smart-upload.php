@@ -781,7 +781,7 @@ $commitBtn.addEventListener('click', async () => {
     showStatus('Regenerating traveler summary...',
                `Calling Gemini with full traveler context (${commitData.committed} document${commitData.committed !== 1 ? 's' : ''} added)`);
     try {
-      await fetch('/api/travelers/regenerate-summary.php', {
+      const summaryRes  = await fetch('/api/travelers/regenerate-summary.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -790,8 +790,17 @@ $commitBtn.addEventListener('click', async () => {
           information_updated_for: commitData.pending_trigger || 'Document upload batch',
         }),
       });
+      const summaryData = await summaryRes.json();
+
+      // আগে এই response কখনো check হতো না — Gemini call fail করলেও (timeout,
+      // API key issue, ইত্যাদি) ইউজার কিছু জানতে পারতো না, summary silently
+      // পুরনোই থেকে যেত। এখন fail হলে সরাসরি জানিয়ে দেওয়া হচ্ছে।
+      if (!summaryData.success) {
+        toast('Summary update ব্যর্থ হয়েছে: ' + (summaryData.message || 'অজানা কারণ'), 'error');
+      }
     } catch (err) {
       console.warn('Summary regen network error:', err);
+      toast('Summary update এ network সমস্যা: ' + err.message, 'error');
     }
   }
 

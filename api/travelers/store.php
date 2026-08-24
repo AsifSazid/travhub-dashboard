@@ -351,7 +351,7 @@ function insertInitialTravelerDocument(
                 ?, 0, 'manual',
                 ?, ?,
                 ?, ?,
-                1, NULL,
+                ?, ?,
                 1, 'active', ?
             )
         ");
@@ -364,6 +364,7 @@ function insertInitialTravelerDocument(
             1.0,
             $filename, $filenameStem,
             $smbFolder, $serverFilePath,
+            1, json_encode([[ 'page_no' => 1, 'filename' => $filename, 'page_type' => $documentType ]], JSON_UNESCAPED_UNICODE),
             $metaData,
         ]);
 
