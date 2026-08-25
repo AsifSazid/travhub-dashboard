@@ -373,16 +373,16 @@
   <script>
     // Initial Names List
     const initialNames = [
-      "Tarekul Islam", "Afikur Rahman", "Shakil Mahmud", 
-      "Sujon Saiyd", "Asif M Sazid", "Nadim Kamal", 
+    //   "Tarekul Islam", "Afikur Rahman", "Shakil Mahmud", "Nadim Kamal",
+      "Sujon Saiyd", "Asif M Sazid",  
       "Tauhid Imran", "Imran Hossain", "Shahanoor Tanvir", "Nazmul Shanto"
     ];
 
     // Authorized Number Pool
     const generateNumbers = () => {
       const nums = [];
-      for (let i = 460200; i <= 460209; i++) nums.push(i.toString());
-      for (let i = 460220; i <= 460224; i++) nums.push(i.toString());
+      for (let i = 460203; i <= 460209; i++) nums.push(i.toString());
+    //   for (let i = 460220; i <= 460224; i++) nums.push(i.toString());
       return nums;
     };
 

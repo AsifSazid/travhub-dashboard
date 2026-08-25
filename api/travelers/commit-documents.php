@@ -29,6 +29,7 @@ require_once '../../server/db_connection.php';
 require_once '../../server/sys_id_generator_v2.php';
 require_once '../../server/live_storage.php';  // OMV_SMB_Manager
 require_once '../../server/make-smb-dir.php';  // makeSMBDir
+date_default_timezone_set('Asia/Dhaka');
 
 ini_set('display_errors', 0);
 

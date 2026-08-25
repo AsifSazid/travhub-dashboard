@@ -31,6 +31,12 @@ $metaData = json_decode($traveler['meta_data'] ?? '{}', true) ?: [];
 $passportInfo = json_decode($traveler['passport_info'] ?? '[]', true) ?: [];
 $nidInfo = json_decode($traveler['nid_info'] ?? '[]', true) ?: [];
 $summary = $traveler['summary'] ?? 'No Summary Provided Yet!';
+// travelers.summary মাঝে মাঝে raw JSON string হয়ে যায় ({"summary":"..."}) —
+// সেটা হলে ভেতর থেকে plain text বের করে আনা, নাহলে raw JSON UI-তে দেখাবে
+$summaryDecoded = json_decode($summary, true);
+if (is_array($summaryDecoded) && isset($summaryDecoded['summary'])) {
+    $summary = $summaryDecoded['summary'];
+}
 
 // Get latest passport data
 $latestPassport = !empty($passportInfo) ? $passportInfo[0] : null;
@@ -667,16 +673,61 @@ $updateApi = $ip_port . "api/travelers/update.php";
             <div class="text-center pb-4 mb-3 border-b border-gray-100 flex-shrink-0">
                 <i class="fas fa-user-circle text-5xl text-purple-600 mb-2 block"></i>
                 <h3 class="text-xl font-bold text-gray-800">Traveler Summary</h3>
+                <button id="regenSummaryBtn" onclick="regenerateTravelerSummary()"
+                    class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 text-xs border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
+                    <i class="fas fa-sync-alt"></i> Regenerate
+                </button>
             </div>
             <!-- Scrollable Content Segment -->
             <div class="overflow-y-auto flex-1 pr-1 custom-scrollbar">
-                <p class="text-justify text-gray-600 leading-relaxed text-sm whitespace-pre-line">
-                    <?= $summary ?>
+                <p id="travelerSummaryText" class="text-justify text-gray-600 leading-relaxed text-sm whitespace-pre-line">
+                    <?= htmlspecialchars($summary) ?>
                 </p>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+async function regenerateTravelerSummary() {
+    const btn  = document.getElementById('regenSummaryBtn');
+    const text = document.getElementById('travelerSummaryText');
+    const original = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Regenerating...';
+
+    try {
+        const res = await fetch('/api/travelers/regenerate-summary.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                traveler_sys_id: <?= json_encode($travelerId) ?>,
+                trigger: 'manual',
+                information_updated_for: 'Manual regenerate button'
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            text.textContent = data.summary;
+            btn.innerHTML = '<i class="fas fa-check text-green-600"></i> Done';
+        } else {
+            alert('Summary regenerate ব্যর্থ হয়েছে: ' + (data.message || 'অজানা কারণ'));
+            btn.innerHTML = original;
+        }
+    } catch (err) {
+        alert('Network সমস্যা: ' + err.message);
+        btn.innerHTML = original;
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }, 1500);
+    }
+}
+</script>
 
 <style>
     .custom-scrollbar::-webkit-scrollbar { width: 5px; }

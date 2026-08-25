@@ -49,18 +49,26 @@ if (!$traveler) {
     jsonOut(['success' => false, 'message' => 'Traveler not found']);
 }
 
-// ── সব active documents এর summary collect করো ───────────────────────────────
+// financial_documents ক্যাটাগরির doc_type গুলো traveler-level summary-তে
+// অন্তর্ভুক্ত হবে না — sensitive financial তথ্য (account balance, sponsor
+// এর আর্থিক অবস্থা ইত্যাদি) profile overview-তে চলে যাওয়া উচিত না।
+// doc_type_registry অনুযায়ী financial_documents folder-এ যেসব doc_type
+// map করা: bank_statement, sponsor_letter
+const EXCLUDED_FROM_SUMMARY = ['bank_statement', 'sponsor_letter'];
+
+// ── সব active documents এর summary collect করো (financial বাদে) ─────────────
 $stmt = $pdo->prepare("
     SELECT doc_type, doc_number, issue_date, expiry_date, summary, doc_data
     FROM traveler_documents
     WHERE traveler_id = ? AND status = 'active' AND summary IS NOT NULL AND summary != ''
+      AND doc_type NOT IN ('" . implode("','", EXCLUDED_FROM_SUMMARY) . "')
     ORDER BY doc_type, created_at DESC
 ");
 $stmt->execute([$travelerSysId]);
 $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($documents)) {
-    jsonOut(['success' => false, 'message' => 'No documents with summaries found for this traveler']);
+    jsonOut(['success' => false, 'message' => 'No summary-eligible documents found (financial documents like bank statements are intentionally excluded from the traveler summary)']);
 }
 
 // ── Document summaries একটা context string এ জোড়া দাও ───────────────────────

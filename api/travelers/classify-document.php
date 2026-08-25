@@ -17,6 +17,7 @@
 
 require_once '../../server/api_bootstrap.php';
 require_once '../../server/db_connection.php';
+date_default_timezone_set('Asia/Dhaka');
 
 ini_set('memory_limit', '512M');
 set_time_limit(120);

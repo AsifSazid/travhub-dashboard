@@ -720,7 +720,14 @@ window.approveDiff = () => {
 // ============================================================================
 $commitBtn.addEventListener('click', async () => {
   const items = [];
-  document.querySelectorAll('#reviewCards [data-token]').forEach(card => {
+  // ⚠️ শুধু root card element (id="card-N") থেকে token নেওয়া হচ্ছে, ভেতরের
+  // input/select/textarea field গুলো থেকে না — ওগুলোতেও data-token বসানো
+  // ছিল (accept_merge checkbox, doc_type select, doc_number input, ইত্যাদি,
+  // মোট ৬-৭টা), যেটার কারণে querySelectorAll('[data-token]') প্রতিটা single
+  // document-এর জন্য ৭টা duplicate item বানাচ্ছিল — একই token বারবার commit
+  // করার চেষ্টা হতো, প্রথমটার পরে বাকিগুলো "Token not found" পেত (token
+  // প্রথম successful commit-এই delete হয়ে যায়)।
+  document.querySelectorAll('#reviewCards > [id^="card-"][data-token]').forEach(card => {
     const token = card.dataset.token;
     const original = pending.get(token);
     if (!original) return;

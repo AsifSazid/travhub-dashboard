@@ -90,3 +90,26 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+
+-- ═══════════════════════════════════════════════════════════════════
+-- doc_type_registry: employment_letter ও education_certificate কে
+-- travelers.employment_info / travelers.educational_info এর সাথে link করা
+-- ═══════════════════════════════════════════════════════════════════
+-- এতদিন এই দুই doc_type-এর updates_traveler_column NULL ছিল, তাই
+-- Smart Upload দিয়ে business card/certificate দিলে সেটা শুধু Documents tab-এ
+-- জমা হতো, Information tab-এর Employment/Education section auto-fill হতো না।
+--
+-- Run once in phpMyAdmin / mysql CLI.
+
+UPDATE doc_type_registry
+SET updates_traveler_column = 'employment_info'
+WHERE doc_type = 'employment_letter';
+
+UPDATE doc_type_registry
+SET updates_traveler_column = 'educational_info'
+WHERE doc_type = 'education_certificate';
+
+-- ভবিষ্যতে সহজে চেক করার জন্য
+-- SELECT doc_type, updates_traveler_column FROM doc_type_registry WHERE updates_traveler_column IS NOT NULL;
