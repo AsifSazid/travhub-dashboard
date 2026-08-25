@@ -4,57 +4,24 @@
 // Requires: db_connection.php, uuid_with_system_id_generator.php, generate_meta_data.php already loaded
 
 /**
- * Transaction এর ভেতরে loop এ safe ID generate করার জন্য
- * generateIDs() DB থেকে last row দেখে — uncommitted transaction এ
- * same sys_id বারবার আসতে পারে।
- * এই function প্রথম call এ DB থেকে নেয়, পরের call এ in-memory increment করে।
- */
-function generateIDsSafe(string $tag): array {
-    static $lastSysIds = [];
-
-    if (!isset($lastSysIds[$tag])) {
-        // প্রথমবার — generateIDs() দিয়ে নিই
-        $ids = generateIDs($tag);
-        $lastSysIds[$tag] = $ids['sys_id'];
-        return $ids;
-    }
-
-    // পরেরবার — last sys_id থেকে manually increment
-    $lastSysId = $lastSysIds[$tag];
-    $parts     = explode('-', $lastSysId);
-
-    // Format: THR-FE-26-00K003
-    $company   = $parts[0]; // THR
-    $short     = $parts[1]; // FE
-    $year      = $parts[2]; // 26
-    $blockSerial = explode('K', $parts[3]);
-    $block     = $blockSerial[0]; // 00
-    $serial    = $blockSerial[1]; // 003
-
-    if ((int)$serial >= 999) {
-        $block  = str_pad((int)$block + 1, 2, '0', STR_PAD_LEFT);
-        $serial = '001';
-    } else {
-        $serial = str_pad((int)$serial + 1, 3, '0', STR_PAD_LEFT);
-    }
-
-    $newSysId = "{$company}-{$short}-{$year}-{$block}K{$serial}";
-    $lastSysIds[$tag] = $newSysId;
-
-    return [
-        'uuid'   => uuidV4(),
-        'sys_id' => $newSysId,
-    ];
-}
-
-/**
  * FIFO তে sale entries clear করে + sale-wise আলাদা receive entries insert করে
+ *
+ * @param PDO    $pdo
+ * @param array  $saleIds     linked sale entry sys_ids (FIFO order এ sort হবে date দিয়ে)
+ * @param float  $paidAmount  মোট payment (sale clear করার জন্য available)
+ * @param string $clientId
+ * @param string $clientName
+ * @param string $date
+ * @param string $particular
+ * @param string $userName    session user
+ * @return array ['applied' => float, 'receive_entry_ids' => [], 'details' => []]
  */
 function applyPaymentToSales($pdo, $saleIds, $paidAmount, $clientId, $clientName, $date, $particular, $userName = 'system') {
     if (empty($saleIds) || $paidAmount <= 0) {
         return ['applied' => 0, 'receive_entry_ids' => [], 'details' => []];
     }
 
+    // Sale entries FIFO (date ASC) — remaining amount সহ
     $ph = implode(',', array_fill(0, count($saleIds), '?'));
     $stmt = $pdo->prepare("
         SELECT sys_id, amount, is_paid, is_partial, ref
@@ -69,48 +36,52 @@ function applyPaymentToSales($pdo, $saleIds, $paidAmount, $clientId, $clientName
     $stmt->execute([...array_values($saleIds), $clientId]);
     $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $remaining   = $paidAmount;
-    $applied     = 0;
-    $rcvEntryIds = [];
-    $details     = [];
+    $remaining     = $paidAmount;
+    $applied       = 0;
+    $rcvEntryIds   = [];
+    $details       = [];
 
     foreach ($sales as $sale) {
         if ($remaining <= 0.009) break;
-        if ((int)$sale['is_paid'] === 1) continue;
+        if ((int)$sale['is_paid'] === 1) continue; // already fully paid
 
+        // এই sale এর remaining বের করি — আগের receives/discounts বাদ
         $saleRemaining = getSaleRemaining($pdo, $sale);
         if ($saleRemaining <= 0.009) {
+            // technically fully covered — flag ঠিক করি
             $pdo->prepare("UPDATE financial_entries SET is_paid=1, is_partial=0 WHERE sys_id=?")
                 ->execute([$sale['sys_id']]);
             continue;
         }
 
-        $payThis   = min($saleRemaining, $remaining);
+        $payThis = min($saleRemaining, $remaining);
         $fullCover = ($payThis >= $saleRemaining - 0.009);
 
-        // Safe ID generate — loop এ duplicate হবে না
-        $ids  = generateIDsSafe('financial_entries');
+        // Sale-wise receive entry insert (rt=3)
+        $ids  = generateIDs('financial_entries');
         $meta = buildMetaData(null, $userName);
-
         $pdo->prepare("
             INSERT INTO financial_entries
             (uuid, sys_id, user_sys_id, user_name, user_type,
              date, purpose, type, related_type,
              is_paid, is_partial, is_discounted, amount, ref, meta_data)
-            VALUES (?, ?, ?, ?, 'client', ?, ?, 'credit', 3, 1, ?, 0, ?, ?, ?)
+            VALUES (?, ?, ?, ?, 'client', ?, ?, 'credit', 3, ?, ?, 0, ?, ?, ?)
         ")->execute([
             $ids['uuid'], $ids['sys_id'],
             $clientId, $clientName,
             $date, $particular,
-            $fullCover ? 0 : 1,
+            $fullCover ? 1 : 1,     // receive entry নিজে সবসময় is_paid=1 (bank এ টাকা এসেছে)
+            $fullCover ? 0 : 1,     // partial cover হলে receive entry is_partial=1
             $payThis,
-            $sale['sys_id'],
+            $sale['sys_id'],        // ref = এই sale এর sys_id
             $meta
         ]);
         $rcvEntryIds[] = $ids['sys_id'];
 
+        // Sale entry ref update — receive sys_id append (JSON array)
         appendRefToEntry($pdo, $sale['sys_id'], $ids['sys_id'], $sale['ref'] ?? null);
 
+        // Sale entry flags update
         if ($fullCover) {
             $pdo->prepare("UPDATE financial_entries SET is_paid=1, is_partial=0 WHERE sys_id=?")
                 ->execute([$sale['sys_id']]);
@@ -135,6 +106,7 @@ function applyPaymentToSales($pdo, $saleIds, $paidAmount, $clientId, $clientName
 
 /**
  * FIFO তে purchase entries clear করে + purchase-wise আলাদা payment entries insert করে
+ * (vendor side mirror)
  */
 function applyPaymentToPurchases($pdo, $purchaseIds, $paidAmount, $vendorId, $vendorName, $date, $particular, $userName = 'system') {
     if (empty($purchaseIds) || $paidAmount <= 0) {
@@ -174,19 +146,20 @@ function applyPaymentToPurchases($pdo, $purchaseIds, $paidAmount, $vendorId, $ve
         $payThis   = min($purchRemaining, $remaining);
         $fullCover = ($payThis >= $purchRemaining - 0.009);
 
-        $ids  = generateIDsSafe('financial_entries');
+        // Purchase-wise payment entry insert (rt=4)
+        $ids  = generateIDs('financial_entries');
         $meta = buildMetaData(null, $userName);
-
         $pdo->prepare("
             INSERT INTO financial_entries
             (uuid, sys_id, user_sys_id, user_name, user_type,
              date, purpose, type, related_type,
              is_paid, is_partial, is_discounted, amount, ref, meta_data)
-            VALUES (?, ?, ?, ?, 'vendor', ?, ?, 'debit', 4, 1, ?, 0, ?, ?, ?)
+            VALUES (?, ?, ?, ?, 'vendor', ?, ?, 'debit', 4, ?, ?, 0, ?, ?, ?)
         ")->execute([
             $ids['uuid'], $ids['sys_id'],
             $vendorId, $vendorName,
             $date, $particular,
+            1,
             $fullCover ? 0 : 1,
             $payThis,
             $purch['sys_id'],
@@ -219,7 +192,7 @@ function applyPaymentToPurchases($pdo, $purchaseIds, $paidAmount, $vendorId, $ve
 }
 
 /**
- * Sale entry এর remaining amount
+ * Sale entry এর remaining amount বের করে
  * remaining = amount - SUM(linked receives rt=3) - SUM(linked discounts rt=5)
  */
 function getSaleRemaining($pdo, $sale) {
@@ -227,50 +200,123 @@ function getSaleRemaining($pdo, $sale) {
     $sysId  = $sale['sys_id'];
 
     try {
-        $rcv = $pdo->prepare("
-            SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+        $rcvStmt = $pdo->prepare("
+            SELECT sys_id, amount, ref FROM financial_entries
             WHERE type = 'credit' AND related_type IN (3, 5)
-            AND (ref = ? OR JSON_CONTAINS(ref, JSON_QUOTE(?)))
+              AND (ref = ? OR JSON_CONTAINS(ref, JSON_QUOTE(?)))
+            ORDER BY date ASC, id ASC
         ");
-        $rcv->execute([$sysId, $sysId]);
-        $covered = (float)$rcv->fetchColumn();
+        $rcvStmt->execute([$sysId, $sysId]);
+        $rcvEntries = $rcvStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        $rcv2 = $pdo->prepare("
-            SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+        $rcvStmt = $pdo->prepare("
+            SELECT sys_id, amount, ref FROM financial_entries
             WHERE type = 'credit' AND related_type IN (3, 5) AND ref = ?
+            ORDER BY date ASC, id ASC
         ");
-        $rcv2->execute([$sysId]);
-        $covered = (float)$rcv2->fetchColumn();
+        $rcvStmt->execute([$sysId]);
+        $rcvEntries = $rcvStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    return max(0, $amount - $covered);
+    $totalCovered = 0.0;
+
+    foreach ($rcvEntries as $rcv) {
+        $rcvAmount  = (float)$rcv['amount'];
+        $refDecoded = json_decode($rcv['ref'], true);
+
+        if (is_array($refDecoded) && count($refDecoded) > 1) {
+            // Multiple sales linked — FIFO তে distribute
+            $refIds = array_values($refDecoded);
+            $ph     = implode(',', array_fill(0, count($refIds), '?'));
+            try {
+                $rsStmt = $pdo->prepare("
+                    SELECT sys_id, amount FROM financial_entries
+                    WHERE sys_id IN ($ph) AND type = 'debit' AND related_type = 1
+                    ORDER BY date ASC, id ASC
+                ");
+                $rsStmt->execute($refIds);
+                $refSales = $rsStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $totalCovered += $rcvAmount / count($refIds);
+                continue;
+            }
+            $rem = $rcvAmount;
+            foreach ($refSales as $rs) {
+                if ($rem <= 0.009) break;
+                $share = min((float)$rs['amount'], $rem);
+                if ($rs['sys_id'] === $sysId) { $totalCovered += $share; break; }
+                $rem -= $share;
+            }
+        } else {
+            $totalCovered += $rcvAmount;
+        }
+    }
+
+    return max(0, $amount - $totalCovered);
 }
 
 /**
  * Purchase entry এর remaining amount
+ * Fix: একটা rt=4 entry তে multiple purchases linked থাকলে FIFO তে distribute করে
  */
 function getPurchaseRemaining($pdo, $purch) {
     $amount = (float)$purch['amount'];
     $sysId  = $purch['sys_id'];
 
     try {
-        $pay = $pdo->prepare("
-            SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+        $payStmt = $pdo->prepare("
+            SELECT sys_id, amount, ref FROM financial_entries
             WHERE type = 'debit' AND related_type IN (4, 5)
-            AND (ref = ? OR JSON_CONTAINS(ref, JSON_QUOTE(?)))
+              AND (ref = ? OR JSON_CONTAINS(ref, JSON_QUOTE(?)))
+            ORDER BY date ASC, id ASC
         ");
-        $pay->execute([$sysId, $sysId]);
-        $covered = (float)$pay->fetchColumn();
+        $payStmt->execute([$sysId, $sysId]);
+        $payEntries = $payStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        $pay2 = $pdo->prepare("
-            SELECT COALESCE(SUM(amount), 0) FROM financial_entries
+        $payStmt = $pdo->prepare("
+            SELECT sys_id, amount, ref FROM financial_entries
             WHERE type = 'debit' AND related_type IN (4, 5) AND ref = ?
+            ORDER BY date ASC, id ASC
         ");
-        $pay2->execute([$sysId]);
-        $covered = (float)$pay2->fetchColumn();
+        $payStmt->execute([$sysId]);
+        $payEntries = $payStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    return max(0, $amount - $covered);
+    $totalCovered = 0.0;
+
+    foreach ($payEntries as $pay) {
+        $payAmount  = (float)$pay['amount'];
+        $refDecoded = json_decode($pay['ref'], true);
+
+        if (is_array($refDecoded) && count($refDecoded) > 1) {
+            // Multiple purchases — FIFO তে distribute
+            $refIds = array_values($refDecoded);
+            $ph     = implode(',', array_fill(0, count($refIds), '?'));
+            try {
+                $rpStmt = $pdo->prepare("
+                    SELECT sys_id, amount FROM financial_entries
+                    WHERE sys_id IN ($ph) AND type = 'credit' AND related_type = 2
+                    ORDER BY date ASC, id ASC
+                ");
+                $rpStmt->execute($refIds);
+                $refPurchases = $rpStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $totalCovered += $payAmount / count($refIds);
+                continue;
+            }
+            $rem = $payAmount;
+            foreach ($refPurchases as $rp) {
+                if ($rem <= 0.009) break;
+                $share = min((float)$rp['amount'], $rem);
+                if ($rp['sys_id'] === $sysId) { $totalCovered += $share; break; }
+                $rem -= $share;
+            }
+        } else {
+            $totalCovered += $payAmount;
+        }
+    }
+
+    return max(0, $amount - $totalCovered);
 }
 
 /**
@@ -283,7 +329,7 @@ function appendRefToEntry($pdo, $entrySysId, $newRefId, $currentRef = null) {
         if (is_array($decoded)) {
             $refs = $decoded;
         } else {
-            $refs = [$currentRef];
+            $refs = [$currentRef]; // plain string ছিল
         }
     }
     if (!in_array($newRefId, $refs)) {
@@ -294,19 +340,32 @@ function appendRefToEntry($pdo, $entrySysId, $newRefId, $currentRef = null) {
 }
 
 /**
- * Overpayment handle — Advance (rt=6) বা Baksheesh (rt=7)
+ * Overpayment handle — user এর choice অনুযায়ী Advance (rt=6) বা Baksheesh (rt=7)
+ *
+ * @param string $action   'advance' | 'baksheesh'
+ * @param string $userType 'client' | 'vendor'
+ * @param string $refId    কিসের against (invoice sys_id / receive sys_id)
+ * @return string|null inserted entry sys_id
  */
 function handleOverpayment($pdo, $action, $overpayAmount, $userType, $userSysId, $userName2, $date, $refId, $sessionUser = 'system') {
     if ($overpayAmount <= 0.009) return null;
 
-    $ids  = generateIDsSafe('financial_entries');
+    $ids  = generateIDs('financial_entries');
     $meta = buildMetaData(null, $sessionUser);
 
-    $type    = $userType === 'client' ? 'credit' : 'debit';
-    $rt      = $action === 'baksheesh' ? 7 : 6;
-    $purpose = $action === 'baksheesh'
-        ? 'Baksheesh: ' . $refId
-        : ($userType === 'client' ? 'Advance: Overpayment from ' : 'Advance to Vendor: Overpayment from ') . $refId;
+    if ($action === 'baksheesh') {
+        // Baksheesh (rt=7)
+        // Client: credit (আমরা পেলাম) | Vendor: debit (আমরা দিলাম)
+        $type    = $userType === 'client' ? 'credit' : 'debit';
+        $purpose = 'Baksheesh: ' . $refId;
+        $rt      = 7;
+    } else {
+        // Advance (rt=6)
+        // Client: credit (client এর advance) | Vendor: debit (vendor কে advance)
+        $type    = $userType === 'client' ? 'credit' : 'debit';
+        $purpose = ($userType === 'client' ? 'Advance: Overpayment from ' : 'Advance to Vendor: Overpayment from ') . $refId;
+        $rt      = 6;
+    }
 
     $pdo->prepare("
         INSERT INTO financial_entries
@@ -318,7 +377,9 @@ function handleOverpayment($pdo, $action, $overpayAmount, $userType, $userSysId,
         $ids['uuid'], $ids['sys_id'],
         $userSysId, $userName2, $userType,
         $date, $purpose, $type, $rt,
-        $overpayAmount, $refId, $meta
+        $overpayAmount,
+        $refId,
+        $meta
     ]);
 
     return $ids['sys_id'];
@@ -326,11 +387,12 @@ function handleOverpayment($pdo, $action, $overpayAmount, $userType, $userSysId,
 
 /**
  * Discount entry insert (rt=5)
+ * Client: credit (sale কমলো) | Vendor: debit (purchase কমলো)
  */
 function insertDiscountEntry($pdo, $discountAmount, $userType, $userSysId, $userName2, $date, $particular, $refIds, $sessionUser = 'system') {
     if ($discountAmount <= 0.009) return null;
 
-    $ids  = generateIDsSafe('financial_entries');
+    $ids  = generateIDs('financial_entries');
     $meta = buildMetaData(null, $sessionUser);
     $type = $userType === 'client' ? 'credit' : 'debit';
     $ref  = is_array($refIds) ? json_encode($refIds) : $refIds;
@@ -345,22 +407,23 @@ function insertDiscountEntry($pdo, $discountAmount, $userType, $userSysId, $user
         $ids['uuid'], $ids['sys_id'],
         $userSysId, $userName2, $userType,
         $date, 'Discount: ' . $particular, $type,
-        $discountAmount, $ref, $meta
+        $discountAmount,
+        $ref,
+        $meta
     ]);
 
     return $ids['sys_id'];
 }
 
 /**
- * Instant methods: cash, mfs, npsb → bank update হয়
+ * Instant payment methods কিনা check
+ * cash, mfs, npsb → instant (bank update হয়)
+ * cheque, bftn-eft → instrument (pending)
  */
 function isInstantMethod($method) {
     return in_array(strtolower($method), ['cash', 'mfs', 'npsb', 'online'], true);
 }
 
-/**
- * Instrument methods: cheque, bftn-eft → pending
- */
 function isInstrumentMethod($method) {
     return in_array(strtolower($method), ['cheque', 'bftn-eft'], true);
 }
