@@ -272,22 +272,48 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
         'generationConfig' => ['temperature' => 0.1, 'maxOutputTokens' => 4096],
     ], JSON_UNESCAPED_UNICODE);
 
-    $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}");
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 90,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-    ]);
-    $raw  = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
+    // Gemini API মাঝেমধ্যে transient/momentary ধীর হয়ে যায় (network glitch,
+    // API busy) — একবার fail করলেই ইউজারকে পুরো ফাইল আবার আপলোড করতে হয়।
+    // তাই সর্বোচ্চ ২ বার (১টা মূল + ১টা retry) চেষ্টা করা হচ্ছে, প্রতিটার
+    // timeout ছোট রেখে (২৫s) যাতে দুইবার মিলিয়েও Cloudflare-এর নিজস্ব
+    // gateway timeout-এর নিচেই থাকে।
+    $maxAttempts = 2;
+    $lastError   = '';
 
-    if ($err || $code !== 200) {
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}");
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT        => 25, // ২ attempt মিলিয়ে max ~৫০-৬০s, Cloudflare-এর নিচে
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        ]);
+        $raw  = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if (!$err && $code === 200) {
+            break; // সফল — লুপ থেকে বেরিয়ে যাও, নিচের normal parsing চলবে
+        }
+
         $b = json_decode($raw, true);
-        return ['success' => false, 'error' => $err ?: ($b['error']['message'] ?? "HTTP {$code}")];
+        $lastError = $err ?: ($b['error']['message'] ?? "HTTP {$code}");
+
+        // 4xx (bad request, invalid key ইত্যাদি) retry করে লাভ নেই — সাথে
+        // সাথেই fail করো। শুধু timeout/5xx/network error-এই retry করবো।
+        $isRetryable = $err || $code >= 500 || $code === 0;
+        if (!$isRetryable || $attempt === $maxAttempts) {
+            $errMsg = $lastError;
+            if (str_contains(strtolower($errMsg), 'timed out') || str_contains(strtolower($errMsg), 'timeout')) {
+                $errMsg = 'Gemini API সময়মতো সাড়া দেয়নি (network slow বা API busy, ' . $attempt . ' বার চেষ্টা করা হয়েছে) — আবার চেষ্টা করুন';
+            }
+            return ['success' => false, 'error' => $errMsg];
+        }
+
+        error_log("[classify-document] Gemini attempt {$attempt} failed ({$lastError}), retrying...");
     }
 
     $body = json_decode($raw, true);
@@ -328,6 +354,12 @@ function buildClassifyPrompt(array $traveler, string $passportStatusHint): strin
     return <<<PROMPT
 Analyze this document for traveler: {$name}. {$hint}
 
+Document type guidance:
+- "employment_letter" covers ANY document proving employment/job/business role — formal employment letters, NOC letters, business cards / visiting cards showing a job title and company, company ID cards, appointment letters
+- "education_certificate" covers degrees, diplomas, transcripts, school/university certificates
+
+For employment_letter (including business cards), doc_data MUST include these exact keys when the information is visible: "designation" (job title / position, e.g. "Managing Director"), "employer_name" (company/organization name).
+
 Return ONLY a JSON object:
 {
   "doc_type": "<passport|nid|visa|visa_stamp|air_ticket|hotel_voucher|invitation_letter|bank_statement|sponsor_letter|employment_letter|education_certificate|medical_report|vaccination_card|marriage_certificate|birth_certificate|photo|signature|other>",
@@ -356,8 +388,13 @@ function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, strin
     $existingNo   = $traveler['passport_no'] ?? '';
     $existingInfo = json_decode($traveler['passport_info'] ?? '[]', true) ?: [];
     $existingExpiry = '';
-    if (!empty($existingInfo[0]['bio_info']['date_of_expiry'])) {
-        $existingExpiry = formatDateForDb($existingInfo[0]['bio_info']['date_of_expiry']);
+    // bio_info এ Gemini-এর raw doc_data সেভ থাকে, যেখানে key হলো 'expiry_date'
+    // (date_of_expiry না) — commit-documents.php এর updateTravelerColumn()
+    // এ $newEntry['bio_info'] = $docData সরাসরি বসায়, সেই একই key ব্যবহার
+    // করা হচ্ছে এখানে। ভুল key নাম থাকায় এতদিন এই তুলনাটা কখনো কাজই করত না,
+    // ফলে পুরনো/expired passport ও ভুলভাবে 'current' হিসেবে সেভ হয়ে যেত।
+    if (!empty($existingInfo[0]['bio_info']['expiry_date'])) {
+        $existingExpiry = formatDateForDb($existingInfo[0]['bio_info']['expiry_date']);
     }
 
     // ── Confirmed renewal: passport-এ ছাপা "Previous Passport No." যদি এই
@@ -371,10 +408,19 @@ function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, strin
     elseif ($userHint === 'previous')       $scenario = 'historical_upload';
     else {
         $scenario = 'renewal_demote_old';
-        if ($userHint === 'auto' && $newExpiry && $existingExpiry) {
-            $newTs = strtotime(str_replace(['.','/'], '-', $newExpiry));
-            $oldTs = strtotime(str_replace(['.','/'], '-', $existingExpiry));
-            if ($newTs && $oldTs && $newTs < $oldTs) $scenario = 'historical_upload';
+        if ($userHint === 'auto' && $newExpiry) {
+            $newTs   = strtotime(str_replace(['.','/'], '-', $newExpiry));
+            $todayTs = strtotime(date('Y-m-d'));
+
+            // নতুন uploaded passport নিজেই already expired হলে (আজকের
+            // তারিখের চেয়ে আগে), সেটা কখনোই 'current' হতে পারে না —
+            // existing expiry data পাওয়া যাক বা না যাক
+            if ($newTs && $todayTs && $newTs < $todayTs) {
+                $scenario = 'historical_upload';
+            } elseif ($newTs && $existingExpiry) {
+                $oldTs = strtotime(str_replace(['.','/'], '-', $existingExpiry));
+                if ($oldTs && $newTs < $oldTs) $scenario = 'historical_upload';
+            }
         }
     }
 

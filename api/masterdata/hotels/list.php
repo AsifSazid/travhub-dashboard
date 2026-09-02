@@ -17,7 +17,7 @@ try {
     $cnt=$pdo->prepare("SELECT COUNT(*) FROM hotels $w"); $cnt->execute($params); $total=(int)$cnt->fetchColumn();
     $stmt=$pdo->prepare("SELECT id,uuid,sys_id,country_sys_id,country_name,city_sys_id,city_name,
         name,star_rating,address,phone,email,check_in_time,check_out_time,
-        usage_count,status,images FROM hotels $w ORDER BY country_sys_id ASC,name ASC LIMIT :lim OFFSET :off");
+        for_umrah,usage_count,status,images FROM hotels $w ORDER BY country_sys_id ASC,name ASC LIMIT :lim OFFSET :off");
     foreach ($params as $k=>$v) $stmt->bindValue($k,$v);
     $stmt->bindValue(':lim',$limit,PDO::PARAM_INT); $stmt->bindValue(':off',$offset,PDO::PARAM_INT);
     $stmt->execute(); $rows=$stmt->fetchAll();
@@ -31,6 +31,7 @@ try {
             'star_rating'=>$r['star_rating']?(int)$r['star_rating']:null,
             'address'=>$r['address'],'phone'=>$r['phone'],'email'=>$r['email'],
             'check_in_time'=>$r['check_in_time'],'check_out_time'=>$r['check_out_time'],
+            'for_umrah'=>(int)$r['for_umrah'],
             'usage_count'=>(int)$r['usage_count'],'thumb'=>$images[0]['url']??null,
             'status'=>$r['status']];
     }

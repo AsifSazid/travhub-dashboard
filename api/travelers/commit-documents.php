@@ -154,12 +154,33 @@ function processItem(PDO $pdo, array $traveler, array $registry, array $item): a
         );
     }
 
-    // Passport-এর filename সবসময় systematic — Gemini-suggested নাম উপেক্ষা করে
-    // 'current_passport_bio_page' ব্যবহার হবে (Traveler Create flow-এর সাথে সামঞ্জস্যপূর্ণ)।
-    // renewal হলে demoteOldPassport() পরে পুরনোটাকে 'previous_passport_bio_page_p{n}' এ
-    // rename করে দেবে, তাই এখানে সবসময় 'current' ধরেই এগোনো নিরাপদ।
+    // Passport-এর filename systematic — Gemini-suggested নাম উপেক্ষা করে
+    // $passportStatus (resolved_status: 'current' | 'previous') অনুযায়ী
+    // 'current_passport_bio_page' বা 'previous_passport_bio_page_p{n}' বসানো হয়।
+    //
+    // ⚠️ আগে এখানে সবসময় 'current_passport_bio_page' জোর করে বসানো হতো,
+    // এই ধরে নিয়ে যে নতুন uploaded passport সবসময়ই current হবে এবং
+    // demoteOldPassport() পরে পুরনোটাকে rename করে দেবে। কিন্তু বাস্তবে
+    // ইউজার সরাসরি একটা পুরনো/already-expired passport upload করলে সেটা
+    // নিজেই 'previous' হিসেবে resolve হয় ($passportAnalysis অনুযায়ী) —
+    // তখন এই forced-current নামকরণ ভুল ছিল, এবং demoteOldPassport()ও
+    // trigger হতো না (কারণ সেটা শুধু $passportStatus==='current' এ চলে),
+    // ফলে দুটো document-ই 'current_passport_bio_page*' নামে থেকে যেত।
     if ($docType === 'passport') {
-        $filenameStem = 'current_passport_bio_page';
+        if ($passportStatus === 'previous') {
+            // কতগুলো আগে থেকেই 'previous' আছে গুনে নিয়ে next index ঠিক করো —
+            // demoteOldPassport()/renamePassportFilesOnSmb() এর একই numbering
+            // convention (previous_passport_bio_page_p{n}) বজায় রাখতে
+            $prevCountStmt = $pdo->prepare("
+                SELECT COUNT(*) FROM traveler_documents
+                WHERE traveler_id = ? AND doc_type = 'passport' AND passport_status = 'previous'
+            ");
+            $prevCountStmt->execute([$traveler['sys_id']]);
+            $prevIndex = (int)$prevCountStmt->fetchColumn() + 1;
+            $filenameStem = "previous_passport_bio_page_p{$prevIndex}";
+        } else {
+            $filenameStem = 'current_passport_bio_page';
+        }
     }
 
     // ── File: tmp → NAS ──────────────────────────────────────────────────────
@@ -341,6 +362,7 @@ function storeFilesToNas(
 
                 $pageNo    = $i + 1;
                 $filename  = "{$filenameStem}_p{$pageNo}.png";
+                $filename  = ensureUniqueSmbFilename($smbBase, $filename); // overwrite এড়াতে
                 $smbPath   = "{$smbBase}/{$filename}";
 
                 // Page টা tmp তে save করো
@@ -371,6 +393,7 @@ function storeFilesToNas(
     } else {
         // Image — সরাসরি SMB তে upload
         $filename = "{$filenameStem}_p1.{$ext}";
+        $filename = ensureUniqueSmbFilename($smbBase, $filename); // overwrite এড়াতে
         $smbPath  = "{$smbBase}/{$filename}";
 
         $uploaded = _uploadToSmb($tmpPath, $smbPath);
@@ -413,6 +436,39 @@ function _uploadToSmb(string $localPath, string $smbPath): bool
     } catch (Throwable $e) {
         error_log("[commit-documents] SMB exception: " . $e->getMessage());
         return false;
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ensureUniqueSmbFilename — একই নামে ফাইল আগে থেকেই থাকলে silently overwrite
+// না করে নাম-এ suffix যোগ করে unique বানায়।
+//
+// ⚠️ এই check না থাকায় আগে একবার filename-collision bug (দুটো passport
+// document ভুলবশত একই stem পেয়েছিল) এর কারণে আসল current passport-এর
+// SMB ফাইল silently overwrite/হারিয়ে গিয়েছিল — কোনো error বা warning
+// ছাড়াই। এখন থেকে upload করার আগে always existing filename check হবে।
+// ════════════════════════════════════════════════════════════════════════════
+function ensureUniqueSmbFilename(string $smbBase, string $filename): string
+{
+    if (!class_exists('OMV_SMB_Manager')) return $filename;
+
+    try {
+        $omv = new OMV_SMB_Manager();
+        $existing = $omv->list_directory($smbBase);
+        $existingNames = array_map(fn($f) => is_array($f) ? ($f['name'] ?? '') : (string)$f, $existing ?: []);
+
+        if (!in_array($filename, $existingNames, true)) {
+            return $filename; // কোনো collision নেই
+        }
+
+        // Collision — filename-এ timestamp suffix যোগ করো
+        $ext  = pathinfo($filename, PATHINFO_EXTENSION);
+        $stem = pathinfo($filename, PATHINFO_FILENAME);
+        error_log("[commit-documents] Filename collision detected for {$filename} in {$smbBase} — adding suffix to prevent overwrite");
+        return "{$stem}_" . date('His') . ".{$ext}";
+    } catch (Throwable $e) {
+        error_log("[commit-documents] ensureUniqueSmbFilename check failed: " . $e->getMessage());
+        return $filename; // check ব্যর্থ হলে original নামেই এগোও (fail-open, upload আটকাবে না)
     }
 }
 
@@ -520,11 +576,25 @@ function appendTravelerInfoEntry(
     if (!$docData) return; // Gemini structured data না পেলে update করার কিছু নেই
 
     if ($column === 'employment_info') {
+        // Gemini মাঝেমধ্যে prompt-এ বলা exact key নাম না মেনে অন্য সমার্থক key
+        // ব্যবহার করে ফেলতে পারে (job_title, position, company ইত্যাদি) —
+        // তাই কয়েকটা common variant fallback হিসেবে চেক করা হচ্ছে
+        $jobTitle = $docData['designation']
+            ?? $docData['job_title']
+            ?? $docData['position']
+            ?? $docData['title']
+            ?? '';
+        $employer = $docData['employer_name']
+            ?? $docData['company']
+            ?? $docData['company_name']
+            ?? $docData['organization']
+            ?? '';
+
         // get_info.php fallback structure: single object, {employmentStatus, jobTitle, employer, issue_date}
         $newValue = array_filter([
             'employmentStatus' => 'employed',
-            'jobTitle'         => $docData['designation']   ?? '',
-            'employer'         => $docData['employer_name'] ?? '',
+            'jobTitle'         => $jobTitle,
+            'employer'         => $employer,
             'issue_date'       => $issueDate ?: ($docData['issue_date'] ?? ''),
         ]);
         if (!$newValue) return;
@@ -533,10 +603,14 @@ function appendTravelerInfoEntry(
             ->execute([json_encode($newValue, JSON_UNESCAPED_UNICODE), $traveler['sys_id']]);
 
     } elseif ($column === 'educational_info') {
+        // একইভাবে educational_info-তেও common key-variant fallback
+        $instName = $docData['institution_name'] ?? $docData['institution'] ?? $docData['school'] ?? $docData['university'] ?? '';
+        $course   = $docData['course'] ?? $docData['degree'] ?? $docData['program'] ?? '';
+
         // get_info.php fallback structure: array of {name, course, attendanceFrom, attendanceTo}
         $newEntry = array_filter([
-            'name'           => $docData['institution_name'] ?? '',
-            'course'         => $docData['course']            ?? '',
+            'name'           => $instName,
+            'course'         => $course,
             'attendanceFrom' => $docData['from_date']         ?? '',
             'attendanceTo'   => $docData['to_date']           ?? '',
         ]);

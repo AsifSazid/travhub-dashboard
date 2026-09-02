@@ -1,7 +1,6 @@
 {
     "countries": [
         {
-            "id": 1,
             "sys_id": "THR-26-CNT-01",
             "name": "Andorra",
             "code": "AD",
@@ -11,7 +10,6 @@
             "region": "Europe"
         },
         {
-            "id": 2,
             "sys_id": "THR-26-CNT-02",
             "name": "Argentina",
             "code": "AR",
@@ -21,7 +19,6 @@
             "region": "South America"
         },
         {
-            "id": 3,
             "sys_id": "THR-26-CNT-03",
             "name": "Australia",
             "code": "AU",
@@ -31,7 +28,6 @@
             "region": "Oceania"
         },
         {
-            "id": 4,
             "sys_id": "THR-26-CNT-04",
             "name": "Austria",
             "code": "AT",
@@ -41,7 +37,6 @@
             "region": "Europe"
         },
         {
-            "id": 5,
             "sys_id": "THR-26-CNT-05",
             "name": "Azerbaijan",
             "code": "AZ",
@@ -51,7 +46,6 @@
             "region": "Asia"
         },
         {
-            "id": 6,
             "sys_id": "THR-26-CNT-06",
             "name": "Bahamas",
             "code": "BS",
@@ -61,7 +55,6 @@
             "region": "North America"
         },
         {
-            "id": 7,
             "sys_id": "THR-26-CNT-07",
             "name": "Bahrain",
             "code": "BH",
@@ -71,7 +64,6 @@
             "region": "Middle East"
         },
         {
-            "id": 8,
             "sys_id": "THR-26-CNT-08",
             "name": "Bangladesh",
             "code": "BD",
@@ -81,7 +73,6 @@
             "region": "Asia"
         },
         {
-            "id": 9,
             "sys_id": "THR-26-CNT-09",
             "name": "Belgium",
             "code": "BE",
@@ -91,7 +82,6 @@
             "region": "Europe"
         },
         {
-            "id": 10,
             "sys_id": "THR-26-CNT-0A",
             "name": "Bhutan",
             "code": "BT",
@@ -101,7 +91,6 @@
             "region": "Asia"
         },
         {
-            "id": 11,
             "sys_id": "THR-26-CNT-0B",
             "name": "Brazil",
             "code": "BR",
@@ -111,7 +100,6 @@
             "region": "South America"
         },
         {
-            "id": 12,
             "sys_id": "THR-26-CNT-0C",
             "name": "Brunei",
             "code": "BN",
@@ -121,7 +109,6 @@
             "region": "Asia"
         },
         {
-            "id": 13,
             "sys_id": "THR-26-CNT-0D",
             "name": "Cambodia",
             "code": "KH",
@@ -131,7 +118,6 @@
             "region": "Asia"
         },
         {
-            "id": 14,
             "sys_id": "THR-26-CNT-0E",
             "name": "Canada",
             "code": "CA",
@@ -141,7 +127,6 @@
             "region": "North America"
         },
         {
-            "id": 15,
             "sys_id": "THR-26-CNT-0F",
             "name": "Chile",
             "code": "CL",
@@ -151,7 +136,6 @@
             "region": "South America"
         },
         {
-            "id": 16,
             "sys_id": "THR-26-CNT-0G",
             "name": "China",
             "code": "CN",
@@ -161,7 +145,6 @@
             "region": "Asia"
         },
         {
-            "id": 17,
             "sys_id": "THR-26-CNT-0H",
             "name": "Colombia",
             "code": "CO",
@@ -171,7 +154,6 @@
             "region": "South America"
         },
         {
-            "id": 18,
             "sys_id": "THR-26-CNT-0I",
             "name": "Croatia",
             "code": "HR",
@@ -181,7 +163,6 @@
             "region": "Europe"
         },
         {
-            "id": 19,
             "sys_id": "THR-26-CNT-0J",
             "name": "Cyprus",
             "code": "CY",
@@ -191,7 +172,6 @@
             "region": "Middle East"
         },
         {
-            "id": 20,
             "sys_id": "THR-26-CNT-0K",
             "name": "Czech Republic",
             "code": "CZ",
@@ -201,7 +181,6 @@
             "region": "Europe"
         },
         {
-            "id": 21,
             "sys_id": "THR-26-CNT-0L",
             "name": "Denmark",
             "code": "DK",
@@ -211,7 +190,6 @@
             "region": "Europe"
         },
         {
-            "id": 22,
             "sys_id": "THR-26-CNT-0M",
             "name": "Egypt",
             "code": "EG",
@@ -221,7 +199,6 @@
             "region": "Africa"
         },
         {
-            "id": 23,
             "sys_id": "THR-26-CNT-0N",
             "name": "Estonia",
             "code": "EE",
@@ -231,7 +208,6 @@
             "region": "Europe"
         },
         {
-            "id": 24,
             "sys_id": "THR-26-CNT-0O",
             "name": "Finland",
             "code": "FI",
@@ -241,7 +217,6 @@
             "region": "Europe"
         },
         {
-            "id": 25,
             "sys_id": "THR-26-CNT-0P",
             "name": "France",
             "code": "FR",
@@ -251,7 +226,6 @@
             "region": "Europe"
         },
         {
-            "id": 26,
             "sys_id": "THR-26-CNT-0Q",
             "name": "Georgia",
             "code": "GE",
@@ -261,7 +235,6 @@
             "region": "Asia"
         },
         {
-            "id": 27,
             "sys_id": "THR-26-CNT-0R",
             "name": "Germany",
             "code": "DE",
@@ -271,7 +244,6 @@
             "region": "Europe"
         },
         {
-            "id": 28,
             "sys_id": "THR-26-CNT-0S",
             "name": "Greece",
             "code": "GR",
@@ -281,7 +253,6 @@
             "region": "Europe"
         },
         {
-            "id": 29,
             "sys_id": "THR-26-CNT-0T",
             "name": "Hungary",
             "code": "HU",
@@ -291,7 +262,6 @@
             "region": "Europe"
         },
         {
-            "id": 30,
             "sys_id": "THR-26-CNT-0U",
             "name": "Iceland",
             "code": "IS",
@@ -301,7 +271,6 @@
             "region": "Europe"
         },
         {
-            "id": 31,
             "sys_id": "THR-26-CNT-0V",
             "name": "India",
             "code": "IN",
@@ -311,7 +280,6 @@
             "region": "Asia"
         },
         {
-            "id": 32,
             "sys_id": "THR-26-CNT-0W",
             "name": "Indonesia",
             "code": "ID",
@@ -321,7 +289,6 @@
             "region": "Asia"
         },
         {
-            "id": 33,
             "sys_id": "THR-26-CNT-0X",
             "name": "Ireland",
             "code": "IE",
@@ -331,7 +298,6 @@
             "region": "Europe"
         },
         {
-            "id": 34,
             "sys_id": "THR-26-CNT-0Y",
             "name": "Israel",
             "code": "IL",
@@ -341,7 +307,6 @@
             "region": "Middle East"
         },
         {
-            "id": 35,
             "sys_id": "THR-26-CNT-0Z",
             "name": "Italy",
             "code": "IT",
@@ -351,7 +316,6 @@
             "region": "Europe"
         },
         {
-            "id": 36,
             "sys_id": "THR-26-CNT-10",
             "name": "Japan",
             "code": "JP",
@@ -361,7 +325,6 @@
             "region": "Asia"
         },
         {
-            "id": 37,
             "sys_id": "THR-26-CNT-11",
             "name": "Jordan",
             "code": "JO",
@@ -371,7 +334,6 @@
             "region": "Middle East"
         },
         {
-            "id": 38,
             "sys_id": "THR-26-CNT-12",
             "name": "Kenya",
             "code": "KE",
@@ -381,7 +343,6 @@
             "region": "Africa"
         },
         {
-            "id": 39,
             "sys_id": "THR-26-CNT-13",
             "name": "Kuwait",
             "code": "KW",
@@ -391,7 +352,6 @@
             "region": "Middle East"
         },
         {
-            "id": 40,
             "sys_id": "THR-26-CNT-14",
             "name": "Luxembourg",
             "code": "LU",
@@ -401,7 +361,6 @@
             "region": "Europe"
         },
         {
-            "id": 41,
             "sys_id": "THR-26-CNT-15",
             "name": "Malaysia",
             "code": "MY",
@@ -411,7 +370,6 @@
             "region": "Asia"
         },
         {
-            "id": 42,
             "sys_id": "THR-26-CNT-16",
             "name": "Maldives",
             "code": "MV",
@@ -421,7 +379,6 @@
             "region": "Asia"
         },
         {
-            "id": 43,
             "sys_id": "THR-26-CNT-17",
             "name": "Malta",
             "code": "MT",
@@ -431,7 +388,6 @@
             "region": "Europe"
         },
         {
-            "id": 44,
             "sys_id": "THR-26-CNT-18",
             "name": "Mauritius",
             "code": "MU",
@@ -441,7 +397,6 @@
             "region": "Africa"
         },
         {
-            "id": 45,
             "sys_id": "THR-26-CNT-19",
             "name": "Mexico",
             "code": "MX",
@@ -451,7 +406,6 @@
             "region": "North America"
         },
         {
-            "id": 46,
             "sys_id": "THR-26-CNT-1A",
             "name": "Monaco",
             "code": "MC",
@@ -461,7 +415,6 @@
             "region": "Europe"
         },
         {
-            "id": 47,
             "sys_id": "THR-26-CNT-1B",
             "name": "Morocco",
             "code": "MA",
@@ -471,7 +424,6 @@
             "region": "Africa"
         },
         {
-            "id": 48,
             "sys_id": "THR-26-CNT-1C",
             "name": "Nepal",
             "code": "NP",
@@ -481,7 +433,6 @@
             "region": "Asia"
         },
         {
-            "id": 49,
             "sys_id": "THR-26-CNT-1D",
             "name": "Netherlands",
             "code": "NL",
@@ -491,7 +442,6 @@
             "region": "Europe"
         },
         {
-            "id": 50,
             "sys_id": "THR-26-CNT-1E",
             "name": "New Zealand",
             "code": "NZ",
@@ -501,7 +451,6 @@
             "region": "Oceania"
         },
         {
-            "id": 51,
             "sys_id": "THR-26-CNT-1F",
             "name": "Norway",
             "code": "NO",
@@ -511,7 +460,6 @@
             "region": "Europe"
         },
         {
-            "id": 52,
             "sys_id": "THR-26-CNT-1G",
             "name": "Oman",
             "code": "OM",
@@ -521,7 +469,6 @@
             "region": "Middle East"
         },
         {
-            "id": 53,
             "sys_id": "THR-26-CNT-1H",
             "name": "Pakistan",
             "code": "PK",
@@ -531,7 +478,6 @@
             "region": "Asia"
         },
         {
-            "id": 54,
             "sys_id": "THR-26-CNT-1I",
             "name": "Peru",
             "code": "PE",
@@ -541,7 +487,6 @@
             "region": "South America"
         },
         {
-            "id": 55,
             "sys_id": "THR-26-CNT-1J",
             "name": "Philippines",
             "code": "PH",
@@ -551,7 +496,6 @@
             "region": "Asia"
         },
         {
-            "id": 56,
             "sys_id": "THR-26-CNT-1K",
             "name": "Poland",
             "code": "PL",
@@ -561,7 +505,6 @@
             "region": "Europe"
         },
         {
-            "id": 57,
             "sys_id": "THR-26-CNT-1L",
             "name": "Portugal",
             "code": "PT",
@@ -571,7 +514,6 @@
             "region": "Europe"
         },
         {
-            "id": 58,
             "sys_id": "THR-26-CNT-1M",
             "name": "Qatar",
             "code": "QA",
@@ -581,7 +523,6 @@
             "region": "Middle East"
         },
         {
-            "id": 59,
             "sys_id": "THR-26-CNT-1N",
             "name": "Russia",
             "code": "RU",
@@ -591,7 +532,6 @@
             "region": "Europe"
         },
         {
-            "id": 60,
             "sys_id": "THR-26-CNT-1O",
             "name": "Saudi Arabia",
             "code": "SA",
@@ -601,7 +541,6 @@
             "region": "Middle East"
         },
         {
-            "id": 61,
             "sys_id": "THR-26-CNT-1P",
             "name": "Singapore",
             "code": "SG",
@@ -611,7 +550,6 @@
             "region": "Asia"
         },
         {
-            "id": 62,
             "sys_id": "THR-26-CNT-1Q",
             "name": "South Africa",
             "code": "ZA",
@@ -621,7 +559,6 @@
             "region": "Africa"
         },
         {
-            "id": 63,
             "sys_id": "THR-26-CNT-1R",
             "name": "South Korea",
             "code": "KR",
@@ -631,7 +568,6 @@
             "region": "Asia"
         },
         {
-            "id": 64,
             "sys_id": "THR-26-CNT-1S",
             "name": "Spain",
             "code": "ES",
@@ -641,7 +577,6 @@
             "region": "Europe"
         },
         {
-            "id": 65,
             "sys_id": "THR-26-CNT-1T",
             "name": "Sri Lanka",
             "code": "LK",
@@ -651,7 +586,6 @@
             "region": "Asia"
         },
         {
-            "id": 66,
             "sys_id": "THR-26-CNT-1U",
             "name": "Sweden",
             "code": "SE",
@@ -661,7 +595,6 @@
             "region": "Europe"
         },
         {
-            "id": 67,
             "sys_id": "THR-26-CNT-1V",
             "name": "Switzerland",
             "code": "CH",
@@ -671,7 +604,6 @@
             "region": "Europe"
         },
         {
-            "id": 68,
             "sys_id": "THR-26-CNT-1W",
             "name": "Taiwan",
             "code": "TW",
@@ -681,7 +613,6 @@
             "region": "Asia"
         },
         {
-            "id": 69,
             "sys_id": "THR-26-CNT-1X",
             "name": "Thailand",
             "code": "TH",
@@ -691,7 +622,6 @@
             "region": "Asia"
         },
         {
-            "id": 70,
             "sys_id": "THR-26-CNT-1Y",
             "name": "Turkey",
             "code": "TR",
@@ -701,7 +631,6 @@
             "region": "Middle East"
         },
         {
-            "id": 71,
             "sys_id": "THR-26-CNT-1Z",
             "name": "United Arab Emirates",
             "code": "AE",
@@ -711,7 +640,6 @@
             "region": "Middle East"
         },
         {
-            "id": 72,
             "sys_id": "THR-26-CNT-20",
             "name": "United Kingdom",
             "code": "GB",
@@ -721,7 +649,6 @@
             "region": "Europe"
         },
         {
-            "id": 73,
             "sys_id": "THR-26-CNT-21",
             "name": "United States",
             "code": "US",
@@ -731,7 +658,6 @@
             "region": "North America"
         },
         {
-            "id": 74,
             "sys_id": "THR-26-CNT-22",
             "name": "Vatican City",
             "code": "VA",
@@ -741,7 +667,6 @@
             "region": "Europe"
         },
         {
-            "id": 75,
             "sys_id": "THR-26-CNT-23",
             "name": "Vietnam",
             "code": "VN",
@@ -753,10 +678,10 @@
     ],
     "cities": [
         {
-            "id": 1,
             "sys_id": "THR-26-CNT-01-CTS-01",
             "name": "Andorra la Vella",
-            "country_id": 1,
+            "country_sys_id": "THR-26-CNT-01",
+            "country_name": "Andorra",
             "type": [
                 "tourism",
                 "business"
@@ -766,10 +691,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 2,
             "sys_id": "THR-26-CNT-01-CTS-02",
             "name": "Escaldes-Engordany",
-            "country_id": 1,
+            "country_sys_id": "THR-26-CNT-01",
+            "country_name": "Andorra",
             "type": [
                 "tourism"
             ],
@@ -778,10 +703,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 3,
             "sys_id": "THR-26-CNT-01-CTS-03",
             "name": "Encamp",
-            "country_id": 1,
+            "country_sys_id": "THR-26-CNT-01",
+            "country_name": "Andorra",
             "type": [
                 "tourism"
             ],
@@ -790,10 +715,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 4,
             "sys_id": "THR-26-CNT-02-CTS-01",
             "name": "Buenos Aires",
-            "country_id": 2,
+            "country_sys_id": "THR-26-CNT-02",
+            "country_name": "Argentina",
             "type": [
                 "tourism",
                 "business"
@@ -803,10 +728,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 5,
             "sys_id": "THR-26-CNT-02-CTS-02",
             "name": "Cordoba",
-            "country_id": 2,
+            "country_sys_id": "THR-26-CNT-02",
+            "country_name": "Argentina",
             "type": [
                 "education",
                 "tourism"
@@ -816,10 +741,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 6,
             "sys_id": "THR-26-CNT-02-CTS-03",
             "name": "Mendoza",
-            "country_id": 2,
+            "country_sys_id": "THR-26-CNT-02",
+            "country_name": "Argentina",
             "type": [
                 "tourism"
             ],
@@ -828,10 +753,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 7,
             "sys_id": "THR-26-CNT-03-CTS-01",
             "name": "Sydney",
-            "country_id": 3,
+            "country_sys_id": "THR-26-CNT-03",
+            "country_name": "Australia",
             "type": [
                 "tourism",
                 "business",
@@ -842,10 +767,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 8,
             "sys_id": "THR-26-CNT-03-CTS-02",
             "name": "Melbourne",
-            "country_id": 3,
+            "country_sys_id": "THR-26-CNT-03",
+            "country_name": "Australia",
             "type": [
                 "tourism",
                 "conference",
@@ -856,10 +781,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 9,
             "sys_id": "THR-26-CNT-03-CTS-03",
             "name": "Brisbane",
-            "country_id": 3,
+            "country_sys_id": "THR-26-CNT-03",
+            "country_name": "Australia",
             "type": [
                 "business",
                 "tourism"
@@ -869,10 +794,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 10,
             "sys_id": "THR-26-CNT-04-CTS-01",
             "name": "Vienna",
-            "country_id": 4,
+            "country_sys_id": "THR-26-CNT-04",
+            "country_name": "Austria",
             "type": [
                 "tourism",
                 "conference",
@@ -883,10 +808,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 11,
             "sys_id": "THR-26-CNT-04-CTS-02",
             "name": "Salzburg",
-            "country_id": 4,
+            "country_sys_id": "THR-26-CNT-04",
+            "country_name": "Austria",
             "type": [
                 "tourism"
             ],
@@ -895,10 +820,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 12,
             "sys_id": "THR-26-CNT-04-CTS-03",
             "name": "Innsbruck",
-            "country_id": 4,
+            "country_sys_id": "THR-26-CNT-04",
+            "country_name": "Austria",
             "type": [
                 "tourism"
             ],
@@ -907,10 +832,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 13,
             "sys_id": "THR-26-CNT-05-CTS-01",
             "name": "Baku",
-            "country_id": 5,
+            "country_sys_id": "THR-26-CNT-05",
+            "country_name": "Azerbaijan",
             "type": [
                 "business",
                 "conference",
@@ -921,10 +846,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 14,
             "sys_id": "THR-26-CNT-05-CTS-02",
             "name": "Ganja",
-            "country_id": 5,
+            "country_sys_id": "THR-26-CNT-05",
+            "country_name": "Azerbaijan",
             "type": [
                 "tourism"
             ],
@@ -933,10 +858,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 15,
             "sys_id": "THR-26-CNT-05-CTS-03",
             "name": "Gabala",
-            "country_id": 5,
+            "country_sys_id": "THR-26-CNT-05",
+            "country_name": "Azerbaijan",
             "type": [
                 "tourism"
             ],
@@ -945,10 +870,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 16,
             "sys_id": "THR-26-CNT-06-CTS-01",
             "name": "Nassau",
-            "country_id": 6,
+            "country_sys_id": "THR-26-CNT-06",
+            "country_name": "Bahamas",
             "type": [
                 "tourism",
                 "business"
@@ -958,10 +883,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 17,
             "sys_id": "THR-26-CNT-06-CTS-02",
             "name": "Freeport",
-            "country_id": 6,
+            "country_sys_id": "THR-26-CNT-06",
+            "country_name": "Bahamas",
             "type": [
                 "tourism"
             ],
@@ -970,10 +895,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 18,
             "sys_id": "THR-26-CNT-06-CTS-03",
             "name": "Exuma",
-            "country_id": 6,
+            "country_sys_id": "THR-26-CNT-06",
+            "country_name": "Bahamas",
             "type": [
                 "tourism"
             ],
@@ -982,10 +907,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 19,
             "sys_id": "THR-26-CNT-07-CTS-01",
             "name": "Manama",
-            "country_id": 7,
+            "country_sys_id": "THR-26-CNT-07",
+            "country_name": "Bahrain",
             "type": [
                 "business",
                 "conference",
@@ -996,10 +921,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 20,
             "sys_id": "THR-26-CNT-07-CTS-02",
             "name": "Muharraq",
-            "country_id": 7,
+            "country_sys_id": "THR-26-CNT-07",
+            "country_name": "Bahrain",
             "type": [
                 "tourism",
                 "religious"
@@ -1009,10 +934,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 21,
             "sys_id": "THR-26-CNT-07-CTS-03",
             "name": "Riffa",
-            "country_id": 7,
+            "country_sys_id": "THR-26-CNT-07",
+            "country_name": "Bahrain",
             "type": [
                 "business"
             ],
@@ -1021,10 +946,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 22,
             "sys_id": "THR-26-CNT-08-CTS-01",
             "name": "Dhaka",
-            "country_id": 8,
+            "country_sys_id": "THR-26-CNT-08",
+            "country_name": "Bangladesh",
             "type": [
                 "business",
                 "conference",
@@ -1035,10 +960,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 23,
             "sys_id": "THR-26-CNT-08-CTS-02",
             "name": "Chattogram",
-            "country_id": 8,
+            "country_sys_id": "THR-26-CNT-08",
+            "country_name": "Bangladesh",
             "type": [
                 "business",
                 "tourism"
@@ -1048,10 +973,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 24,
             "sys_id": "THR-26-CNT-08-CTS-03",
             "name": "Sylhet",
-            "country_id": 8,
+            "country_sys_id": "THR-26-CNT-08",
+            "country_name": "Bangladesh",
             "type": [
                 "tourism",
                 "religious"
@@ -1061,10 +986,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 25,
             "sys_id": "THR-26-CNT-09-CTS-01",
             "name": "Brussels",
-            "country_id": 9,
+            "country_sys_id": "THR-26-CNT-09",
+            "country_name": "Belgium",
             "type": [
                 "business",
                 "conference",
@@ -1075,10 +1000,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 26,
             "sys_id": "THR-26-CNT-09-CTS-02",
             "name": "Antwerp",
-            "country_id": 9,
+            "country_sys_id": "THR-26-CNT-09",
+            "country_name": "Belgium",
             "type": [
                 "business",
                 "tourism"
@@ -1088,10 +1013,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 27,
             "sys_id": "THR-26-CNT-09-CTS-03",
             "name": "Bruges",
-            "country_id": 9,
+            "country_sys_id": "THR-26-CNT-09",
+            "country_name": "Belgium",
             "type": [
                 "tourism"
             ],
@@ -1100,10 +1025,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 28,
             "sys_id": "THR-26-CNT-0A-CTS-01",
             "name": "Thimphu",
-            "country_id": 10,
+            "country_sys_id": "THR-26-CNT-0A",
+            "country_name": "Bhutan",
             "type": [
                 "tourism",
                 "religious"
@@ -1113,10 +1038,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 29,
             "sys_id": "THR-26-CNT-0A-CTS-02",
             "name": "Paro",
-            "country_id": 10,
+            "country_sys_id": "THR-26-CNT-0A",
+            "country_name": "Bhutan",
             "type": [
                 "tourism",
                 "religious"
@@ -1126,10 +1051,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 30,
             "sys_id": "THR-26-CNT-0A-CTS-03",
             "name": "Punakha",
-            "country_id": 10,
+            "country_sys_id": "THR-26-CNT-0A",
+            "country_name": "Bhutan",
             "type": [
                 "tourism"
             ],
@@ -1138,10 +1063,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 31,
             "sys_id": "THR-26-CNT-0B-CTS-01",
             "name": "Rio de Janeiro",
-            "country_id": 11,
+            "country_sys_id": "THR-26-CNT-0B",
+            "country_name": "Brazil",
             "type": [
                 "tourism",
                 "business"
@@ -1151,10 +1076,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 32,
             "sys_id": "THR-26-CNT-0B-CTS-02",
             "name": "Sao Paulo",
-            "country_id": 11,
+            "country_sys_id": "THR-26-CNT-0B",
+            "country_name": "Brazil",
             "type": [
                 "business",
                 "conference",
@@ -1165,10 +1090,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 33,
             "sys_id": "THR-26-CNT-0B-CTS-03",
             "name": "Brasilia",
-            "country_id": 11,
+            "country_sys_id": "THR-26-CNT-0B",
+            "country_name": "Brazil",
             "type": [
                 "business"
             ],
@@ -1177,10 +1102,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 34,
             "sys_id": "THR-26-CNT-0C-CTS-01",
             "name": "Bandar Seri Begawan",
-            "country_id": 12,
+            "country_sys_id": "THR-26-CNT-0C",
+            "country_name": "Brunei",
             "type": [
                 "business",
                 "religious"
@@ -1190,10 +1115,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 35,
             "sys_id": "THR-26-CNT-0C-CTS-02",
             "name": "Kuala Belait",
-            "country_id": 12,
+            "country_sys_id": "THR-26-CNT-0C",
+            "country_name": "Brunei",
             "type": [
                 "business"
             ],
@@ -1202,10 +1127,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 36,
             "sys_id": "THR-26-CNT-0C-CTS-03",
             "name": "Seria",
-            "country_id": 12,
+            "country_sys_id": "THR-26-CNT-0C",
+            "country_name": "Brunei",
             "type": [
                 "business"
             ],
@@ -1214,10 +1139,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 37,
             "sys_id": "THR-26-CNT-0D-CTS-01",
             "name": "Phnom Penh",
-            "country_id": 13,
+            "country_sys_id": "THR-26-CNT-0D",
+            "country_name": "Cambodia",
             "type": [
                 "business",
                 "tourism"
@@ -1227,10 +1152,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 38,
             "sys_id": "THR-26-CNT-0D-CTS-02",
             "name": "Siem Reap",
-            "country_id": 13,
+            "country_sys_id": "THR-26-CNT-0D",
+            "country_name": "Cambodia",
             "type": [
                 "tourism"
             ],
@@ -1239,10 +1164,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 39,
             "sys_id": "THR-26-CNT-0D-CTS-03",
             "name": "Sihanoukville",
-            "country_id": 13,
+            "country_sys_id": "THR-26-CNT-0D",
+            "country_name": "Cambodia",
             "type": [
                 "tourism"
             ],
@@ -1251,10 +1176,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 40,
             "sys_id": "THR-26-CNT-0E-CTS-01",
             "name": "Toronto",
-            "country_id": 14,
+            "country_sys_id": "THR-26-CNT-0E",
+            "country_name": "Canada",
             "type": [
                 "business",
                 "education",
@@ -1265,10 +1190,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 41,
             "sys_id": "THR-26-CNT-0E-CTS-02",
             "name": "Vancouver",
-            "country_id": 14,
+            "country_sys_id": "THR-26-CNT-0E",
+            "country_name": "Canada",
             "type": [
                 "tourism",
                 "business"
@@ -1278,10 +1203,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 42,
             "sys_id": "THR-26-CNT-0E-CTS-03",
             "name": "Montreal",
-            "country_id": 14,
+            "country_sys_id": "THR-26-CNT-0E",
+            "country_name": "Canada",
             "type": [
                 "conference",
                 "tourism",
@@ -1292,10 +1217,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 43,
             "sys_id": "THR-26-CNT-0F-CTS-01",
             "name": "Santiago",
-            "country_id": 15,
+            "country_sys_id": "THR-26-CNT-0F",
+            "country_name": "Chile",
             "type": [
                 "business",
                 "tourism"
@@ -1305,10 +1230,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 44,
             "sys_id": "THR-26-CNT-0F-CTS-02",
             "name": "Valparaiso",
-            "country_id": 15,
+            "country_sys_id": "THR-26-CNT-0F",
+            "country_name": "Chile",
             "type": [
                 "tourism"
             ],
@@ -1317,10 +1242,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 45,
             "sys_id": "THR-26-CNT-0F-CTS-03",
             "name": "Vina del Mar",
-            "country_id": 15,
+            "country_sys_id": "THR-26-CNT-0F",
+            "country_name": "Chile",
             "type": [
                 "tourism"
             ],
@@ -1329,10 +1254,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 46,
             "sys_id": "THR-26-CNT-0G-CTS-01",
             "name": "Beijing",
-            "country_id": 16,
+            "country_sys_id": "THR-26-CNT-0G",
+            "country_name": "China",
             "type": [
                 "business",
                 "tourism",
@@ -1343,10 +1268,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 47,
             "sys_id": "THR-26-CNT-0G-CTS-02",
             "name": "Shanghai",
-            "country_id": 16,
+            "country_sys_id": "THR-26-CNT-0G",
+            "country_name": "China",
             "type": [
                 "business",
                 "conference"
@@ -1356,10 +1281,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 48,
             "sys_id": "THR-26-CNT-0G-CTS-03",
             "name": "Guangzhou",
-            "country_id": 16,
+            "country_sys_id": "THR-26-CNT-0G",
+            "country_name": "China",
             "type": [
                 "business",
                 "conference"
@@ -1369,10 +1294,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 49,
             "sys_id": "THR-26-CNT-0H-CTS-01",
             "name": "Bogota",
-            "country_id": 17,
+            "country_sys_id": "THR-26-CNT-0H",
+            "country_name": "Colombia",
             "type": [
                 "business",
                 "education"
@@ -1382,10 +1307,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 50,
             "sys_id": "THR-26-CNT-0H-CTS-02",
             "name": "Medellin",
-            "country_id": 17,
+            "country_sys_id": "THR-26-CNT-0H",
+            "country_name": "Colombia",
             "type": [
                 "tourism",
                 "business"
@@ -1395,10 +1320,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 51,
             "sys_id": "THR-26-CNT-0H-CTS-03",
             "name": "Cartagena",
-            "country_id": 17,
+            "country_sys_id": "THR-26-CNT-0H",
+            "country_name": "Colombia",
             "type": [
                 "tourism"
             ],
@@ -1407,10 +1332,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 52,
             "sys_id": "THR-26-CNT-0I-CTS-01",
             "name": "Zagreb",
-            "country_id": 18,
+            "country_sys_id": "THR-26-CNT-0I",
+            "country_name": "Croatia",
             "type": [
                 "business",
                 "tourism"
@@ -1420,10 +1345,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 53,
             "sys_id": "THR-26-CNT-0I-CTS-02",
             "name": "Split",
-            "country_id": 18,
+            "country_sys_id": "THR-26-CNT-0I",
+            "country_name": "Croatia",
             "type": [
                 "tourism"
             ],
@@ -1432,10 +1357,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 54,
             "sys_id": "THR-26-CNT-0I-CTS-03",
             "name": "Dubrovnik",
-            "country_id": 18,
+            "country_sys_id": "THR-26-CNT-0I",
+            "country_name": "Croatia",
             "type": [
                 "tourism"
             ],
@@ -1444,10 +1369,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 55,
             "sys_id": "THR-26-CNT-0J-CTS-01",
             "name": "Nicosia",
-            "country_id": 19,
+            "country_sys_id": "THR-26-CNT-0J",
+            "country_name": "Cyprus",
             "type": [
                 "business",
                 "education"
@@ -1457,10 +1382,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 56,
             "sys_id": "THR-26-CNT-0J-CTS-02",
             "name": "Limassol",
-            "country_id": 19,
+            "country_sys_id": "THR-26-CNT-0J",
+            "country_name": "Cyprus",
             "type": [
                 "tourism",
                 "business"
@@ -1470,10 +1395,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 57,
             "sys_id": "THR-26-CNT-0J-CTS-03",
             "name": "Paphos",
-            "country_id": 19,
+            "country_sys_id": "THR-26-CNT-0J",
+            "country_name": "Cyprus",
             "type": [
                 "tourism"
             ],
@@ -1482,10 +1407,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 58,
             "sys_id": "THR-26-CNT-0K-CTS-01",
             "name": "Prague",
-            "country_id": 20,
+            "country_sys_id": "THR-26-CNT-0K",
+            "country_name": "Czech Republic",
             "type": [
                 "tourism",
                 "conference",
@@ -1496,10 +1421,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 59,
             "sys_id": "THR-26-CNT-0K-CTS-02",
             "name": "Brno",
-            "country_id": 20,
+            "country_sys_id": "THR-26-CNT-0K",
+            "country_name": "Czech Republic",
             "type": [
                 "education",
                 "business"
@@ -1509,10 +1434,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 60,
             "sys_id": "THR-26-CNT-0K-CTS-03",
             "name": "Ostrava",
-            "country_id": 20,
+            "country_sys_id": "THR-26-CNT-0K",
+            "country_name": "Czech Republic",
             "type": [
                 "business"
             ],
@@ -1521,10 +1446,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 61,
             "sys_id": "THR-26-CNT-0L-CTS-01",
             "name": "Copenhagen",
-            "country_id": 21,
+            "country_sys_id": "THR-26-CNT-0L",
+            "country_name": "Denmark",
             "type": [
                 "tourism",
                 "business",
@@ -1535,10 +1460,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 62,
             "sys_id": "THR-26-CNT-0L-CTS-02",
             "name": "Aarhus",
-            "country_id": 21,
+            "country_sys_id": "THR-26-CNT-0L",
+            "country_name": "Denmark",
             "type": [
                 "education",
                 "tourism"
@@ -1548,10 +1473,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 63,
             "sys_id": "THR-26-CNT-0L-CTS-03",
             "name": "Odense",
-            "country_id": 21,
+            "country_sys_id": "THR-26-CNT-0L",
+            "country_name": "Denmark",
             "type": [
                 "tourism"
             ],
@@ -1560,10 +1485,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 64,
             "sys_id": "THR-26-CNT-0M-CTS-01",
             "name": "Cairo",
-            "country_id": 22,
+            "country_sys_id": "THR-26-CNT-0M",
+            "country_name": "Egypt",
             "type": [
                 "tourism",
                 "religious",
@@ -1574,10 +1499,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 65,
             "sys_id": "THR-26-CNT-0M-CTS-02",
             "name": "Alexandria",
-            "country_id": 22,
+            "country_sys_id": "THR-26-CNT-0M",
+            "country_name": "Egypt",
             "type": [
                 "tourism",
                 "education"
@@ -1587,10 +1512,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 66,
             "sys_id": "THR-26-CNT-0M-CTS-03",
             "name": "Luxor",
-            "country_id": 22,
+            "country_sys_id": "THR-26-CNT-0M",
+            "country_name": "Egypt",
             "type": [
                 "tourism"
             ],
@@ -1599,10 +1524,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 67,
             "sys_id": "THR-26-CNT-0N-CTS-01",
             "name": "Tallinn",
-            "country_id": 23,
+            "country_sys_id": "THR-26-CNT-0N",
+            "country_name": "Estonia",
             "type": [
                 "tourism",
                 "business"
@@ -1612,10 +1537,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 68,
             "sys_id": "THR-26-CNT-0N-CTS-02",
             "name": "Tartu",
-            "country_id": 23,
+            "country_sys_id": "THR-26-CNT-0N",
+            "country_name": "Estonia",
             "type": [
                 "education"
             ],
@@ -1624,10 +1549,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 69,
             "sys_id": "THR-26-CNT-0N-CTS-03",
             "name": "Parnu",
-            "country_id": 23,
+            "country_sys_id": "THR-26-CNT-0N",
+            "country_name": "Estonia",
             "type": [
                 "tourism"
             ],
@@ -1636,10 +1561,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 70,
             "sys_id": "THR-26-CNT-0O-CTS-01",
             "name": "Helsinki",
-            "country_id": 24,
+            "country_sys_id": "THR-26-CNT-0O",
+            "country_name": "Finland",
             "type": [
                 "business",
                 "conference",
@@ -1650,10 +1575,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 71,
             "sys_id": "THR-26-CNT-0O-CTS-02",
             "name": "Espoo",
-            "country_id": 24,
+            "country_sys_id": "THR-26-CNT-0O",
+            "country_name": "Finland",
             "type": [
                 "business",
                 "education"
@@ -1663,10 +1588,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 72,
             "sys_id": "THR-26-CNT-0O-CTS-03",
             "name": "Tampere",
-            "country_id": 24,
+            "country_sys_id": "THR-26-CNT-0O",
+            "country_name": "Finland",
             "type": [
                 "education",
                 "tourism"
@@ -1676,10 +1601,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 73,
             "sys_id": "THR-26-CNT-0P-CTS-01",
             "name": "Paris",
-            "country_id": 25,
+            "country_sys_id": "THR-26-CNT-0P",
+            "country_name": "France",
             "type": [
                 "tourism",
                 "business",
@@ -1690,10 +1615,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 74,
             "sys_id": "THR-26-CNT-0P-CTS-02",
             "name": "Lyon",
-            "country_id": 25,
+            "country_sys_id": "THR-26-CNT-0P",
+            "country_name": "France",
             "type": [
                 "tourism",
                 "education"
@@ -1703,10 +1628,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 75,
             "sys_id": "THR-26-CNT-0P-CTS-03",
             "name": "Marseille",
-            "country_id": 25,
+            "country_sys_id": "THR-26-CNT-0P",
+            "country_name": "France",
             "type": [
                 "tourism",
                 "business"
@@ -1716,10 +1641,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 76,
             "sys_id": "THR-26-CNT-0Q-CTS-01",
             "name": "Tbilisi",
-            "country_id": 26,
+            "country_sys_id": "THR-26-CNT-0Q",
+            "country_name": "Georgia",
             "type": [
                 "tourism",
                 "business"
@@ -1729,10 +1654,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 77,
             "sys_id": "THR-26-CNT-0Q-CTS-02",
             "name": "Batumi",
-            "country_id": 26,
+            "country_sys_id": "THR-26-CNT-0Q",
+            "country_name": "Georgia",
             "type": [
                 "tourism"
             ],
@@ -1741,10 +1666,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 78,
             "sys_id": "THR-26-CNT-0Q-CTS-03",
             "name": "Kutaisi",
-            "country_id": 26,
+            "country_sys_id": "THR-26-CNT-0Q",
+            "country_name": "Georgia",
             "type": [
                 "tourism"
             ],
@@ -1753,10 +1678,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 79,
             "sys_id": "THR-26-CNT-0R-CTS-01",
             "name": "Berlin",
-            "country_id": 27,
+            "country_sys_id": "THR-26-CNT-0R",
+            "country_name": "Germany",
             "type": [
                 "tourism",
                 "business",
@@ -1767,10 +1692,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 80,
             "sys_id": "THR-26-CNT-0R-CTS-02",
             "name": "Munich",
-            "country_id": 27,
+            "country_sys_id": "THR-26-CNT-0R",
+            "country_name": "Germany",
             "type": [
                 "business",
                 "tourism"
@@ -1780,10 +1705,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 81,
             "sys_id": "THR-26-CNT-0R-CTS-03",
             "name": "Frankfurt",
-            "country_id": 27,
+            "country_sys_id": "THR-26-CNT-0R",
+            "country_name": "Germany",
             "type": [
                 "business",
                 "conference"
@@ -1793,10 +1718,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 82,
             "sys_id": "THR-26-CNT-0S-CTS-01",
             "name": "Athens",
-            "country_id": 28,
+            "country_sys_id": "THR-26-CNT-0S",
+            "country_name": "Greece",
             "type": [
                 "tourism",
                 "business",
@@ -1807,10 +1732,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 83,
             "sys_id": "THR-26-CNT-0S-CTS-02",
             "name": "Thessaloniki",
-            "country_id": 28,
+            "country_sys_id": "THR-26-CNT-0S",
+            "country_name": "Greece",
             "type": [
                 "education",
                 "tourism"
@@ -1820,10 +1745,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 84,
             "sys_id": "THR-26-CNT-0S-CTS-03",
             "name": "Santorini",
-            "country_id": 28,
+            "country_sys_id": "THR-26-CNT-0S",
+            "country_name": "Greece",
             "type": [
                 "tourism"
             ],
@@ -1832,10 +1757,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 85,
             "sys_id": "THR-26-CNT-0T-CTS-01",
             "name": "Budapest",
-            "country_id": 29,
+            "country_sys_id": "THR-26-CNT-0T",
+            "country_name": "Hungary",
             "type": [
                 "tourism",
                 "business",
@@ -1846,10 +1771,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 86,
             "sys_id": "THR-26-CNT-0T-CTS-02",
             "name": "Debrecen",
-            "country_id": 29,
+            "country_sys_id": "THR-26-CNT-0T",
+            "country_name": "Hungary",
             "type": [
                 "education"
             ],
@@ -1858,10 +1783,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 87,
             "sys_id": "THR-26-CNT-0T-CTS-03",
             "name": "Szeged",
-            "country_id": 29,
+            "country_sys_id": "THR-26-CNT-0T",
+            "country_name": "Hungary",
             "type": [
                 "education",
                 "tourism"
@@ -1871,10 +1796,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 88,
             "sys_id": "THR-26-CNT-0U-CTS-01",
             "name": "Reykjavik",
-            "country_id": 30,
+            "country_sys_id": "THR-26-CNT-0U",
+            "country_name": "Iceland",
             "type": [
                 "tourism",
                 "business"
@@ -1884,10 +1809,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 89,
             "sys_id": "THR-26-CNT-0U-CTS-02",
             "name": "Akureyri",
-            "country_id": 30,
+            "country_sys_id": "THR-26-CNT-0U",
+            "country_name": "Iceland",
             "type": [
                 "tourism"
             ],
@@ -1896,10 +1821,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 90,
             "sys_id": "THR-26-CNT-0U-CTS-03",
             "name": "Vik",
-            "country_id": 30,
+            "country_sys_id": "THR-26-CNT-0U",
+            "country_name": "Iceland",
             "type": [
                 "tourism"
             ],
@@ -1908,10 +1833,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 91,
             "sys_id": "THR-26-CNT-0V-CTS-01",
             "name": "Delhi",
-            "country_id": 31,
+            "country_sys_id": "THR-26-CNT-0V",
+            "country_name": "India",
             "type": [
                 "business",
                 "tourism",
@@ -1922,10 +1847,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 92,
             "sys_id": "THR-26-CNT-0V-CTS-02",
             "name": "Mumbai",
-            "country_id": 31,
+            "country_sys_id": "THR-26-CNT-0V",
+            "country_name": "India",
             "type": [
                 "business",
                 "conference",
@@ -1936,10 +1861,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 93,
             "sys_id": "THR-26-CNT-0V-CTS-03",
             "name": "Varanasi",
-            "country_id": 31,
+            "country_sys_id": "THR-26-CNT-0V",
+            "country_name": "India",
             "type": [
                 "religious",
                 "tourism"
@@ -1949,10 +1874,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 94,
             "sys_id": "THR-26-CNT-0W-CTS-01",
             "name": "Jakarta",
-            "country_id": 32,
+            "country_sys_id": "THR-26-CNT-0W",
+            "country_name": "Indonesia",
             "type": [
                 "business",
                 "conference"
@@ -1962,10 +1887,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 95,
             "sys_id": "THR-26-CNT-0W-CTS-02",
             "name": "Bali",
-            "country_id": 32,
+            "country_sys_id": "THR-26-CNT-0W",
+            "country_name": "Indonesia",
             "type": [
                 "tourism"
             ],
@@ -1974,10 +1899,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 96,
             "sys_id": "THR-26-CNT-0W-CTS-03",
             "name": "Yogyakarta",
-            "country_id": 32,
+            "country_sys_id": "THR-26-CNT-0W",
+            "country_name": "Indonesia",
             "type": [
                 "tourism",
                 "education"
@@ -1987,10 +1912,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 97,
             "sys_id": "THR-26-CNT-0X-CTS-01",
             "name": "Dublin",
-            "country_id": 33,
+            "country_sys_id": "THR-26-CNT-0X",
+            "country_name": "Ireland",
             "type": [
                 "business",
                 "education",
@@ -2001,10 +1926,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 98,
             "sys_id": "THR-26-CNT-0X-CTS-02",
             "name": "Cork",
-            "country_id": 33,
+            "country_sys_id": "THR-26-CNT-0X",
+            "country_name": "Ireland",
             "type": [
                 "education",
                 "tourism"
@@ -2014,10 +1939,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 99,
             "sys_id": "THR-26-CNT-0X-CTS-03",
             "name": "Galway",
-            "country_id": 33,
+            "country_sys_id": "THR-26-CNT-0X",
+            "country_name": "Ireland",
             "type": [
                 "tourism"
             ],
@@ -2026,10 +1951,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 100,
             "sys_id": "THR-26-CNT-0Y-CTS-01",
             "name": "Jerusalem",
-            "country_id": 34,
+            "country_sys_id": "THR-26-CNT-0Y",
+            "country_name": "Israel",
             "type": [
                 "religious",
                 "tourism"
@@ -2039,10 +1964,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 101,
             "sys_id": "THR-26-CNT-0Y-CTS-02",
             "name": "Tel Aviv",
-            "country_id": 34,
+            "country_sys_id": "THR-26-CNT-0Y",
+            "country_name": "Israel",
             "type": [
                 "business",
                 "tourism"
@@ -2052,10 +1977,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 102,
             "sys_id": "THR-26-CNT-0Y-CTS-03",
             "name": "Haifa",
-            "country_id": 34,
+            "country_sys_id": "THR-26-CNT-0Y",
+            "country_name": "Israel",
             "type": [
                 "education",
                 "business"
@@ -2065,10 +1990,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 103,
             "sys_id": "THR-26-CNT-0Z-CTS-01",
             "name": "Rome",
-            "country_id": 35,
+            "country_sys_id": "THR-26-CNT-0Z",
+            "country_name": "Italy",
             "type": [
                 "tourism",
                 "religious",
@@ -2079,10 +2004,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 104,
             "sys_id": "THR-26-CNT-0Z-CTS-02",
             "name": "Milan",
-            "country_id": 35,
+            "country_sys_id": "THR-26-CNT-0Z",
+            "country_name": "Italy",
             "type": [
                 "business",
                 "tourism"
@@ -2092,10 +2017,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 105,
             "sys_id": "THR-26-CNT-0Z-CTS-03",
             "name": "Florence",
-            "country_id": 35,
+            "country_sys_id": "THR-26-CNT-0Z",
+            "country_name": "Italy",
             "type": [
                 "tourism",
                 "education"
@@ -2105,10 +2030,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 106,
             "sys_id": "THR-26-CNT-10-CTS-01",
             "name": "Tokyo",
-            "country_id": 36,
+            "country_sys_id": "THR-26-CNT-10",
+            "country_name": "Japan",
             "type": [
                 "tourism",
                 "business",
@@ -2119,10 +2044,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 107,
             "sys_id": "THR-26-CNT-10-CTS-02",
             "name": "Osaka",
-            "country_id": 36,
+            "country_sys_id": "THR-26-CNT-10",
+            "country_name": "Japan",
             "type": [
                 "tourism",
                 "business"
@@ -2132,10 +2057,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 108,
             "sys_id": "THR-26-CNT-10-CTS-03",
             "name": "Kyoto",
-            "country_id": 36,
+            "country_sys_id": "THR-26-CNT-10",
+            "country_name": "Japan",
             "type": [
                 "tourism",
                 "religious"
@@ -2145,10 +2070,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 109,
             "sys_id": "THR-26-CNT-11-CTS-01",
             "name": "Amman",
-            "country_id": 37,
+            "country_sys_id": "THR-26-CNT-11",
+            "country_name": "Jordan",
             "type": [
                 "tourism",
                 "business"
@@ -2158,10 +2083,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 110,
             "sys_id": "THR-26-CNT-11-CTS-02",
             "name": "Petra",
-            "country_id": 37,
+            "country_sys_id": "THR-26-CNT-11",
+            "country_name": "Jordan",
             "type": [
                 "tourism"
             ],
@@ -2170,10 +2095,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 111,
             "sys_id": "THR-26-CNT-11-CTS-03",
             "name": "Aqaba",
-            "country_id": 37,
+            "country_sys_id": "THR-26-CNT-11",
+            "country_name": "Jordan",
             "type": [
                 "tourism"
             ],
@@ -2182,10 +2107,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 112,
             "sys_id": "THR-26-CNT-12-CTS-01",
             "name": "Nairobi",
-            "country_id": 38,
+            "country_sys_id": "THR-26-CNT-12",
+            "country_name": "Kenya",
             "type": [
                 "business",
                 "conference"
@@ -2195,10 +2120,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 113,
             "sys_id": "THR-26-CNT-12-CTS-02",
             "name": "Mombasa",
-            "country_id": 38,
+            "country_sys_id": "THR-26-CNT-12",
+            "country_name": "Kenya",
             "type": [
                 "tourism"
             ],
@@ -2207,10 +2132,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 114,
             "sys_id": "THR-26-CNT-12-CTS-03",
             "name": "Kisumu",
-            "country_id": 38,
+            "country_sys_id": "THR-26-CNT-12",
+            "country_name": "Kenya",
             "type": [
                 "business"
             ],
@@ -2219,10 +2144,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 115,
             "sys_id": "THR-26-CNT-13-CTS-01",
             "name": "Kuwait City",
-            "country_id": 39,
+            "country_sys_id": "THR-26-CNT-13",
+            "country_name": "Kuwait",
             "type": [
                 "business",
                 "conference"
@@ -2232,10 +2157,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 116,
             "sys_id": "THR-26-CNT-13-CTS-02",
             "name": "Al Jahra",
-            "country_id": 39,
+            "country_sys_id": "THR-26-CNT-13",
+            "country_name": "Kuwait",
             "type": [
                 "business"
             ],
@@ -2244,10 +2169,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 117,
             "sys_id": "THR-26-CNT-13-CTS-03",
             "name": "Salmiya",
-            "country_id": 39,
+            "country_sys_id": "THR-26-CNT-13",
+            "country_name": "Kuwait",
             "type": [
                 "tourism",
                 "business"
@@ -2257,10 +2182,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 118,
             "sys_id": "THR-26-CNT-14-CTS-01",
             "name": "Luxembourg City",
-            "country_id": 40,
+            "country_sys_id": "THR-26-CNT-14",
+            "country_name": "Luxembourg",
             "type": [
                 "business",
                 "conference"
@@ -2270,10 +2195,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 119,
             "sys_id": "THR-26-CNT-14-CTS-02",
             "name": "Esch-sur-Alzette",
-            "country_id": 40,
+            "country_sys_id": "THR-26-CNT-14",
+            "country_name": "Luxembourg",
             "type": [
                 "education"
             ],
@@ -2282,10 +2207,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 120,
             "sys_id": "THR-26-CNT-14-CTS-03",
             "name": "Echternach",
-            "country_id": 40,
+            "country_sys_id": "THR-26-CNT-14",
+            "country_name": "Luxembourg",
             "type": [
                 "tourism"
             ],
@@ -2294,10 +2219,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 121,
             "sys_id": "THR-26-CNT-15-CTS-01",
             "name": "Kuala Lumpur",
-            "country_id": 41,
+            "country_sys_id": "THR-26-CNT-15",
+            "country_name": "Malaysia",
             "type": [
                 "tourism",
                 "business",
@@ -2308,10 +2233,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 122,
             "sys_id": "THR-26-CNT-15-CTS-02",
             "name": "Penang",
-            "country_id": 41,
+            "country_sys_id": "THR-26-CNT-15",
+            "country_name": "Malaysia",
             "type": [
                 "tourism",
                 "education"
@@ -2321,10 +2246,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 123,
             "sys_id": "THR-26-CNT-15-CTS-03",
             "name": "Malacca",
-            "country_id": 41,
+            "country_sys_id": "THR-26-CNT-15",
+            "country_name": "Malaysia",
             "type": [
                 "tourism"
             ],
@@ -2333,10 +2258,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 124,
             "sys_id": "THR-26-CNT-16-CTS-01",
             "name": "Male",
-            "country_id": 42,
+            "country_sys_id": "THR-26-CNT-16",
+            "country_name": "Maldives",
             "type": [
                 "business",
                 "tourism"
@@ -2346,10 +2271,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 125,
             "sys_id": "THR-26-CNT-16-CTS-02",
             "name": "Maafushi",
-            "country_id": 42,
+            "country_sys_id": "THR-26-CNT-16",
+            "country_name": "Maldives",
             "type": [
                 "tourism"
             ],
@@ -2358,10 +2283,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 126,
             "sys_id": "THR-26-CNT-16-CTS-03",
             "name": "Hulhumale",
-            "country_id": 42,
+            "country_sys_id": "THR-26-CNT-16",
+            "country_name": "Maldives",
             "type": [
                 "tourism"
             ],
@@ -2370,10 +2295,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 127,
             "sys_id": "THR-26-CNT-17-CTS-01",
             "name": "Valletta",
-            "country_id": 43,
+            "country_sys_id": "THR-26-CNT-17",
+            "country_name": "Malta",
             "type": [
                 "tourism",
                 "business"
@@ -2383,10 +2308,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 128,
             "sys_id": "THR-26-CNT-17-CTS-02",
             "name": "Sliema",
-            "country_id": 43,
+            "country_sys_id": "THR-26-CNT-17",
+            "country_name": "Malta",
             "type": [
                 "tourism"
             ],
@@ -2395,10 +2320,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 129,
             "sys_id": "THR-26-CNT-17-CTS-03",
             "name": "Mdina",
-            "country_id": 43,
+            "country_sys_id": "THR-26-CNT-17",
+            "country_name": "Malta",
             "type": [
                 "tourism"
             ],
@@ -2407,10 +2332,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 130,
             "sys_id": "THR-26-CNT-18-CTS-01",
             "name": "Port Louis",
-            "country_id": 44,
+            "country_sys_id": "THR-26-CNT-18",
+            "country_name": "Mauritius",
             "type": [
                 "business",
                 "tourism"
@@ -2420,10 +2345,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 131,
             "sys_id": "THR-26-CNT-18-CTS-02",
             "name": "Grand Baie",
-            "country_id": 44,
+            "country_sys_id": "THR-26-CNT-18",
+            "country_name": "Mauritius",
             "type": [
                 "tourism"
             ],
@@ -2432,10 +2357,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 132,
             "sys_id": "THR-26-CNT-18-CTS-03",
             "name": "Flic en Flac",
-            "country_id": 44,
+            "country_sys_id": "THR-26-CNT-18",
+            "country_name": "Mauritius",
             "type": [
                 "tourism"
             ],
@@ -2444,10 +2369,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 133,
             "sys_id": "THR-26-CNT-19-CTS-01",
             "name": "Mexico City",
-            "country_id": 45,
+            "country_sys_id": "THR-26-CNT-19",
+            "country_name": "Mexico",
             "type": [
                 "business",
                 "tourism",
@@ -2458,10 +2383,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 134,
             "sys_id": "THR-26-CNT-19-CTS-02",
             "name": "Cancun",
-            "country_id": 45,
+            "country_sys_id": "THR-26-CNT-19",
+            "country_name": "Mexico",
             "type": [
                 "tourism"
             ],
@@ -2470,10 +2395,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 135,
             "sys_id": "THR-26-CNT-19-CTS-03",
             "name": "Guadalajara",
-            "country_id": 45,
+            "country_sys_id": "THR-26-CNT-19",
+            "country_name": "Mexico",
             "type": [
                 "business",
                 "education"
@@ -2483,10 +2408,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 136,
             "sys_id": "THR-26-CNT-1A-CTS-01",
             "name": "Monaco-Ville",
-            "country_id": 46,
+            "country_sys_id": "THR-26-CNT-1A",
+            "country_name": "Monaco",
             "type": [
                 "tourism"
             ],
@@ -2495,10 +2420,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 137,
             "sys_id": "THR-26-CNT-1A-CTS-02",
             "name": "Monte Carlo",
-            "country_id": 46,
+            "country_sys_id": "THR-26-CNT-1A",
+            "country_name": "Monaco",
             "type": [
                 "business",
                 "tourism",
@@ -2509,10 +2434,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 138,
             "sys_id": "THR-26-CNT-1A-CTS-03",
             "name": "Fontvieille",
-            "country_id": 46,
+            "country_sys_id": "THR-26-CNT-1A",
+            "country_name": "Monaco",
             "type": [
                 "business"
             ],
@@ -2521,10 +2446,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 139,
             "sys_id": "THR-26-CNT-1B-CTS-01",
             "name": "Casablanca",
-            "country_id": 47,
+            "country_sys_id": "THR-26-CNT-1B",
+            "country_name": "Morocco",
             "type": [
                 "business",
                 "tourism"
@@ -2534,10 +2459,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 140,
             "sys_id": "THR-26-CNT-1B-CTS-02",
             "name": "Marrakesh",
-            "country_id": 47,
+            "country_sys_id": "THR-26-CNT-1B",
+            "country_name": "Morocco",
             "type": [
                 "tourism"
             ],
@@ -2546,10 +2471,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 141,
             "sys_id": "THR-26-CNT-1B-CTS-03",
             "name": "Rabat",
-            "country_id": 47,
+            "country_sys_id": "THR-26-CNT-1B",
+            "country_name": "Morocco",
             "type": [
                 "business",
                 "tourism"
@@ -2559,10 +2484,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 142,
             "sys_id": "THR-26-CNT-1C-CTS-01",
             "name": "Kathmandu",
-            "country_id": 48,
+            "country_sys_id": "THR-26-CNT-1C",
+            "country_name": "Nepal",
             "type": [
                 "tourism",
                 "religious"
@@ -2572,10 +2497,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 143,
             "sys_id": "THR-26-CNT-1C-CTS-02",
             "name": "Pokhara",
-            "country_id": 48,
+            "country_sys_id": "THR-26-CNT-1C",
+            "country_name": "Nepal",
             "type": [
                 "tourism"
             ],
@@ -2584,10 +2509,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 144,
             "sys_id": "THR-26-CNT-1C-CTS-03",
             "name": "Lumbini",
-            "country_id": 48,
+            "country_sys_id": "THR-26-CNT-1C",
+            "country_name": "Nepal",
             "type": [
                 "religious"
             ],
@@ -2596,10 +2521,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 145,
             "sys_id": "THR-26-CNT-1D-CTS-01",
             "name": "Amsterdam",
-            "country_id": 49,
+            "country_sys_id": "THR-26-CNT-1D",
+            "country_name": "Netherlands",
             "type": [
                 "tourism",
                 "business",
@@ -2610,10 +2535,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 146,
             "sys_id": "THR-26-CNT-1D-CTS-02",
             "name": "Rotterdam",
-            "country_id": 49,
+            "country_sys_id": "THR-26-CNT-1D",
+            "country_name": "Netherlands",
             "type": [
                 "business",
                 "tourism"
@@ -2623,10 +2548,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 147,
             "sys_id": "THR-26-CNT-1D-CTS-03",
             "name": "The Hague",
-            "country_id": 49,
+            "country_sys_id": "THR-26-CNT-1D",
+            "country_name": "Netherlands",
             "type": [
                 "business",
                 "conference"
@@ -2636,10 +2561,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 148,
             "sys_id": "THR-26-CNT-1E-CTS-01",
             "name": "Auckland",
-            "country_id": 50,
+            "country_sys_id": "THR-26-CNT-1E",
+            "country_name": "New Zealand",
             "type": [
                 "business",
                 "tourism",
@@ -2650,10 +2575,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 149,
             "sys_id": "THR-26-CNT-1E-CTS-02",
             "name": "Wellington",
-            "country_id": 50,
+            "country_sys_id": "THR-26-CNT-1E",
+            "country_name": "New Zealand",
             "type": [
                 "business",
                 "tourism"
@@ -2663,10 +2588,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 150,
             "sys_id": "THR-26-CNT-1E-CTS-03",
             "name": "Queenstown",
-            "country_id": 50,
+            "country_sys_id": "THR-26-CNT-1E",
+            "country_name": "New Zealand",
             "type": [
                 "tourism"
             ],
@@ -2675,10 +2600,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 151,
             "sys_id": "THR-26-CNT-1F-CTS-01",
             "name": "Oslo",
-            "country_id": 51,
+            "country_sys_id": "THR-26-CNT-1F",
+            "country_name": "Norway",
             "type": [
                 "business",
                 "tourism",
@@ -2689,10 +2614,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 152,
             "sys_id": "THR-26-CNT-1F-CTS-02",
             "name": "Bergen",
-            "country_id": 51,
+            "country_sys_id": "THR-26-CNT-1F",
+            "country_name": "Norway",
             "type": [
                 "tourism"
             ],
@@ -2701,10 +2626,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 153,
             "sys_id": "THR-26-CNT-1F-CTS-03",
             "name": "Tromso",
-            "country_id": 51,
+            "country_sys_id": "THR-26-CNT-1F",
+            "country_name": "Norway",
             "type": [
                 "tourism"
             ],
@@ -2713,10 +2638,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 154,
             "sys_id": "THR-26-CNT-1G-CTS-01",
             "name": "Muscat",
-            "country_id": 52,
+            "country_sys_id": "THR-26-CNT-1G",
+            "country_name": "Oman",
             "type": [
                 "tourism",
                 "business"
@@ -2726,10 +2651,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 155,
             "sys_id": "THR-26-CNT-1G-CTS-02",
             "name": "Salalah",
-            "country_id": 52,
+            "country_sys_id": "THR-26-CNT-1G",
+            "country_name": "Oman",
             "type": [
                 "tourism"
             ],
@@ -2738,10 +2663,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 156,
             "sys_id": "THR-26-CNT-1G-CTS-03",
             "name": "Nizwa",
-            "country_id": 52,
+            "country_sys_id": "THR-26-CNT-1G",
+            "country_name": "Oman",
             "type": [
                 "tourism"
             ],
@@ -2750,10 +2675,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 157,
             "sys_id": "THR-26-CNT-1H-CTS-01",
             "name": "Karachi",
-            "country_id": 53,
+            "country_sys_id": "THR-26-CNT-1H",
+            "country_name": "Pakistan",
             "type": [
                 "business",
                 "conference"
@@ -2763,10 +2688,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 158,
             "sys_id": "THR-26-CNT-1H-CTS-02",
             "name": "Lahore",
-            "country_id": 53,
+            "country_sys_id": "THR-26-CNT-1H",
+            "country_name": "Pakistan",
             "type": [
                 "tourism",
                 "religious",
@@ -2777,10 +2702,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 159,
             "sys_id": "THR-26-CNT-1H-CTS-03",
             "name": "Islamabad",
-            "country_id": 53,
+            "country_sys_id": "THR-26-CNT-1H",
+            "country_name": "Pakistan",
             "type": [
                 "business"
             ],
@@ -2789,10 +2714,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 160,
             "sys_id": "THR-26-CNT-1I-CTS-01",
             "name": "Lima",
-            "country_id": 54,
+            "country_sys_id": "THR-26-CNT-1I",
+            "country_name": "Peru",
             "type": [
                 "business",
                 "tourism"
@@ -2802,10 +2727,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 161,
             "sys_id": "THR-26-CNT-1I-CTS-02",
             "name": "Cusco",
-            "country_id": 54,
+            "country_sys_id": "THR-26-CNT-1I",
+            "country_name": "Peru",
             "type": [
                 "tourism"
             ],
@@ -2814,10 +2739,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 162,
             "sys_id": "THR-26-CNT-1I-CTS-03",
             "name": "Arequipa",
-            "country_id": 54,
+            "country_sys_id": "THR-26-CNT-1I",
+            "country_name": "Peru",
             "type": [
                 "tourism"
             ],
@@ -2826,10 +2751,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 163,
             "sys_id": "THR-26-CNT-1J-CTS-01",
             "name": "Manila",
-            "country_id": 55,
+            "country_sys_id": "THR-26-CNT-1J",
+            "country_name": "Philippines",
             "type": [
                 "business",
                 "conference"
@@ -2839,10 +2764,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 164,
             "sys_id": "THR-26-CNT-1J-CTS-02",
             "name": "Cebu",
-            "country_id": 55,
+            "country_sys_id": "THR-26-CNT-1J",
+            "country_name": "Philippines",
             "type": [
                 "tourism",
                 "business"
@@ -2852,10 +2777,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 165,
             "sys_id": "THR-26-CNT-1J-CTS-03",
             "name": "Boracay",
-            "country_id": 55,
+            "country_sys_id": "THR-26-CNT-1J",
+            "country_name": "Philippines",
             "type": [
                 "tourism"
             ],
@@ -2864,10 +2789,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 166,
             "sys_id": "THR-26-CNT-1K-CTS-01",
             "name": "Warsaw",
-            "country_id": 56,
+            "country_sys_id": "THR-26-CNT-1K",
+            "country_name": "Poland",
             "type": [
                 "business",
                 "conference",
@@ -2878,10 +2803,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 167,
             "sys_id": "THR-26-CNT-1K-CTS-02",
             "name": "Krakow",
-            "country_id": 56,
+            "country_sys_id": "THR-26-CNT-1K",
+            "country_name": "Poland",
             "type": [
                 "tourism",
                 "education"
@@ -2891,10 +2816,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 168,
             "sys_id": "THR-26-CNT-1K-CTS-03",
             "name": "Gdansk",
-            "country_id": 56,
+            "country_sys_id": "THR-26-CNT-1K",
+            "country_name": "Poland",
             "type": [
                 "tourism",
                 "business"
@@ -2904,10 +2829,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 169,
             "sys_id": "THR-26-CNT-1L-CTS-01",
             "name": "Lisbon",
-            "country_id": 57,
+            "country_sys_id": "THR-26-CNT-1L",
+            "country_name": "Portugal",
             "type": [
                 "tourism",
                 "business",
@@ -2918,10 +2843,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 170,
             "sys_id": "THR-26-CNT-1L-CTS-02",
             "name": "Porto",
-            "country_id": 57,
+            "country_sys_id": "THR-26-CNT-1L",
+            "country_name": "Portugal",
             "type": [
                 "tourism",
                 "education"
@@ -2931,10 +2856,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 171,
             "sys_id": "THR-26-CNT-1L-CTS-03",
             "name": "Faro",
-            "country_id": 57,
+            "country_sys_id": "THR-26-CNT-1L",
+            "country_name": "Portugal",
             "type": [
                 "tourism"
             ],
@@ -2943,10 +2868,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 172,
             "sys_id": "THR-26-CNT-1M-CTS-01",
             "name": "Doha",
-            "country_id": 58,
+            "country_sys_id": "THR-26-CNT-1M",
+            "country_name": "Qatar",
             "type": [
                 "business",
                 "conference",
@@ -2957,10 +2882,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 173,
             "sys_id": "THR-26-CNT-1M-CTS-02",
             "name": "Al Wakrah",
-            "country_id": 58,
+            "country_sys_id": "THR-26-CNT-1M",
+            "country_name": "Qatar",
             "type": [
                 "tourism"
             ],
@@ -2969,10 +2894,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 174,
             "sys_id": "THR-26-CNT-1M-CTS-03",
             "name": "Lusail",
-            "country_id": 58,
+            "country_sys_id": "THR-26-CNT-1M",
+            "country_name": "Qatar",
             "type": [
                 "business",
                 "tourism"
@@ -2982,10 +2907,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 175,
             "sys_id": "THR-26-CNT-1N-CTS-01",
             "name": "Moscow",
-            "country_id": 59,
+            "country_sys_id": "THR-26-CNT-1N",
+            "country_name": "Russia",
             "type": [
                 "business",
                 "tourism",
@@ -2996,10 +2921,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 176,
             "sys_id": "THR-26-CNT-1N-CTS-02",
             "name": "Saint Petersburg",
-            "country_id": 59,
+            "country_sys_id": "THR-26-CNT-1N",
+            "country_name": "Russia",
             "type": [
                 "tourism",
                 "conference"
@@ -3009,10 +2934,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 177,
             "sys_id": "THR-26-CNT-1N-CTS-03",
             "name": "Kazan",
-            "country_id": 59,
+            "country_sys_id": "THR-26-CNT-1N",
+            "country_name": "Russia",
             "type": [
                 "tourism",
                 "religious"
@@ -3022,10 +2947,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 178,
             "sys_id": "THR-26-CNT-1O-CTS-01",
             "name": "Mecca",
-            "country_id": 60,
+            "country_sys_id": "THR-26-CNT-1O",
+            "country_name": "Saudi Arabia",
             "type": [
                 "religious"
             ],
@@ -3034,10 +2959,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 179,
             "sys_id": "THR-26-CNT-1O-CTS-02",
             "name": "Riyadh",
-            "country_id": 60,
+            "country_sys_id": "THR-26-CNT-1O",
+            "country_name": "Saudi Arabia",
             "type": [
                 "business",
                 "conference"
@@ -3047,10 +2972,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 180,
             "sys_id": "THR-26-CNT-1O-CTS-03",
             "name": "Jeddah",
-            "country_id": 60,
+            "country_sys_id": "THR-26-CNT-1O",
+            "country_name": "Saudi Arabia",
             "type": [
                 "tourism",
                 "business"
@@ -3060,10 +2985,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 181,
             "sys_id": "THR-26-CNT-1P-CTS-01",
             "name": "Singapore City",
-            "country_id": 61,
+            "country_sys_id": "THR-26-CNT-1P",
+            "country_name": "Singapore",
             "type": [
                 "business",
                 "conference",
@@ -3074,10 +2999,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 182,
             "sys_id": "THR-26-CNT-1P-CTS-02",
             "name": "Sentosa",
-            "country_id": 61,
+            "country_sys_id": "THR-26-CNT-1P",
+            "country_name": "Singapore",
             "type": [
                 "tourism"
             ],
@@ -3086,10 +3011,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 183,
             "sys_id": "THR-26-CNT-1P-CTS-03",
             "name": "Jurong",
-            "country_id": 61,
+            "country_sys_id": "THR-26-CNT-1P",
+            "country_name": "Singapore",
             "type": [
                 "business",
                 "education"
@@ -3099,10 +3024,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 184,
             "sys_id": "THR-26-CNT-1Q-CTS-01",
             "name": "Johannesburg",
-            "country_id": 62,
+            "country_sys_id": "THR-26-CNT-1Q",
+            "country_name": "South Africa",
             "type": [
                 "business",
                 "conference"
@@ -3112,10 +3037,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 185,
             "sys_id": "THR-26-CNT-1Q-CTS-02",
             "name": "Cape Town",
-            "country_id": 62,
+            "country_sys_id": "THR-26-CNT-1Q",
+            "country_name": "South Africa",
             "type": [
                 "tourism",
                 "education"
@@ -3125,10 +3050,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 186,
             "sys_id": "THR-26-CNT-1Q-CTS-03",
             "name": "Durban",
-            "country_id": 62,
+            "country_sys_id": "THR-26-CNT-1Q",
+            "country_name": "South Africa",
             "type": [
                 "tourism",
                 "conference"
@@ -3138,10 +3063,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 187,
             "sys_id": "THR-26-CNT-1R-CTS-01",
             "name": "Seoul",
-            "country_id": 63,
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
             "type": [
                 "business",
                 "tourism",
@@ -3152,10 +3077,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 188,
             "sys_id": "THR-26-CNT-1R-CTS-02",
             "name": "Busan",
-            "country_id": 63,
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
             "type": [
                 "tourism",
                 "conference"
@@ -3165,10 +3090,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 189,
             "sys_id": "THR-26-CNT-1R-CTS-03",
             "name": "Jeju",
-            "country_id": 63,
+            "country_sys_id": "THR-26-CNT-1R",
+            "country_name": "South Korea",
             "type": [
                 "tourism"
             ],
@@ -3177,10 +3102,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 190,
             "sys_id": "THR-26-CNT-1S-CTS-01",
             "name": "Madrid",
-            "country_id": 64,
+            "country_sys_id": "THR-26-CNT-1S",
+            "country_name": "Spain",
             "type": [
                 "tourism",
                 "business",
@@ -3191,10 +3116,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 191,
             "sys_id": "THR-26-CNT-1S-CTS-02",
             "name": "Barcelona",
-            "country_id": 64,
+            "country_sys_id": "THR-26-CNT-1S",
+            "country_name": "Spain",
             "type": [
                 "tourism",
                 "business",
@@ -3205,10 +3130,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 192,
             "sys_id": "THR-26-CNT-1S-CTS-03",
             "name": "Seville",
-            "country_id": 64,
+            "country_sys_id": "THR-26-CNT-1S",
+            "country_name": "Spain",
             "type": [
                 "tourism",
                 "religious"
@@ -3218,10 +3143,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 193,
             "sys_id": "THR-26-CNT-1T-CTS-01",
             "name": "Colombo",
-            "country_id": 65,
+            "country_sys_id": "THR-26-CNT-1T",
+            "country_name": "Sri Lanka",
             "type": [
                 "business",
                 "tourism"
@@ -3231,10 +3156,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 194,
             "sys_id": "THR-26-CNT-1T-CTS-02",
             "name": "Kandy",
-            "country_id": 65,
+            "country_sys_id": "THR-26-CNT-1T",
+            "country_name": "Sri Lanka",
             "type": [
                 "tourism",
                 "religious"
@@ -3244,10 +3169,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 195,
             "sys_id": "THR-26-CNT-1T-CTS-03",
             "name": "Galle",
-            "country_id": 65,
+            "country_sys_id": "THR-26-CNT-1T",
+            "country_name": "Sri Lanka",
             "type": [
                 "tourism"
             ],
@@ -3256,10 +3181,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 196,
             "sys_id": "THR-26-CNT-1U-CTS-01",
             "name": "Stockholm",
-            "country_id": 66,
+            "country_sys_id": "THR-26-CNT-1U",
+            "country_name": "Sweden",
             "type": [
                 "business",
                 "tourism",
@@ -3270,10 +3195,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 197,
             "sys_id": "THR-26-CNT-1U-CTS-02",
             "name": "Gothenburg",
-            "country_id": 66,
+            "country_sys_id": "THR-26-CNT-1U",
+            "country_name": "Sweden",
             "type": [
                 "business",
                 "education"
@@ -3283,10 +3208,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 198,
             "sys_id": "THR-26-CNT-1U-CTS-03",
             "name": "Malmo",
-            "country_id": 66,
+            "country_sys_id": "THR-26-CNT-1U",
+            "country_name": "Sweden",
             "type": [
                 "tourism",
                 "business"
@@ -3296,10 +3221,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 199,
             "sys_id": "THR-26-CNT-1V-CTS-01",
             "name": "Zurich",
-            "country_id": 67,
+            "country_sys_id": "THR-26-CNT-1V",
+            "country_name": "Switzerland",
             "type": [
                 "business",
                 "conference"
@@ -3309,10 +3234,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 200,
             "sys_id": "THR-26-CNT-1V-CTS-02",
             "name": "Geneva",
-            "country_id": 67,
+            "country_sys_id": "THR-26-CNT-1V",
+            "country_name": "Switzerland",
             "type": [
                 "business",
                 "conference",
@@ -3323,10 +3248,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 201,
             "sys_id": "THR-26-CNT-1V-CTS-03",
             "name": "Lucerne",
-            "country_id": 67,
+            "country_sys_id": "THR-26-CNT-1V",
+            "country_name": "Switzerland",
             "type": [
                 "tourism"
             ],
@@ -3335,10 +3260,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 202,
             "sys_id": "THR-26-CNT-1W-CTS-01",
             "name": "Taipei",
-            "country_id": 68,
+            "country_sys_id": "THR-26-CNT-1W",
+            "country_name": "Taiwan",
             "type": [
                 "business",
                 "tourism",
@@ -3349,10 +3274,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 203,
             "sys_id": "THR-26-CNT-1W-CTS-02",
             "name": "Kaohsiung",
-            "country_id": 68,
+            "country_sys_id": "THR-26-CNT-1W",
+            "country_name": "Taiwan",
             "type": [
                 "tourism",
                 "business"
@@ -3362,10 +3287,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 204,
             "sys_id": "THR-26-CNT-1W-CTS-03",
             "name": "Taichung",
-            "country_id": 68,
+            "country_sys_id": "THR-26-CNT-1W",
+            "country_name": "Taiwan",
             "type": [
                 "education",
                 "business"
@@ -3375,10 +3300,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 205,
             "sys_id": "THR-26-CNT-1X-CTS-01",
             "name": "Bangkok",
-            "country_id": 69,
+            "country_sys_id": "THR-26-CNT-1X",
+            "country_name": "Thailand",
             "type": [
                 "tourism",
                 "business",
@@ -3389,10 +3314,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 206,
             "sys_id": "THR-26-CNT-1X-CTS-02",
             "name": "Phuket",
-            "country_id": 69,
+            "country_sys_id": "THR-26-CNT-1X",
+            "country_name": "Thailand",
             "type": [
                 "tourism"
             ],
@@ -3401,10 +3326,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 207,
             "sys_id": "THR-26-CNT-1X-CTS-03",
             "name": "Chiang Mai",
-            "country_id": 69,
+            "country_sys_id": "THR-26-CNT-1X",
+            "country_name": "Thailand",
             "type": [
                 "tourism",
                 "education"
@@ -3414,10 +3339,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 208,
             "sys_id": "THR-26-CNT-1X-CTS-04",
             "name": "Krabi",
-            "country_id": 69,
+            "country_sys_id": "THR-26-CNT-1X",
+            "country_name": "Thailand",
             "type": [
                 "tourism"
             ],
@@ -3426,10 +3351,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 209,
             "sys_id": "THR-26-CNT-1X-CTS-05",
             "name": "Pattaya",
-            "country_id": 69,
+            "country_sys_id": "THR-26-CNT-1X",
+            "country_name": "Thailand",
             "type": [
                 "tourism"
             ],
@@ -3438,10 +3363,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 210,
             "sys_id": "THR-26-CNT-1Y-CTS-01",
             "name": "Istanbul",
-            "country_id": 70,
+            "country_sys_id": "THR-26-CNT-1Y",
+            "country_name": "Turkey",
             "type": [
                 "tourism",
                 "business",
@@ -3452,10 +3377,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 211,
             "sys_id": "THR-26-CNT-1Y-CTS-02",
             "name": "Ankara",
-            "country_id": 70,
+            "country_sys_id": "THR-26-CNT-1Y",
+            "country_name": "Turkey",
             "type": [
                 "business",
                 "education"
@@ -3465,10 +3390,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 212,
             "sys_id": "THR-26-CNT-1Y-CTS-03",
             "name": "Antalya",
-            "country_id": 70,
+            "country_sys_id": "THR-26-CNT-1Y",
+            "country_name": "Turkey",
             "type": [
                 "tourism"
             ],
@@ -3477,10 +3402,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 213,
             "sys_id": "THR-26-CNT-1Z-CTS-01",
             "name": "Dubai",
-            "country_id": 71,
+            "country_sys_id": "THR-26-CNT-1Z",
+            "country_name": "United Arab Emirates",
             "type": [
                 "business",
                 "tourism",
@@ -3491,10 +3416,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 214,
             "sys_id": "THR-26-CNT-1Z-CTS-02",
             "name": "Abu Dhabi",
-            "country_id": 71,
+            "country_sys_id": "THR-26-CNT-1Z",
+            "country_name": "United Arab Emirates",
             "type": [
                 "business",
                 "conference",
@@ -3505,10 +3430,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 215,
             "sys_id": "THR-26-CNT-1Z-CTS-03",
             "name": "Sharjah",
-            "country_id": 71,
+            "country_sys_id": "THR-26-CNT-1Z",
+            "country_name": "United Arab Emirates",
             "type": [
                 "education",
                 "religious"
@@ -3518,10 +3443,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 216,
             "sys_id": "THR-26-CNT-20-CTS-01",
             "name": "London",
-            "country_id": 72,
+            "country_sys_id": "THR-26-CNT-20",
+            "country_name": "United Kingdom",
             "type": [
                 "tourism",
                 "business",
@@ -3532,10 +3457,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 217,
             "sys_id": "THR-26-CNT-20-CTS-02",
             "name": "Manchester",
-            "country_id": 72,
+            "country_sys_id": "THR-26-CNT-20",
+            "country_name": "United Kingdom",
             "type": [
                 "business",
                 "education"
@@ -3545,10 +3470,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 218,
             "sys_id": "THR-26-CNT-20-CTS-03",
             "name": "Edinburgh",
-            "country_id": 72,
+            "country_sys_id": "THR-26-CNT-20",
+            "country_name": "United Kingdom",
             "type": [
                 "tourism",
                 "conference"
@@ -3558,10 +3483,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 219,
             "sys_id": "THR-26-CNT-21-CTS-01",
             "name": "New York",
-            "country_id": 73,
+            "country_sys_id": "THR-26-CNT-21",
+            "country_name": "United States",
             "type": [
                 "business",
                 "tourism",
@@ -3572,10 +3497,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 220,
             "sys_id": "THR-26-CNT-21-CTS-02",
             "name": "Los Angeles",
-            "country_id": 73,
+            "country_sys_id": "THR-26-CNT-21",
+            "country_name": "United States",
             "type": [
                 "tourism",
                 "business"
@@ -3585,10 +3510,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 221,
             "sys_id": "THR-26-CNT-21-CTS-03",
             "name": "Chicago",
-            "country_id": 73,
+            "country_sys_id": "THR-26-CNT-21",
+            "country_name": "United States",
             "type": [
                 "business",
                 "education"
@@ -3598,10 +3523,10 @@
             "visa_ease": "hard"
         },
         {
-            "id": 222,
             "sys_id": "THR-26-CNT-22-CTS-01",
             "name": "Vatican City",
-            "country_id": 74,
+            "country_sys_id": "THR-26-CNT-22",
+            "country_name": "Vatican City",
             "type": [
                 "religious",
                 "tourism"
@@ -3611,10 +3536,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 223,
             "sys_id": "THR-26-CNT-22-CTS-02",
             "name": "St. Peter's Square",
-            "country_id": 74,
+            "country_sys_id": "THR-26-CNT-22",
+            "country_name": "Vatican City",
             "type": [
                 "religious"
             ],
@@ -3623,10 +3548,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 224,
             "sys_id": "THR-26-CNT-22-CTS-03",
             "name": "Vatican Museums",
-            "country_id": 74,
+            "country_sys_id": "THR-26-CNT-22",
+            "country_name": "Vatican City",
             "type": [
                 "tourism"
             ],
@@ -3635,10 +3560,10 @@
             "visa_ease": "medium"
         },
         {
-            "id": 225,
             "sys_id": "THR-26-CNT-23-CTS-01",
             "name": "Ho Chi Minh City",
-            "country_id": 75,
+            "country_sys_id": "THR-26-CNT-23",
+            "country_name": "Vietnam",
             "type": [
                 "business",
                 "tourism"
@@ -3648,10 +3573,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 226,
             "sys_id": "THR-26-CNT-23-CTS-02",
             "name": "Hanoi",
-            "country_id": 75,
+            "country_sys_id": "THR-26-CNT-23",
+            "country_name": "Vietnam",
             "type": [
                 "tourism",
                 "business"
@@ -3661,10 +3586,10 @@
             "visa_ease": "easy"
         },
         {
-            "id": 227,
             "sys_id": "THR-26-CNT-23-CTS-03",
             "name": "Da Nang",
-            "country_id": 75,
+            "country_sys_id": "THR-26-CNT-23",
+            "country_name": "Vietnam",
             "type": [
                 "tourism"
             ],

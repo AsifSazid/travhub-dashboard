@@ -1,6 +1,18 @@
 {
     "hotels": [
         {
+            "sys_id": "THR-HTL-26-00K003",
+            "country_sys_id": "THR-26-CNT-1O",
+            "country_name": "Saudi Arabia",
+            "city_sys_id": "THR-26-CNT-1O-CTS-01",
+            "city_name": "Mecca",
+            "name": "Hotel Al Arabia",
+            "star_rating": 5,
+            "check_in_time": null,
+            "check_out_time": null,
+            "thumb": null
+        },
+        {
             "sys_id": "THR-HTL-26-00K001",
             "country_sys_id": "THR-26-CNT-1R",
             "country_name": "South Korea",

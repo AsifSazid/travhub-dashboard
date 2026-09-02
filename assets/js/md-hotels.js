@@ -24,15 +24,10 @@ const MdHotels = (() => {
         const sel = document.getElementById('fHCity');
         if (!sel) return;
         sel.innerHTML = '<option value="">Loading...</option>';
-        if (!country_sys_id) {
-            sel.innerHTML = '<option value="">Select city</option>';
-            return;
-        }
-        // First try from countriesCache
+        if (!country_sys_id) { sel.innerHTML = '<option value="">Select city</option>'; return; }
         const country = countriesCache.find(c => c.sys_id === country_sys_id);
         let cities = country?.cities || [];
         if (!cities.length) {
-            // Fallback: fetch from API
             const d = await thApi(`${API_BASE}api/masterdata/countries/get.php?sys_id=${country_sys_id}`);
             cities = d.data?.cities || [];
         }
@@ -47,14 +42,12 @@ const MdHotels = (() => {
                 <div><h1 class="text-2xl font-bold text-[#1A2039]">Hotels</h1><p class="text-sm text-gray-400 mt-0.5">Hotel catalog with room types and rates</p></div>
                 <button id="btnAdd" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-[#1A2039] hover:bg-[#252d4a] text-white transition shadow-sm"><i class="fa-solid fa-plus"></i> Add Hotel</button>
             </div>
-            <!-- Filters -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-5 flex flex-col sm:flex-row gap-3">
                 <div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                     <input id="srch" type="text" placeholder="Search hotel name…" class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#50BC81]"></div>
                 <select id="fltCountry" class="text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#50BC81] bg-white"></select>
                 <div class="flex gap-2">${['active','trash'].map(t=>`<button data-tab="${t}" class="tab-btn px-4 py-2 text-sm font-medium rounded-xl border transition ${t==='active'?'bg-[#1A2039] text-white border-[#1A2039]':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">${t==='active'?'Active':'<i class="fa-solid fa-trash mr-1"></i>Trash'}</button>`).join('')}</div>
             </div>
-            <!-- Grid -->
             <div id="hotelGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-5"></div>
             <div id="tLoading" class="text-center py-16 text-gray-300"><i class="fa-solid fa-spinner fa-spin text-3xl"></i></div>
             <div id="tEmpty" class="hidden text-center py-16 text-gray-300"><i class="fa-solid fa-hotel text-5xl mb-3 block opacity-30"></i><p class="text-sm font-medium">No hotels found</p></div>
@@ -78,7 +71,7 @@ const MdHotels = (() => {
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="th-label">City</label><select id="fHCity" class="th-input"><option value="">Select city</option></select></div>
-                    <div><!-- placeholder --></div>
+                    <div></div>
                 </div>
                 <div><label class="th-label">Hotel Name <span class="text-red-500">*</span></label><input id="fHName" type="text" placeholder="Hotel name" class="th-input"></div>
                 <div class="grid grid-cols-2 gap-4">
@@ -87,10 +80,21 @@ const MdHotels = (() => {
                 </div>
                 <div><label class="th-label">Address</label><input id="fHAddr" type="text" placeholder="Full address" class="th-input"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="th-label">Phone</label><input id="fHPhone" type="text" placeholder="+66 2 xxx xxxx" class="th-input"></div>
+                    <div><label class="th-label">Phone</label><input id="fHPhone" type="text" placeholder="+966 xx xxxx xxxx" class="th-input"></div>
                     <div><label class="th-label">Email</label><input id="fHEmail" type="email" placeholder="info@hotel.com" class="th-input"></div>
                 </div>
                 <div><label class="th-label">Description</label><textarea id="fHDesc" rows="2" class="th-input resize-none" placeholder="Brief hotel description"></textarea></div>
+                <!-- Umrah Toggle -->
+                <div class="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div>
+                        <div class="text-sm font-semibold text-amber-800"><i class="fa-solid fa-kaaba mr-1.5 text-amber-600"></i>Umrah Hotel</div>
+                        <div class="text-xs text-amber-500 mt-0.5">Include this hotel in Umrah package listings</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+                        <input type="checkbox" id="fHUmrah" class="sr-only peer">
+                        <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div>
+                    </label>
+                </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
                 <button onclick="thCloseModal('hotelModal')" class="px-5 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
@@ -99,7 +103,7 @@ const MdHotels = (() => {
           </div>
         </div>
 
-        <!-- Hotel Detail Panel (Room Types + Rates) -->
+        <!-- Hotel Detail Panel -->
         <div id="detailPanel" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div class="w-full max-w-3xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
@@ -154,7 +158,7 @@ const MdHotels = (() => {
                 <input type="hidden" id="fRRSysId"><input type="hidden" id="fRRRoomTypeSysId"><input type="hidden" id="fRRHotelSysId">
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="th-label">Meal Plan</label><select id="fRRMeal" class="th-input">${MEAL_PLANS.map(m=>`<option value="${m}">${m.toUpperCase()}</option>`).join('')}</select></div>
-                    <div><label class="th-label">Currency <span class="text-red-500">*</span></label><input id="fRRCcy" type="text" maxlength="5" placeholder="THB" class="th-input uppercase"></div>
+                    <div><label class="th-label">Currency <span class="text-red-500">*</span></label><input id="fRRCcy" type="text" maxlength="5" placeholder="SAR" class="th-input uppercase"></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="th-label">Valid From <span class="text-red-500">*</span></label><input id="fRRFrom" type="date" class="th-input"></div>
@@ -208,23 +212,32 @@ const MdHotels = (() => {
 
     function hotelCard(h){
         const stars=h.star_rating?'⭐'.repeat(h.star_rating):'';
-        const country = countriesCache.find(c => c.sys_id === h.country_sys_id);
-        const ccy = country?.currency_code || '';
+        const country=countriesCache.find(c=>c.sys_id===h.country_sys_id);
+        const ccy=country?.currency_code||'';
+        const umrahBadge=h.for_umrah?`<span class="umrah-badge absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white shadow-sm"><i class="fa-solid fa-kaaba"></i> Umrah</span>`:'';
         return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition" data-hotel-sys="${h.sys_id}" data-hotel-ccy="${ccy}">
             <div class="h-36 bg-gradient-to-br from-[#1A2039] to-[#2d3a5c] flex items-center justify-center relative">
                 ${h.thumb?`<img src="${h.thumb}" class="w-full h-full object-cover" onerror="this.style.display='none'">`:''}
                 <i class="fa-solid fa-hotel text-4xl text-white/20 absolute"></i>
+                ${umrahBadge}
             </div>
             <div class="p-4">
                 <div class="flex items-start justify-between gap-2 mb-1">
                     <div class="font-semibold text-gray-800 leading-tight">${h.name}</div>
                     <div class="text-sm flex-shrink-0">${stars}</div>
                 </div>
-                <div class="text-xs text-gray-400 mb-3">${h.address?h.address:''}${h.country_name?', '+h.country_name:''}</div>
+                <div class="text-xs text-gray-400 mb-3">${h.address||''}${h.country_name?', '+h.country_name:''}</div>
+                <!-- Umrah toggle row -->
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span class="text-xs text-gray-400 flex items-center gap-1"><i class="fa-solid fa-kaaba text-amber-400"></i> Umrah</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" ${h.for_umrah?'checked':''} onchange="MdHotels._toggleUmrah('${h.sys_id}',this)"
+                            class="sr-only peer">
+                        <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                    </label>
+                </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="MdHotels._detail('${h.sys_id}')" class="flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#1A2039]/10 text-[#1A2039] hover:bg-[#1A2039]/20 transition">
-                        <i class="fa-solid fa-door-open mr-1"></i> Rooms
-                    </button>
+                    <button onclick="MdHotels._detail('${h.sys_id}')" class="flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#1A2039]/10 text-[#1A2039] hover:bg-[#1A2039]/20 transition"><i class="fa-solid fa-door-open mr-1"></i> Rooms</button>
                     <button onclick="MdHotels._edit('${h.sys_id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-blue-500"><i class="fa-solid fa-pen text-xs"></i></button>
                     <button onclick="MdHotels._del('${h.sys_id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-400"><i class="fa-solid fa-trash text-xs"></i></button>
                 </div>
@@ -232,36 +245,26 @@ const MdHotels = (() => {
         </div>`;
     }
 
-    // Hotel CRUD
     async function openHotelForm(sys_id=null){
         ['fHSysId','fHName','fHAddr','fHPhone','fHEmail','fHDesc','fHStars','fHCi','fHCo'].forEach(id=>thSetVal(id,''));
-        thSetVal('fHCountry','');
-        thSetVal('fHCity','');
-        document.getElementById('fHCity').innerHTML = '<option value="">Select city</option>';
+        thSetVal('fHCountry',''); thSetVal('fHCity','');
+        document.getElementById('fHCity').innerHTML='<option value="">Select city</option>';
+        document.getElementById('fHUmrah').checked=false;
         document.getElementById('hotelModalTitle').textContent=sys_id?'Edit Hotel':'Add Hotel';
         if (sys_id){
             thSetVal('fHSysId',sys_id);
             const d=await thApi(`${API_BASE}api/masterdata/hotels/get.php?sys_id=${sys_id}`);
             const h=d.data;
-            thSetVal('fHCountry',h.country_sys_id); 
-            thSetVal('fHStars',h.star_rating||'');
-            thSetVal('fHName',h.name); 
-            thSetVal('fHAddr',h.address||''); 
-            thSetVal('fHPhone',h.phone||'');
-            thSetVal('fHEmail',h.email||''); 
-            thSetVal('fHDesc',h.description||'');
-            thSetVal('fHCi',h.check_in_time||''); 
+            thSetVal('fHCountry',h.country_sys_id); thSetVal('fHStars',h.star_rating||'');
+            thSetVal('fHName',h.name); thSetVal('fHAddr',h.address||'');
+            thSetVal('fHPhone',h.phone||''); thSetVal('fHEmail',h.email||'');
+            thSetVal('fHDesc',h.description||''); thSetVal('fHCi',h.check_in_time||'');
             thSetVal('fHCo',h.check_out_time||'');
-            
-            // Load cities and select saved city
-            if (h.country_sys_id) {
-                await _loadCities(h.country_sys_id);
-                if (h.city_sys_id) thSetVal('fHCity', h.city_sys_id);
-            }
+            document.getElementById('fHUmrah').checked=!!parseInt(h.for_umrah||0);
+            if (h.country_sys_id){await _loadCities(h.country_sys_id); if(h.city_sys_id) thSetVal('fHCity',h.city_sys_id);}
         }
         thOpenModal('hotelModal');
     }
-    
     async function _edit(sys_id){await openHotelForm(sys_id);}
 
     async function saveHotel(){
@@ -270,41 +273,29 @@ const MdHotels = (() => {
         const ciSel=document.getElementById('fHCity');
         const cityName=ciSel?.options[ciSel.selectedIndex]?.text||'';
         const citySysId=thVal('fHCity')||'';
-        
         const body={sys_id:thVal('fHSysId')||undefined,
-            country_sys_id:thVal('fHCountry'),
-            country_name:cName,
-            city_sys_id:citySysId || undefined,
-            city_name:(cityName && cityName!=='Select city' && cityName!=='Loading...') ? cityName : undefined,
-            name:thVal('fHName'),
-            star_rating:thVal('fHStars')||undefined,
-            address:thVal('fHAddr'),
-            phone:thVal('fHPhone'),
-            email:thVal('fHEmail'),
-            description:thVal('fHDesc'),
-            check_in_time:thVal('fHCi'),
-            check_out_time:thVal('fHCo'),
-            amenities:[],
-            images:[]};
+            country_sys_id:thVal('fHCountry'),country_name:cName,
+            city_sys_id:citySysId||undefined,
+            city_name:(cityName&&cityName!=='Select city'&&cityName!=='Loading...')?cityName:undefined,
+            name:thVal('fHName'),star_rating:thVal('fHStars')||undefined,
+            address:thVal('fHAddr'),phone:thVal('fHPhone'),email:thVal('fHEmail'),
+            description:thVal('fHDesc'),check_in_time:thVal('fHCi'),check_out_time:thVal('fHCo'),
+            for_umrah:document.getElementById('fHUmrah').checked?1:0,
+            amenities:[],images:[]};
         if (!body.name) return thToast('Hotel name required','error');
         if (!body.country_sys_id) return thToast('Country required','error');
-        
         document.getElementById('btnHSave').disabled=true;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/save.php`,'POST',body);
         document.getElementById('btnHSave').disabled=false;
         if (!res.success) return thToast(res.message||'Error','error');
-        thToast(res.message||'Saved!'); 
-        thCloseModal('hotelModal'); 
-        load();
+        thToast(res.message||'Saved!'); thCloseModal('hotelModal'); load();
     }
-    
     async function _del(sys_id){
         if (!thConfirm('Delete this hotel?')) return;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/delete.php`,'POST',{sys_id});
         thToast(res.message||'Deleted'); load();
     }
 
-    // Detail panel - room types + rates
     async function _detail(sys_id){
         st.viewHotel=sys_id;
         const d=await thApi(`${API_BASE}api/masterdata/hotels/get.php?sys_id=${sys_id}`);
@@ -347,22 +338,21 @@ const MdHotels = (() => {
                 <span class="font-medium text-gray-700">${r.meal_plan.toUpperCase()}</span>
                 <span class="text-gray-500">${r.valid_from} → ${r.valid_to}</span>
                 <span class="font-mono text-[#1A2039] font-semibold">${r.currency_code} ${Number(r.sell_price).toLocaleString()}/night</span>
-                <button onclick="MdHotels._delRate('${r.sys_id}','${room_type_sys_id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-times text-xs"></i></button>
+                <button onclick="MdHotels._delRate('${r.sys_id}','${room_type_sys_id}')" class="text-red-400 hover:text-red-600 ml-2"><i class="fa-solid fa-times text-xs"></i></button>
             </div>`).join('')}</div>`;
     }
 
     function openRoomTypeForm(sys_id=null,hotel_sys_id){
         ['fRTSysId','fRTName','fRTBed','fRTDesc'].forEach(id=>thSetVal(id,''));
         thSetVal('fRTAdults','2'); thSetVal('fRTChildren','0'); thSetVal('fRTSize','');
-        thSetVal('fRTHotelSysId', hotel_sys_id||'');
+        thSetVal('fRTHotelSysId',hotel_sys_id||'');
         document.getElementById('rtModalTitle').textContent=sys_id?'Edit Room Type':'Add Room Type';
         if (sys_id) thSetVal('fRTSysId',sys_id);
         thOpenModal('rtModal');
     }
-    
+
     async function saveRoomType(){
         const hotel_sys_id=thVal('fRTHotelSysId');
-        const hotelName = document.getElementById('detailTitle')?.textContent || '';
         const body={sys_id:thVal('fRTSysId')||undefined,hotel_sys_id,hotel_name:'',
             room_name:thVal('fRTName'),description:thVal('fRTDesc'),bed_config:thVal('fRTBed'),
             max_adults:parseInt(thVal('fRTAdults')||2),max_children:parseInt(thVal('fRTChildren')||0),
@@ -374,36 +364,27 @@ const MdHotels = (() => {
         if (!res.success) return thToast(res.message||'Error','error');
         thToast(res.message||'Saved!'); thCloseModal('rtModal'); await loadRoomTypes(hotel_sys_id);
     }
-    
+
     async function _delRoomType(sys_id){
         if (!thConfirm('Delete this room type?')) return;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-type-delete.php`,'POST',{sys_id});
         thToast(res.message||'Deleted'); await loadRoomTypes(st.viewHotel);
     }
-    
-    function _addRate(room_type_sys_id, hotel_sys_id){
+
+    function _addRate(room_type_sys_id,hotel_sys_id){
         ['fRRSysId'].forEach(id=>thSetVal(id,''));
-        thSetVal('fRRRoomTypeSysId',room_type_sys_id);
-        thSetVal('fRRHotelSysId',hotel_sys_id);
-        thSetVal('fRRMeal','bb');
-        thSetVal('fRRCost','');
-        thSetVal('fRRSell','');
-        thSetVal('fRRMkType','percent');
-        thSetVal('fRRMkVal','0');
-
-        // ── currency autofill:
-        const hotelEl = document.querySelector(`[data-hotel-sys="${hotel_sys_id}"]`);
-        const autoCcy = hotelEl?.dataset?.hotelCcy || '';
-        thSetVal('fRRCcy', autoCcy);
-        // ──────────────────────
-
+        thSetVal('fRRRoomTypeSysId',room_type_sys_id); thSetVal('fRRHotelSysId',hotel_sys_id);
+        thSetVal('fRRMeal','bb'); thSetVal('fRRCost',''); thSetVal('fRRSell','');
+        thSetVal('fRRMkType','percent'); thSetVal('fRRMkVal','0');
+        const hotelEl=document.querySelector(`[data-hotel-sys="${hotel_sys_id}"]`);
+        thSetVal('fRRCcy',hotelEl?.dataset?.hotelCcy||'');
         const today=new Date().toISOString().split('T')[0];
         const nextYear=new Date(Date.now()+365*86400000).toISOString().split('T')[0];
         thSetVal('fRRFrom',today); thSetVal('fRRTo',nextYear);
         document.getElementById('rrModalTitle').textContent='Add Room Rate';
         thOpenModal('rrModal');
     }
-    
+
     async function saveRoomRate(){
         const body={sys_id:thVal('fRRSysId')||undefined,
             room_type_sys_id:thVal('fRRRoomTypeSysId'),hotel_sys_id:thVal('fRRHotelSysId'),
@@ -411,19 +392,44 @@ const MdHotels = (() => {
             net_cost:parseFloat(thVal('fRRCost')||0),sell_price:parseFloat(thVal('fRRSell')||0),
             markup_type:thVal('fRRMkType'),markup_value:parseFloat(thVal('fRRMkVal')||0),
             valid_from:thVal('fRRFrom'),valid_to:thVal('fRRTo'),occupancy_basis:'per_room'};
-        if (!body.currency_code || body.net_cost <= 0) return thToast('Currency and net cost (>0) required','error');
+        if (!body.currency_code||body.net_cost<=0) return thToast('Currency and net cost (>0) required','error');
         document.getElementById('btnRRSave').disabled=true;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-rate-save.php`,'POST',body);
         document.getElementById('btnRRSave').disabled=false;
         if (!res.success) return thToast(res.message||'Error','error');
         thToast(res.message||'Rate saved!'); thCloseModal('rrModal'); await loadRates(body.room_type_sys_id);
     }
-    
-    async function _delRate(sys_id, room_type_sys_id){
+
+    async function _delRate(sys_id,room_type_sys_id){
         if (!thConfirm('Delete this rate?')) return;
         const res=await thApi(`${API_BASE}api/masterdata/hotels/room-rate-delete.php`,'POST',{sys_id});
         thToast(res.message||'Deleted'); await loadRates(room_type_sys_id);
     }
 
-    return {init,_page,_edit,_del,_detail,_addRate,_delRoomType,_delRate,_loadCities};
+    async function _toggleUmrah(sys_id, checkbox) {
+        const val = checkbox.checked ? 1 : 0;
+        const res = await thApi(`${API_BASE}api/masterdata/hotels/save.php`, 'POST', {
+            sys_id, for_umrah: val, _patch: 'umrah'
+        });
+        if (!res.success) {
+            checkbox.checked = !checkbox.checked; // revert
+            thToast(res.message || 'Error', 'error');
+        } else {
+            thToast(val ? 'Marked as Umrah hotel' : 'Umrah removed');
+            // update badge without full reload
+            const card = document.querySelector(`[data-hotel-sys="${sys_id}"]`);
+            const img  = card?.querySelector('.h-36');
+            if (img) {
+                const existing = img.querySelector('.umrah-badge');
+                if (existing) existing.remove();
+                if (val) {
+                    img.insertAdjacentHTML('beforeend',
+                        `<span class="umrah-badge absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white shadow-sm"><i class="fa-solid fa-kaaba"></i> Umrah</span>`
+                    );
+                }
+            }
+        }
+    }
+
+    return {init,_page,_edit,_del,_detail,_addRate,_delRoomType,_delRate,_loadCities,_toggleUmrah};
 })();

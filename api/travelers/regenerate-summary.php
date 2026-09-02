@@ -77,12 +77,15 @@ $docContext = buildDocumentContext($documents);
 // ── Old summary history তে archive করো ───────────────────────────────────────
 date_default_timezone_set('Asia/Dhaka');
 $now        = date('d-m-Y H:i');
-// summary JSON বা plain text হতে পারে — extract করো
+// summary JSON বা plain text হতে পারে — recursive extractor দিয়ে বের করো
+// (আগের bug এর কারণে DB-তে multi-level nested JSON থেকে যেতে পারে —
+// একবারের unwrap দিয়ে সেটা পুরোপুরি পরিষ্কার হয় না, আর dirty data যদি
+// prompt-এ EXISTING PROFILE হিসেবে পাঠানো হয়, Gemini সেই broken pattern
+// দেখেই নিজের নতুন output-এও নকল করে ফেলে — এটাই এই বাগ বারবার ফিরে
+// আসার আসল কারণ)
 $rawSummary = trim($traveler['summary'] ?? '');
 $decoded    = json_decode($rawSummary, true);
-$oldSummary = is_array($decoded) && isset($decoded['summary'])
-    ? trim($decoded['summary'])
-    : $rawSummary;
+$oldSummary = extractPlainSummary($decoded, $rawSummary);
 
 $history = json_decode($traveler['history_summary'] ?? '[]', true) ?: [];
 
@@ -133,15 +136,85 @@ jsonOut([
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Gemini/DB থেকে আসা possibly-nested/possibly-malformed JSON string থেকে
+ * plain prose summary বের করে আনে। তিন স্তরে চেষ্টা করে:
+ *   1. $parsed যদি ইতিমধ্যে decode হওয়া array হয় — nested {"summary":...}
+ *      থাকলে recursively ভেতরে ঢুকে plain string বের করে আনে
+ *   2. $parsed null হলে (json_decode fail করেছে, সম্ভবত output truncated/
+ *      malformed ছিল) — raw string-এ regex দিয়ে "summary":"..." pattern
+ *      খুঁজে বের করার চেষ্টা করে, nested হলে সেটাও আবার unwrap করে
+ *   3. দুটোই fail করলে raw fallback string-ই রিটার্ন করে (শেষ উপায়)
+ */
+function extractPlainSummary($parsed, string $fallbackClean): string
+{
+    $value = $parsed;
+    $depth = 0;
+
+    while (is_array($value) && isset($value['summary']) && $depth < 5) {
+        $value = $value['summary'];
+        $depth++;
+
+        if (is_string($value)) {
+            $maybeJson = json_decode($value, true);
+            if (is_array($maybeJson) && isset($maybeJson['summary'])) {
+                $value = $maybeJson;
+            } else {
+                break;
+            }
+        }
+    }
+
+    if (is_string($value) && trim($value) !== '') {
+        return trim($value);
+    }
+
+    // json_decode ব্যর্থ হলে (truncated/malformed JSON) regex fallback
+    $text = $fallbackClean;
+    for ($i = 0; $i < 5; $i++) {
+        if (preg_match('/"summary"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/s', $text, $m)) {
+            $inner = stripcslashes($m[1]);
+            if (preg_match('/^\s*\{.*"summary"\s*:/s', $inner)) {
+                $text = $inner;
+                continue;
+            }
+            return trim($inner);
+        }
+        break;
+    }
+
+    return trim($fallbackClean);
+}
+
+/**
  * Documents থেকে Gemini এর জন্য context string বানাও
  */
 function buildDocumentContext(array $documents): string
 {
     $lines = [];
+    $today = strtotime(date('Y-m-d')); // date_default_timezone_set('Asia/Dhaka') আগেই সেট করা আছে
+
     foreach ($documents as $doc) {
         $line = "[{$doc['doc_type']}]";
         if ($doc['doc_number'])  $line .= " #{$doc['doc_number']}";
-        if ($doc['expiry_date']) $line .= " (expires {$doc['expiry_date']})";
+
+        // expiry_date শুধু raw তারিখ হিসেবে না, স্পষ্টভাবে EXPIRED/valid
+        // status যোগ করে দেওয়া হচ্ছে — Gemini নিজে "আজকের তারিখ" জানে না,
+        // তাই raw তারিখ দেখে expired কিনা বুঝতে পারে না
+        if ($doc['expiry_date']) {
+            $expTs = strtotime($doc['expiry_date']);
+            if ($expTs) {
+                $daysLeft = (int)floor(($expTs - $today) / 86400);
+                if ($daysLeft < 0) {
+                    $line .= " (expired on {$doc['expiry_date']}, " . abs($daysLeft) . " days ago — EXPIRED)";
+                } elseif ($daysLeft <= 30) {
+                    $line .= " (expires {$doc['expiry_date']}, only {$daysLeft} days left — EXPIRING SOON)";
+                } else {
+                    $line .= " (expires {$doc['expiry_date']}, valid)";
+                }
+            } else {
+                $line .= " (expires {$doc['expiry_date']})";
+            }
+        }
         if ($doc['issue_date'])  $line .= " (issued {$doc['issue_date']})";
         $line .= ": " . trim($doc['summary']);
         $lines[] = $line;
@@ -177,19 +250,28 @@ Task: Write a concise, factual, third-person profile narrative of this traveler 
 - Merge existing profile with new document information
 - Keep everything still true, add what is new, correct anything superseded
 - Include: identity, passport details, visa status, travel history, financial standing if known
+- If any document is marked EXPIRED or EXPIRING SOON above, explicitly mention that in the summary (e.g. "passport expired on X" or "visa expiring in N days") — this is operationally important for the agency
 - Do NOT invent facts. Use only what the documents state.
 - Write in neutral third-person, 3-6 sentences.
+- The "summary" value must be PLAIN prose text only — never JSON, never a nested {"summary": ...} object, even if EXISTING PROFILE above happens to look like one (that would be a data-formatting bug, not the intended shape — extract only the prose meaning from it)
 - Return ONLY a JSON object:
 
-{ "summary": "...the updated profile narrative..." }
+{ "summary": "...the updated profile narrative as plain prose..." }
 PROMPT;
 
     $payload = json_encode([
         'contents' => [['parts' => [['text' => $prompt]]]],
         'generationConfig' => [
             'responseMimeType' => 'application/json',
+            'responseSchema'   => [
+                'type'       => 'OBJECT',
+                'properties' => [
+                    'summary' => ['type' => 'STRING'],
+                ],
+                'required'   => ['summary'],
+            ],
             'temperature'      => 0.2,
-            'maxOutputTokens'  => 1024,
+            'maxOutputTokens'  => 4096,
         ],
     ], JSON_UNESCAPED_UNICODE);
 
@@ -217,37 +299,33 @@ PROMPT;
     $body       = json_decode($raw, true);
     $text       = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
     $tokenCount = (int)($body['usageMetadata']['totalTokenCount'] ?? 0);
+    $finishReason = $body['candidates'][0]['finishReason'] ?? '';
 
-    // Raw Gemini text log করো
-    error_log('[regenerate-summary] raw text: ' . substr($text, 0, 500));
+    // Raw Gemini text log করো — finishReason দিয়ে বোঝা যাবে output
+    // truncate হয়েছিল কিনা (MAX_TOKENS মানে output কেটে গেছে)
+    error_log('[regenerate-summary] finishReason: ' . $finishReason);
+    error_log('[regenerate-summary] raw text: ' . substr($text, 0, 800));
 
     $clean  = trim(preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $text));
     $parsed = json_decode($clean, true);
 
     error_log('[regenerate-summary] parsed type: ' . gettype($parsed));
-    error_log('[regenerate-summary] parsed: ' . substr(print_r($parsed, true), 0, 300));
 
-    // Plain text extract
-    if (is_array($parsed) && isset($parsed['summary'])) {
-        $summaryRaw = $parsed['summary'];
-        // Double parse — nested JSON হলে
-        if (is_string($summaryRaw)) {
-            $inner = json_decode($summaryRaw, true);
-            if (is_array($inner) && isset($inner['summary'])) {
-                $summaryRaw = $inner['summary'];
-            }
-        }
-        $summary = trim((string)$summaryRaw);
-    } elseif (is_string($parsed)) {
-        $summary = trim($parsed);
-    } else {
-        $summary = trim($clean);
-    }
+    $summary = extractPlainSummary($parsed, $clean);
 
     error_log('[regenerate-summary] final summary: ' . substr($summary, 0, 200));
 
     if (!$summary) {
         return ['success' => false, 'error' => 'Empty summary from Gemini'];
+    }
+
+    // Safety net: extraction এর পরও যদি ফলাফল JSON-এর মতো দেখায় (শুরুতে
+    // { এবং তাতে "summary" শব্দ আছে), সেটা কখনোই UI-তে raw দেখানো ঠিক না —
+    // বরং fail করে দেওয়া ভালো, যাতে অন্তত পুরনো summary অক্ষত থাকে এবং
+    // ইউজার retry করতে পারে, dirty data DB-তে না জমে
+    if (preg_match('/^\s*\{.*"summary"\s*:/s', $summary)) {
+        error_log('[regenerate-summary] extraction still looks like JSON, failing safely');
+        return ['success' => false, 'error' => 'Could not extract clean summary text (Gemini output may have been truncated — try again)'];
     }
 
     return [

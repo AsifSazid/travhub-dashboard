@@ -97,6 +97,18 @@ try {
         
         // Build target path
         $targetDir = $server_traveler_path . '/' . $targetSubDir;
+
+        // ⚠️ একই traveler-এর জন্য এই endpoint দুবার call হলে (double-submit,
+        // network retry, ইত্যাদি) fixed filename ($cleanFileName) এর কারণে
+        // দ্বিতীয় upload প্রথমটাকে silently overwrite করে দিতে পারে —
+        // commit-documents.php তে ঠিক এই কারণেই একবার আসল passport ফাইল
+        // হারিয়ে গিয়েছিল। তাই লোকাল ও SMB দুই জায়গাতেই আগে থেকে ফাইল
+        // থাকলে timestamp suffix যোগ করে unique নাম বানানো হচ্ছে।
+        if (file_exists($targetDir . '/' . $cleanFileName)) {
+            error_log("[store.php] Filename collision detected for {$cleanFileName} in {$targetDir} — adding suffix to prevent overwrite");
+            $cleanFileName = "{$stem}_p1_" . date('His') . ".{$ext}";
+        }
+
         $localTargetPath = $targetDir . '/' . $cleanFileName;
         
         // Ensure target directory exists
@@ -117,7 +129,26 @@ try {
                     try {
                         $omv = new OMV_SMB_Manager();
                         $cloudTargetPath = rtrim($cloud_traveler_path, '/') . "/{$targetSubDir}/{$cleanFileName}";
-                        
+
+                        // SMB-তেও একই নামে ফাইল আগে থেকে থাকলে (local-এ না
+                        // থাকলেও, যেমন কেউ সরাসরি SMB থেকে ফাইল ডিলিট করে
+                        // থাকলে) suffix যোগ করে unique করো
+                        try {
+                            $smbBaseDir = rtrim($cloud_traveler_path, '/') . "/{$targetSubDir}";
+                            $existing = $omv->list_directory($smbBaseDir);
+                            $existingNames = array_map(
+                                fn($f) => is_array($f) ? ($f['name'] ?? '') : (string)$f,
+                                $existing ?: []
+                            );
+                            if (in_array($cleanFileName, $existingNames, true)) {
+                                error_log("[store.php] SMB filename collision for {$cleanFileName} — adding suffix");
+                                $cleanFileName = "{$stem}_p1_" . date('His') . "_smb.{$ext}";
+                                $cloudTargetPath = rtrim($cloud_traveler_path, '/') . "/{$targetSubDir}/{$cleanFileName}";
+                            }
+                        } catch (Throwable $e) {
+                            // list_directory ব্যর্থ হলে original নামেই এগোও (fail-open)
+                        }
+
                         $pasteStatus = $omv->paste_file($localTargetPath, $cloudTargetPath);
                         
                         if ($pasteStatus === true) {
