@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { ob_clean(); http_response_code(2
 require_once '../../server/db_connection.php';
 require_once '../../server/generate_meta_data.php';
 require_once '../../server/smb_upload_handler.php';
+require_once '../../server/traveler_group_sync.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -161,6 +162,10 @@ try {
             $pdo->prepare("UPDATE works SET traveler_sys_ids = ?, meta_data = ? WHERE sys_id = ?")
                 ->execute([json_encode($refs, JSON_UNESCAPED_UNICODE), $meta, $workSysId]);
 
+            // এই work-এর সাথে bind করা Travel Group-এও sync করো (group না
+            // থাকলে চুপচাপ কিছু হবে না — পুরনো work এর ক্ষেত্রে)
+            syncWorkTravelGroupMember($pdo, $workSysId, $travelerSysId, 'link', $userName);
+
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Traveler linked', 'traveler' => $travelerRef, 'traveler_sys_ids' => $refs]);
             break;
@@ -182,6 +187,9 @@ try {
             $meta = buildMetaData($work['meta_data'], $userName);
             $pdo->prepare("UPDATE works SET traveler_sys_ids = ?, meta_data = ? WHERE sys_id = ?")
                 ->execute([json_encode($refs, JSON_UNESCAPED_UNICODE), $meta, $workSysId]);
+
+            // এই work-এর সাথে bind করা Travel Group থেকেও সরিয়ে দাও
+            syncWorkTravelGroupMember($pdo, $workSysId, $travelerSysId, 'unlink', $userName);
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Traveler removed', 'traveler_sys_ids' => $refs]);

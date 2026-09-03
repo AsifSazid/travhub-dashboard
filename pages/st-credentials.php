@@ -6,7 +6,7 @@
  */
 ?>
 
-<div class="h-full flex flex-col overflow-hidden">
+<div class="flex flex-col overflow-hidden" style="height: calc(100vh - 260px); min-height: 400px;">
 
     <div class="flex items-center justify-between mb-3 flex-shrink-0">
         <h3 class="text-sm font-semibold text-gray-700">Credentials</h3>
@@ -102,17 +102,24 @@
     // ── Load ──────────────────────────────────────────────────────────────────
     async function loadCredentials() {
         try {
-            const res  = await fetch(`/api/travelers/get_info.php?traveler_id=${TRAVELER_ID}`);
+            const res  = await fetch(`/api/travelers/credentials.php?traveler_id=${TRAVELER_ID}`, { credentials: 'include' });
             const data = await res.json();
             document.getElementById('credLoading').classList.add('hidden');
 
-            if (!data.success) return;
+            if (!data.success) { showCredError(data.message || 'Load failed'); return; }
 
-            credentials = (data.others_info && data.others_info.credentials) || [];
+            credentials = data.credentials || []; // password এখানে ইতিমধ্যে decrypt করা আসে
             renderCredentials();
         } catch (err) {
             document.getElementById('credLoading').classList.add('hidden');
+            showCredError(err.message);
         }
+    }
+
+    function showCredError(msg) {
+        const l = document.getElementById('credLoading');
+        l.innerHTML = `<span class="text-red-500 text-sm">Error: ${escHtml(msg)}</span>`;
+        l.classList.remove('hidden');
     }
 
     function renderCredentials() {
@@ -136,24 +143,25 @@
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-gray-400 w-16">Username</span>
                                 <span class="text-xs font-mono text-gray-700">${escHtml(cred.username)}</span>
-                                <button onclick="copyText('${escHtml(cred.username)}')"
+                                <button onclick="copyCred(${idx}, 'username', this)" title="Copy username"
                                         class="text-gray-300 hover:text-gray-600">
                                     <i class="fas fa-copy text-xs"></i>
                                 </button>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-gray-400 w-16">Password</span>
-                                <span class="text-xs font-mono text-gray-700" id="credPass_${idx}">••••••••</span>
-                                <button onclick="toggleShow(${idx}, '${escHtml(cred.password)}')"
+                                <span class="text-xs font-mono text-gray-700 select-all" id="credPass_${idx}">••••••••</span>
+                                <button onclick="toggleShow(${idx})" title="Show / hide"
                                         class="text-gray-300 hover:text-gray-600">
-                                    <i class="fas fa-eye text-xs"></i>
+                                    <i class="fas fa-eye text-xs" id="credEye_${idx}"></i>
                                 </button>
-                                <button onclick="copyText('${escHtml(cred.password)}')"
+                                <button onclick="copyCred(${idx}, 'password', this)" title="Copy password"
                                         class="text-gray-300 hover:text-gray-600">
                                     <i class="fas fa-copy text-xs"></i>
                                 </button>
                             </div>
                             ${cred.notes ? `<p class="text-xs text-gray-400 mt-1">${escHtml(cred.notes)}</p>` : ''}
+                            ${cred.updated_at ? `<p class="text-[10px] text-gray-300 mt-1">Updated ${escHtml(cred.updated_at)}</p>` : ''}
                         </div>
                     </div>
                     <div class="flex flex-col gap-1">
@@ -183,7 +191,7 @@
             return;
         }
 
-        const entry = { portal, url, username, password, notes };
+        const entry = { portal, url, username, password, notes, updated_at: new Date().toLocaleString('en-GB') };
 
         if (editIdx >= 0) {
             credentials[editIdx] = entry;
@@ -191,7 +199,8 @@
             credentials.push(entry);
         }
 
-        await persistCredentials();
+        const ok = await persistCredentials();
+        if (!ok) { alert('Save failed — server did not confirm'); return; }
         closeCredModal();
         renderCredentials();
         document.getElementById('credEmpty').classList.add('hidden');
@@ -210,15 +219,23 @@
     }
 
     async function persistCredentials() {
-        await fetch('/api/travelers/update_info.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                traveler_id: TRAVELER_ID,
-                category: 'others_info',
-                data: { credentials },
-            }),
-        });
+        try {
+            const res = await fetch('/api/travelers/credentials.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    traveler_id: TRAVELER_ID,
+                    credentials: credentials, // password এখানে plaintext — server-side এ encrypt হবে
+                }),
+            });
+            const d = await res.json();
+            if (!d.success) console.error('[credentials] save failed:', d.message);
+            return !!d.success;
+        } catch (e) {
+            console.error('[credentials] save error:', e);
+            return false;
+        }
     }
 
     // ── Modal ─────────────────────────────────────────────────────────────────
@@ -261,15 +278,29 @@
         }
     };
 
-    window.toggleShow = function(idx, password) {
-        const el = document.getElementById(`credPass_${idx}`);
-        el.textContent = el.textContent === '••••••••' ? password : '••••••••';
+    // password DOM attribute-এ না রেখে সরাসরি credentials[] থেকে পড়া হয় —
+    // quote/backslash ভাঙে না, Inspect করলেও plaintext দেখা যায় না
+    window.toggleShow = function(idx) {
+        const el  = document.getElementById(`credPass_${idx}`);
+        const eye = document.getElementById(`credEye_${idx}`);
+        const hidden = el.textContent === '••••••••';
+        el.textContent = hidden ? (credentials[idx]?.password || '') : '••••••••';
+        eye.className  = hidden ? 'fas fa-eye-slash text-xs' : 'fas fa-eye text-xs';
     };
 
-    window.copyText = function(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            // brief visual feedback
-        });
+    window.copyCred = async function(idx, field, btn) {
+        const text = credentials[idx]?.[field] || '';
+        if (!text) return;
+        try {
+            window.focus();
+            await new Promise(r => setTimeout(r, 100)); // clipboard user-gesture quirk
+            await navigator.clipboard.writeText(text);
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check text-xs text-green-500"></i>';
+            setTimeout(() => btn.innerHTML = orig, 1200);
+        } catch (e) {
+            alert('Copy failed: ' + e.message);
+        }
     };
 
     function escHtml(s) {

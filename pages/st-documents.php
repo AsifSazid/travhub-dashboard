@@ -12,6 +12,10 @@
     <div class="flex items-center justify-between mb-3 flex-shrink-0">
         <h3 class="text-sm font-semibold text-gray-700">Documents</h3>
         <div class="flex items-center gap-2">
+            <button id="deletedToggleBtn" onclick="toggleDeletedView()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
+                <i class="fas fa-trash-restore"></i> Deleted
+            </button>
             <button onclick="togglePropsPanel()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
                 <i class="fas fa-info-circle"></i> Properties
@@ -92,19 +96,25 @@
     let allDocs = {};       // smb_folder → docs[]
     let selectedFolder = null;
     let selectedDoc    = null;
+    let viewingDeleted = false; // true হলে soft-deleted docs দেখাচ্ছে (restore view)
 
     // ── Load ──────────────────────────────────────────────────────────────────
     async function load() {
         try {
-            const res  = await fetch(`/api/travelers/list-documents.php?traveler_sys_id=${TRAVELER_ID}&include_pages=1&group_by=smb_folder`);
+            const status = viewingDeleted ? 'deleted' : 'active';
+            const res  = await fetch(`/api/travelers/list-documents.php?traveler_sys_id=${TRAVELER_ID}&include_pages=1&group_by=smb_folder&status=${status}`);
             const data = await res.json();
 
             document.getElementById('docsLoading').classList.add('hidden');
 
             if (!data.success) return;
 
+            document.getElementById('docsExplorer').classList.add('hidden');
+            document.getElementById('docsEmpty').classList.add('hidden');
             if (data.total_docs === 0) {
-                document.getElementById('docsEmpty').classList.remove('hidden');
+                const e = document.getElementById('docsEmpty');
+                e.querySelector('p.font-medium').textContent = viewingDeleted ? 'No deleted documents' : 'No documents uploaded yet';
+                e.classList.remove('hidden');
                 return;
             }
 
@@ -256,6 +266,27 @@
         closeContextMenu();
         selectDoc(doc); // highlight + properties panel (খোলা থাকলে) sync করে দেয়
 
+        // Deleted view — শুধু View + Restore
+        if (viewingDeleted) {
+            const pagesD = doc.pages || [];
+            const m = document.createElement('div');
+            m.id = 'fileContextMenu';
+            m.className = 'fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1 text-xs w-48';
+            m.style.left = `${e.clientX}px`; m.style.top = `${e.clientY}px`;
+            m.innerHTML = `
+                <button onclick="closeContextMenu(); openDocViewer('${doc.sys_id}', ${escHtml(JSON.stringify(pagesD.map(p=>p.url).filter(Boolean)))})"
+                    class="w-full text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 flex items-center gap-2">
+                    <i class="fas fa-eye w-3 text-gray-500"></i> View
+                </button>
+                <button onclick="closeContextMenu(); restoreDoc('${doc.sys_id}')"
+                    class="w-full text-left px-3 py-1.5 hover:bg-green-50 text-green-700 flex items-center gap-2">
+                    <i class="fas fa-trash-restore w-3"></i> Restore
+                </button>`;
+            document.body.appendChild(m);
+            setTimeout(() => document.addEventListener('click', closeContextMenu, { once: true }), 0);
+            return;
+        }
+
         const pages = doc.pages || [];
         const isPassport = doc.doc_type === 'passport';
 
@@ -308,6 +339,36 @@
         // menu-র বাইরে click করলে বন্ধ হয়ে যাবে
         setTimeout(() => document.addEventListener('click', closeContextMenu, { once: true }), 0);
     }
+
+    window.toggleDeletedView = function() {
+        viewingDeleted = !viewingDeleted;
+        const btn = document.getElementById('deletedToggleBtn');
+        btn.className = viewingDeleted
+            ? 'inline-flex items-center gap-1.5 px-3 py-1.5 border border-red-300 bg-red-50 text-red-700 text-xs rounded-lg'
+            : 'inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50';
+        btn.innerHTML = viewingDeleted
+            ? '<i class="fas fa-arrow-left"></i> Back to Documents'
+            : '<i class="fas fa-trash-restore"></i> Deleted';
+        hideProps();
+        document.getElementById('docsLoading').classList.remove('hidden');
+        load();
+    };
+
+    window.restoreDoc = function(sysId) {
+        if (!confirm('এই document restore করবেন? আবার Documents tab-এ দেখা যাবে।')) return;
+        fetch('/api/travelers/restore-document.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ sys_id: sysId })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) { hideProps(); load(); }
+            else alert('Restore ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
+        })
+        .catch(err => alert('Restore এ সমস্যা: ' + err.message));
+    };
 
     window.closeContextMenu = function() {
         document.getElementById('fileContextMenu')?.remove();
@@ -441,6 +502,14 @@
             </div>
 
             <!-- File actions — right-click context menu-এও একই action গুলো আছে -->
+            ${viewingDeleted ? `
+            <div class="mt-4 pt-3 border-t border-gray-200 space-y-1.5">
+                <p class="text-[10px] text-red-500 px-2">This document is deleted</p>
+                <button onclick="restoreDoc('${doc.sys_id}')"
+                    class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-green-50 text-green-700 flex items-center gap-2">
+                    <i class="fas fa-trash-restore w-3"></i> Restore
+                </button>
+            </div>` : `
             <div class="mt-4 pt-3 border-t border-gray-200 space-y-1.5">
                 <button onclick="openDocViewer('${doc.sys_id}', ${escHtml(JSON.stringify(pages.map(p=>p.url).filter(Boolean)))})"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 text-gray-700 flex items-center gap-2">
@@ -468,7 +537,7 @@
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-red-50 text-red-600 flex items-center gap-2">
                     <i class="fas fa-trash w-3"></i> Delete
                 </button>
-            </div>`;
+            </div>`}`;
     }
 
     // ── Copy Image (clipboard) ──────────────────────────────────────────────────
@@ -675,7 +744,17 @@
             const doc = docs.find(d => d.sys_id === sysId);
             if (doc) {
                 selectFolder(folder);
-                setTimeout(() => selectDoc(doc), 50);
+                setTimeout(() => {
+                    selectDoc(doc);
+                    showProps(doc); // Attention badge থেকে এলে properties খুলে দাও
+                    const el = document.getElementById(`file-${doc.sys_id}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // ২ সেকেন্ডের জন্য pulse করে চোখে পড়াও
+                        el.classList.add('ring-2', 'ring-amber-400');
+                        setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400'), 2000);
+                    }
+                }, 50);
                 return;
             }
         }

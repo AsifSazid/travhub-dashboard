@@ -269,7 +269,13 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
             ['text' => $prompt],
             ['inline_data' => ['mime_type' => $mime, 'data' => $b64]],
         ]]],
-        'generationConfig' => ['temperature' => 0.1, 'maxOutputTokens' => 4096],
+        'generationConfig' => [
+            'temperature'      => 0.1,
+            'maxOutputTokens'  => 8192,
+            // JSON mode — Gemini কে structured JSON রিটার্ন করতে বাধ্য করে,
+            // markdown fence / আগে-পরে prose থাকার সম্ভাবনা অনেক কমে যায়
+            'responseMimeType' => 'application/json',
+        ],
     ], JSON_UNESCAPED_UNICODE);
 
     // Gemini API মাঝেমধ্যে transient/momentary ধীর হয়ে যায় (network glitch,
@@ -277,7 +283,7 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
     // তাই সর্বোচ্চ ২ বার (১টা মূল + ১টা retry) চেষ্টা করা হচ্ছে, প্রতিটার
     // timeout ছোট রেখে (২৫s) যাতে দুইবার মিলিয়েও Cloudflare-এর নিজস্ব
     // gateway timeout-এর নিচেই থাকে।
-    $maxAttempts = 2;
+    $maxAttempts = 3;
     $lastError   = '';
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
@@ -287,7 +293,7 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_TIMEOUT        => 25, // ২ attempt মিলিয়ে max ~৫০-৬০s, Cloudflare-এর নিচে
+            CURLOPT_TIMEOUT        => 20, // ৩ attempt মিলিয়ে max ~৫০-৬০s, Cloudflare-এর নিচে
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
         ]);
         $raw  = curl_exec($ch);
@@ -296,7 +302,27 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
         curl_close($ch);
 
         if (!$err && $code === 200) {
-            break; // সফল — লুপ থেকে বেরিয়ে যাও, নিচের normal parsing চলবে
+            // HTTP সফল — এবার JSON parse চেষ্টা করো। বড় page-এ Gemini
+            // মাঝেমধ্যে ভাঙা/অসম্পূর্ণ JSON দেয় (Session 1 এ "2 of 10 pages
+            // fail with JSON parse error") — সেটাকেও retryable ধরা হচ্ছে
+            $body         = json_decode($raw, true);
+            $text         = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $finishReason = $body['candidates'][0]['finishReason'] ?? '';
+            $data         = parseGeminiJson($text);
+
+            if ($data && !empty($data['doc_type'])) {
+                return ['success' => true, 'data' => $data];
+            }
+
+            $lastError = ($finishReason === 'MAX_TOKENS')
+                ? 'Gemini output truncated (MAX_TOKENS)'
+                : 'JSON parse failed: ' . substr($text, 0, 120);
+            error_log("[classify-document] attempt {$attempt}: {$lastError}");
+
+            if ($attempt === $maxAttempts) {
+                return ['success' => false, 'error' => $lastError . ' — ' . $attempt . ' বার চেষ্টার পরও পড়া যায়নি, পাতাটা আলাদা করে আবার upload করুন'];
+            }
+            continue; // আবার চেষ্টা
         }
 
         $b = json_decode($raw, true);
@@ -316,11 +342,8 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
         error_log("[classify-document] Gemini attempt {$attempt} failed ({$lastError}), retrying...");
     }
 
-    $body = json_decode($raw, true);
-    $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    $data = parseGeminiJson($text);
-
-    return $data ? ['success' => true, 'data' => $data] : ['success' => false, 'error' => 'JSON parse failed: ' . substr($text, 0, 200)];
+    // এখানে পৌঁছানোর কথা না (loop ভেতরেই return হয়) — defensive fallback
+    return ['success' => false, 'error' => $lastError ?: 'Unknown Gemini error'];
 }
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -92,6 +92,13 @@ try {
     $workSysId = $workIds['sys_id'];
     $meta      = buildMetaData(null, $userName);
 
+    // "{client_name} — {service names}" — যেমন "Rahim Ahmed — Visa, Air Ticket"
+    $serviceNamesForTitle = array_map(
+        fn($slug) => $SERVICE_NAME_MAP[$slug] ?? ucfirst(str_replace('_', ' ', $slug)),
+        $services
+    );
+    $workName = trim($clientName) . ($serviceNamesForTitle ? ' — ' . implode(', ', $serviceNamesForTitle) : '');
+
     if ($clientSysId) {
         $cleanSysId     = preg_replace('/\s+/u', '', $clientSysId);
         $cleanName      = preg_replace('/\s+/u', '', $clientName);
@@ -104,15 +111,15 @@ try {
 
     $pdo->prepare("
         INSERT INTO works (
-            uuid, sys_id, lead_sys_id,
+            uuid, sys_id, work_name, lead_sys_id,
             client_info, service_type, service_count,
             segment_type, segment_data,
             service_data,
             instruction, special_instruction, lead_info, lead_snapshot,
             work_status, assigned_to, meta_data
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', NULL, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', NULL, ?)
     ")->execute([
-        $workIds['uuid'], $workSysId, $sys_id,
+        $workIds['uuid'], $workSysId, $workName, $sys_id,
         $lead['client_info'],
         $lead['service_type'],
         count($services),
@@ -125,6 +132,12 @@ try {
         json_encode($lead, JSON_UNESCAPED_UNICODE),
         $meta,
     ]);
+
+    // 2b. Work-এর জন্য automatically একটা linked Travel Group তৈরি করো —
+    // পরে যখনই এই work-এ traveler link/unlink হবে (api/works/travelers.php),
+    // সেই group-এর সদস্যপদও sync হবে
+    require_once __DIR__ . '/../../server/traveler_group_sync.php';
+    ensureWorkTravelGroup($pdo, $workSysId, $workName, $userName);
 
     // 3. Create service_works + notify dept employees
     // NOTE: Tasks are NO LONGER created at conversion time.

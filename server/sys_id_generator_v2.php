@@ -53,6 +53,9 @@ function _v2Registry(): array
         'traveler_documents'  => ['table' => 'traveler_documents',  'short' => 'DC'],
         'travelers'           => ['table' => 'travelers',           'short' => 'TR'],
         'batches'             => ['table' => 'batches',             'short' => 'BT'],
+        'traveler_links'      => ['table' => 'traveler_links',      'short' => 'LK'],
+        'traveler_groups'         => ['table' => 'traveler_groups',         'short' => 'GR'],
+        'traveler_group_members'  => ['table' => 'traveler_group_members',  'short' => 'GM'],
     ];
 }
 

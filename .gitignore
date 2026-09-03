@@ -1,6 +1,7 @@
 /storage
 banana-key.txt
 gemini-apikey.txt
+encryption-key.txt
 ippath.txt
 
 /auth

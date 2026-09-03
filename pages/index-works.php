@@ -244,7 +244,10 @@ function applyFilters() {
     filteredWorks = allWorks.filter(w => {
         const ci = safeParse(w.client_info) ?? {};
         const st = safeParse(w.service_type) ?? [];
-        const matchSearch  = !search || (ci.name ?? '').toLowerCase().includes(search) || (w.sys_id ?? '').toLowerCase().includes(search);
+        const matchSearch  = !search
+            || (ci.name ?? '').toLowerCase().includes(search)
+            || (w.work_name ?? '').toLowerCase().includes(search)
+            || (w.sys_id ?? '').toLowerCase().includes(search);
         const matchStatus  = !status  || w.work_status === status;
         const matchService = !service || (Array.isArray(st) ? st.includes(service) : false);
         return matchSearch && matchStatus && matchService;
@@ -314,8 +317,8 @@ function renderTable() {
                         ${(ci.name?.[0] ?? '?').toUpperCase()}
                     </div>
                     <div>
-                        <div class="font-medium text-gray-800 text-sm">${ci.name ?? '—'}</div>
-                        <div class="text-xs text-gray-400">${ci.phone ?? ''}</div>
+                        <div class="font-medium text-gray-800 text-sm">${w.work_name || ci.name || '—'}</div>
+                        <div class="text-xs text-gray-400">${ci.name ?? ''}${ci.name && ci.phone ? ' · ' : ''}${ci.phone ?? ''}</div>
                     </div>
                 </div>
             </td>
@@ -367,8 +370,8 @@ function renderCards() {
                     ${(ci.name?.[0] ?? '?').toUpperCase()}
                 </div>
                 <div>
-                    <div class="font-semibold text-gray-800 text-sm">${ci.name ?? '—'}</div>
-                    <div class="text-xs text-gray-400">${ci.phone ?? ''}</div>
+                    <div class="font-semibold text-gray-800 text-sm">${w.work_name || ci.name || '—'}</div>
+                    <div class="text-xs text-gray-400">${ci.name ?? ''}${ci.name && ci.phone ? ' · ' : ''}${ci.phone ?? ''}</div>
                 </div>
             </div>
             <div class="flex flex-wrap gap-1 mb-3">${pillsHtml}</div>

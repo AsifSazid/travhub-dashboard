@@ -720,6 +720,7 @@ function renderPage() {
     const segLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
     const dot = `<span class="text-gray-300 text-xs">·</span>`;
     const chips = [
+        workData.work_name ? `<span class="text-xs font-bold text-gray-800">${esc(workData.work_name)}</span>` : '',
         ci.name  ? `<span class="text-xs font-semibold text-gray-700"><i class="fas fa-user text-gray-300 mr-1 text-[10px]"></i>${esc(ci.name)}</span>` : '',
         ci.phone ? `<span class="text-xs text-gray-400"><i class="fas fa-phone text-gray-300 mr-1 text-[10px]"></i>${esc(ci.phone)}</span>` : '',
         workData.segment_type ? `<span class="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">${segLabels[workData.segment_type] ?? workData.segment_type}</span>` : '',
@@ -741,6 +742,7 @@ function renderPage() {
 function renderOverview(ci, w, services) {
     const segLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
     const rows = [
+        ['Work Name', w.work_name ?? '—'],
         ['Client',   ci.name   ?? '—'],
         ['Phone',    ci.phone  ?? '—'],
         ['Service',  services.map(s => SVC_INFO[s]?.label ?? s).join(', ')],
