@@ -78,7 +78,7 @@ window.initWorkAirTicketTab = async function(config) {
 
     mount.innerHTML = `
     <div style="display:flex;flex-direction:column;">
-        <div class="at-tab-bar px-4 pt-2" id="at-inner-tab-bar" style="position:sticky;top:42px;z-index:19;background:#fafafa;flex-shrink:0;overflow-x:auto;white-space:nowrap;border-top:1px solid #f1f5f9;">
+        <div class="at-tab-bar px-4 pt-2" id="at-inner-tab-bar" style="position:sticky;top:42px;z-index:19;background:#fafafa;flex-shrink:0;white-space:nowrap;border-top:1px solid #f1f5f9;">
             <button class="at-tab active" data-tab="mindboard"><i class="fas fa-brain mr-1.5"></i>Mind Board</button>
             <button class="at-tab" data-tab="quotation"><i class="fas fa-file-invoice mr-1.5"></i>Quotation</button>
             <button class="at-tab" data-tab="booking"><i class="fas fa-bookmark mr-1.5"></i>Booking</button>

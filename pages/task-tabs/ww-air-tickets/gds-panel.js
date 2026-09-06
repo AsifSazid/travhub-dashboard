@@ -18,6 +18,179 @@ window._gdsCopyAll = function() {
     if (el) { el.textContent = window._gdsStoredCmds.length + ' lines copied'; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 1500); }
 };
 
+// ── GDS / Portal sub-tab state ────────────────────────────────
+// stage -> 'gds' | 'portal'। GDS সবসময় ডিফল্টে খোলা থাকে; Portal ক্লিক
+// করলে Air Ticket-এর portal credential (Master Data > Portal Links থেকে)
+// দেখায়। GDS panel-এর ভেতরের বাকি কোনো লজিক (divider resize, regenerate,
+// derived-facts) স্পর্শ করা হয়নি — শুধু header-এর নিচে একটা নতুন layer।
+window._gdsSubTabState = window._gdsSubTabState || {};
+
+function _gdsSubTabsHtml(stage) {
+    const active = window._gdsSubTabState[stage] ?? 'gds';
+    const tabBtn = (key, label) => `<button onclick="_gdsSwitchSubTab('${stage}','${key}')"
+        style="flex:1;padding:7px 0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+               border:none;cursor:pointer;background:${active===key?'#12172B':'transparent'};
+               color:${active===key?'#50BC81':'rgba(255,255,255,.45)'};
+               border-bottom:2px solid ${active===key?'#50BC81':'transparent'};">
+        ${label}
+    </button>`;
+    return `<div id="at-gds-subtabs-${stage}" style="display:flex;background:#1C2340;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;">
+        ${tabBtn('gds','GDS')}
+        ${tabBtn('portal','Portal')}
+    </div>`;
+}
+
+window._gdsSwitchSubTab = function(stage, key) {
+    window._gdsSubTabState[stage] = key;
+
+    // tab-bar visual state রিফ্রেশ
+    const tabBar = document.getElementById(`at-gds-subtabs-${stage}`);
+    if (tabBar) tabBar.outerHTML = _gdsSubTabsHtml(stage);
+
+    const body = document.getElementById(`at-gds-body-${stage}`);
+    if (!body) return;
+
+    if (key === 'gds') {
+        const stageMap = { '1':'mindboard', '2':'quotation', '3':'booking', '4':'confirmation' };
+        const stageKey = stageMap[stage] ?? 'mindboard';
+        const storedCmds = window._at.data?.commands?.[stageKey] ?? null;
+        const facts = _gdsGetDerivedFacts();
+        const cmdHtml = storedCmds ? _gdsRenderStoredCommands(storedCmds) : _gdsCommandsHtml(stage, facts);
+        body.innerHTML = `<div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>`;
+        body.insertAdjacentHTML('beforeend', cmdHtml);
+    } else {
+        _gdsRenderPortalTab(body);
+    }
+};
+
+// ── Portal tab — Air Ticket portal credentials (Master Data থেকে) ────
+// Grid state: 3-column, শুধু portal name (+নিজের credential থাকলে preview)।
+// Expanded state (Show More): সেই card full-width নেয়, নিচে সব VISIBLE
+// credential (is_hide/access-check pass করা গুলোই) লিস্ট আকারে দেখায় —
+// hidden credential-এর অস্তিত্বই বোঝানো হয় না, শুধু can_view=true গুলোই আসে।
+window._gdsExpandedPortal = window._gdsExpandedPortal || null; // sys_id | null
+window._gdsPortalsCache   = window._gdsPortalsCache   || [];
+
+async function _gdsRenderPortalTab(container) {
+    container.innerHTML = `<div style="padding:16px;color:#8A93A8;font-size:12px;"><i class="fas fa-spinner fa-spin mr-1"></i> Loading portals…</div>`;
+
+    try {
+        const res  = await fetch('/api/masterdata/portal-links.php?portal_type=air_ticket', { credentials: 'include' });
+        const json = await res.json();
+
+        if (!json.success) {
+            container.innerHTML = `<div style="padding:16px;color:#E8817A;font-size:12px;">Error: ${_gdsEsc(json.message || 'Failed to load portals')}</div>`;
+            return;
+        }
+
+        const portals = json.portals ?? [];
+        window._gdsPortalsCache = portals;
+        window._gdsExpandedPortal = null;
+
+        if (!portals.length) {
+            container.innerHTML = `<div style="padding:16px;color:#8A93A8;font-size:12px;">No Air Ticket portals added yet.<br><a href="../pages/portal-links.php" target="_blank" style="color:#50BC81;">Add one in Master Data →</a></div>`;
+            return;
+        }
+
+        _gdsRenderPortalGrid(container);
+    } catch (e) {
+        container.innerHTML = `<div style="padding:16px;color:#E8817A;font-size:12px;">Network error loading portals.</div>`;
+        console.error(e);
+    }
+}
+
+function _gdsRenderPortalGrid(container) {
+    const portals  = window._gdsPortalsCache;
+    const expanded = window._gdsExpandedPortal;
+
+    container.innerHTML = `<div style="padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        ${portals.map(p => expanded === p.sys_id
+            ? `<div style="grid-column:1/-1;">${_gdsPortalCardExpanded(p)}</div>`
+            : _gdsPortalCardCollapsed(p)
+        ).join('')}
+    </div>`;
+}
+
+// ⚠️ Collapsed card-এ password কখনোই দেখানো হয় না — শুধু portal name, আর
+// current user-এর নিজের credential থাকলে সেটার username (password না)
+// preview হিসেবে। পূর্ণ credential list শুধু expand করলেই আসে।
+function _gdsPortalCardCollapsed(p) {
+    const creds  = p.credentials ?? [];
+    const mine   = creds.find(c => c.is_mine);
+    const url    = p.portal_url ? _gdsEsc(p.portal_url) : '';
+
+    return `<div style="background:#1C2340;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:10px 12px;cursor:pointer;"
+                 onclick="_gdsExpandPortal('${p.sys_id}')"
+                 onmouseover="this.style.borderColor='rgba(80,188,129,.4)'"
+                 onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:${mine ? '6px' : '0'};">
+            <span style="color:#fff;font-size:12px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_gdsEsc(p.portal_name)}</span>
+            ${url ? `<a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color:#50BC81;font-size:10px;flex-shrink:0;"><i class="fas fa-external-link-alt"></i></a>` : ''}
+        </div>
+        ${mine ? `<div style="color:#5E6883;font-size:10px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_gdsEsc(mine.user_name || '')}</div>` : ''}
+    </div>`;
+}
+
+// Expanded card — full-width, সব visible credential দেখায়
+function _gdsPortalCardExpanded(p) {
+    const creds = p.credentials ?? [];
+    const url   = p.portal_url ? _gdsEsc(p.portal_url) : '';
+
+    // ⚠️ শুধু can_view=true credential-ই এখানে আসে (backend visibility-check
+    // pass করে DB থেকেই এভাবে আসে) — hidden credential "Restricted" বলেও
+    // দেখানো হয় না, সেই credential-এর অস্তিত্বই UI-তে reflect হয় না
+    const visibleCreds = creds.filter(c => c.can_view);
+
+    const credRows = visibleCreds.length ? visibleCreds.map(c => `
+        <div style="display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;">User ID</span>
+                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;" onclick="event.stopPropagation();_gdsCopyText('${_gdsEsc(c.user_name||'')}')" title="Click to copy">${_gdsEsc(c.user_name || '—')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;">Password</span>
+                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;" onclick="event.stopPropagation();_gdsCopyText('${_gdsEsc(c.password||'')}')" title="Click to copy">${_gdsEsc(c.password || '—')}</span>
+            </div>
+        </div>
+    `).join('') : `<div style="padding:8px 0;color:#5E6883;font-size:11px;">No accessible credentials</div>`;
+
+    return `<div style="background:#1C2340;border:1px solid rgba(80,188,129,.4);border-radius:6px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="color:#fff;font-size:13px;font-weight:700;flex:1;">${_gdsEsc(p.portal_name)}</span>
+            ${url ? `<a href="${url}" target="_blank" style="color:#50BC81;font-size:11px;"><i class="fas fa-external-link-alt"></i></a>` : ''}
+            <button onclick="event.stopPropagation();_gdsCollapsePortal()" style="background:none;border:none;color:#5E6883;cursor:pointer;font-size:11px;padding:2px 6px;" title="Collapse">
+                <i class="fas fa-compress-alt"></i>
+            </button>
+        </div>
+        ${credRows}
+    </div>`;
+}
+
+window._gdsExpandPortal = function(sysId) {
+    window._gdsExpandedPortal = sysId;
+    const container = document.querySelector('[id^="at-gds-body-"]')?.closest('div')?.parentElement
+        ?? document.querySelector('[id^="at-gds-body-"]');
+    // সহজ উপায় — যেই container-এ grid render হয়েছিল সেটা re-render করাই যথেষ্ট;
+    // active gds-body খুঁজে বের করে তার ভেতরের portal-grid wrapper রিফ্রেশ করি
+    const activeBody = [...document.querySelectorAll('[id^="at-gds-body-"]')].find(el => el.querySelector('[style*="grid-template-columns"]'));
+    if (activeBody) _gdsRenderPortalGrid(activeBody);
+};
+
+window._gdsCollapsePortal = function() {
+    window._gdsExpandedPortal = null;
+    const activeBody = [...document.querySelectorAll('[id^="at-gds-body-"]')].find(el => el.querySelector('[style*="grid-template-columns"]'));
+    if (activeBody) _gdsRenderPortalGrid(activeBody);
+};
+
+window._gdsCopyText = function(text) {
+    if (!text) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    const el = document.getElementById('at-gds-toast');
+    if (el) { el.textContent = 'Copied!'; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 1200); }
+};
+
+function _gdsEsc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
 // ── Inject GDS panel into a tab panel ────────────────────────
 function _gdsInjectPanel(panel, stage) {
     const stageMap = { '1':'mindboard', '2':'quotation', '3':'booking', '4':'confirmation' };
@@ -50,6 +223,7 @@ function _gdsInjectPanel(panel, stage) {
                     <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
                     ${(stage === '3' || stage === '4') ? `<button id="at-gds-regen-btn-${stage}" onclick="_gdsRegenerate('${stage}')" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">🔄 Regenerate</button>` : ''}
                 </div>
+                ${_gdsSubTabsHtml(stage)}
                 <div id="at-gds-body-${stage}" style="overflow-y:auto;flex:1;">
                     <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>
                 </div>

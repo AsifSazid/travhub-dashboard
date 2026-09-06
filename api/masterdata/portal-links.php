@@ -95,16 +95,20 @@ function handleGet(PDO $pdo, string $currentUserId, bool $isAdmin): void
 /**
  * DB row কে API response shape এ রূপান্তর করে — visibility-check অনুযায়ী
  * password decrypt/hide করে, can_edit flag যোগ করে।
+ *
+ * ⚠️ যেই credential দেখার অনুমতি নেই (can_view=false), সেটা response থেকে
+ * সম্পূর্ণ বাদ দেওয়া হয় — শুধু password lukানো না, পুরো entry (username
+ * সহ) network response-এই পাঠানো হয় না। যার নিজের credential (is_mine)
+ * বা admin, তারা সবসময় can_view=true পাবে (নিচের লজিকেই নিশ্চিত), তাই
+ * বাদ পড়া মানে সেই viewer-এর জন্য এই credential সত্যিই দেখার কথা না।
  */
 function shapePortal(array $row, string $currentUserId, bool $isAdmin): array
 {
     $credentials = json_decode($row['credentials'] ?? '[]', true) ?: [];
-    $creators    = [];
     $shaped      = [];
 
     foreach ($credentials as $c) {
         $creatorId = $c['created_by'] ?? '';
-        if ($creatorId) $creators[$creatorId] = true;
 
         $accessList = $c['access_user'] ?? [];
         $canView = $isAdmin
@@ -112,23 +116,31 @@ function shapePortal(array $row, string $currentUserId, bool $isAdmin): array
             || $creatorId === $currentUserId
             || in_array($currentUserId, $accessList, true);
 
+        if (!$canView) continue; // সম্পূর্ণ বাদ — username পর্যন্ত response-এ যাবে না
+
         $shaped[] = [
             'cred_id'         => $c['cred_id'] ?? '',
             'user_name'       => $c['user_name'] ?? '',
-            'password'        => $canView ? credDecrypt($c['password'] ?? '') : null, // null = hidden, blank string আলাদা জিনিস
+            'password'        => credDecrypt($c['password'] ?? ''),
             'is_hide'         => !empty($c['is_hide']),
             'access_user'     => $accessList,
             'created_by'      => $creatorId,
             'created_by_name' => $c['created_by_name'] ?? '',
             'created_at'      => $c['created_at'] ?? '',
-            'can_view'        => $canView,
+            'can_view'        => true, // এখানে পৌঁছানো মানেই viewable
             'is_mine'         => $creatorId === $currentUserId,
         ];
     }
 
     // Permission logic: unique creator সংখ্যা ১ হলে সেই একজনই portal-level
-    // edit/delete পারবে (নিজের credential-ই থাকা অবস্থায়), নাহলে শুধু admin
-    $uniqueCreators = array_keys($creators);
+    // edit/delete পারবে (নিজের credential-ই থাকা অবস্থায়), নাহলে শুধু admin।
+    // ⚠️ এখানে $credentials (raw, filter-হীন) থেকেই creator গোনা হয়, কারণ
+    // permission-logic সব credential গণনা করবে — কে দেখতে পারে সেটা আলাদা প্রশ্ন
+    $allCreators = [];
+    foreach ($credentials as $c) {
+        if (!empty($c['created_by'])) $allCreators[$c['created_by']] = true;
+    }
+    $uniqueCreators = array_keys($allCreators);
     $canManagePortal = $isAdmin
         || (count($uniqueCreators) === 1 && $uniqueCreators[0] === $currentUserId)
         || count($uniqueCreators) === 0; // কোনো credential-ই নেই এখনো — যে কেউ manage করতে পারবে

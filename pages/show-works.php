@@ -34,7 +34,7 @@ $deepLinkSw = $_GET['sw'] ?? '';
         /* ── Layout ─────────────────────────────────────────── */
         #pageContent { display:flex; flex-direction:column; height:calc(100vh - 64px); }
         #bodyWrap    { display:flex; flex:1; overflow:hidden; }
-        #mainArea    { flex:1; overflow-y:auto; padding:16px; }
+        #mainArea    { flex:1; overflow-y:auto; padding: 0px 16px 16px 16px; }
         #rightSidebar{
             width:288px; flex-shrink:0;
             border-left:1px solid #f1f5f9;
@@ -102,9 +102,8 @@ $deepLinkSw = $_GET['sw'] ?? '';
 
 <?php include '../elements/header.php'; ?>
 <?php include '../elements/aside.php'; ?>
-<?php include '../elements/preview-model.php'; ?>
 
-<main id="mainContent" class="transition-all duration-300 pl-64" style="padding-top:64px;">
+<main id="mainContent" class="transition-all duration-300 pl-64 mt-16" style="padding-top:64px;">
 
     <!-- Loading -->
     <div id="loadingState" class="text-center py-24 text-gray-400">
@@ -1789,8 +1788,72 @@ function openTravelerTableModal(){
         const pNo=p.passport_number||p.passport_no||'—';
         const expiry=p.date_of_expiry||p.expiry_date||'—';
         const dob=p.date_of_birth||p.dob||'—';
-        return`<tr class="hover:bg-gray-50">${cell(t.name||'—')}${cell(given)}${cell(surname)}${cell(pNo)}${cell(expiry)}${cell(dob)}<td class="px-3 py-2"><a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-500 hover:text-teal-700 text-xs"><i class="fas fa-arrow-up-right-from-square"></i></a></td></tr>`;
+        return`<tr class="hover:bg-gray-50">${cell(t.name||'—')}${cell(given)}${cell(surname)}${cell(pNo)}${cell(expiry)}${cell(dob)}<td class="px-3 py-2 flex items-center gap-2">
+            <button onclick="openTravelerFullInfo('${t.sys_id}','${escHtml((t.name||'').replace(/'/g,"\\'"))}')" class="text-indigo-500 hover:text-indigo-700 text-xs" title="View full passport info">
+                <i class="fas fa-address-card"></i>
+            </button>
+            <a href="show-travelers.php?id=${t.sys_id}" target="_blank" class="text-teal-500 hover:text-teal-700 text-xs" title="Open traveler profile"><i class="fas fa-arrow-up-right-from-square"></i></a>
+        </td></tr>`;
     }).join('');
+}
+
+// ── Full passport info modal (live data — traveler-full-info.php থেকে,
+// _linkedTravelers এর snapshot passport_info/passport_token থেকে না) ──────
+async function openTravelerFullInfo(travelerSysId, name){
+    const overlay=document.createElement('div');
+    overlay.className='fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4';
+    overlay.onclick=(e)=>{ if(e.target===overlay) overlay.remove(); };
+    overlay.innerHTML=`
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
+                <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-address-card mr-2 text-indigo-500"></i>${escHtml(name)} — Passport Details</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="travelerFullInfoBody" class="p-5 text-sm text-gray-500"><i class="fas fa-spinner fa-spin mr-1"></i> Loading...</div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    try{
+        const r=await fetch(`/api/travelers/traveler-full-info.php?traveler_sys_id=${encodeURIComponent(travelerSysId)}`);
+        const j=await r.json();
+        const body=document.getElementById('travelerFullInfoBody');
+        if(!body) return;
+
+        if(!j.success || !j.traveler?.bio_info){
+            body.innerHTML='<p class="text-gray-400 text-sm">No passport document found for this traveler.</p>';
+            return;
+        }
+
+        const t=j.traveler, bio=t.bio_info||{}, images=t.images||[];
+        const field=(label,value)=>value?`<div><p class="text-[10px] text-gray-400 uppercase tracking-wide">${escHtml(label)}</p><p class="text-sm text-gray-800">${escHtml(String(value))}</p></div>`:'';
+
+        body.innerHTML=`
+            ${images.length?`<div class="flex gap-3 mb-4 overflow-x-auto">${images.map(img=>`<img src="${escHtml(img.url)}" class="h-40 rounded-lg border border-gray-200 cursor-pointer" onclick="window.open('${escHtml(img.url)}','_blank')">`).join('')}</div>`:'<p class="text-xs text-gray-400 mb-4">No passport image available</p>'}
+            <div class="grid grid-cols-2 gap-3">
+                ${field('Full Name', bio.full_name||t.name)}
+                ${field('Given Names', bio.given_names||bio.given_name)}
+                ${field('Surname', bio.surname)}
+                ${field('Passport Number', bio.passport_number||bio.passport_no||t.doc_number)}
+                ${field('Nationality', bio.nationality)}
+                ${field('Country Code', bio.country_code)}
+                ${field('Date of Birth', bio.date_of_birth)}
+                ${field('Sex', bio.sex)}
+                ${field('Place of Birth', bio.place_of_birth)}
+                ${field('Date of Issue', bio.date_of_issue||t.issue_date)}
+                ${field('Date of Expiry', bio.date_of_expiry||t.expiry_date)}
+                ${field('Issuing Authority', bio.issuing_authority)}
+                ${field('Father Name', bio.father_name)}
+                ${field('Mother Name', bio.mother_name)}
+                ${field('Spouse Name', bio.spouse_name)}
+                ${field('Permanent Address', bio.permanent_address)}
+            </div>
+            ${bio.emergency_contact?`<div class="mt-4 pt-3 border-t border-gray-100"><p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Emergency Contact</p><p class="text-sm text-gray-700">${escHtml(bio.emergency_contact.name||'')} (${escHtml(bio.emergency_contact.relationship||'')}) — ${escHtml(bio.emergency_contact.telephone||'')}</p></div>`:''}
+        `;
+    }catch(e){
+        const body=document.getElementById('travelerFullInfoBody');
+        if(body) body.innerHTML='<p class="text-red-400 text-sm">Failed to load passport info.</p>';
+        console.error(e);
+    }
 }
 function copyCell(text){navigator.clipboard.writeText(text).then(()=>{const t=document.getElementById('copyToast');t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),1500);});}
 

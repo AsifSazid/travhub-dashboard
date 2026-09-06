@@ -12,7 +12,7 @@ window._renderMindboard = function _renderMindboard() {
 
     panel.innerHTML = `
     <!-- Chat bubbles (scrollable) -->
-    <div id="at-notes-list" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:calc(100vh - 320px);">
+    <div id="at-notes-list" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:calc(100vh - 350px);">
         <div class="text-center py-6 text-gray-300 text-sm"><i class="fas fa-spinner fa-spin"></i></div>
     </div>
 
@@ -121,6 +121,10 @@ window._renderMindboard = function _renderMindboard() {
     atLoadNotes();
 
     // ── GDS Panel: wrap mindboard in flex row ─────────────────
+    // ⚠️ এই panel gds-panel.js-এর _gdsInjectPanel() ব্যবহার করে না — নিজের
+    // নিজস্ব HTML বানায় (Quotation/Booking/Confirmation থেকে আলাদা কোড path)।
+    // তাই GDS/Portal sub-tab bar এখানে আলাদাভাবে বসাতে হচ্ছে
+    // (_gdsSubTabsHtml('1') — gds-panel.js-এর একই helper reuse করে)।
     const mbPanel = document.getElementById('at-panel-mindboard');
     if (mbPanel && !mbPanel.querySelector('#at-gds-panel')) {
         const saved = localStorage.getItem('at_gds_width');
@@ -139,8 +143,8 @@ window._renderMindboard = function _renderMindboard() {
         divider.onmouseout  = () => divider.style.background = '#f1f5f9';
         // GDS panel
         const gdsDiv = document.createElement('div');
-        gdsDiv.id = 'at-gds-panel';
-        gdsDiv.style.cssText = `width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow:hidden;`;
+        gdsDiv.id = 'at-gds-panel-1';
+        gdsDiv.style.cssText = `width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow-y:auto;min-height:300px;max-height:calc(100vh - 350px);;`;
         gdsDiv.innerHTML = `
             <div style="background:#1C2340;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0;">
                 <div style="flex:1;">
@@ -149,10 +153,11 @@ window._renderMindboard = function _renderMindboard() {
                 </div>
                 <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
             </div>
-            <div id="at-gds-body" style="overflow-y:auto;flex:1;">
+            ${_gdsSubTabsHtml('1')}
+            <div id="at-gds-body-1" style="overflow-y:auto;flex:1;">
                 <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(_gdsGetDerivedFacts())}</div>
             </div>`;
-        const gdsBody = gdsDiv.querySelector('#at-gds-body');
+        const gdsBody = gdsDiv.querySelector('#at-gds-body-1');
         const cmdHtml = window._at.data?.commands?.mindboard
             ? _gdsRenderStoredCommands(window._at.data.commands.mindboard)
             : _gdsCommandsHtml('1', _gdsGetDerivedFacts());

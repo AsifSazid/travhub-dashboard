@@ -46,7 +46,7 @@ window.initWorkAirTicketTab = async function (config) {
 
     mount.innerHTML = `
     <div style="display:flex;flex-direction:column;">
-        <div class="at-tab-bar px-4 pt-2" id="at-inner-tab-bar" style="position:sticky;top:42px;z-index:19;background:#fafafa;flex-shrink:0;overflow-x:auto;white-space:nowrap;border-top:1px solid #f1f5f9;">
+        <div class="at-tab-bar px-4 pt-2" id="at-inner-tab-bar" style="position:sticky;top:42px;z-index:19;background:#fafafa;flex-shrink:0;white-space:nowrap;border-top:1px solid #f1f5f9;">
             <button class="at-tab active" data-tab="mindboard"><i class="fas fa-brain mr-1.5"></i>Mind Board</button>
             <button class="at-tab" data-tab="quotation"><i class="fas fa-file-invoice mr-1.5"></i>Quotation</button>
             <button class="at-tab" data-tab="booking"><i class="fas fa-bookmark mr-1.5"></i>Booking</button>
@@ -269,10 +269,11 @@ function _renderMindboard() {
                 </div>
                 <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
             </div>
-            <div id="at-gds-body" style="overflow-y:auto;flex:1;">
+            ${_gdsSubTabsHtml('1')}
+            <div id="at-gds-content-1" style="overflow-y:auto;flex:1;">
                 <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(_gdsGetDerivedFacts())}</div>
             </div>`;
-        const gdsBody = gdsDiv.querySelector('#at-gds-body');
+        const gdsBody = gdsDiv.querySelector('#at-gds-content-1');
         const cmdHtml = _atData?.commands?.mindboard
             ? _gdsRenderStoredCommands(_atData.commands.mindboard)
             : _gdsCommandsHtml('1', _gdsGetDerivedFacts());
@@ -2121,6 +2122,15 @@ function _renderBBuilder(b) {
             class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
     </div>
 
+    <!-- Passport image carousel — linked travelers-দের current passport এর
+         page image (actual SMB file, snapshot না) পাশাপাশি দেখায় -->
+    <div class="mb-4">
+        <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Passport Images</label>
+        <div id="at-b-passport-carousel" class="flex gap-2 overflow-x-auto pb-1 text-xs text-gray-300">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+    </div>
+
     <!-- Travelers table -->
     <div class="mb-4">
         <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Travelers</label>
@@ -2142,6 +2152,11 @@ async function _loadBookingTravelers() {
         const res  = await fetch(`${_cfg.api.workTravelers}?action=list&work_sys_id=${encodeURIComponent(_cfg.workSysId)}`);
         const json = await res.json();
         const travelers = json.status === 'success' ? (json.data ?? []) : [];
+
+        // ⚠️ Passport image carousel — works.traveler_sys_ids snapshot-এ শুধু
+        // bio field আছে, actual image URL নেই — তাই প্রতিটা traveler-এর জন্য
+        // আলাদা করে traveler-full-info.php থেকে live passport image আনা হয়
+        _loadPassportCarousel(travelers);
 
         if (!travelers.length) {
             el.innerHTML = '<p class="text-gray-300 text-xs text-center py-1">No travelers linked</p>';
@@ -2183,6 +2198,10 @@ async function _loadBookingTravelers() {
                             <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center" onclick="atBCopyCell('${_e(String(expiry))}')" title="Copy">${_e(String(expiry))}</td>
                             <td class="px-2 py-1.5 cursor-pointer hover:bg-indigo-50 transition text-center" onclick="atBCopyCell('${_e(String(dob))}')" title="Copy">${_e(String(dob))}</td>
                             <td class="px-2 py-1.5 text-center">
+                                <button onclick="atBViewFullInfo('${_e(t.sys_id)}','${_e(name)}')"
+                                    class="text-indigo-400 hover:text-indigo-600 transition mr-2" title="View full passport info">
+                                    <i class="fas fa-address-card text-[10px]"></i>
+                                </button>
                                 <button onclick="atBUnlinkTraveler('${_e(t.sys_id)}','${_e(name)}')"
                                     class="text-red-300 hover:text-red-500 transition" title="Remove">
                                     <i class="fas fa-times text-[10px]"></i>
@@ -2198,6 +2217,126 @@ async function _loadBookingTravelers() {
         console.error(e);
     }
 }
+
+// ── Passport image carousel ──────────────────────────────────────
+// traveler-full-info.php প্রতিটা traveler-এর জন্য আলাদা কল করে actual
+// SMB passport-page image URL নিয়ে আসে (snapshot না, live data)
+async function _loadPassportCarousel(travelers) {
+    const box = document.getElementById('at-b-passport-carousel');
+    if (!box) return;
+
+    if (!travelers.length) {
+        box.innerHTML = '<p class="text-gray-300 text-xs">No travelers linked</p>';
+        return;
+    }
+
+    box.innerHTML = '<i class="fas fa-spinner fa-spin text-gray-300"></i>';
+
+    try {
+        const results = await Promise.all(travelers.map(t =>
+            fetch(`/api/travelers/traveler-full-info.php?traveler_sys_id=${encodeURIComponent(t.sys_id)}`)
+                .then(r => r.json())
+                .catch(() => ({ success: false }))
+        ));
+
+        const cards = results.map((res, i) => {
+            const t = travelers[i];
+            const name = t.name ?? '—';
+            const img  = res.success ? (res.traveler?.images?.[0]?.url) : null;
+
+            return `<div class="flex-shrink-0 w-20 text-center">
+                <div class="w-20 h-24 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer"
+                     onclick="atBViewFullInfo('${_e(t.sys_id)}','${_e(name)}')">
+                    ${img
+                        ? `<img src="${_e(img)}" class="w-full h-full object-cover" onerror="this.parentNode.innerHTML='<i class=\'fas fa-image text-gray-300\'></i>'">`
+                        : '<i class="fas fa-image text-gray-300"></i>'}
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1 truncate">${_e(name)}</p>
+            </div>`;
+        }).join('');
+
+        box.innerHTML = cards || '<p class="text-gray-300 text-xs">No passport images found</p>';
+    } catch (e) {
+        box.innerHTML = '<p class="text-red-300 text-xs">Load failed</p>';
+        console.error(e);
+    }
+}
+
+// ── Full passport info modal ─────────────────────────────────────
+window.atBViewFullInfo = async function(travelerSysId, name) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 sticky top-0 bg-white">
+                <h3 class="font-semibold text-gray-800">${_e(name)} — Passport Details</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="at-full-info-body" class="p-5 text-sm text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-1"></i> Loading...
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    try {
+        const res  = await fetch(`/api/travelers/traveler-full-info.php?traveler_sys_id=${encodeURIComponent(travelerSysId)}`);
+        const json = await res.json();
+        const body = document.getElementById('at-full-info-body');
+        if (!body) return; // মডাল ইতিমধ্যে বন্ধ হয়ে গেছে
+
+        if (!json.success || !json.traveler?.bio_info) {
+            body.innerHTML = '<p class="text-gray-400 text-sm">No passport document found for this traveler.</p>';
+            return;
+        }
+
+        const t   = json.traveler;
+        const bio = t.bio_info || {};
+        const images = t.images || [];
+
+        const field = (label, value) => value ? `
+            <div>
+                <p class="text-[10px] text-gray-400 uppercase tracking-wide">${_e(label)}</p>
+                <p class="text-sm text-gray-800">${_e(String(value))}</p>
+            </div>` : '';
+
+        body.innerHTML = `
+            ${images.length ? `
+            <div class="flex gap-3 mb-4 overflow-x-auto">
+                ${images.map(img => `<img src="${_e(img.url)}" class="h-40 rounded-lg border border-gray-200 cursor-pointer"
+                    onclick="window.open('${_e(img.url)}', '_blank')">`).join('')}
+            </div>` : '<p class="text-xs text-gray-400 mb-4">No passport image available</p>'}
+
+            <div class="grid grid-cols-2 gap-3">
+                ${field('Full Name', bio.full_name || t.name)}
+                ${field('Given Names', bio.given_names || bio.given_name)}
+                ${field('Surname', bio.surname)}
+                ${field('Passport Number', bio.passport_number || bio.passport_no || t.doc_number)}
+                ${field('Nationality', bio.nationality)}
+                ${field('Country Code', bio.country_code)}
+                ${field('Date of Birth', bio.date_of_birth)}
+                ${field('Sex', bio.sex)}
+                ${field('Place of Birth', bio.place_of_birth)}
+                ${field('Date of Issue', bio.date_of_issue || t.issue_date)}
+                ${field('Date of Expiry', bio.date_of_expiry || t.expiry_date)}
+                ${field('Issuing Authority', bio.issuing_authority)}
+                ${field('Father Name', bio.father_name)}
+                ${field('Mother Name', bio.mother_name)}
+                ${field('Spouse Name', bio.spouse_name)}
+                ${field('Permanent Address', bio.permanent_address)}
+            </div>
+            ${bio.emergency_contact ? `
+            <div class="mt-4 pt-3 border-t border-gray-100">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Emergency Contact</p>
+                <p class="text-sm text-gray-700">${_e(bio.emergency_contact.name || '')} (${_e(bio.emergency_contact.relationship || '')}) — ${_e(bio.emergency_contact.telephone || '')}</p>
+            </div>` : ''}
+        `;
+    } catch (e) {
+        const body = document.getElementById('at-full-info-body');
+        if (body) body.innerHTML = '<p class="text-red-400 text-sm">Failed to load passport info.</p>';
+        console.error(e);
+    }
+};
 
 window.atBCopyCell = function(text) {
     window.focus();
@@ -3147,7 +3286,8 @@ function _gdsInjectPanel(panel, stage) {
                     <button id="at-gds-notes-btn" onclick="_gdsToggleNotes()" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;">Notes on</button>
                     ${(stage === '3' || stage === '4') ? `<button id="at-gds-regen-btn-${stage}" onclick="_gdsRegenerate('${stage}')" style="font-size:10px;font-weight:600;padding:4px 8px;border-radius:2px;border:none;background:#50BC81;color:#12172B;cursor:pointer;">🔄 Regenerate</button>` : ''}
                 </div>
-                <div style="overflow-y:auto;flex:1;">
+                ${_gdsSubTabsHtml(stage)}
+                <div id="at-gds-content-${stage}" style="overflow-y:auto;flex:1;">
                     <div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>
                     ${cmdHtml}
                 </div>
@@ -3161,6 +3301,116 @@ function _gdsInjectPanel(panel, stage) {
         _gdsInitDivider(divider, gdsPanel);
     }, 0);
 }
+
+// ── GDS / Portal mini-tab bar (GDS panel-এর ভিতরে) ──────────────────────
+// Always GDS প্রথমে খোলা থাকে; Portal ক্লিক করলে Air Ticket-এর portal
+// credential গুলো (Portal Links masterdata module থেকে) দেখায়। state
+// stage-key দিয়ে আলাদা রাখা হচ্ছে, যাতে একটা tab-এর sub-tab অন্যটাকে
+// প্রভাবিত না করে।
+const _gdsSubTabState = {}; // stage -> 'gds' | 'portal'
+
+function _gdsSubTabsHtml(stage) {
+    const active = _gdsSubTabState[stage] ?? 'gds';
+    const tabBtn = (key, label) => `<button onclick="_gdsSwitchSubTab('${stage}','${key}')"
+        style="flex:1;padding:7px 0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+               border:none;cursor:pointer;background:${active===key?'#12172B':'transparent'};
+               color:${active===key?'#50BC81':'rgba(255,255,255,.45)'};
+               border-bottom:2px solid ${active===key?'#50BC81':'transparent'};">
+        ${label}
+    </button>`;
+    return `<div style="display:flex;background:#1C2340;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;">
+        ${tabBtn('gds','GDS')}
+        ${tabBtn('portal','Portal')}
+    </div>`;
+}
+
+window._gdsSwitchSubTab = function(stage, key) {
+    _gdsSubTabState[stage] = key;
+    // tab button visual state রিফ্রেশ করার সহজ উপায় — parent header পুনরায় রেন্ডার
+    const panelEl = document.getElementById(`at-gds-panel-${stage}`);
+    if (!panelEl) return;
+    const tabBar = panelEl.querySelector(':scope > div:nth-child(2)');
+    if (tabBar) tabBar.outerHTML = _gdsSubTabsHtml(stage);
+
+    const content = document.getElementById(`at-gds-content-${stage}`);
+    if (!content) return;
+
+    if (key === 'gds') {
+        const facts = _gdsGetDerivedFacts();
+        const stageMap = {'1':'mindboard','2':'quotation','3':'booking','4':'confirmation'};
+        const storedCmds = _atData?.commands?.[stageMap[stage] ?? 'mindboard'] ?? null;
+        const cmdHtml = storedCmds ? _gdsRenderStoredCommands(storedCmds) : _gdsCommandsHtml(stage, facts);
+        content.innerHTML = `<div style="padding:10px 10px 0;">${_gdsDerivedFactsHtml(facts)}</div>${cmdHtml}`;
+    } else {
+        _gdsRenderPortalTab(content);
+    }
+};
+
+// ── Portal tab content — Air Ticket portal credentials ──────────────────
+async function _gdsRenderPortalTab(container) {
+    container.innerHTML = `<div style="padding:16px;color:#8A93A8;font-size:12px;"><i class="fas fa-spinner fa-spin mr-1"></i> Loading portals…</div>`;
+
+    try {
+        const res  = await fetch('/api/masterdata/portal-links.php?portal_type=air_ticket', { credentials: 'include' });
+        const json = await res.json();
+
+        if (!json.success) {
+            container.innerHTML = `<div style="padding:16px;color:#E8817A;font-size:12px;">Error: ${_e(json.message || 'Failed to load portals')}</div>`;
+            return;
+        }
+
+        const portals = json.portals ?? [];
+        if (!portals.length) {
+            container.innerHTML = `<div style="padding:16px;color:#8A93A8;font-size:12px;">No Air Ticket portals added yet.<br><a href="../pages/portal-links.php" target="_blank" style="color:#50BC81;">Add one in Master Data →</a></div>`;
+            return;
+        }
+
+        container.innerHTML = `<div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
+            ${portals.map(p => _gdsPortalCardHtml(p)).join('')}
+        </div>`;
+    } catch (e) {
+        container.innerHTML = `<div style="padding:16px;color:#E8817A;font-size:12px;">Network error loading portals.</div>`;
+        console.error(e);
+    }
+}
+
+function _gdsPortalCardHtml(p) {
+    const creds = p.credentials ?? [];
+    const url   = p.portal_url ? _e(p.portal_url) : '';
+
+    const credRows = creds.length ? creds.map(c => `
+        <div style="display:flex;flex-direction:column;gap:2px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;">User ID</span>
+                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;" onclick="event.stopPropagation();_gdsCopyText('${_e(c.user_name||'')}')" title="Click to copy">${_e(c.user_name || '—')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;">Password</span>
+                ${c.can_view
+                    ? `<span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;" onclick="event.stopPropagation();_gdsCopyText('${_e(c.password||'')}')" title="Click to copy">${_e(c.password || '—')}</span>`
+                    : `<span style="color:#5E6883;font-size:11px;font-style:italic;">Restricted</span>`}
+            </div>
+        </div>
+    `).join('') : `<div style="padding:6px 0;color:#5E6883;font-size:11px;">No credentials added</div>`;
+
+    return `<div style="background:#1C2340;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:10px 12px;cursor:pointer;"
+                 onclick="${url ? `window.open('${url}','_blank')` : ''}"
+                 onmouseover="this.style.borderColor='rgba(80,188,129,.4)'"
+                 onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div style="display:flex;align-items:center;justify-content:between;gap:8px;">
+            <span style="color:#fff;font-size:12px;font-weight:700;flex:1;">${_e(p.portal_name)}</span>
+            ${url ? `<i class="fas fa-external-link-alt" style="color:#50BC81;font-size:10px;"></i>` : ''}
+        </div>
+        ${credRows}
+    </div>`;
+}
+
+window._gdsCopyText = function(text) {
+    if (!text) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    const el = document.getElementById('at-gds-toast');
+    if (el) { el.textContent = 'Copied!'; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 1200); }
+};
 
 // ── GDS Regenerate — Stage 3 / 4 traveler data দিয়ে ─────────────────────────
 async function _gdsRegenerate(stage) {
