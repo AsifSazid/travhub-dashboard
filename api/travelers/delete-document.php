@@ -24,6 +24,13 @@ session_start();
 header('Content-Type: application/json');
 ini_set('display_errors', 0);
 
+// শুধু admin (role='0') document delete করতে পারবে — sensitive/irreversible
+// action, accidental বা unauthorized delete এড়াতে
+if (empty($_SESSION['role']) || $_SESSION['role'] != '0') {
+    echo json_encode(['success' => false, 'message' => 'এই কাজের জন্য admin অনুমতি প্রয়োজন']);
+    exit;
+}
+
 $raw  = file_get_contents('php://input');
 $body = json_decode($raw, true) ?: [];
 

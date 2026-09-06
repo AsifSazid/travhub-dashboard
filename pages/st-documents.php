@@ -12,10 +12,12 @@
     <div class="flex items-center justify-between mb-3 flex-shrink-0">
         <h3 class="text-sm font-semibold text-gray-700">Documents</h3>
         <div class="flex items-center gap-2">
+            <?php if (($_SESSION['role'] ?? null) == '0'): ?>
             <button id="deletedToggleBtn" onclick="toggleDeletedView()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
                 <i class="fas fa-trash-restore"></i> Deleted
             </button>
+            <?php endif; ?>
             <button onclick="togglePropsPanel()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
                 <i class="fas fa-info-circle"></i> Properties
@@ -78,6 +80,10 @@
 <script>
 (function() {
     const TRAVELER_ID = <?= json_encode($travelerId) ?>;
+    // parent page (show-travelers.php) এ session_start() হয়ে গেছে ধরে
+    // নিয়ে সরাসরি $_SESSION পড়া হচ্ছে — role='0' মানে admin, শুধু তখনই
+    // Delete/Restore বাটন দেখানো হবে (backend-এও একই check আছে, এটা শুধু UX)
+    const IS_ADMIN = <?= json_encode(($_SESSION['role'] ?? null) == '0') ?>;
 
     // SMB folder order — label = smb_folder name অবিকল (doc requirement অনুযায়ী)
     const FOLDERS = [
@@ -278,10 +284,11 @@
                     class="w-full text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 flex items-center gap-2">
                     <i class="fas fa-eye w-3 text-gray-500"></i> View
                 </button>
+                ${IS_ADMIN ? `
                 <button onclick="closeContextMenu(); restoreDoc('${doc.sys_id}')"
                     class="w-full text-left px-3 py-1.5 hover:bg-green-50 text-green-700 flex items-center gap-2">
                     <i class="fas fa-trash-restore w-3"></i> Restore
-                </button>`;
+                </button>` : ''}`;
             document.body.appendChild(m);
             setTimeout(() => document.addEventListener('click', closeContextMenu, { once: true }), 0);
             return;
@@ -324,10 +331,11 @@
                 class="w-full text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 flex items-center gap-2">
                 <i class="fas fa-info-circle w-3 text-gray-500"></i> Properties
             </button>
+            ${IS_ADMIN ? `
             <button onclick="closeContextMenu(); startDeleteDoc('${doc.sys_id}')"
                 class="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 flex items-center gap-2">
                 <i class="fas fa-trash w-3"></i> Delete
-            </button>`;
+            </button>` : ''}`;
 
         document.body.appendChild(menu);
 
@@ -505,10 +513,11 @@
             ${viewingDeleted ? `
             <div class="mt-4 pt-3 border-t border-gray-200 space-y-1.5">
                 <p class="text-[10px] text-red-500 px-2">This document is deleted</p>
+                ${IS_ADMIN ? `
                 <button onclick="restoreDoc('${doc.sys_id}')"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-green-50 text-green-700 flex items-center gap-2">
                     <i class="fas fa-trash-restore w-3"></i> Restore
-                </button>
+                </button>` : ''}
             </div>` : `
             <div class="mt-4 pt-3 border-t border-gray-200 space-y-1.5">
                 <button onclick="openDocViewer('${doc.sys_id}', ${escHtml(JSON.stringify(pages.map(p=>p.url).filter(Boolean)))})"
@@ -533,10 +542,11 @@
                 ` : `
                 <p class="text-[10px] text-gray-400 px-2 py-1">Passport ফাইলের নাম/folder systematic — rename/move নেই</p>
                 `}
+                ${IS_ADMIN ? `
                 <button onclick="startDeleteDoc('${doc.sys_id}')"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-red-50 text-red-600 flex items-center gap-2">
                     <i class="fas fa-trash w-3"></i> Delete
-                </button>
+                </button>` : ''}
             </div>`}`;
     }
 

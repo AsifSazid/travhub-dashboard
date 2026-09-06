@@ -214,6 +214,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-user-tie mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Employees</span>
                     </a>
+                    <a href="cv-maker.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'cv-maker.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-user-tie mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">CV Maker</span>
+                    </a>
                     <?php if ($_SESSION['role'] == '0') { ?>
                         <a href="pms.php"
                            class="flex items-center p-3 rounded-lg 

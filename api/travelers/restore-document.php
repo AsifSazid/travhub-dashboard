@@ -18,6 +18,12 @@ date_default_timezone_set('Asia/Dhaka');
 header('Content-Type: application/json');
 ini_set('display_errors', 0);
 
+// শুধু admin (role='0') document restore করতে পারবে — delete-এর সমান্তরাল restriction
+if (empty($_SESSION['role']) || $_SESSION['role'] != '0') {
+    echo json_encode(['success' => false, 'message' => 'এই কাজের জন্য admin অনুমতি প্রয়োজন']);
+    exit;
+}
+
 $body  = json_decode(file_get_contents('php://input'), true) ?: [];
 $sysId = trim($body['sys_id'] ?? '');
 
