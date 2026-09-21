@@ -8,10 +8,20 @@ $taskSysId = $_GET['id'] ?? '';
 $API = [
     'getTask'        => $ip_port . "api/tasks/get-task.php",
     'updateStatus'   => $ip_port . "api/tasks/update-status.php",
-    'saveFinancial'  => $ip_port . "api/financial_entries/store.php",
-    'taskFinEntries' => $ip_port . "api/financial_entries/task-fin-entries.php",
-    'aiMindboard'    => $ip_port . "api/tasks/ai-mindboard.php",
-    'notes'          => $ip_port . "api/tasks/notes.php",
+    'saveFinancial'  => $ip_port . "api/financial_entries_v2/store.php",
+    'updateFinancial'=> $ip_port . "api/financial_entries_v2/update.php",
+    'deleteFinancial'=> $ip_port . "api/financial_entries_v2/delete.php",
+    'payOutstanding' => $ip_port . "api/financial_entries_v2/pay-outstanding.php",
+    'receiveOutstanding' => $ip_port . "api/financial_entries_v2/receive-outstanding.php",
+    'refundVendor'       => $ip_port . "api/financial_entries_v2/refund-vendor.php",
+    'refundClient'       => $ip_port . "api/financial_entries_v2/refund-client.php",
+    'refundSettleVendor' => $ip_port . "api/financial_entries_v2/refund-settle-vendor.php",
+    'refundSettleClient' => $ip_port . "api/financial_entries_v2/refund-settle-client.php",
+    'uploadFinFile'  => $ip_port . "api/financial_entries_v2/upload-file.php",
+    'taskFinEntries' => $ip_port . "api/financial_entries_v2/task-fin-entries.php",
+    'journeyTimeline'=> $ip_port . "api/tasks/get-journey-timeline.php",
+    'allVendors'     => $ip_port . "api/vendors/all-vendors.php",
+    'allAccounts'    => $ip_port . "api/accounts/all-trxnable-accounts.php",
     'assign'         => $ip_port . "api/tasks/assign.php",
     'employees'      => $ip_port . "api/employees/all-employees.php",
     'travelers'      => $ip_port . "api/travelers/all-travelers.php",
@@ -102,10 +112,10 @@ $API = [
             <div class="flex-1"></div>
             <!-- Status (clickable) -->
             <button onclick="openStatusModal()" id="statusBadgeBtn" class="transition hover:opacity-80"></button>
-            <!-- Assign -->
-            <button onclick="openAssignModal()"
-                class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg text-xs font-semibold transition">
-                <i class="fas fa-user-check text-xs"></i>Assign
+            <!-- Holding On -->
+            <button onclick="openHoldingOnModal()" id="holdingOnBtn"
+                class="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 rounded-lg text-xs font-medium transition">
+                <i class="fas fa-pause-circle text-xs text-amber-400"></i><span id="holdingOnLabel">Holding On</span>
             </button>
             <!-- Back -->
             <a id="backToWorkBtn" href="index-works.php"
@@ -117,10 +127,35 @@ $API = [
         <!-- BODY: left content + right sidebar -->
         <div class="flex flex-1 overflow-hidden">
 
-            <!-- LEFT: service tab area -->
-            <div class="flex-1 overflow-y-auto p-4" id="serviceTabArea">
-                <div class="text-center py-10 text-gray-300 text-sm">
-                    <i class="fas fa-spinner fa-spin text-xl mb-2 block"></i>Loading service view…
+            <!-- LEFT: tab bar + content area -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <!-- Top-level tabs -->
+                <div class="flex items-center gap-1 px-4 pt-3 bg-white border-b border-gray-100 flex-shrink-0">
+                    <button id="mtab-financial" onclick="switchMainTab('financial')"
+                        class="main-tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition">
+                        <i class="fas fa-wallet mr-1.5"></i>Financial
+                    </button>
+                    <button id="mtab-documents" onclick="switchMainTab('documents')"
+                        class="main-tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition">
+                        <i class="fas fa-folder-open mr-1.5"></i>Documents
+                    </button>
+                    <button id="mtab-service" onclick="switchMainTab('service')"
+                        class="main-tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition">
+                        <i class="fas fa-layer-group mr-1.5"></i>Service Infos
+                    </button>
+                </div>
+                <style>
+                    .main-tab-btn{color:#9ca3af;border-color:transparent;}
+                    .main-tab-btn:hover{color:#4b5563;background:#f9fafb;}
+                    .main-tab-btn.active{color:#4f46e5;border-color:#4f46e5;background:#eef2ff;}
+                </style>
+
+                <div class="flex-1 overflow-y-auto p-4" id="financialTabArea"></div>
+                <div class="flex-1 overflow-y-auto p-4 hidden" id="documentsTabArea"></div>
+                <div class="flex-1 overflow-y-auto p-4 hidden" id="serviceTabArea">
+                    <div class="text-center py-10 text-gray-300 text-sm">
+                        <i class="fas fa-spinner fa-spin text-xl mb-2 block"></i>Loading service view…
+                    </div>
                 </div>
             </div>
 
@@ -128,43 +163,7 @@ $API = [
             <div id="rightSidebar" class="w-72 flex-shrink-0 border-l border-gray-100 bg-white p-3 space-y-2"
                 style="max-height:calc(100vh - 104px);">
 
-                <!-- 1. Mind Board -->
-                <div class="sc overflow-hidden">
-                    <div class="acc-header rounded-xl" onclick="toggleAcc('acc-mb',this)">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-brain text-indigo-500 text-xs"></i>
-                            </div>
-                            <span class="text-sm font-semibold text-gray-700">Mind Board</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-gray-400 text-xs acc-chevron"></i>
-                    </div>
-                    <div id="acc-mb" class="acc-body">
-                        <div class="px-3 pb-3 space-y-2">
-                            <button onclick="openAiModal()"
-                                class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2">
-                                <i class="fas fa-wand-magic-sparkles"></i>AI Generate Briefing
-                            </button>
-                            <!-- File + message count only -->
-                            <div id="mbSidePreview" class="flex items-center gap-3 text-xs text-gray-400 py-1">
-                                <div class="flex items-center gap-1">
-                                    <i class="fas fa-comment text-blue-300 text-xs"></i>
-                                    <span id="mbMsgCount">0</span> notes
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <i class="fas fa-paperclip text-green-300 text-xs"></i>
-                                    <span id="mbFileCount">0</span> files
-                                </div>
-                            </div>
-                            <button onclick="openMindBoardModal()"
-                                class="w-full py-1.5 text-indigo-500 hover:text-indigo-700 text-xs font-semibold text-center border border-indigo-100 rounded-lg hover:bg-indigo-50 transition">
-                                Open Mind Board <i class="fas fa-arrow-right ml-1"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Task Overview -->
+                <!-- 1. Task Overview -->
                 <div class="sc overflow-hidden">
                     <div class="acc-header rounded-xl" onclick="toggleAcc('acc-ov',this)">
                         <div class="flex items-center gap-2">
@@ -187,7 +186,7 @@ $API = [
                     </div>
                 </div>
 
-                <!-- 3. Instructions -->
+                <!-- 2. Instructions -->
                 <div class="sc overflow-hidden">
                     <div class="acc-header rounded-xl" onclick="toggleAcc('acc-ins',this)">
                         <div class="flex items-center gap-2">
@@ -265,102 +264,83 @@ $API = [
     </div>
 </div>
 
-<!-- Assign -->
-<div id="assignModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+<!-- Holding On -->
+<div id="holdingOnModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
         <div class="flex items-center justify-between p-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-user-check mr-2 text-indigo-500"></i>Assignment</h3>
-            <button onclick="closeModal('assignModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-pause-circle mr-2 text-amber-400"></i>Holding On</h3>
+            <button onclick="closeModal('holdingOnModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
         <div class="p-4 space-y-3">
-            <div>
-                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Assigned To</label>
-                <div class="relative" id="assignedToWrap">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none"></i>
-                    <input type="text" id="assignedToInput" placeholder="Search employee…" class="f-input pl-8" autocomplete="off"
-                        oninput="filterEmp(this.value)" onfocus="filterEmp(this.value)">
-                    <ul id="assignedToDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
-                </div>
-                <input type="hidden" id="assignedToVal">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Holding On</label>
-                <input id="holdingOn" class="f-input" placeholder="e.g. Waiting for passport">
-            </div>
-            <button onclick="saveAssignment()"
-                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
-                <i class="fas fa-save mr-1.5"></i>Save Assignment
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Mind Board Modal -->
-<div id="mindBoardModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style="height:85vh;">
-        <div class="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
-            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-comments mr-2 text-indigo-400"></i>Mind Board</h3>
-            <button onclick="closeModal('mindBoardModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-        </div>
-
-        <!-- AI Planning Board (hidden by default, shown after generate) -->
-        <div id="aiPlanningBoard" class="hidden flex-shrink-0 border-b border-indigo-100 bg-indigo-50 px-4 py-3 text-sm">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider"><i class="fas fa-brain mr-1.5"></i>AI Planning Briefing</span>
-                <button onclick="document.getElementById('aiPlanningBoard').classList.add('hidden')" class="text-indigo-300 hover:text-indigo-500 text-xs"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="aiPlanningContent" class="text-gray-700 text-xs leading-relaxed max-h-32 overflow-y-auto"></div>
-        </div>
-
-        <!-- Chat area — newest at bottom (flex-col, scroll to bottom) -->
-        <div id="mbChatArea" class="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
-            <div class="text-center py-6 text-gray-300 text-xs"><i class="fas fa-spinner fa-spin"></i></div>
-        </div>
-
-        <!-- Input bar — fixed at bottom of modal -->
-        <div id="mbInputBar" class="flex-shrink-0 border-t border-gray-100 bg-white p-3">
-            <!-- File preview chip -->
-            <div id="mbFilePreview" class="hidden mb-2 bg-indigo-50 rounded-lg px-3 py-1.5 text-xs text-indigo-600 flex items-center gap-2">
-                <i class="fas fa-paperclip flex-shrink-0"></i>
-                <span id="mbFilePreviewName" class="flex-1 truncate"></span>
-                <button onclick="mbClearFile()" class="text-red-400 hover:text-red-600 flex-shrink-0"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="flex items-end gap-2">
-                <!-- Attach file -->
-                <label class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 transition" title="Attach file">
-                    <i class="fas fa-paperclip text-gray-500 text-sm"></i>
-                    <input type="file" id="mbFileInput" class="hidden" onchange="mbFileSelected(this)">
-                </label>
-                <!-- Text input -->
-                <textarea id="mbTextInput" rows="1" placeholder="Write a note… (Enter to send, Shift+Enter for new line)"
-                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();mbSend();}"
-                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
-                    style="flex:1;resize:none;border:1.5px solid #e5e7eb;border-radius:20px;padding:8px 14px;font-size:.83rem;outline:none;max-height:100px;overflow-y:auto;transition:border .15s;"></textarea>
-                <!-- Send -->
-                <button onclick="mbSend()"
-                    class="w-9 h-9 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center flex-shrink-0 transition">
-                    <i class="fas fa-paper-plane text-white text-sm"></i>
+            <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Reason / Note</label>
+            <input id="holdingOnInput" class="f-input" placeholder="e.g. Waiting for passport">
+            <div class="flex gap-2">
+                <button onclick="saveHoldingOn(true)" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-times mr-1"></i>Clear
+                </button>
+                <button onclick="saveHoldingOn(false)" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
+                    <i class="fas fa-save mr-1.5"></i>Save
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- AI Modal -->
-<div id="aiModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+<!-- Financial Entry Edit -->
+<div id="finEditModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-wand-magic-sparkles mr-2 text-indigo-500"></i>AI Planning Briefing</h3>
-            <button onclick="closeModal('aiModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-edit mr-2 text-indigo-500"></i>Edit Transaction</h3>
+            <button onclick="closeModal('finEditModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-4">
-            <p class="text-xs text-gray-400 mb-3">AI will analyze your Mind Board notes and generate a planning briefing. The result will appear inside the Mind Board.</p>
-            <button onclick="aiGenerate()" id="aiGenBtn"
-                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
-                <i class="fas fa-wand-magic-sparkles mr-1.5"></i>Generate Briefing
-            </button>
-            <div id="aiGenStatus" class="hidden mt-3 text-center text-xs text-indigo-500">
-                <i class="fas fa-spinner fa-spin mr-1"></i>Analyzing notes…
+        <div class="p-4 space-y-3">
+            <input type="hidden" id="fin_edit_id">
+            <input type="hidden" id="fin_edit_original_type">
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Type</label>
+                <div id="fin_edit_type_display" class="px-3 py-2 bg-gray-50 rounded-lg text-sm font-semibold border border-gray-100"></div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Purpose</label>
+                <textarea id="fin_edit_purpose" rows="2" class="f-input"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Note <span class="text-gray-300 font-normal">(optional)</span></label>
+                <input id="fin_edit_note" placeholder="Any notes…" class="f-input">
+            </div>
+            <div class="p-2.5 bg-indigo-50 rounded-lg border border-indigo-100">
+                <p class="text-xs text-indigo-600 font-medium mb-1.5"><i class="fas fa-calculator mr-1"></i>যেকোনো দুইটা দিলে তৃতীয়টা auto হবে</p>
+                <div class="grid grid-cols-3 gap-1.5">
+                    <div><label class="block text-[10px] text-gray-500 mb-0.5">QTY</label><input type="number" step="0.01" min="0" id="fin_edit_qty" class="f-input text-xs"></div>
+                    <div><label class="block text-[10px] text-gray-500 mb-0.5">Rate</label><input type="number" step="0.01" min="0" id="fin_edit_rate" class="f-input text-xs"></div>
+                    <div><label class="block text-[10px] text-gray-500 mb-0.5">Amount ৳</label><input type="number" step="0.01" min="0" id="fin_edit_amount" class="f-input text-xs"></div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" id="fin_edit_date" class="f-input">
+            </div>
+            <div class="p-2.5 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                <p class="text-xs text-amber-700 font-semibold"><i class="fas fa-shield-alt mr-1"></i>Edit করতে reason ও evidence বাধ্যতামূলক</p>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Reason for this edit <span class="text-red-500">*</span></label>
+                    <textarea id="fin_edit_reason" rows="2" placeholder="কেন এই পরিবর্তন করা হচ্ছে…" class="f-input"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Evidence file <span class="text-red-500">*</span></label>
+                    <label class="flex items-center gap-2 px-3 py-2 border border-dashed border-amber-300 rounded-lg cursor-pointer hover:border-amber-400 hover:bg-amber-100/50 transition text-xs">
+                        <i class="fas fa-cloud-upload-alt text-gray-400"></i>
+                        <span id="fin_edit_evidenceLabel" class="text-gray-500 truncate">Browse or drop a file</span>
+                        <input type="file" id="fin_edit_evidenceInput" class="hidden" onchange="_finEditEvidenceSelected(this)">
+                    </label>
+                    <input type="hidden" id="fin_edit_evidenceFile">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="closeModal('finEditModal')" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">Cancel</button>
+                <button onclick="finUpdateTransaction()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
+                    <i class="fas fa-save mr-1.5"></i>Update
+                </button>
             </div>
         </div>
     </div>
@@ -521,7 +501,7 @@ $API = [
 // ════════════════════════════════════════════════════════════
 const TASK_SYS_ID = "<?php echo htmlspecialchars($taskSysId); ?>";
 const API = <?php echo json_encode($API); ?>;
-let taskData = null, workData = null, _mbNotes = [], _mbFile = null;
+let taskData = null, workData = null, serviceWorkData = null;
 
 // ── Load ─────────────────────────────────────────────────────
 async function loadTask() {
@@ -530,13 +510,27 @@ async function loadTask() {
         const res  = await fetch(API.getTask + '?id=' + TASK_SYS_ID);
         const json = await res.json();
         if (json.status !== 'success') throw new Error(json.message);
-        taskData = json.task; workData = json.work;
+        taskData = json.task; workData = json.work; serviceWorkData = json.service_work ?? null;
         renderCommonUI();
-        loadServiceTab(taskData.service_slug ?? null, json.at_data ?? null);
-        mbLoadNotes();
+        _loadAtDataForDocuments(); // async, non-blocking — used only by Documents tab raw files
+        switchMainTab('financial');
     } catch(e) {
         document.getElementById('loadingState').innerHTML = `<p class="text-red-400 text-center text-sm py-10">${escHtml(e.message)}</p>`;
     }
+}
+
+async function _loadAtDataForDocuments() {
+    if (taskData?.service_slug !== 'air_ticket' || !taskData?.work_sys_id) return;
+    try {
+        const res  = await fetch(API.airTickets + '?action=get&work_sys_id=' + encodeURIComponent(taskData.work_sys_id));
+        const json = await res.json();
+        if (json.status === 'success') {
+            _atData = json.data ?? null;
+            if (document.getElementById('documentsTabArea') && !document.getElementById('documentsTabArea').classList.contains('hidden')) {
+                document.getElementById('doc_rawFiles').innerHTML = _docRawFilesHtml();
+            }
+        }
+    } catch(e) { /* Documents tab shows empty state if this fails — non-critical */ }
 }
 
 // ── Common UI ─────────────────────────────────────────────────
@@ -556,10 +550,10 @@ function renderCommonUI() {
     document.getElementById('ov-service').innerHTML   = serviceLabel(taskData.service_slug);
     document.getElementById('ov-status').innerHTML    = badgeHtml(taskData.status);
     document.getElementById('ov-client').textContent  = taskData.client_name ?? ci.name ?? '—';
-    document.getElementById('ov-assigned').textContent= taskData.assigned_to ?? '—';
-    // Assignment prefill
-    if (taskData.assigned_to) { document.getElementById('assignedToInput').value = taskData.assigned_to; document.getElementById('assignedToVal').value = taskData.assigned_to; }
-    document.getElementById('holdingOn').value = taskData.holding_on ? (typeof taskData.holding_on==='object'?JSON.stringify(taskData.holding_on):taskData.holding_on) : '';
+    document.getElementById('ov-assigned').textContent= serviceWorkData?.assigned_to_name ?? 'Not assigned';
+    // Holding On state
+    _currentHoldingOn = taskData.holding_on ? (typeof taskData.holding_on==='object'?JSON.stringify(taskData.holding_on):taskData.holding_on) : '';
+    renderHoldingOnBadge();
     // Instructions
     document.getElementById('instructionDisplay').textContent = taskData.instruction ?? '—';
     _renderSpecialIns(taskData.special_ins);
@@ -567,34 +561,1252 @@ function renderCommonUI() {
     loadLinkedTravelers();
 }
 
+// ════════════════════════════════════════════════════════════
+// TOP-LEVEL TABS: Financial | Documents | Service Infos
+// ════════════════════════════════════════════════════════════
+let _atData = null;
+let _financialLoaded = false, _documentsLoaded = false, _serviceLoaded = false;
+
+function switchMainTab(tab) {
+    ['financial','documents','service'].forEach(t => {
+        document.getElementById(`mtab-${t}`).classList.toggle('active', t === tab);
+        document.getElementById(`${t}TabArea`).classList.toggle('hidden', t !== tab);
+    });
+    if (tab === 'financial' && !_financialLoaded) { _financialLoaded = true; initFinancialTab(); }
+    if (tab === 'documents' && !_documentsLoaded) { _documentsLoaded = true; initDocumentsTab(); }
+    if (tab === 'service'   && !_serviceLoaded)   { _serviceLoaded = true; loadServiceTab(taskData?.service_slug ?? null, _atData); }
+}
+
 // ── Service tab ───────────────────────────────────────────────
 function loadServiceTab(slug, atData) {
     const area = document.getElementById('serviceTabArea');
     switch (slug) {
-        case 'air_ticket': _loadAirTicketTab(atData); break;
+        case 'air_ticket': _loadAirTicketTab(); break;
         default:
             area.innerHTML = `<div class="sc p-6 text-center text-gray-400 text-sm"><i class="fas fa-question-circle text-3xl mb-3 block opacity-30"></i>Service <b>${escHtml(slug??'unknown')}</b> — no dedicated view yet.</div>`;
     }
 }
 
-function _loadAirTicketTab(atData) {
-    document.getElementById('serviceTabArea').innerHTML = '<div id="at-tab-mount"></div>';
+async function _loadAirTicketTab() {
+    const area = document.getElementById('serviceTabArea');
+    area.innerHTML = `<div class="text-center py-10 text-gray-300 text-sm"><i class="fas fa-spinner fa-spin text-xl mb-2 block"></i>Loading journey…</div>`;
+    try {
+        const res  = await fetch(API.journeyTimeline + '?task_sys_id=' + encodeURIComponent(TASK_SYS_ID));
+        const json = await res.json();
+        if (json.status !== 'success') throw new Error(json.message || 'Failed to load');
+        _renderJourneyTimeline(json.events ?? []);
+    } catch(e) {
+        area.innerHTML = `<div class="sc p-6 text-center text-red-400 text-sm">${escHtml(e.message)}</div>`;
+    }
+}
 
-    // আগের script tag থাকলে remove করো — duplicate IIFE আটকাতে
-    const old = document.getElementById('at-script-tag');
-    if (old) old.remove();
+const _JOURNEY_STAGE_INFO = {
+    note:         { icon: 'fa-lightbulb',     color: 'bg-amber-100 text-amber-600',   label: 'Mind Board' },
+    quotation:    { icon: 'fa-file-invoice',  color: 'bg-blue-100 text-blue-600',     label: 'Quotation' },
+    booking:      { icon: 'fa-bookmark',      color: 'bg-purple-100 text-purple-600', label: 'Booking' },
+    confirmation: { icon: 'fa-check-circle',  color: 'bg-emerald-100 text-emerald-600', label: 'Confirmation' },
+    task:         { icon: 'fa-flag-checkered',color: 'bg-indigo-100 text-indigo-600', label: 'Task Created' },
+};
 
-    const s = document.createElement('script');
-    s.id  = 'at-script-tag';
-    s.src = 'task-tabs/tt-air-ticket.js?v=' + Date.now();
-    s.onload = () => { if (typeof initAirTicketTab==='function') initAirTicketTab({ taskSysId:TASK_SYS_ID, workSysId:taskData?.work_sys_id??'', leadSysId:workData?.lead_sys_id??null, clientName:taskData?.client_name??'', workname:taskData?.workname??'', atData, api:API }); };
-    s.onerror = () => { document.getElementById('serviceTabArea').innerHTML=`<div class="sc p-6 text-center text-red-400 text-sm">Air ticket module load failed.</div>`; };
-    document.body.appendChild(s);
+let _journeyEvents = [];
+
+function _renderJourneyTimeline(events) {
+    _journeyEvents = events;
+    const area = document.getElementById('serviceTabArea');
+    if (!events.length) {
+        area.innerHTML = `<div class="sc p-6 text-center text-gray-400 text-sm"><i class="fas fa-route text-3xl mb-3 block opacity-30"></i>এই task-এর journey data পাওয়া যায়নি।</div>`;
+        return;
+    }
+    area.innerHTML = `
+        <div class="sc p-4">
+            <h3 class="text-sm font-semibold text-gray-800 mb-4"><i class="fas fa-route mr-1.5 text-indigo-500"></i>Journey Timeline</h3>
+            <div class="relative pl-8">
+                <div class="absolute left-[13px] top-2 bottom-2 w-0.5 bg-gray-100"></div>
+                ${events.map((ev, i) => {
+                    const info = _JOURNEY_STAGE_INFO[ev.stage] ?? { icon: 'fa-circle', color: 'bg-gray-100 text-gray-500', label: ev.stage };
+                    return `
+                    <div class="relative pb-6 last:pb-0">
+                        <div class="absolute -left-8 w-7 h-7 rounded-full ${info.color} flex items-center justify-center text-xs ring-4 ring-white">
+                            <i class="fas ${info.icon}"></i>
+                        </div>
+                        <button onclick="_toggleJourneyCard(${i})" class="w-full text-left rounded-lg hover:bg-gray-50 transition px-2 py-1.5 -ml-2">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span class="text-xs font-bold uppercase tracking-wide text-gray-400">${escHtml(info.label)}</span>
+                                ${i===0 ? '<span class="px-1.5 py-0.5 bg-indigo-50 text-indigo-500 text-[10px] rounded-full font-semibold">Latest</span>' : ''}
+                                <i class="fas fa-chevron-down ml-auto text-gray-300 text-xs transition-transform" id="jc-chevron-${i}"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-gray-800">${escHtml(ev.title || '')}</p>
+                            ${ev.summary ? `<p class="text-xs text-gray-500 mt-0.5">${escHtml(ev.summary)}</p>` : ''}
+                            <p class="text-[11px] text-gray-400 mt-1">${ev.at ? escHtml(ev.at) : 'সময় জানা নেই'}${ev.by ? ' · ' + escHtml(ev.by) : ''}</p>
+                        </button>
+                        <div id="jc-detail-${i}" class="hidden mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs"></div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function _toggleJourneyCard(i) {
+    const detail  = document.getElementById(`jc-detail-${i}`);
+    const chevron = document.getElementById(`jc-chevron-${i}`);
+    const opening = detail.classList.contains('hidden');
+    detail.classList.toggle('hidden');
+    chevron.style.transform = opening ? 'rotate(180deg)' : '';
+    if (opening && !detail.dataset.loaded) {
+        detail.innerHTML = _renderJourneyDetail(_journeyEvents[i]);
+        detail.dataset.loaded = '1';
+    }
+}
+
+function _kv(label, value) {
+    if (value === null || value === undefined || value === '') return '';
+    return `<div class="flex justify-between gap-3 py-1 border-b border-gray-100 last:border-b-0"><span class="text-gray-400">${escHtml(label)}</span><span class="text-gray-700 font-medium text-right">${escHtml(String(value))}</span></div>`;
+}
+
+function _renderJourneyDetail(ev) {
+    const r = ev.raw ?? {};
+    switch (ev.stage) {
+        case 'note': {
+            if (r.note_type === 'text') {
+                return `<p class="text-gray-700 whitespace-pre-wrap leading-relaxed">${escHtml(r.content || '')}</p>`;
+            }
+            return `<p class="text-gray-500 italic">${escHtml(r.note_type || 'media')} note — ${escHtml(r.content || '')}</p>`;
+        }
+        case 'quotation':
+        case 'booking': {
+            const fd = r.form_data ?? {};
+            const segs = Array.isArray(r.segments_json) ? r.segments_json : [];
+            return `
+                ${_kv('Type', (r.type || '').toUpperCase())}
+                ${_kv('Airline', r.airline)}
+                ${ev.stage === 'booking' ? _kv('PNR', r.pnr) : ''}
+                ${ev.stage === 'booking' ? _kv('Ticket No(s)', (r.ticket_nos||[]).join(', ')) : ''}
+                ${_kv('Adult / Child / Infant', (fd.pax_adult!==undefined) ? `${fd.pax_adult??0} / ${fd.pax_child??0} / ${fd.pax_infant??0}` : null)}
+                ${_kv('Route', fd.route)}
+                ${_kv('Class', fd.class)}
+                ${_kv('Gross Fare', r.gross_fare ? '৳'+Number(r.gross_fare).toFixed(2) : null)}
+                ${_kv('Net Fare', r.net_fare ? '৳'+Number(r.net_fare).toFixed(2) : null)}
+                ${_kv('Total Payable', r.total_payable ? '৳'+Number(r.total_payable).toFixed(2) : null)}
+                ${_kv('Status', r.status)}
+                ${segs.length ? `<div class="mt-2 pt-2 border-t border-gray-200">
+                    <p class="text-gray-400 font-semibold mb-1">Segments</p>
+                    ${segs.map(s => `<div class="py-1">${escHtml(s.dep_airport||'')} ${escHtml(s.dep_time||'')} → ${escHtml(s.arr_airport||'')} ${escHtml(s.arr_time||'')} · ${escHtml(s.date||'')} ${s.flight_no?('· '+escHtml(s.airline||'')+' '+escHtml(s.flight_no)):''}</div>`).join('')}
+                </div>` : ''}
+                ${r.copy_text ? `<div class="mt-2 pt-2 border-t border-gray-200"><p class="text-gray-400 font-semibold mb-1">Raw Text</p><pre class="whitespace-pre-wrap font-sans text-gray-600">${escHtml(r.copy_text)}</pre></div>` : ''}
+            `;
+        }
+        case 'confirmation': {
+            const files = Array.isArray(r.files_json) ? r.files_json : [];
+            const srcBooking = _journeyEvents.find(e => e.stage === 'booking' && e.sys_id === r.booking_sys_id)?.raw ?? {};
+            const fd = srcBooking.form_data ?? {};
+            return `
+                ${_kv('Status', r.status)}
+                ${_kv('Ticket No(s)', (r.ticket_nos||[]).join(', '))}
+                ${_kv('Note', r.note)}
+                ${srcBooking.sys_id ? `<div class="mt-2 pt-2 border-t border-gray-200">
+                    <p class="text-gray-400 font-semibold mb-1">From Booking ${escHtml(srcBooking.sys_id)}</p>
+                    ${_kv('Airline', srcBooking.airline)}
+                    ${_kv('PNR', srcBooking.pnr)}
+                    ${_kv('Route', fd.route)}
+                    ${_kv('Total Payable', srcBooking.total_payable ? '৳'+Number(srcBooking.total_payable).toFixed(2) : null)}
+                </div>` : ''}
+                ${files.length ? `<div class="mt-2 pt-2 border-t border-gray-200">
+                    <p class="text-gray-400 font-semibold mb-1">Files (${files.length})</p>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        ${files.map((f, idx) => {
+                            const isImg = (f.mime_type||'').startsWith('image/');
+                            const url = `${API.fileServe}?conf_id=${ev.sys_id}&work_id=${taskData.work_sys_id}&page=${idx}`;
+                            return `<a href="${url}" target="_blank" class="block border border-gray-200 rounded-lg overflow-hidden hover:border-indigo-300 transition bg-white">
+                                ${isImg
+                                    ? `<img src="${url}" class="w-full h-16 object-cover" loading="lazy">`
+                                    : `<div class="w-full h-16 flex items-center justify-center bg-gray-50"><i class="fas fa-file-pdf text-red-300 text-xl"></i></div>`}
+                                <div class="px-1.5 py-1 text-[10px] text-gray-500 truncate">${escHtml(f.name || f.file_name || 'file')}</div>
+                            </a>`;
+                        }).join('')}
+                    </div>
+                </div>` : ''}
+            `;
+        }
+        case 'task': {
+            return `
+                ${_kv('Task ID', r.sys_id)}
+                ${_kv('Work', r.work_sys_id)}
+                ${_kv('Client', r.client_name)}
+                ${_kv('Status', r.status)}
+                ${_kv('Service', r.service_slug)}
+            `;
+        }
+        default:
+            return `<pre class="whitespace-pre-wrap font-sans text-gray-500">${escHtml(JSON.stringify(r, null, 2))}</pre>`;
+    }
 }
 
 // ════════════════════════════════════════════════════════════
-// ACCORDION
+// FINANCIAL TAB (client-fin-trxn.php প্যাটার্ন অনুসরণ করে, financial_entries_v2 API দিয়ে)
 // ════════════════════════════════════════════════════════════
+let _finVendors = [], _finAccounts = [], _finTransactions = [];
+
+function initFinancialTab() {
+    const area = document.getElementById('financialTabArea');
+    const ci = workData?.client_info ?? {};
+    area.innerHTML = `
+        <!-- Task Info strip -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div class="rounded-xl p-3.5 border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white">
+                <p class="text-[11px] text-indigo-400 font-semibold uppercase tracking-wide">Task ID</p>
+                <p class="text-sm font-bold text-indigo-900 mt-0.5">${escHtml(TASK_SYS_ID)}</p>
+            </div>
+            <div class="rounded-xl p-3.5 border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white">
+                <p class="text-[11px] text-emerald-500 font-semibold uppercase tracking-wide">Client</p>
+                <p class="text-sm font-bold text-emerald-900 mt-0.5 truncate">${escHtml(taskData?.client_name ?? ci.name ?? 'N/A')}</p>
+            </div>
+            <div class="rounded-xl p-3.5 border border-purple-100 bg-gradient-to-br from-purple-50 to-white">
+                <p class="text-[11px] text-purple-400 font-semibold uppercase tracking-wide">Work</p>
+                <p class="text-sm font-bold text-purple-900 mt-0.5 truncate">${escHtml(taskData?.workname ?? 'N/A')}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <!-- Client Sale -->
+            <div class="sc overflow-hidden">
+                <div class="p-3 sm:p-4 flex items-center justify-between" style="background:linear-gradient(135deg,#6366f1,#4f46e5);">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">Client Sale</h3>
+                        <p class="text-indigo-100 text-xs">Record a sale to this client</p>
+                    </div>
+                    <i class="fas fa-arrow-down text-white/80 text-xl"></i>
+                </div>
+                <div class="p-3 sm:p-4 space-y-3">
+                    <div class="flex items-center gap-2 pb-2 border-b border-gray-100">
+                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs flex-shrink-0">${(taskData?.client_name ?? ci.name ?? 'C')[0]?.toUpperCase()}</div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-gray-700 truncate">${escHtml(taskData?.client_name ?? ci.name ?? 'Unknown Client')}</p>
+                            <p class="text-[11px] text-gray-400 truncate">${escHtml(ci.email ?? ci.phone ?? '')}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1"><i class="fas fa-bullseye mr-1"></i>Purpose</label>
+                        <textarea id="fin_client_purpose" rows="2" placeholder="e.g., Initial Payment" class="f-input"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1"><i class="fas fa-pen mr-1"></i>Note <span class="text-gray-300 font-normal">(optional)</span></label>
+                        <input id="fin_client_note" placeholder="Any notes…" class="f-input">
+                    </div>
+                    <div class="p-2.5 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <p class="text-xs text-indigo-600 font-medium mb-1.5"><i class="fas fa-calculator mr-1"></i>যেকোনো দুইটা দিলে তৃতীয়টা auto হবে</p>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div><label class="block text-[10px] text-gray-500 mb-0.5">QTY</label><input type="number" step="0.01" min="0" id="fin_client_qty" class="f-input text-xs fin-calc" placeholder="0"></div>
+                            <div><label class="block text-[10px] text-gray-500 mb-0.5">Rate</label><input type="number" step="0.01" min="0" id="fin_client_rate" class="f-input text-xs fin-calc" placeholder="0.00"></div>
+                            <div><label class="block text-[10px] text-gray-500 mb-0.5">Amount ৳</label><input type="number" step="0.01" min="0" id="fin_client_amount" class="f-input text-xs fin-calc" placeholder="0.00"></div>
+                        </div>
+                    </div>
+                    <div><label class="block text-xs font-medium text-gray-700 mb-1"><i class="far fa-calendar mr-1"></i>Date</label>
+                        <input type="date" id="fin_client_date" value="${new Date().toISOString().slice(0,10)}" class="f-input"></div>
+                    <div>
+                        <label class="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition text-xs">
+                            <i class="fas fa-cloud-upload-alt text-gray-400"></i>
+                            <span id="fin_clientFileLabel" class="text-gray-500 truncate">Browse or drop files</span>
+                            <input type="file" id="fin_clientFiles" multiple class="hidden" onchange="document.getElementById('fin_clientFileLabel').textContent=this.files.length>1?this.files.length+' files':(this.files[0]?.name||'Browse or drop files')">
+                        </label>
+                    </div>
+                    <button onclick="finRecordTransaction('client_submit')" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition"><i class="fas fa-plus mr-1"></i>Record Sale</button>
+                    <p class="text-[11px] text-gray-400 text-center">Payment receive করতে, নিচের transaction list-এ Sale-টা খুলে "Receive Now" ব্যবহার করুন।</p>
+                </div>
+            </div>
+
+            <!-- Vendor Payment -->
+            <div class="sc overflow-hidden">
+                <div class="p-3 sm:p-4 flex items-center justify-between" style="background:linear-gradient(135deg,#10b981,#059669);">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">Vendor Payment</h3>
+                        <p class="text-emerald-100 text-xs">Record vendor expenses</p>
+                    </div>
+                    <i class="fas fa-arrow-up text-white/80 text-xl"></i>
+                </div>
+                <div class="p-3 sm:p-4 space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1"><i class="fas fa-building mr-1"></i>Vendor</label>
+                        <div class="relative" id="fin_vendorWrap">
+                            <input id="fin_vendorSearch" placeholder="Search for a vendor…" class="f-input" autocomplete="off"
+                                oninput="_finFilterList('vendor', this.value)" onfocus="_finFilterList('vendor', this.value)">
+                            <ul id="fin_vendorDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
+                        </div>
+                        <input type="hidden" id="fin_vendorSelect">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5"><i class="fa-solid fa-clock mr-1"></i>Transaction Type</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center justify-center gap-1.5 p-2 border-2 border-emerald-500 bg-emerald-50 text-emerald-700 rounded-lg cursor-pointer text-xs font-semibold" id="fin_modeRealtimeLbl">
+                                <input type="radio" name="fin_txn_mode" value="realtime" class="hidden" checked onchange="finToggleTxnMode()"><i class="fa-solid fa-bolt"></i>Real-time</label>
+                            <label class="flex items-center justify-center gap-1.5 p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer text-xs font-semibold" id="fin_modeNonRealtimeLbl">
+                                <input type="radio" name="fin_txn_mode" value="non_realtime" class="hidden" onchange="finToggleTxnMode()"><i class="fa-solid fa-clock-rotate-left"></i>Non-real-time</label>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1">Real-time: এখনই কোনো account থেকে vendor-কে payment দেওয়া হচ্ছে। Non-real-time: শুধু service purchase রেকর্ড হবে, payment পরে।</p>
+                    </div>
+                    <div id="fin_accountSection">
+                        <label class="block text-xs font-medium text-gray-700 mb-1"><i class="fas fa-university mr-1"></i>Own Account</label>
+                        <div class="relative" id="fin_accountWrap">
+                            <input id="fin_accountSearch" placeholder="Search for an account…" class="f-input" autocomplete="off"
+                                oninput="_finFilterList('account', this.value)" onfocus="_finFilterList('account', this.value)">
+                            <ul id="fin_accountDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
+                        </div>
+                        <input type="hidden" id="fin_accountSelect">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1"><i class="fas fa-bullseye mr-1"></i>Purpose</label>
+                        <textarea id="fin_vendor_purpose" rows="2" placeholder="e.g., Hotel Booking" class="f-input"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1"><i class="fas fa-pen mr-1"></i>Note <span class="text-gray-300 font-normal">(optional)</span></label>
+                        <input id="fin_vendor_note" placeholder="Any notes…" class="f-input">
+                    </div>
+                    <div class="p-2.5 rounded-lg border border-emerald-200" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+                        <p class="text-xs text-emerald-700 font-medium mb-1.5"><i class="fas fa-calculator mr-1"></i>যেকোনো দুইটা দিলে তৃতীয়টা auto হবে</p>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div><label class="block text-[10px] text-emerald-700 mb-0.5">QTY</label><input type="number" step="0.01" min="0" id="fin_vendor_qty" class="f-input text-xs fin-calc" placeholder="0"></div>
+                            <div><label class="block text-[10px] text-emerald-700 mb-0.5">Rate</label><input type="number" step="0.01" min="0" id="fin_vendor_rate" class="f-input text-xs fin-calc" placeholder="0.00"></div>
+                            <div><label class="block text-[10px] text-emerald-700 mb-0.5">Amount ৳</label><input type="number" step="0.01" min="0" id="fin_vendor_amount" class="f-input text-xs fin-calc" placeholder="0.00"></div>
+                        </div>
+                    </div>
+                    <div><label class="block text-xs font-medium text-gray-700 mb-1"><i class="far fa-calendar mr-1"></i>Date</label>
+                        <input type="date" id="fin_vendor_date" value="${new Date().toISOString().slice(0,10)}" class="f-input"></div>
+                    <div>
+                        <label class="flex items-center gap-2 px-3 py-2 border border-dashed border-emerald-300 rounded-lg cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition text-xs">
+                            <i class="fas fa-cloud-upload-alt text-gray-400"></i>
+                            <span id="fin_vendorFileLabel" class="text-gray-500 truncate">Browse or drop files</span>
+                            <input type="file" id="fin_vendorFiles" multiple class="hidden" onchange="document.getElementById('fin_vendorFileLabel').textContent=this.files.length>1?this.files.length+' files':(this.files[0]?.name||'Browse or drop files')">
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="finRecordTransaction('debit_refund')" class="py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-semibold transition"><i class="fas fa-undo mr-1"></i>Refund</button>
+                        <button onclick="finRecordTransaction('credit')" class="py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition"><i class="fas fa-plus mr-1"></i>Record Payment</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats sidebar -->
+            <div class="space-y-4">
+                <div class="sc p-4">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3"><i class="fas fa-chart-pie mr-1.5"></i>Statistics</h4>
+                    <div id="fin_statTotalCount" class="flex items-center justify-between text-xs mb-2">
+                        <span class="text-gray-500">Total Transactions</span><span class="font-bold text-gray-800">0</span>
+                    </div>
+                    <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-3"><div id="fin_statProgressBar" class="h-full bg-indigo-400 transition-all" style="width:0%"></div></div>
+                    <div id="fin_statRatio" class="flex items-center justify-between text-xs mb-3">
+                        <span class="text-gray-500">Deposit : Payment</span><span class="font-bold text-gray-800">0:0</span>
+                    </div>
+                    <div class="pt-3 border-t border-gray-100 text-center">
+                        <p id="fin_statNetBalance" class="text-2xl font-bold text-gray-800">৳0.00</p>
+                        <p class="text-[11px] text-gray-400">Net Balance</p>
+                    </div>
+                </div>
+                <div class="sc p-4">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2"><i class="fas fa-receipt mr-1.5"></i>Evidence Files</h4>
+                    <p id="fin_statFileCount" class="text-xs text-gray-400">No files attached yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Summary + Table -->
+        <div class="sc p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-800"><i class="fas fa-chart-line mr-1.5 text-indigo-500"></i>Financial Summary</h3>
+                <button onclick="finLoadEntries()" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition"><i class="fas fa-redo-alt mr-1"></i>Refresh</button>
+            </div>
+            <div id="fin_summaryCards" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase">Type / Purpose</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase hidden sm:table-cell">Group ID</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase">Files</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fin_tableBody" class="bg-white divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    _finSetupCalc('fin_client_qty','fin_client_rate','fin_client_amount');
+    _finSetupCalc('fin_vendor_qty','fin_vendor_rate','fin_vendor_amount');
+    _finSetupCalc('fin_edit_qty','fin_edit_rate','fin_edit_amount');
+    finLoadVendorsAccounts();
+    finLoadEntries();
+}
+
+function finToggleTxnMode() {
+    const isRealtime = document.querySelector('input[name="fin_txn_mode"]:checked').value === 'realtime';
+    document.getElementById('fin_accountSection').classList.toggle('hidden', !isRealtime);
+    document.getElementById('fin_modeRealtimeLbl').className    = 'flex items-center justify-center gap-1.5 p-2 border-2 rounded-lg cursor-pointer text-xs font-semibold ' + (isRealtime ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500');
+    document.getElementById('fin_modeNonRealtimeLbl').className = 'flex items-center justify-center gap-1.5 p-2 border-2 rounded-lg cursor-pointer text-xs font-semibold ' + (!isRealtime ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500');
+}
+
+// ── QTY/Rate/Amount smart auto-calc (যেকোনো দুইটা দিলে তৃতীয়টা) ──
+function _finSetupCalc(qtyId, rateId, amtId) {
+    const q = document.getElementById(qtyId), r = document.getElementById(rateId), a = document.getElementById(amtId);
+    if (!q || !r || !a) return;
+    let lastEdited = null;
+    function calc() {
+        const qty = parseFloat(q.value) || null, rate = parseFloat(r.value) || null, amt = parseFloat(a.value) || null;
+        if (lastEdited !== 'amount' && qty && rate) a.value = (qty*rate).toFixed(2);
+        else if (lastEdited !== 'rate' && qty && amt) r.value = (amt/qty).toFixed(2);
+        else if (lastEdited !== 'qty' && rate && amt) q.value = (amt/rate).toFixed(2);
+    }
+    q.addEventListener('input', () => { lastEdited='qty'; calc(); });
+    r.addEventListener('input', () => { lastEdited='rate'; calc(); });
+    a.addEventListener('input', () => { lastEdited='amount'; calc(); });
+}
+
+function _finBuildQtyRate(qtyId, rateId) {
+    const qty = parseFloat(document.getElementById(qtyId)?.value) || null;
+    const rate = parseFloat(document.getElementById(rateId)?.value) || null;
+    if (!qty && !rate) return null;
+    return JSON.stringify({ qty: qty||0, rate: rate||0 });
+}
+
+async function finLoadVendorsAccounts() {
+    try {
+        const [vRes, aRes] = await Promise.all([fetch(API.allVendors), fetch(API.allAccounts)]);
+        const vJson = await vRes.json(), aJson = await aRes.json();
+        _finVendors  = vJson.vendors  ?? [];
+        _finAccounts = aJson.accounts ?? [];
+    } catch(e) {
+        showToast('error', 'Vendor/Account list load failed');
+    }
+}
+
+const _finPickerMap = {
+    vendor:         { dropId: 'fin_vendorDrop',        searchId: 'fin_vendorSearch',        selectId: 'fin_vendorSelect',        source: () => _finVendors,  nameKey: 'name' },
+    account:        { dropId: 'fin_accountDrop',       searchId: 'fin_accountSearch',       selectId: 'fin_accountSelect',       source: () => _finAccounts, nameKey: 'acc_name' },
+    client_account: { dropId: 'fin_client_accountDrop',searchId: 'fin_client_accountSearch',selectId: 'fin_client_accountSelect',source: () => _finAccounts, nameKey: 'acc_name' },
+};
+
+function _finFilterList(kind, q) {
+    const cfg = _finPickerMap[kind];
+    const dd = document.getElementById(cfg.dropId);
+    const source = cfg.source();
+    const v = q.toLowerCase().trim();
+    const list = v ? source.filter(x => (x[cfg.nameKey]||'').toLowerCase().includes(v)) : source.slice(0, 15);
+    if (!list.length) {
+        dd.innerHTML = `<li class="px-4 py-3 text-center text-gray-400 text-xs">কিছু পাওয়া যায়নি</li>`;
+        dd.classList.remove('hidden');
+        return;
+    }
+    dd.innerHTML = list.map(x => `
+        <li class="px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b last:border-b-0 text-sm text-gray-800"
+            onclick="_finSelectItem('${kind}','${x.sys_id}','${escHtml(x[cfg.nameKey]||x.sys_id).replace(/'/g,"\\'")}')">
+            ${escHtml(x[cfg.nameKey] ?? x.sys_id)}
+        </li>`).join('');
+    dd.classList.remove('hidden');
+}
+
+function _finSelectItem(kind, sysId, name) {
+    const cfg = _finPickerMap[kind];
+    document.getElementById(cfg.searchId).value = name;
+    document.getElementById(cfg.selectId).value = sysId;
+    document.getElementById(cfg.dropId).classList.add('hidden');
+}
+
+document.addEventListener('click', e => {
+    const wrapToDrop = { fin_vendorWrap:'fin_vendorDrop', fin_accountWrap:'fin_accountDrop', fin_client_accountWrap:'fin_client_accountDrop' };
+    Object.keys(wrapToDrop).forEach(wrapId => {
+        const wrap = document.getElementById(wrapId);
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById(wrapToDrop[wrapId])?.classList.add('hidden');
+        }
+    });
+});
+
+// ── Record / Refund transaction ──────────────────────────────
+// mode: 'debit' (client deposit) | 'credit_refund' (client refund)
+//       'credit' (vendor/own payment) | 'debit_refund' (vendor/own refund)
+async function finRecordTransaction(mode) {
+    const isClientSide = mode === 'client_submit';
+    try {
+        if (isClientSide) {
+            const purpose = document.getElementById('fin_client_purpose').value.trim();
+            const amount  = parseFloat(document.getElementById('fin_client_amount').value);
+            const date    = document.getElementById('fin_client_date').value;
+            const note    = document.getElementById('fin_client_note').value.trim();
+            const qtyRate = _finBuildQtyRate('fin_client_qty','fin_client_rate');
+            if (!purpose || !amount || amount <= 0) { showToast('error','Purpose ও সঠিক amount দিন'); return; }
+            if (!taskData?.client_sys_id && !workData?.client_info?.sys_id) { showToast('error','Client not found on this task'); return; }
+
+            const payload = {
+                type: 'debit', // Sale only — Receive happens via Receive Now on the group
+                amount, purpose,
+                client_id: taskData?.client_sys_id ?? workData?.client_info?.sys_id,
+                work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
+                date, qty_rate: qtyRate,
+                ref: note || undefined,
+            };
+            const result = await _finSave(payload);
+            if (result?.success) {
+                const files = document.getElementById('fin_clientFiles').files;
+                if (files.length && result.sys_id) await finUploadFile(files, result.sys_id, payload.type);
+                document.getElementById('fin_client_purpose').value = '';
+                document.getElementById('fin_client_amount').value = '';
+                document.getElementById('fin_client_qty').value = '';
+                document.getElementById('fin_client_rate').value = '';
+                document.getElementById('fin_client_note').value = '';
+                document.getElementById('fin_clientFiles').value = '';
+                document.getElementById('fin_clientFileLabel').textContent = 'Browse or drop files';
+            }
+        } else {
+            const purpose = document.getElementById('fin_vendor_purpose').value.trim();
+            const amount  = parseFloat(document.getElementById('fin_vendor_amount').value);
+            const date    = document.getElementById('fin_vendor_date').value;
+            const note    = document.getElementById('fin_vendor_note').value.trim();
+            const qtyRate = _finBuildQtyRate('fin_vendor_qty','fin_vendor_rate');
+            const txnMode = document.querySelector('input[name="fin_txn_mode"]:checked').value; // 'realtime' | 'non_realtime'
+            if (!purpose || !amount || amount <= 0) { showToast('error','Purpose ও সঠিক amount দিন'); return; }
+
+            const vId = document.getElementById('fin_vendorSelect').value;
+            if (!vId) { showToast('error','একটা Vendor সিলেক্ট করুন'); return; }
+
+            const payload = {
+                type: mode === 'credit' ? 'credit' : 'debit',
+                amount, purpose,
+                vendor_id: vId,
+                transaction_mode: txnMode,
+                work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
+                date, qty_rate: qtyRate,
+                ref: note || undefined,
+            };
+            if (txnMode === 'realtime') {
+                const aId = document.getElementById('fin_accountSelect').value;
+                if (!aId) { showToast('error','Real-time payment-এর জন্য একটা Account সিলেক্ট করুন'); return; }
+                payload.account_id = aId;
+            }
+            const result = await _finSave(payload);
+            if (result?.success) {
+                const files = document.getElementById('fin_vendorFiles').files;
+                if (files.length && result.sys_id) await finUploadFile(files, result.sys_id, payload.type);
+                document.getElementById('fin_vendor_purpose').value = '';
+                document.getElementById('fin_vendor_amount').value = '';
+                document.getElementById('fin_vendor_qty').value = '';
+                document.getElementById('fin_vendor_rate').value = '';
+                document.getElementById('fin_vendor_note').value = '';
+                document.getElementById('fin_vendorFiles').value = '';
+                document.getElementById('fin_vendorFileLabel').textContent = 'Browse or drop files';
+            }
+        }
+    } catch(e) {
+        console.error(e);
+        showToast('error', 'Transaction save failed');
+    }
+}
+
+async function _finSave(payload) {
+    const res = await fetch(API.saveFinancial, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.success) { showToast('success', json.message || 'Transaction recorded'); finLoadEntries(); }
+    else showToast('error', json.message || 'Failed to save transaction');
+    return json;
+}
+
+async function finUploadFile(files, entrySysId, type) {
+    const entityType = type === 'debit' ? 'receive' : 'payment';
+    const fd = new FormData();
+    fd.append('entity_type', entityType);
+    fd.append('entity_id', entrySysId);
+    fd.append('work_sys_id', taskData?.work_sys_id ?? '');
+    fd.append('task_sys_id', TASK_SYS_ID);
+    for (const f of files) fd.append('files[]', f);
+    try {
+        const res = await fetch(API.uploadFinFile, { method:'POST', body: fd });
+        const json = await res.json();
+        if (!json.success) showToast('error', 'File attach failed: ' + (json.message||''));
+    } catch(e) { showToast('error','File upload error'); }
+}
+
+async function finDeleteTransaction(id) {
+    if (!confirm('এই transaction টা মুছে ফেলতে চান?')) return;
+    try {
+        const res = await fetch(API.deleteFinancial, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+        const json = await res.json();
+        if (json.success) { showToast('success','Transaction deleted'); finLoadEntries(); }
+        else showToast('error', json.message || 'Delete failed');
+    } catch(e) { showToast('error','Delete request failed'); }
+}
+
+// ── Edit Transaction ──────────────────────────────────────────
+function finEditTransaction(id) {
+    const t = _finTransactions.find(x => x.sys_id === id);
+    if (!t) { showToast('error', 'Transaction not found'); return; }
+
+    document.getElementById('fin_edit_id').value = t.sys_id;
+    document.getElementById('fin_edit_original_type').value = t.type;
+    document.getElementById('fin_edit_purpose').value = t.purpose || '';
+    document.getElementById('fin_edit_note').value = (t.ref && !t.ref.includes('||')) ? t.ref : '';
+    document.getElementById('fin_edit_amount').value = t.amount;
+    document.getElementById('fin_edit_qty').value = '';
+    document.getElementById('fin_edit_rate').value = '';
+    if (t.qty_rate) {
+        try { const p = typeof t.qty_rate==='string'?JSON.parse(t.qty_rate):t.qty_rate; if (p.qty) document.getElementById('fin_edit_qty').value=p.qty; if (p.rate) document.getElementById('fin_edit_rate').value=p.rate; } catch(e){}
+    }
+    document.getElementById('fin_edit_date').value = (t.date||'').slice(0,10);
+
+    const type = (t.type||'').toLowerCase();
+    const typeDisplay = document.getElementById('fin_edit_type_display');
+    const utype = t.user_type || '';
+    if (utype === 'client') {
+        typeDisplay.innerHTML = type === 'debit'
+            ? '<span class="text-indigo-600">DEBIT — Client Deposit</span>'
+            : '<span class="text-indigo-600">CREDIT — Client Refund</span>';
+    } else if (utype === 'vendor') {
+        typeDisplay.innerHTML = `<span class="text-emerald-600">${type==='credit'?'CREDIT — Vendor Payment':'DEBIT — Vendor Refund'} (${escHtml(t.user_name||'')})</span>`;
+    } else if (utype === 'account') {
+        typeDisplay.innerHTML = `<span class="text-emerald-600">${type==='credit'?'CREDIT — Paid from Account':'DEBIT — Received to Account'} (${escHtml(t.user_name||'')})</span>`;
+    } else {
+        typeDisplay.innerHTML = type === 'debit' ? 'DEBIT' : 'CREDIT';
+    }
+
+    // Vendor/Account/Client identity is fixed per entry now (each is its own
+    // linked row) — no re-selection here, only the shared fields below are
+    // editable. Editing amount/purpose/date/qty_rate propagates to every
+    // linked leg in this transaction (see the amber notice in the modal).
+    document.getElementById('fin_edit_reason').value = '';
+    document.getElementById('fin_edit_evidenceFile').value = '';
+    document.getElementById('fin_edit_evidenceLabel').textContent = 'Browse or drop a file';
+
+    document.getElementById('finEditModal').classList.remove('hidden');
+}
+
+async function _finEditEvidenceSelected(input) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById('fin_edit_evidenceLabel').textContent = file.name;
+
+    // Upload immediately so we have a smb_token/file_name to send with the update.
+    const id = document.getElementById('fin_edit_id').value;
+    const t  = _finTransactions.find(x => x.sys_id === id);
+    const fd = new FormData();
+    fd.append('entity_type', (t?.type === 'debit') ? 'receive' : 'payment');
+    fd.append('entity_id', id);
+    fd.append('work_sys_id', taskData?.work_sys_id ?? '');
+    fd.append('task_sys_id', TASK_SYS_ID);
+    fd.append('files[]', file);
+
+    try {
+        const res = await fetch(API.uploadFinFile, { method:'POST', body: fd });
+        const json = await res.json();
+        if (json.success && json.uploaded?.length) {
+            document.getElementById('fin_edit_evidenceFile').value = json.uploaded[0].saved_name || file.name;
+        } else {
+            showToast('error', 'Evidence upload failed');
+            document.getElementById('fin_edit_evidenceLabel').textContent = 'Browse or drop a file';
+        }
+    } catch(e) {
+        showToast('error', 'Evidence upload request failed');
+    }
+}
+
+async function finUpdateTransaction() {
+    const id      = document.getElementById('fin_edit_id').value;
+    const purpose = document.getElementById('fin_edit_purpose').value.trim();
+    const amount  = parseFloat(document.getElementById('fin_edit_amount').value);
+    const date    = document.getElementById('fin_edit_date').value;
+    const note    = document.getElementById('fin_edit_note').value.trim();
+    const qtyRate = _finBuildQtyRate('fin_edit_qty','fin_edit_rate');
+    const reason  = document.getElementById('fin_edit_reason').value.trim();
+    const evidenceFile = document.getElementById('fin_edit_evidenceFile').value.trim();
+
+    if (!purpose || !amount || amount <= 0) { showToast('error','Purpose ও সঠিক amount দিন'); return; }
+    if (!reason) { showToast('error','Edit-এর reason দিন'); return; }
+    if (!evidenceFile) { showToast('error','একটা evidence file upload করুন'); return; }
+
+    // Vendor/Account/Client identity is fixed per entry — only these shared
+    // fields are editable, and the change propagates to every linked leg.
+    const payload = { id, purpose, amount, date, qty_rate: qtyRate, ref: note || undefined, reason, evidence_file: evidenceFile };
+
+    try {
+        const res = await fetch(API.updateFinancial, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const json = await res.json();
+        if (json.success) { showToast('success', json.message || 'Transaction updated'); closeModal('finEditModal'); finLoadEntries(); }
+        else showToast('error', json.message || 'Update failed');
+    } catch(e) { showToast('error','Network error'); }
+}
+
+let _finGroups = [];
+
+async function finLoadEntries() {
+    try {
+        const res = await fetch(API.taskFinEntries + '?task_id=' + encodeURIComponent(TASK_SYS_ID));
+        const json = await res.json();
+        if (!json.success) return;
+        _finTransactions = json.finStmts ?? [];
+        _finGroups = json.groups ?? [];
+        _finRenderSummary(json.summary ?? {});
+        _finRenderTable(_finGroups);
+    } catch(e) { console.error(e); }
+}
+
+function _finRenderSummary(s) {
+    const bal = s.balance ?? 0;
+    const balPositive = bal >= 0;
+    document.getElementById('fin_summaryCards').innerHTML = `
+        <div class="rounded-xl p-4 text-white shadow-sm relative overflow-hidden" style="background:linear-gradient(135deg,#6366f1,#4f46e5);">
+            <i class="fas fa-arrow-down absolute -right-2 -bottom-2 text-6xl text-white/10"></i>
+            <p class="text-xs text-indigo-100 font-medium">Total Client Deposit</p>
+            <p class="text-2xl font-bold mt-1">৳${(s.total_deposit ?? 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+            ${s.total_receivable_open ? `<p class="text-[11px] text-indigo-100 mt-1">৳${s.total_receivable_open.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} still receivable</p>` : ''}
+        </div>
+        <div class="rounded-xl p-4 text-white shadow-sm relative overflow-hidden" style="background:linear-gradient(135deg,#10b981,#059669);">
+            <i class="fas fa-arrow-up absolute -right-2 -bottom-2 text-6xl text-white/10"></i>
+            <p class="text-xs text-emerald-100 font-medium">Total Vendor Payment</p>
+            <p class="text-2xl font-bold mt-1">৳${(s.total_vendor_payment ?? 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+            ${s.total_payable_open ? `<p class="text-[11px] text-emerald-100 mt-1">৳${s.total_payable_open.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} still payable</p>` : ''}
+        </div>
+        <div class="rounded-xl p-4 text-white shadow-sm relative overflow-hidden" style="background:${balPositive?'linear-gradient(135deg,#0ea5e9,#0284c7)':'linear-gradient(135deg,#f43f5e,#e11d48)'};">
+            <i class="fas fa-balance-scale absolute -right-2 -bottom-2 text-6xl text-white/10"></i>
+            <p class="text-xs ${balPositive?'text-sky-100':'text-rose-100'} font-medium">Net Balance</p>
+            <p class="text-2xl font-bold mt-1">৳${Math.abs(bal).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+            <p class="text-[11px] ${balPositive?'text-sky-100':'text-rose-100'} mt-0.5">${balPositive?'In hand':'Over-paid'}</p>
+        </div>
+    `;
+
+    // Stats sidebar
+    const total = s.entry_count ?? 0;
+    document.querySelector('#fin_statTotalCount span:last-child').textContent = s.group_count ?? total;
+    document.getElementById('fin_statProgressBar').style.width = Math.min(((s.group_count ?? total)/10)*100, 100) + '%';
+    const depositCount = _finTransactions.filter(t => t.user_type==='client').length;
+    const paymentCount = _finTransactions.filter(t => t.user_type==='vendor' || t.user_type==='account').length;
+    document.querySelector('#fin_statRatio span:last-child').textContent = `${depositCount}:${paymentCount}`;
+    document.getElementById('fin_statNetBalance').textContent = `৳${Math.abs(bal).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    document.getElementById('fin_statNetBalance').className = `text-2xl font-bold ${balPositive?'text-emerald-600':'text-rose-600'}`;
+    const fc = s.file_count ?? 0;
+    document.getElementById('fin_statFileCount').textContent = fc ? `${fc} file(s) attached across ${total} entries` : 'No files attached yet';
+}
+
+function _finRenderTable(groups) {
+    const body = document.getElementById('fin_tableBody');
+    if (!groups.length) {
+        body.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-gray-400"><i class="fas fa-wallet text-xl mb-2 block"></i>কোনো transaction নেই</td></tr>`;
+        return;
+    }
+    const eventBadge = { purchase:'bg-amber-100 text-amber-700', payment:'bg-emerald-100 text-emerald-700', sale:'bg-indigo-100 text-indigo-700', receive:'bg-sky-100 text-sky-700', refund:'bg-rose-100 text-rose-700', other:'bg-gray-100 text-gray-600' };
+    body.innerHTML = groups.map((g, gi) => {
+        const legs = g.legs || [];
+        const primary = legs[0] || {};
+        const headBadge = { accounts_payable:'bg-amber-100 text-amber-700', accounts_receivable:'bg-sky-100 text-sky-700', purchase:'bg-emerald-100 text-emerald-700', sales:'bg-indigo-100 text-indigo-700', bank_account:'bg-gray-100 text-gray-600' };
+        let fileCount = 0;
+        legs.forEach(l => { try { fileCount += (JSON.parse(l.files_json||'[]')||[]).length; } catch(e){} });
+        const amount = g.amount ?? parseFloat(primary.amount||0);
+        const due = g.due ?? 0;
+
+        return `
+        <tr class="hover:bg-gray-50 transition cursor-pointer border-t-2 border-gray-100" onclick="_finToggleGroup(${gi})">
+            <td class="px-3 py-2 whitespace-nowrap text-gray-600"><i class="fas fa-chevron-right text-gray-300 text-[10px] mr-1.5 transition-transform" id="fin-chevron-${gi}"></i>${(g.date||'').slice(0,10)}</td>
+            <td class="px-3 py-2">
+                <span class="px-1.5 py-0.5 rounded ${eventBadge[g.event_type]||'bg-gray-100 text-gray-600'} text-[10px] font-semibold">${escHtml(g.event_label||'Transaction')}</span>
+                <span class="text-gray-800 ml-1.5">${escHtml(g.purpose||'—')}</span>
+                <div class="text-[11px] text-gray-400 mt-0.5">${escHtml(g.who||'')}</div>
+            </td>
+            <td class="px-3 py-2 text-gray-400 font-mono text-[11px] hidden sm:table-cell">${escHtml(g.transaction_group_id||'')}</td>
+            <td class="px-3 py-2 text-right">
+                <div class="font-semibold text-gray-700">৳${amount.toFixed(2)}</div>
+                ${due > 0 ? `<div class="text-[11px] text-rose-500 font-medium">৳${due.toFixed(2)} due</div>` : (g.event_type==='purchase'||g.event_type==='sale' ? `<div class="text-[11px] text-emerald-500 font-medium">Fully settled</div>` : '')}
+            </td>
+            <td class="px-3 py-2">${fileCount ? `<i class="fas fa-paperclip text-indigo-400"></i> ${fileCount}` : '—'}</td>
+            <td class="px-3 py-2 whitespace-nowrap" onclick="event.stopPropagation()">
+                <button onclick="finEditTransaction('${primary.sys_id}')" class="px-1.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded mr-1" title="Edit"><i class="fas fa-edit text-[10px]"></i></button>
+                <button onclick="finDeleteTransaction('${primary.sys_id}')" class="px-1.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded" title="Delete (removes all linked legs)"><i class="fas fa-trash text-[10px]"></i></button>
+            </td>
+        </tr>
+        <tr id="fin-group-${gi}" class="hidden">
+            <td colspan="6" class="px-3 pb-3 bg-gray-50">
+                <p class="text-[11px] text-gray-400 px-1 py-1.5"><i class="fas fa-info-circle mr-1"></i>Edit করলে এই transaction-এর সব লিংকড অংশ (নিচের প্রতিটা row) একসাথে পরিবর্তিত হবে।</p>
+                <table class="w-full text-xs border border-gray-200 rounded-lg overflow-hidden bg-white">
+                    <thead class="bg-gray-100"><tr>
+                        <th class="px-2 py-1.5 text-left font-medium text-gray-500">Account Head</th>
+                        <th class="px-2 py-1.5 text-left font-medium text-gray-500">Who</th>
+                        <th class="px-2 py-1.5 text-left font-medium text-gray-500">Type</th>
+                        <th class="px-2 py-1.5 text-right font-medium text-gray-500">Amount</th>
+                        <th class="px-2 py-1.5 text-left font-medium text-gray-500">Files</th>
+                    </tr></thead>
+                    <tbody>
+                        ${legs.map(l => {
+                            const isDebit = (l.type||'').toLowerCase() === 'debit';
+                            let n = 0; try { n = (JSON.parse(l.files_json||'[]')||[]).length; } catch(e){}
+                            return `<tr class="border-t border-gray-100">
+                                <td class="px-2 py-1.5"><span class="px-1.5 py-0.5 rounded ${headBadge[l.account_head]||'bg-gray-100 text-gray-600'} text-[10px] font-semibold">${escHtml(l.account_head||'—')}</span></td>
+                                <td class="px-2 py-1.5 text-gray-700">${escHtml(l.user_name||'—')}</td>
+                                <td class="px-2 py-1.5"><span class="text-[10px] font-bold ${isDebit?'text-green-600':'text-red-600'}">${isDebit?'DEBIT':'CREDIT'}</span></td>
+                                <td class="px-2 py-1.5 text-right font-medium">৳${parseFloat(l.amount||0).toFixed(2)}</td>
+                                <td class="px-2 py-1.5">${n ? `<a href="${API.fileServe}?fin_id=${l.sys_id}" target="_blank" class="text-indigo-500 hover:underline" onclick="event.stopPropagation()"><i class="fas fa-paperclip"></i> ${n}</a>` : '—'}
+                                    <label class="ml-1 cursor-pointer text-amber-500" title="Attach file" onclick="event.stopPropagation()">
+                                        <i class="fas fa-plus-circle"></i>
+                                        <input type="file" multiple class="hidden" onchange="finUploadFile(this.files,'${l.sys_id}','${l.type}',this)">
+                                    </label>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+                ${g.payable ? `
+                <div class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-amber-700"><i class="fas fa-hand-holding-usd mr-1"></i>৳${due.toFixed(2)} বাকি আছে ${escHtml(g.who)}-কে</p>
+                        <button onclick="_finTogglePayForm(${gi})" class="text-xs font-semibold text-amber-700 hover:text-amber-900"><i class="fas fa-plus-circle mr-1"></i>Pay Now</button>
+                    </div>
+                    <div id="fin-payform-${gi}" class="hidden space-y-2">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Own Account</label>
+                            <div class="relative" id="fin_payAccountWrap${gi}">
+                                <input id="fin_payAccountSearch${gi}" placeholder="Search for an account…" class="f-input text-xs" autocomplete="off"
+                                    oninput="_finFilterPayAccount(${gi}, this.value)" onfocus="_finFilterPayAccount(${gi}, this.value)">
+                                <ul id="fin_payAccountDrop${gi}" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-auto shadow-xl hidden z-50"></ul>
+                            </div>
+                            <input type="hidden" id="fin_payAccountId${gi}">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Amount ৳ <span class="text-gray-400 font-normal">(সম্পূর্ণ বা আংশিক)</span></label>
+                            <input type="number" step="0.01" min="0.01" max="${due}" id="fin_payAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" id="fin_payDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
+                        </div>
+                        <button onclick="_finSubmitPayNow(${gi}, '${g.transaction_group_id}', '${g.vendor_id||''}')" class="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition">
+                            <i class="fas fa-check mr-1"></i>Confirm Payment
+                        </button>
+                    </div>
+                </div>` : ''}
+                ${(g.event_type === 'purchase') ? `
+                <div class="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-rose-700"><i class="fas fa-undo mr-1"></i>${escHtml(g.who)}-এর থেকে Refund</p>
+                        <button onclick="_finToggleRefundForm(${gi})" class="text-xs font-semibold text-rose-700 hover:text-rose-900"><i class="fas fa-plus-circle mr-1"></i>Refund</button>
+                    </div>
+                    <div id="fin-refundform-${gi}" class="hidden space-y-2">
+                        <p class="text-[11px] text-gray-400">যেকোনো একটা দিন — Refund Amount অথবা Refund Charge, অন্যটা auto হবে।</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-600 mb-1">Refund Amount ৳</label>
+                                <input type="number" step="0.01" min="0" id="fin_refundAmount${gi}" placeholder="0.00" class="f-input text-xs" oninput="_finRefundCalc(${gi}, 'amount', ${g.amount})">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-600 mb-1">Refund Charge ৳</label>
+                                <input type="number" step="0.01" min="0" id="fin_refundCharge${gi}" placeholder="0.00" class="f-input text-xs" oninput="_finRefundCalc(${gi}, 'charge', ${g.amount})">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" id="fin_refundDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
+                        </div>
+                        <button onclick="_finSubmitRefundVendor(${gi}, '${g.transaction_group_id}', '${g.vendor_id||''}')" class="w-full py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition">
+                            <i class="fas fa-check mr-1"></i>Declare Refund
+                        </button>
+                    </div>
+                </div>` : ''}
+                ${(g.event_type === 'vendor_refund' && g.refund_receivable) ? `
+                <div class="mt-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-teal-700"><i class="fas fa-hourglass-half mr-1"></i>৳${due.toFixed(2)} refund এখনো account-এ আসেনি</p>
+                        <button onclick="_finToggleRefundSettleForm(${gi})" class="text-xs font-semibold text-teal-700 hover:text-teal-900"><i class="fas fa-plus-circle mr-1"></i>Money Received</button>
+                    </div>
+                    <div id="fin-refundsettleform-${gi}" class="hidden space-y-2">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Own Account</label>
+                            <div class="relative" id="fin_refundSettleAccountWrap${gi}">
+                                <input id="fin_refundSettleAccountSearch${gi}" placeholder="Search for an account…" class="f-input text-xs" autocomplete="off"
+                                    oninput="_finFilterRefundSettleAccount(${gi}, this.value)" onfocus="_finFilterRefundSettleAccount(${gi}, this.value)">
+                                <ul id="fin_refundSettleAccountDrop${gi}" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-auto shadow-xl hidden z-50"></ul>
+                            </div>
+                            <input type="hidden" id="fin_refundSettleAccountId${gi}">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Amount ৳</label>
+                            <input type="number" step="0.01" min="0.01" max="${due}" id="fin_refundSettleAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" id="fin_refundSettleDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
+                        </div>
+                        <button onclick="_finSubmitRefundSettleVendor(${gi}, '${g.transaction_group_id}', '${g.vendor_id||''}')" class="w-full py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold transition">
+                            <i class="fas fa-check mr-1"></i>Confirm Received
+                        </button>
+                    </div>
+                </div>` : ''}
+                ${g.receivable ? `
+                <div class="mt-2 p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-sky-700"><i class="fas fa-hand-holding-usd mr-1"></i>৳${due.toFixed(2)} বাকি আছে ${escHtml(g.who)}-এর কাছ থেকে</p>
+                        <button onclick="_finToggleReceiveForm(${gi})" class="text-xs font-semibold text-sky-700 hover:text-sky-900"><i class="fas fa-plus-circle mr-1"></i>Receive Now</button>
+                    </div>
+                    <div id="fin-receiveform-${gi}" class="hidden space-y-2">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Own Account</label>
+                            <div class="relative" id="fin_receiveAccountWrap${gi}">
+                                <input id="fin_receiveAccountSearch${gi}" placeholder="Search for an account…" class="f-input text-xs" autocomplete="off"
+                                    oninput="_finFilterReceiveAccount(${gi}, this.value)" onfocus="_finFilterReceiveAccount(${gi}, this.value)">
+                                <ul id="fin_receiveAccountDrop${gi}" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-auto shadow-xl hidden z-50"></ul>
+                            </div>
+                            <input type="hidden" id="fin_receiveAccountId${gi}">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Amount ৳ <span class="text-gray-400 font-normal">(সম্পূর্ণ বা আংশিক)</span></label>
+                            <input type="number" step="0.01" min="0.01" max="${due}" id="fin_receiveAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" id="fin_receiveDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
+                        </div>
+                        <button onclick="_finSubmitReceiveNow(${gi}, '${g.transaction_group_id}', '${g.client_id||''}')" class="w-full py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold transition">
+                            <i class="fas fa-check mr-1"></i>Confirm Receive
+                        </button>
+                    </div>
+                </div>` : ''}
+                ${(g.event_type === 'sale') ? `
+                <div class="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-rose-700"><i class="fas fa-undo mr-1"></i>${escHtml(g.who)}-কে Refund</p>
+                        <button onclick="_finToggleRefundForm(${gi})" class="text-xs font-semibold text-rose-700 hover:text-rose-900"><i class="fas fa-plus-circle mr-1"></i>Refund</button>
+                    </div>
+                    <div id="fin-refundform-${gi}" class="hidden space-y-2">
+                        <p class="text-[11px] text-gray-400">যেকোনো একটা দিন — Refund Amount অথবা Refund Charge, অন্যটা auto হবে।</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-600 mb-1">Refund Amount ৳</label>
+                                <input type="number" step="0.01" min="0" id="fin_refundAmount${gi}" placeholder="0.00" class="f-input text-xs" oninput="_finRefundCalc(${gi}, 'amount', ${g.amount})">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-600 mb-1">Refund Charge ৳</label>
+                                <input type="number" step="0.01" min="0" id="fin_refundCharge${gi}" placeholder="0.00" class="f-input text-xs" oninput="_finRefundCalc(${gi}, 'charge', ${g.amount})">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" id="fin_refundDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
+                        </div>
+                        <button onclick="_finSubmitRefundClient(${gi}, '${g.transaction_group_id}', '${g.client_id||''}')" class="w-full py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition">
+                            <i class="fas fa-check mr-1"></i>Declare Refund
+                        </button>
+                    </div>
+                </div>` : ''}
+                ${(g.event_type === 'client_refund' && g.refund_payable) ? `
+                <div class="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-orange-700"><i class="fas fa-hourglass-half mr-1"></i>৳${due.toFixed(2)} refund এখনো দেওয়া হয়নি</p>
+                        <button onclick="_finToggleRefundSettleForm(${gi})" class="text-xs font-semibold text-orange-700 hover:text-orange-900"><i class="fas fa-plus-circle mr-1"></i>Money Paid</button>
+                    </div>
+                    <div id="fin-refundsettleform-${gi}" class="hidden space-y-2">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Own Account</label>
+                            <div class="relative" id="fin_refundSettleAccountWrap${gi}">
+                                <input id="fin_refundSettleAccountSearch${gi}" placeholder="Search for an account…" class="f-input text-xs" autocomplete="off"
+                                    oninput="_finFilterRefundSettleAccount(${gi}, this.value)" onfocus="_finFilterRefundSettleAccount(${gi}, this.value)">
+                                <ul id="fin_refundSettleAccountDrop${gi}" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-auto shadow-xl hidden z-50"></ul>
+                            </div>
+                            <input type="hidden" id="fin_refundSettleAccountId${gi}">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Amount ৳</label>
+                            <input type="number" step="0.01" min="0.01" max="${due}" id="fin_refundSettleAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" id="fin_refundSettleDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
+                        </div>
+                        <button onclick="_finSubmitRefundSettleClient(${gi}, '${g.transaction_group_id}', '${g.client_id||''}')" class="w-full py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold transition">
+                            <i class="fas fa-check mr-1"></i>Confirm Paid
+                        </button>
+                    </div>
+                </div>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Pay Now (settling an unpaid/partially-paid vendor purchase) ──────────
+function _finTogglePayForm(gi) {
+    document.getElementById(`fin-payform-${gi}`).classList.toggle('hidden');
+}
+
+function _finFilterPayAccount(gi, q) {
+    const dd = document.getElementById(`fin_payAccountDrop${gi}`);
+    const v = q.toLowerCase().trim();
+    const list = v ? _finAccounts.filter(a => (a.acc_name||'').toLowerCase().includes(v)) : _finAccounts.slice(0, 15);
+    if (!list.length) { dd.innerHTML = `<li class="px-3 py-2 text-center text-gray-400 text-xs">কিছু পাওয়া যায়নি</li>`; dd.classList.remove('hidden'); return; }
+    dd.innerHTML = list.map(a => `
+        <li class="px-3 py-2 cursor-pointer hover:bg-amber-50 border-b last:border-b-0 text-xs text-gray-800"
+            onclick="_finSelectPayAccount(${gi},'${a.sys_id}','${escHtml(a.acc_name||a.sys_id).replace(/'/g,"\\'")}')">
+            ${escHtml(a.acc_name ?? a.sys_id)}
+        </li>`).join('');
+    dd.classList.remove('hidden');
+}
+function _finSelectPayAccount(gi, sysId, name) {
+    document.getElementById(`fin_payAccountSearch${gi}`).value = name;
+    document.getElementById(`fin_payAccountId${gi}`).value = sysId;
+    document.getElementById(`fin_payAccountDrop${gi}`).classList.add('hidden');
+}
+
+async function _finSubmitPayNow(gi, purchaseGroupId, vendorId) {
+    const accountId = document.getElementById(`fin_payAccountId${gi}`).value;
+    const amount = parseFloat(document.getElementById(`fin_payAmount${gi}`).value);
+    const date = document.getElementById(`fin_payDate${gi}`).value;
+
+    if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
+    if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
+    if (!vendorId) { showToast('error', 'Vendor তথ্য পাওয়া যায়নি'); return; }
+
+    try {
+        const res = await fetch(API.payOutstanding, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                purchase_group_id: purchaseGroupId, vendor_id: vendorId, account_id: accountId,
+                amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
+            }),
+        });
+        const json = await res.json();
+        if (json.success) {
+            showToast('success', json.message || 'Payment recorded');
+            finLoadEntries();
+        } else showToast('error', json.message || 'Payment failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+// ── Receive Now (settling an unreceived/partially-received client sale) ──
+function _finToggleReceiveForm(gi) {
+    document.getElementById(`fin-receiveform-${gi}`).classList.toggle('hidden');
+}
+
+function _finFilterReceiveAccount(gi, q) {
+    const dd = document.getElementById(`fin_receiveAccountDrop${gi}`);
+    const v = q.toLowerCase().trim();
+    const list = v ? _finAccounts.filter(a => (a.acc_name||'').toLowerCase().includes(v)) : _finAccounts.slice(0, 15);
+    if (!list.length) { dd.innerHTML = `<li class="px-3 py-2 text-center text-gray-400 text-xs">কিছু পাওয়া যায়নি</li>`; dd.classList.remove('hidden'); return; }
+    dd.innerHTML = list.map(a => `
+        <li class="px-3 py-2 cursor-pointer hover:bg-sky-50 border-b last:border-b-0 text-xs text-gray-800"
+            onclick="_finSelectReceiveAccount(${gi},'${a.sys_id}','${escHtml(a.acc_name||a.sys_id).replace(/'/g,"\\'")}')">
+            ${escHtml(a.acc_name ?? a.sys_id)}
+        </li>`).join('');
+    dd.classList.remove('hidden');
+}
+function _finSelectReceiveAccount(gi, sysId, name) {
+    document.getElementById(`fin_receiveAccountSearch${gi}`).value = name;
+    document.getElementById(`fin_receiveAccountId${gi}`).value = sysId;
+    document.getElementById(`fin_receiveAccountDrop${gi}`).classList.add('hidden');
+}
+
+async function _finSubmitReceiveNow(gi, saleGroupId, clientId) {
+    const accountId = document.getElementById(`fin_receiveAccountId${gi}`).value;
+    const amount = parseFloat(document.getElementById(`fin_receiveAmount${gi}`).value);
+    const date = document.getElementById(`fin_receiveDate${gi}`).value;
+
+    if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
+    if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
+    if (!clientId) { showToast('error', 'Client তথ্য পাওয়া যায়নি'); return; }
+
+    try {
+        const res = await fetch(API.receiveOutstanding, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                sale_group_id: saleGroupId, client_id: clientId, account_id: accountId,
+                amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
+            }),
+        });
+        const json = await res.json();
+        if (json.success) {
+            showToast('success', json.message || 'Receive recorded');
+            finLoadEntries();
+        } else showToast('error', json.message || 'Receive failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+// ── Refund (declare) — shared toggle + auto-calc for both vendor and client ──
+function _finToggleRefundForm(gi) {
+    document.getElementById(`fin-refundform-${gi}`).classList.toggle('hidden');
+}
+
+function _finRefundCalc(gi, editedField, refundableTotal) {
+    const amountEl = document.getElementById(`fin_refundAmount${gi}`);
+    const chargeEl = document.getElementById(`fin_refundCharge${gi}`);
+    if (editedField === 'amount') {
+        const amt = parseFloat(amountEl.value) || 0;
+        chargeEl.value = Math.max(refundableTotal - amt, 0).toFixed(2);
+    } else {
+        const chg = parseFloat(chargeEl.value) || 0;
+        amountEl.value = Math.max(refundableTotal - chg, 0).toFixed(2);
+    }
+}
+
+async function _finSubmitRefundVendor(gi, purchaseGroupId, vendorId) {
+    const amountVal = document.getElementById(`fin_refundAmount${gi}`).value;
+    const chargeVal = document.getElementById(`fin_refundCharge${gi}`).value;
+    const date = document.getElementById(`fin_refundDate${gi}`).value;
+
+    if (!vendorId) { showToast('error', 'Vendor তথ্য পাওয়া যায়নি'); return; }
+    if (!amountVal && !chargeVal) { showToast('error', 'Refund Amount অথবা Refund Charge দিন'); return; }
+
+    try {
+        const payload = { purchase_group_id: purchaseGroupId, vendor_id: vendorId, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID };
+        if (amountVal) payload.refund_amount = parseFloat(amountVal); else payload.refund_charge = parseFloat(chargeVal);
+        const res = await fetch(API.refundVendor, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const json = await res.json();
+        if (json.success) { showToast('success', json.message || 'Refund declared'); finLoadEntries(); }
+        else showToast('error', json.message || 'Refund failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+async function _finSubmitRefundClient(gi, saleGroupId, clientId) {
+    const amountVal = document.getElementById(`fin_refundAmount${gi}`).value;
+    const chargeVal = document.getElementById(`fin_refundCharge${gi}`).value;
+    const date = document.getElementById(`fin_refundDate${gi}`).value;
+
+    if (!clientId) { showToast('error', 'Client তথ্য পাওয়া যায়নি'); return; }
+    if (!amountVal && !chargeVal) { showToast('error', 'Refund Amount অথবা Refund Charge দিন'); return; }
+
+    try {
+        const payload = { sale_group_id: saleGroupId, client_id: clientId, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID };
+        if (amountVal) payload.refund_amount = parseFloat(amountVal); else payload.refund_charge = parseFloat(chargeVal);
+        const res = await fetch(API.refundClient, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const json = await res.json();
+        if (json.success) { showToast('success', json.message || 'Refund declared'); finLoadEntries(); }
+        else showToast('error', json.message || 'Refund failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+// ── Refund settlement — shared toggle/account-picker for both sides ──
+function _finToggleRefundSettleForm(gi) {
+    document.getElementById(`fin-refundsettleform-${gi}`).classList.toggle('hidden');
+}
+
+function _finFilterRefundSettleAccount(gi, q) {
+    const dd = document.getElementById(`fin_refundSettleAccountDrop${gi}`);
+    const v = q.toLowerCase().trim();
+    const list = v ? _finAccounts.filter(a => (a.acc_name||'').toLowerCase().includes(v)) : _finAccounts.slice(0, 15);
+    if (!list.length) { dd.innerHTML = `<li class="px-3 py-2 text-center text-gray-400 text-xs">কিছু পাওয়া যায়নি</li>`; dd.classList.remove('hidden'); return; }
+    dd.innerHTML = list.map(a => `
+        <li class="px-3 py-2 cursor-pointer hover:bg-teal-50 border-b last:border-b-0 text-xs text-gray-800"
+            onclick="_finSelectRefundSettleAccount(${gi},'${a.sys_id}','${escHtml(a.acc_name||a.sys_id).replace(/'/g,"\\'")}')">
+            ${escHtml(a.acc_name ?? a.sys_id)}
+        </li>`).join('');
+    dd.classList.remove('hidden');
+}
+function _finSelectRefundSettleAccount(gi, sysId, name) {
+    document.getElementById(`fin_refundSettleAccountSearch${gi}`).value = name;
+    document.getElementById(`fin_refundSettleAccountId${gi}`).value = sysId;
+    document.getElementById(`fin_refundSettleAccountDrop${gi}`).classList.add('hidden');
+}
+
+async function _finSubmitRefundSettleVendor(gi, refundGroupId, vendorId) {
+    const accountId = document.getElementById(`fin_refundSettleAccountId${gi}`).value;
+    const amount = parseFloat(document.getElementById(`fin_refundSettleAmount${gi}`).value);
+    const date = document.getElementById(`fin_refundSettleDate${gi}`).value;
+
+    if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
+    if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
+    if (!vendorId) { showToast('error', 'Vendor তথ্য পাওয়া যায়নি'); return; }
+
+    try {
+        const res = await fetch(API.refundSettleVendor, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ refund_group_id: refundGroupId, vendor_id: vendorId, account_id: accountId, amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID }),
+        });
+        const json = await res.json();
+        if (json.success) { showToast('success', json.message || 'Refund settled'); finLoadEntries(); }
+        else showToast('error', json.message || 'Settlement failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+async function _finSubmitRefundSettleClient(gi, refundGroupId, clientId) {
+    const accountId = document.getElementById(`fin_refundSettleAccountId${gi}`).value;
+    const amount = parseFloat(document.getElementById(`fin_refundSettleAmount${gi}`).value);
+    const date = document.getElementById(`fin_refundSettleDate${gi}`).value;
+
+    if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
+    if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
+    if (!clientId) { showToast('error', 'Client তথ্য পাওয়া যায়নি'); return; }
+
+    try {
+        const res = await fetch(API.refundSettleClient, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ refund_group_id: refundGroupId, client_id: clientId, account_id: accountId, amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID }),
+        });
+        const json = await res.json();
+        if (json.success) { showToast('success', json.message || 'Refund settled'); finLoadEntries(); }
+        else showToast('error', json.message || 'Settlement failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+
+function _finToggleGroup(gi) {
+    const row = document.getElementById(`fin-group-${gi}`);
+    const chevron = document.getElementById(`fin-chevron-${gi}`);
+    row.classList.toggle('hidden');
+    chevron.style.transform = row.classList.contains('hidden') ? '' : 'rotate(90deg)';
+}
+
+// ════════════════════════════════════════════════════════════
+// DOCUMENTS TAB (Raw files / Generated documents / Financial evidence)
+// ════════════════════════════════════════════════════════════
+function initDocumentsTab() {
+    const area = document.getElementById('documentsTabArea');
+    area.innerHTML = `
+        <div class="sc p-4 mb-4">
+            <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fas fa-file-import mr-1.5 text-blue-500"></i>Raw Files</h3>
+            <div id="doc_rawFiles" class="text-xs text-gray-400 text-center py-6"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+        <div class="sc p-4 mb-4">
+            <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fas fa-file-pdf mr-1.5 text-red-500"></i>Generated Documents</h3>
+            <div class="text-xs text-gray-400 text-center py-6">Invoice/receipt PDF — on-the-fly generation যোগ হবে পরের ধাপে</div>
+        </div>
+        <div class="sc p-4">
+            <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fas fa-receipt mr-1.5 text-emerald-500"></i>Financial Evidence</h3>
+            <div id="doc_finFiles" class="text-xs text-gray-400 text-center py-6"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+    `;
+    _docRenderFinEvidence();
+}
+
+// Financial evidence — reuses whatever finLoadEntries already fetched (or fetches fresh if not loaded)
+async function _docRenderFinEvidence() {
+    try {
+        if (!_finTransactions.length) await finLoadEntries();
+        const withFiles = _finTransactions.filter(t => { try { return (JSON.parse(t.files_json||'[]')||[]).length>0; } catch(e){ return false; } });
+        const box = document.getElementById('doc_finFiles');
+        if (!withFiles.length) { box.innerHTML = '<div class="text-xs text-gray-400 text-center py-6">এখনো কোনো financial evidence file নেই</div>'; }
+        else {
+            box.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">` + withFiles.map(t => {
+                let n = 0; try { n = (JSON.parse(t.files_json||'[]')||[]).length; } catch(e){}
+                return `<a href="${API.fileServe}?fin_id=${t.sys_id}" target="_blank" class="p-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 transition text-xs">
+                    <i class="fas fa-paperclip text-gray-400 mb-1 block"></i>
+                    <span class="text-gray-700 font-medium block truncate">${escHtml(t.purpose||t.sys_id)}</span>
+                    <span class="text-gray-400">${n} file(s)</span>
+                </a>`;
+            }).join('') + `</div>`;
+        }
+        document.getElementById('doc_rawFiles').innerHTML = _docRawFilesHtml();
+    } catch(e) {
+        console.error('_docRenderFinEvidence failed:', e);
+        document.getElementById('doc_rawFiles').innerHTML = `<div class="text-xs text-red-400 text-center py-6">Error: ${escHtml(e.message)}</div>`;
+    }
+}
+
+function _docRawFilesHtml() {
+    const allConfs = _atData?.at_confirmations ?? [];
+    // Only this task's own confirmation — a work can have multiple
+    // confirmations (and multiple tasks), each task shows only its own files.
+    const confs = taskData?.confirmation_sys_id
+        ? allConfs.filter(c => c.sys_id === taskData.confirmation_sys_id)
+        : allConfs;
+    const withFiles = confs.filter(c => Array.isArray(c.files_json) && c.files_json.length > 0);
+    if (!withFiles.length) return '<div class="text-xs text-gray-400 text-center py-6">কোনো raw confirmation file নেই</div>';
+    return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">` + withFiles.map(c => `
+        <a href="${API.fileServe}?conf_id=${c.sys_id}&work_id=${taskData.work_sys_id}" target="_blank" class="p-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 transition text-xs">
+            <i class="fas fa-file-image text-gray-400 mb-1 block"></i>
+            <span class="text-gray-700 font-medium block truncate">${escHtml(c.sys_id||'Confirmation')}</span>
+            <span class="text-gray-400">${c.files_json.length} file(s)</span>
+        </a>
+    `).join('') + `</div>`;
+}
 function toggleAcc(id, header) {
     const body = document.getElementById(id), chev = header?.querySelector('.acc-chevron');
     const open = body.classList.contains('open');
@@ -618,115 +1830,32 @@ async function changeStatus(s) {
 }
 
 // ════════════════════════════════════════════════════════════
-// ASSIGN
+// HOLDING ON
 // ════════════════════════════════════════════════════════════
-function openAssignModal() { document.getElementById('assignModal').classList.remove('hidden'); filterEmp(''); }
-let _empData=[], _empLoaded=false;
-async function _loadEmployees() { if(_empLoaded)return; try{const r=await fetch(API.employees);const j=await r.json();_empData=j.employees??[];_empLoaded=true;}catch{} }
-function filterEmp(q) {
-    const dd=document.getElementById('assignedToDrop'); if(!dd)return;
-    _loadEmployees().then(()=>{
-        const v=q.toLowerCase().trim(), list=v?_empData.filter(e=>(e.name||'').toLowerCase().includes(v)):_empData.slice(0,15);
-        if(!list.length){dd.innerHTML=`<li class="px-4 py-3 text-center text-gray-400 text-xs">No employees</li>`;dd.classList.remove('hidden');return;}
-        dd.innerHTML=list.map(e=>{const n=_empName(e);return`<li class="px-3 py-2 cursor-pointer hover:bg-purple-50 border-b last:border-b-0 flex items-center gap-2" onclick="_selEmp('${e.sys_id}','${n.replace(/'/g,"\\'")}')"><div class="w-7 h-7 bg-purple-600 rounded-full text-white flex items-center justify-center text-xs font-bold">${n[0]?.toUpperCase()??'E'}</div><div><div class="text-sm font-medium text-gray-800">${escHtml(n)}</div><div class="text-xs text-gray-400 font-mono">${e.sys_id}</div></div></li>`;}).join('');
-        dd.classList.remove('hidden');
-    });
-}
-function _empName(e){try{if(e.name?.startsWith('{'))return JSON.parse(e.name).primary??e.name;return e.name??'Unknown';}catch{return e.name??'Unknown';}}
-function _selEmp(id,name){document.getElementById('assignedToInput').value=`${id} | ${name}`;document.getElementById('assignedToVal').value=id;document.getElementById('assignedToDrop').classList.add('hidden');}
-document.addEventListener('click',e=>{if(!document.getElementById('assignedToWrap')?.contains(e.target))document.getElementById('assignedToDrop')?.classList.add('hidden');});
-async function saveAssignment() {
-    const a=document.getElementById('assignedToVal').value.trim()||document.getElementById('assignedToInput').value.trim();
-    const h=document.getElementById('holdingOn').value.trim();
-    try{const r=await fetch(API.assign,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sys_id:TASK_SYS_ID,assigned_to:a||null,holding_on:h||null})});const j=await r.json();
-    if(j.status==='success'){showToast('success','Saved!');document.getElementById('ov-assigned').textContent=a||'—';closeModal('assignModal');}else showToast('error',j.message);}
-    catch{showToast('error','Network error');}
-}
-
-// ════════════════════════════════════════════════════════════
-// MIND BOARD
-// ════════════════════════════════════════════════════════════
-function openMindBoardModal(){
-    document.getElementById('mindBoardModal').classList.remove('hidden');
-    mbRenderChat();
-}
-async function mbLoadNotes(){
-    try{const r=await fetch(`${API.notes}?action=list&task_sys_id=${encodeURIComponent(TASK_SYS_ID)}`);const j=await r.json();_mbNotes=j.status==='success'?(j.data??[]):[];}catch{_mbNotes=[];}
-    mbRenderSidePreview();
-    if(!document.getElementById('mindBoardModal').classList.contains('hidden'))mbRenderChat();
-}
-function mbRenderSidePreview(){
-    const msgCount  = _mbNotes.filter(n=>n.note_type==='text').length;
-    const fileCount = _mbNotes.filter(n=>n.note_type!=='text').length;
-    const mc = document.getElementById('mbMsgCount');
-    const fc = document.getElementById('mbFileCount');
-    if (mc) mc.textContent = msgCount;
-    if (fc) fc.textContent = fileCount;
-    accRefresh('acc-mb');
-}
-function mbRenderChat(){
-    const area=document.getElementById('mbChatArea'); if(!area)return;
-    if(!_mbNotes.length){area.innerHTML='<div class="text-center py-8 text-gray-300 text-xs">No notes yet. Write something below.</div>';return;}
-    // Newest at bottom — normal flex-col order (not reversed)
-    area.innerHTML=_mbNotes.map(n=>_mbBubble(n)).join('');
-    // Auto-scroll to bottom
-    setTimeout(()=>{ area.scrollTop = area.scrollHeight; }, 50);
-}
-function _mbBubble(n){
-    const d=n.meta_data?.created_by_date?.date??'';
-    const del=`<div class="mb-del" onclick="mbDel('${n.sys_id}')"><i class="fas fa-times"></i></div>`;
-    if(n.note_type==='text')return`<div class="mb-bubble mb-text">${del}<div class="whitespace-pre-line">${escHtml(n.content??'')}</div><div class="mb-time">${escHtml(d)}</div></div>`;
-    if(n.note_type==='image')return`<div class="mb-bubble mb-image">${del}<img src="${n.file_url}" alt="${escHtml(n.file_name??'')}" onclick="mbImg('${n.file_url}')">${n.content?`<div class="text-xs text-gray-500 mt-1 px-1">${escHtml(n.content)}</div>`:''}<div class="mb-time px-1">${escHtml(d)}</div></div>`;
-    if(n.note_type==='audio')return`<div class="mb-bubble mb-audio">${del}<div class="flex items-center gap-2 mb-1"><i class="fas fa-microphone text-purple-400 text-xs"></i><span class="text-xs">${escHtml(n.file_name??'')}</span></div><audio controls class="w-full h-8" src="${n.file_url}"></audio><div class="mb-time">${escHtml(d)}</div></div>`;
-    if(n.note_type==='video')return`<div class="mb-bubble mb-audio">${del}<video controls style="max-height:160px" class="w-full rounded-lg mb-1" src="${n.file_url}"></video><div class="mb-time">${escHtml(d)}</div></div>`;
-    return`<div class="mb-bubble mb-file">${del}<i class="fas fa-paperclip text-green-500 mr-2"></i><a href="${n.file_url}" target="_blank" download class="text-green-700 hover:underline text-sm truncate">${escHtml(n.file_name??'')}</a><div class="mb-time mt-1">${escHtml(d)}</div></div>`;
-}
-window.mbImg=function(url){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';o.innerHTML=`<img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:8px;">`;o.onclick=()=>o.remove();document.body.appendChild(o);};
-window.mbFileSelected=function(i){if(!i.files[0])return;_mbFile=i.files[0];document.getElementById('mbFilePreview').classList.remove('hidden');document.getElementById('mbFilePreviewName').textContent=_mbFile.name;};
-window.mbClearFile=function(){_mbFile=null;document.getElementById('mbFilePreview').classList.add('hidden');document.getElementById('mbFileInput').value='';};
-window.mbSend=async function(){
-    const txt=document.getElementById('mbTextInput').value.trim();
-    if(!txt&&!_mbFile)return;
-    if(_mbFile){
-        const fd=new FormData();fd.append('action','upload');fd.append('task_sys_id',TASK_SYS_ID);fd.append('work_sys_id',taskData?.work_sys_id??'');fd.append('content',txt);fd.append('file',_mbFile);
-        try{const r=await fetch(API.notes,{method:'POST',body:fd});const j=await r.json();if(j.status==='success'){document.getElementById('mbTextInput').value='';document.getElementById('mbTextInput').style.height='auto';mbClearFile();await mbLoadNotes();}else showToast('error',j.message);}
-        catch{showToast('error','Upload failed');}
-    }else{
-        try{const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'store',task_sys_id:TASK_SYS_ID,work_sys_id:taskData?.work_sys_id??'',content:txt})});const j=await r.json();if(j.status==='success'){document.getElementById('mbTextInput').value='';document.getElementById('mbTextInput').style.height='auto';await mbLoadNotes();}else showToast('error',j.message);}
-        catch{showToast('error','Network error');}
+let _currentHoldingOn = '';
+function renderHoldingOnBadge() {
+    const lbl = document.getElementById('holdingOnLabel');
+    const btn = document.getElementById('holdingOnBtn');
+    if (_currentHoldingOn) {
+        lbl.textContent = _currentHoldingOn;
+        btn.classList.add('border-amber-300', 'text-amber-600');
+    } else {
+        lbl.textContent = 'Holding On';
+        btn.classList.remove('border-amber-300', 'text-amber-600');
     }
-};
-window.mbDel=async function(id){if(!confirm('Delete?'))return;try{const r=await fetch(API.notes,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',sys_id:id})});const j=await r.json();if(j.status==='success')await mbLoadNotes();else showToast('error',j.message);}catch{showToast('error','Network error');}};
-
-// ════════════════════════════════════════════════════════════
-// AI
-// ════════════════════════════════════════════════════════════
-function openAiModal(){document.getElementById('aiModal').classList.remove('hidden');}
-async function aiGenerate(){
-    const btn    = document.getElementById('aiGenBtn');
-    const status = document.getElementById('aiGenStatus');
-    btn.disabled = true;
-    btn.innerHTML= '<i class="fas fa-spinner fa-spin mr-1.5"></i>Generating…';
-    if (status) status.classList.remove('hidden');
+}
+function openHoldingOnModal() {
+    document.getElementById('holdingOnModal').classList.remove('hidden');
+    document.getElementById('holdingOnInput').value = _currentHoldingOn;
+}
+async function saveHoldingOn(clear) {
+    const h = clear ? '' : document.getElementById('holdingOnInput').value.trim();
     try {
-        const r=await fetch(API.aiMindboard,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_sys_id:TASK_SYS_ID})});
-        const j=await r.json();
-        const board   = document.getElementById('aiPlanningBoard');
-        const content = document.getElementById('aiPlanningContent');
-        if (board && content) {
-            content.innerHTML = j.status==='success' ? j.html : `<p class="text-red-400">${escHtml(j.message??'Failed')}</p>`;
-            board.classList.remove('hidden');
-        }
-        closeModal('aiModal');
-        // Open mind board modal to show result
-        openMindBoardModal();
-    } catch {
-        const content = document.getElementById('aiPlanningContent');
-        if (content) content.innerHTML = '<p class="text-red-400">Network error</p>';
-    }
-    btn.disabled = false;
-    btn.innerHTML= '<i class="fas fa-wand-magic-sparkles mr-1.5"></i>Generate Briefing';
-    if (status) status.classList.add('hidden');
+        const r = await fetch(API.assign, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({sys_id:TASK_SYS_ID, assigned_to:null, holding_on:h||null})});
+        const j = await r.json();
+        if (j.status==='success') { _currentHoldingOn = h; renderHoldingOnBadge(); showToast('success','Saved!'); closeModal('holdingOnModal'); }
+        else showToast('error', j.message);
+    } catch { showToast('error','Network error'); }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1008,7 +2137,7 @@ function _renderSpecialIns(s){let items=[];if(s){if(Array.isArray(s))items=s.fil
 // HELPERS
 // ════════════════════════════════════════════════════════════
 function closeModal(id){document.getElementById(id)?.classList.add('hidden');}
-document.addEventListener('click',e=>{['statusModal','assignModal','mindBoardModal','aiModal','specialInsModal'].forEach(id=>{const el=document.getElementById(id);if(el&&e.target===el)el.classList.add('hidden');});});
+document.addEventListener('click',e=>{['statusModal','holdingOnModal','mindBoardModal','aiModal','specialInsModal'].forEach(id=>{const el=document.getElementById(id);if(el&&e.target===el)el.classList.add('hidden');});});
 
 function badgeHtml(s){const m={open:['bg-yellow-100 text-yellow-700 border-yellow-200','🟡 Open'],in_progress:['bg-blue-100 text-blue-700 border-blue-200','🔵 In Progress'],done:['bg-green-100 text-green-700 border-green-200','✅ Done'],cancelled:['bg-red-100 text-red-700 border-red-200','❌ Cancelled'],on_hold:['bg-purple-100 text-purple-700 border-purple-200','⏸ On Hold']};const[c,l]=m[s]??['bg-gray-100 text-gray-600 border-gray-200',s];return`<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${c}">${l}</span>`;}
 function serviceLabel(slug){const m={air_ticket:'✈ Air Ticket',visa:'🛂 Visa',hotel:'🏨 Hotel',tour_package:'🧳 Tour Package',umrah:'🕋 Umrah',transport:'🚌 Transport'};return`<span class="font-medium text-gray-700 text-xs">${m[slug]??slug??'—'}</span>`;}

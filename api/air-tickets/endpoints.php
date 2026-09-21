@@ -202,7 +202,87 @@ function _localId(array $existing, string $prefix): string
     return $prefix . '-' . str_pad($max + 1, 3, '0', STR_PAD_LEFT);
 }
 
+// ── Helper: Mind Board note-এর meta_data-তে "এই quotation-এ ব্যবহৃত হয়েছে"
+// মার্ক করা — note bubble-এ badge দেখানোর জন্য (mindboard.js এই ফিল্ড
+// পড়ে "Used in Q-00X" badge বসায়)। note-এ কোনো নতুন column যোগ করিনি,
+// existing meta_data JSON-এই একটা key যোগ করা হচ্ছে যাতে schema migration
+// লাগে না।
+function _markNotesUsedInQuotation(PDO $pdo, array $noteIds, string $qSysId): void
+{
+    if (empty($noteIds)) return;
+    $placeholders = implode(',', array_fill(0, count($noteIds), '?'));
+    $stmt = $pdo->prepare("SELECT sys_id, meta_data FROM task_notes WHERE sys_id IN ($placeholders)");
+    $stmt->execute($noteIds);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $upd = $pdo->prepare("UPDATE task_notes SET meta_data = ? WHERE sys_id = ?");
+    foreach ($rows as $r) {
+        $meta = $r['meta_data'] ? (json_decode($r['meta_data'], true) ?: []) : [];
+        $used = $meta['used_in_quotations'] ?? [];
+        if (!in_array($qSysId, $used, true)) {
+            $used[] = $qSysId;
+            $meta['used_in_quotations'] = $used;
+            $upd->execute([json_encode($meta, JSON_UNESCAPED_UNICODE), $r['sys_id']]);
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────
+// ── Task-lock helpers ──────────────────────────────────────────
+// Once "Confirm & Create Task" fires for ONE confirmation, only that
+// confirmation + its source booking + that booking's source quotation
+// are locked — other quotations/bookings/confirmations in the same
+// work stay fully editable.
+
+// Does a task already exist for this specific confirmation?
+function _atConfirmationLocked(PDO $pdo, string $workSysId, string $confSysId): bool
+{
+    if (!$workSysId || !$confSysId) return false;
+    $s = $pdo->prepare("SELECT sys_id FROM tasks WHERE work_sys_id = ? AND confirmation_sys_id = ? LIMIT 1");
+    $s->execute([$workSysId, $confSysId]);
+    return (bool)$s->fetchColumn();
+}
+
+// Is this quotation locked? — true if ANY confirmation that traces back to
+// this quotation (via booking.quotation_sys_id) already has a task.
+function _atQuotationLocked(PDO $pdo, array $row, string $workSysId, string $qSysId): bool
+{
+    $bookings      = is_array($row['at_bookings'] ?? null) ? $row['at_bookings'] : [];
+    $confirmations = is_array($row['at_confirmations'] ?? null) ? $row['at_confirmations'] : [];
+    $bookingIds    = array_column(array_filter($bookings, fn($b) => ($b['quotation_sys_id'] ?? null) === $qSysId), 'sys_id');
+    if (!$bookingIds) return false;
+    foreach ($confirmations as $c) {
+        if (in_array($c['booking_sys_id'] ?? null, $bookingIds, true) && _atConfirmationLocked($pdo, $workSysId, $c['sys_id'])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Is this booking locked? — true if ANY confirmation built from this booking already has a task.
+function _atBookingLocked(PDO $pdo, array $row, string $workSysId, string $bSysId): bool
+{
+    $confirmations = is_array($row['at_confirmations'] ?? null) ? $row['at_confirmations'] : [];
+    foreach ($confirmations as $c) {
+        if (($c['booking_sys_id'] ?? null) === $bSysId && _atConfirmationLocked($pdo, $workSysId, $c['sys_id'])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function _atLockedResponse(): void
+{
+    ob_clean();
+    http_response_code(403);
+    echo json_encode([
+        'status'  => 'error',
+        'message' => 'A task has already been created from this — it is now locked and cannot be edited or deleted.',
+        'locked'  => true,
+    ]);
+    exit;
+}
+
 try {
 
     // ════════════════════════════════════════════════════════
@@ -281,28 +361,50 @@ try {
 
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
 
+            // ⚠️ Mind Board "Generate Quotation" ফিচার থেকে আসলে source note
+            // গুলোর sys_id list পাঠানো হয় — কোন note থেকে এই quotation
+            // তৈরি হয়েছে সেটা ট্র্যাক রাখার জন্য (Mind Board-এ badge + এখানে
+            // পরে দেখার জন্য)। সাধারণ manual quotation-এ এটা খালি array থাকে।
+            $sourceNoteIds = is_array($body['source_note_ids'] ?? null) ? $body['source_note_ids'] : [];
+
+            // ⚠️ SOTO quotation-এর সব field (route, trip_option, baggage/price
+            // options, refundable status ইত্যাদি) form_data object-এর ভেতরে
+            // থাকে (quotation.js-এর atSaveQ() দেখুন) — আগে এই key-টা এখানে
+            // গ্রহণই করা হতো না, ফলে SOTO quotation সেভ হতো ঠিকই (title/
+            // airline/gross_fare বেঁচে থাকত, তাই card list-এ price দেখা
+            // যেত) কিন্তু ফর্ম আবার খুললে পুরো form_data হারিয়ে যেত —
+            // route/pax/baggage সব ফাঁকা দেখাত।
             $newQ = [
-                'sys_id'        => _localId($quotations, 'Q'),
-                'type'          => $body['type']          ?? 'gds',    // gds | soto
-                'title'         => $body['title']         ?? '',
-                'airline'       => $body['airline']       ?? '',
-                'segments_json' => $body['segments_json'] ?? [],
-                'pax'           => $body['pax']           ?? [],
-                'pricing_json'  => $body['pricing_json']  ?? [],
-                'raw_input'     => $body['raw_input']     ?? '',
-                'copy_text'     => $body['copy_text']     ?? '',
-                'gross_fare'    => (float)($body['gross_fare']    ?? 0),
-                'net_fare'      => (float)($body['net_fare']      ?? 0),
-                'total_payable' => (float)($body['total_payable'] ?? 0),
-                'status'        => 'draft',
-                'created_at'    => date('d-m-Y H:i'),
-                'created_by'    => $userName,
+                'sys_id'          => _localId($quotations, 'Q'),
+                'type'            => $body['type']          ?? 'gds',    // gds | soto
+                'title'           => $body['title']         ?? '',
+                'airline'         => $body['airline']       ?? '',
+                'segments_json'   => $body['segments_json'] ?? [],
+                'pax'             => $body['pax']           ?? [],
+                'pricing_json'    => $body['pricing_json']  ?? [],
+                'raw_input'       => $body['raw_input']     ?? '',
+                'copy_text'       => $body['copy_text']     ?? '',
+                'gross_fare'      => (float)($body['gross_fare']    ?? 0),
+                'net_fare'        => (float)($body['net_fare']      ?? 0),
+                'total_payable'   => (float)($body['total_payable'] ?? 0),
+                'form_data'       => $body['form_data']     ?? null,
+                'source_note_ids' => $sourceNoteIds,
+                'status'          => 'draft',
+                'created_at'      => date('d-m-Y H:i'),
+                'created_by'      => $userName,
             ];
 
             $quotations[] = $newQ;
 
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
             _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, is_array($row['at_bookings']) ? $row['at_bookings'] : [], $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
+
+            // Source note গুলোতে "Used in Q-00X" মার্ক করা — quotation save
+            // ব্যর্থ হলে এই ধাপ চলবে না (উপরের _saveRow() exception ছুঁড়লে
+            // থেমে যাবে), তাই marking সবসময় সফল save-এর পরেই হয়
+            if (!empty($sourceNoteIds)) {
+                _markNotesUsedInQuotation($pdo, $sourceNoteIds, $newQ['sys_id']);
+            }
 
             ob_clean();
             echo json_encode(['status' => 'success', 'message' => 'Quotation saved', 'quotation_sys_id' => $newQ['sys_id']]);
@@ -317,6 +419,9 @@ try {
 
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
+
+            $wSysIdForLock = $row['work_sys_id'] ?? $workSysId;
+            if (_atQuotationLocked($pdo, $row, $wSysIdForLock, $qSysId)) _atLockedResponse();
 
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $found      = false;
@@ -335,6 +440,7 @@ try {
                     if (isset($body['gross_fare']))    $q['gross_fare']    = (float)$body['gross_fare'];
                     if (isset($body['net_fare']))      $q['net_fare']      = (float)$body['net_fare'];
                     if (isset($body['total_payable'])) $q['total_payable'] = (float)$body['total_payable'];
+                    if (isset($body['form_data']))     $q['form_data']     = $body['form_data']; // ⚠️ SOTO-এর সব field এখানেই থাকে — save_quotation-এর মতোই আগে মিসিং ছিল
                     $q['updated_at'] = date('d-m-Y H:i');
                     $q['updated_by'] = $userName;
                     $found = true;
@@ -360,6 +466,17 @@ try {
 
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
+
+            $wSysIdForLock = $row['work_sys_id'] ?? $workSysId;
+            if (_atQuotationLocked($pdo, $row, $wSysIdForLock, $qSysId)) _atLockedResponse();
+
+            $existingBookings = is_array($row['at_bookings']) ? $row['at_bookings'] : [];
+            if (array_filter($existingBookings, fn($b) => ($b['quotation_sys_id'] ?? null) === $qSysId)) {
+                ob_clean();
+                http_response_code(409);
+                echo json_encode(['status' => 'error', 'message' => 'একটা Booking এই Quotation থেকে তৈরি হয়েছে — আগে সেই Booking delete করুন।']);
+                exit;
+            }
 
             $quotations = array_values(array_filter(
                 is_array($row['at_quotations']) ? $row['at_quotations'] : [],
@@ -436,6 +553,9 @@ try {
             if (!$sourceQ) throw new Exception("Quotation '{$qSysId}' not found");
 
             // Build new booking from quotation
+            // ⚠️ 'form_data' না কপি করলে SOTO booking-এর currency/prices/route
+            // সব হারিয়ে যায় (ঠিক save_quotation-এ যেই bug ছিল) — এখানেও
+            // একই ভুল ছিল, এখন ঠিক করা হলো
             $newB = [
                 'sys_id'           => _localId($bookings, 'B'),
                 'quotation_sys_id' => $qSysId,
@@ -452,6 +572,7 @@ try {
                 'gross_fare'       => $sourceQ['gross_fare']    ?? 0,
                 'net_fare'         => $sourceQ['net_fare']      ?? 0,
                 'total_payable'    => $sourceQ['total_payable'] ?? 0,
+                'form_data'        => $sourceQ['form_data']     ?? null,
                 'status'           => 'tentative',
                 'created_at'       => date('d-m-Y H:i'),
                 'created_by'       => $userName,
@@ -495,6 +616,7 @@ try {
                 'gross_fare'       => (float)($body['gross_fare']    ?? 0),
                 'net_fare'         => (float)($body['net_fare']      ?? 0),
                 'total_payable'    => (float)($body['total_payable'] ?? 0),
+                'form_data'        => $body['form_data']        ?? null,
                 'status'           => 'tentative',
                 'created_at'       => date('d-m-Y H:i'),
                 'created_by'       => $userName,
@@ -539,6 +661,9 @@ try {
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
+            $wSysIdForLock = $row['work_sys_id'] ?? $workSysId;
+            if (_atBookingLocked($pdo, $row, $wSysIdForLock, $bSysId)) _atLockedResponse();
+
             $bookings   = is_array($row['at_bookings'])   ? $row['at_bookings']   : [];
             $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
             $found      = false;
@@ -558,6 +683,7 @@ try {
                     if (isset($body['gross_fare']))    $b['gross_fare']    = (float)($body['gross_fare'] ?? 0);
                     if (isset($body['net_fare']))      $b['net_fare']      = (float)($body['net_fare']   ?? 0);
                     if (isset($body['total_payable'])) $b['total_payable'] = (float)($body['total_payable'] ?? 0);
+                    if (isset($body['form_data']))     $b['form_data']     = $body['form_data'];
                     if (isset($body['status']))        $b['status']        = $body['status'];
                     $b['updated_at'] = date('d-m-Y H:i');
                     $b['updated_by'] = $userName;
@@ -569,45 +695,21 @@ try {
 
             if (!$found) throw new Exception("Booking '{$bSysId}' not found");
 
-            // ── Quotation revision ────────────────────────────
-            // Updated booking data from $bookings array (already updated above)
-            $updatedB = null;
-            foreach ($bookings as $b) {
-                if ($b['sys_id'] === $bSysId) { $updatedB = $b; break; }
-            }
-
-            $newQ = null;
-            if ($updatedB) {
-                $newQ = [
-                    'sys_id'         => _localId($quotations, 'Q'),
-                    'source_booking' => $bSysId,
-                    'ref_quotation'  => $sourceQSysId,
-                    'type'           => $updatedB['type']          ?? 'gds',
-                    'title'          => ($updatedB['title'] ?? ($updatedB['airline'] ?? '')) . ' [B-' . substr($bSysId, -3) . ' Revision]',
-                    'airline'        => $updatedB['airline']       ?? '',
-                    'segments_json'  => $updatedB['segments_json'] ?? [],
-                    'pricing_json'   => $updatedB['pricing_json']  ?? [],
-                    'raw_input'      => $updatedB['raw_input']     ?? '',
-                    'copy_text'      => $updatedB['copy_text']     ?? '',
-                    'gross_fare'     => (float)($updatedB['gross_fare']    ?? 0),
-                    'net_fare'       => (float)($updatedB['net_fare']      ?? 0),
-                    'total_payable'  => (float)($updatedB['total_payable'] ?? 0),
-                    'status'         => 'draft',
-                    'note'           => "Auto-revision from booking update ({$bSysId})",
-                    'created_at'     => date('d-m-Y H:i'),
-                    'created_by'     => $userName,
-                ];
-                $quotations[] = $newQ;
-            }
-
+            // ⚠️ আগে এখানে booking update করলে Quotation list-এ একটা
+            // 'Auto-revision' quotation তৈরি হতো (source_booking সেট করে) —
+            // এটা UI-তে বিভ্রান্তিকর ছিল (booking-এর update Quotation
+            // list-এও দেখা যেত)। এখন সরিয়ে দেওয়া হলো — booking update
+            // করলে শুধু at_bookings-ই আপডেট হবে, at_quotations অপরিবর্তিত
+            // থাকবে। Confirmation tab booking-এর data থেকেই সরাসরি পড়ে
+            // (window._atReload() করলে), তাই আলাদা sync করার দরকার নেই।
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
             _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $row['at_confirmation'] ?: null, $existingMeta, $userName, $byWork);
 
             ob_clean();
             echo json_encode([
                 'status'               => 'success',
-                'message'              => 'Booking updated' . ($updatedB ? ' & quotation revision created' : ''),
-                'new_quotation_sys_id' => $updatedB ? $newQ['sys_id'] : null,
+                'message'              => 'Booking updated',
+                'new_quotation_sys_id' => null,
             ]);
             break;
         }
@@ -620,6 +722,9 @@ try {
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
+            $wSysIdForLock = $row['work_sys_id'] ?? $workSysId;
+            if (_atBookingLocked($pdo, $row, $wSysIdForLock, $bSysId)) _atLockedResponse();
+
             $bookings = array_values(array_filter(
                 is_array($row['at_bookings']) ? $row['at_bookings'] : [],
                 fn($b) => $b['sys_id'] !== $bSysId
@@ -631,7 +736,35 @@ try {
                 $confirmation = null; // Confirmation ও clear হবে
             }
 
-            $quotations   = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
+            // ⚠️ যেই quotation থেকে এই booking তৈরি হয়েছিল, তার status
+            // 'moved_to_booking'-এ আটকে থাকত booking delete করার পরেও —
+            // ফলে সেই quotation UI-তে "already moved" দেখাত এবং আবার নতুন
+            // করে Move to Booking করা যেত না, যদিও booking-টা আর নেই।
+            // এখানে সেই quotation-এর status ফিরিয়ে 'draft'-এ আনা হচ্ছে,
+            // যাতে আবার move করা যায়। booking থেকে তৈরি হওয়া revision-type
+            // quotation (source_booking সেট আছে) touch করা হয় না — সেগুলো
+            // historical snapshot হিসেবেই থেকে যায়।
+            $quotations = is_array($row['at_quotations']) ? $row['at_quotations'] : [];
+
+            // Delete হওয়া booking-টার quotation_sys_id বের করি (filter করার
+            // আগের original array থেকে, যেহেতু এখন $bookings থেকে বাদ পড়ে গেছে)
+            $deletedBooking = null;
+            foreach ((is_array($row['at_bookings']) ? $row['at_bookings'] : []) as $b) {
+                if ($b['sys_id'] === $bSysId) { $deletedBooking = $b; break; }
+            }
+            if ($deletedBooking && !empty($deletedBooking['quotation_sys_id'])) {
+                $qSysIdToRevert = $deletedBooking['quotation_sys_id'];
+                foreach ($quotations as &$q) {
+                    if ($q['sys_id'] === $qSysIdToRevert && ($q['status'] ?? '') === 'moved_to_booking') {
+                        $q['status']     = 'draft';
+                        $q['updated_at'] = date('d-m-Y H:i');
+                        $q['updated_by'] = $userName;
+                        break;
+                    }
+                }
+                unset($q);
+            }
+
             $existingMeta = json_encode($row['meta_data'], JSON_UNESCAPED_UNICODE);
             _saveRow($pdo, $byWork ? $workSysId : $taskSysId, $quotations, $bookings, $confirmation, $existingMeta, $userName, $byWork);
 
@@ -733,6 +866,9 @@ try {
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Air ticket record not found');
 
+            $wSysIdForLock = $row['work_sys_id'] ?? $workSysId;
+            if (_atConfirmationLocked($pdo, $wSysIdForLock, $confSysId)) _atLockedResponse();
+
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
             $found = false;
             foreach ($confirmations as &$c) {
@@ -793,27 +929,8 @@ try {
             $id = $byWork ? $workSysId : $taskSysId;
             _saveRowFull($pdo, $id, $quotations, $bookings, $confirmations, $existingMeta, $userName, $byWork);
 
-            // ── confirmed হলে task auto-create করো ───────────
-            $autoTaskResult = null;
-            $taskOk         = false;
-            if ($confirmedConf) {
-                $wSysId = $row['work_sys_id'] ?? $workSysId;
-                if ($wSysId) {
-                    $autoTaskResult = _autoCreateTaskOnConfirmed($pdo, $confirmedConf, $wSysId, $userName);
-                    $taskOk = $autoTaskResult !== null
-                           && !str_starts_with((string)$autoTaskResult, 'ERR:')
-                           && $autoTaskResult !== 'NO_WORK';
-                }
-            }
-
             ob_clean();
-            $resp = ['status' => 'success', 'message' => 'Confirmation status updated'];
-            if ($confirmedConf) {
-                $resp['task_created'] = $taskOk;
-                $resp['auto_task_id'] = $taskOk  ? $autoTaskResult : null;
-                $resp['task_error']   = !$taskOk ? $autoTaskResult : null;
-            }
-            echo json_encode($resp);
+            echo json_encode(['status' => 'success', 'message' => 'Confirmation status updated']);
             break;
         }
 
@@ -859,6 +976,10 @@ try {
                       && !str_starts_with((string)$autoTaskResult, 'ERR:')
                       && $autoTaskResult !== 'NO_WORK';
 
+            // Source booking (for auto-filling a vendor payment amount on the frontend)
+            $srcBooking = null;
+            foreach ($bookings as $b) { if ($b['sys_id'] === ($confirmedConf['booking_sys_id'] ?? null)) { $srcBooking = $b; break; } }
+
             ob_clean();
             echo json_encode([
                 'status'       => 'success',
@@ -866,6 +987,8 @@ try {
                 'task_created' => $taskOk,
                 'auto_task_id' => $taskOk    ? $autoTaskResult : null,
                 'task_error'   => !$taskOk   ? $autoTaskResult : null,
+                'work_sys_id'  => $wSysId,
+                'booking'      => $srcBooking, // { sys_id, airline, total_payable, ... } or null
             ]);
             break;
         }
@@ -880,10 +1003,20 @@ try {
             if (!$row) throw new Exception('Air ticket record not found');
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
-            // Only allow removing failed/cancelled ones
+
+            // ⚠️ আগে শুধু failed/cancelled status-এই remove করা যেত — এখন
+            // pending-ও allow করা হচ্ছে (ভুল করে confirmation-এ পাঠানো
+            // entry মুছে ফেলার জন্য)। শুধু 'confirmed' + task already
+            // তৈরি হয়ে গেলে block করা হয়, কারণ সেই task-এর সাথে link
+            // ছিন্ন করা data-integrity ভাঙতে পারে।
             foreach ($confirmations as $c) {
-                if ($c['sys_id'] === $confSysId && !in_array($c['status']??'pending', ['failed','cancelled'])) {
-                    throw new Exception('Only failed or cancelled confirmations can be removed');
+                if ($c['sys_id'] !== $confSysId) continue;
+                if (($c['status'] ?? 'pending') === 'confirmed') {
+                    $taskCheck = $pdo->prepare("SELECT sys_id FROM tasks WHERE confirmation_sys_id = ? LIMIT 1");
+                    $taskCheck->execute([$confSysId]);
+                    if ($taskCheck->fetchColumn()) {
+                        throw new Exception('Task already created from this confirmation — cannot remove');
+                    }
                 }
             }
             $confirmations = array_values(array_filter($confirmations, fn($c) => $c['sys_id'] !== $confSysId));
@@ -939,7 +1072,6 @@ try {
             $taskSysId = $_POST['task_sys_id'] ?? $taskSysId; // fallback to already-parsed
             if (!$confSysId) throw new Exception('conf_sys_id required');
             if (empty($_FILES['file'])) throw new Exception('No file uploaded');
-            if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) throw new Exception('Upload error: ' . $_FILES['file']['error']);
 
             // ── fetch air_tickets row ─────────────────────────
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
@@ -953,65 +1085,24 @@ try {
             }
             if ($confIdx === null) throw new Exception("Confirmation '{$confSysId}' not found");
 
-            // ── SMB path: tasks JOIN works ────────────────────
-            require_once __DIR__ . '/../../server/smb_upload_handler.php';
-            require_once __DIR__ . '/../../server/safe_folder_name.php';
-            require_once __DIR__ . '/../../server/live_storage.php';
+            // ── Shared upload logic (client lookup, SMB path, file save) ──
+            // See server/confirmation_file_upload.php for why this is a shared
+            // helper — confirmation uploads always happen BEFORE a task exists.
+            require_once __DIR__ . '/../../server/confirmation_file_upload.php';
 
-            $tStmt = $pdo->prepare("
-                SELECT t.work_sys_id,
-                       JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.sys_id')) AS client_sys_id,
-                       JSON_UNQUOTE(JSON_EXTRACT(w.client_info, '$.name'))   AS client_name
-                FROM tasks t
-                JOIN works w ON w.sys_id = t.work_sys_id
-                WHERE t.sys_id = ? LIMIT 1
-            ");
-            $tStmt->execute([$taskSysId]);
-            $tRow = $tStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$tRow || empty($tRow['client_sys_id'])) throw new Exception('Task/Work/Client not found');
-
-            $ctx = [
-                'client_sys_id' => $tRow['client_sys_id'],
-                'client_name'   => $tRow['client_name'],
-                'work_sys_id'   => $tRow['work_sys_id'],
-                'task_sys_id'   => $taskSysId,
-                'module'        => 'files',
-            ];
-
-            // ── file info ─────────────────────────────────────
-            $file     = $_FILES['file'];
-            $origName = $file['name'];
-            $tmpPath  = $file['tmp_name'];
-            $mimeType = $file['type'] ?: 'application/octet-stream';
-            if (function_exists('finfo_file')) {
-                $finfo    = finfo_open(FILEINFO_MIME_TYPE);
-                $detected = finfo_file($finfo, $tmpPath);
-                finfo_close($finfo);
-                if ($detected) $mimeType = $detected;
-            } elseif (function_exists('mime_content_type')) {
-                $detected = mime_content_type($tmpPath);
-                if ($detected) $mimeType = $detected;
-            }
-            $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-
-            // file index — existing files count + 1
             $existingFiles = $confirmations[$confIdx]['files_json'] ?? [];
-            $fileIdx       = str_pad(count($existingFiles) + 1, 2, '0', STR_PAD_LEFT);
-            $fileName      = $confSysId . '_f' . $fileIdx . '.' . $ext;
+            $saved = uploadConfirmationFile($pdo, [
+                'work_sys_id'    => $row['work_sys_id'] ?? $workSysId,
+                'service_slug'   => 'air_ticket',
+                'conf_sys_id'    => $confSysId,
+                'existing_count' => count($existingFiles),
+                'uploaded_by'    => $userName,
+                'php_file'       => $_FILES['file'],
+            ]);
+            $tempLocal = $saved['_temp_local'];
+            $mimeType  = $saved['mime_type'];
 
-            // ── SMB upload ────────────────────────────────────
-            smbEnsureDir($ctx);
-            $smbBase = smbBuildPath($ctx);
-            $omv     = new OMV_SMB_Manager();
-
-            $tempLocal = sys_get_temp_dir() . '/conf_up_' . uniqid() . '.' . $ext;
-            if (!move_uploaded_file($tmpPath, $tempLocal)) throw new Exception('Failed to move file');
-            $omv->paste_file($tempLocal, "{$smbBase}/{$fileName}");
-            $smbToken = smbFileUrl("{$smbBase}/{$fileName}");
-
-            // ── AI Extraction (temp file delete এর আগে) ──────
-            $extractedData    = null;
-            // ── AI Extraction (temp file delete এর আগে) ──────
+            // ── AI Extraction (air_ticket-specific — temp file delete এর আগে) ──
             $extractedData = null;
             try {
                 $isImage = str_starts_with($mimeType, 'image/');
@@ -1172,15 +1263,8 @@ try {
             if (file_exists($tempLocal)) unlink($tempLocal);
 
             // ── files_json update ─────────────────────────────
-            $fileEntry = [
-                'name'           => $origName,
-                'file_name'      => $fileName,
-                'smb_token'      => $smbToken,
-                'mime_type'      => $mimeType,
-                'uploaded_at'    => date('d-m-Y H:i'),
-                'uploaded_by'    => $userName,
-                'extracted_data' => $extractedData,
-            ];
+            $fileEntry = array_merge($saved, ['extracted_data' => $extractedData]);
+            unset($fileEntry['_temp_local']);
 
             $confirmations[$confIdx]['files_json'][] = $fileEntry;
 
@@ -1192,8 +1276,8 @@ try {
             ob_clean();
             echo json_encode([
                 'status'    => 'success',
-                'file_name' => $fileName,
-                'smb_token' => $smbToken,
+                'file_name' => $saved['file_name'],
+                'smb_token' => $saved['smb_token'],
                 'extracted' => $extractedData !== null,
             ]);
             break;
@@ -1207,6 +1291,9 @@ try {
 
             $row = _fetchByContext($pdo, $taskSysId, $workSysId);
             if (!$row) throw new Exception('Record not found');
+
+            $wSysIdForLock = $row['work_sys_id'] ?? $workSysId;
+            if (_atConfirmationLocked($pdo, $wSysIdForLock, $confSysId)) _atLockedResponse();
 
             $confirmations = is_array($row['at_confirmations']) ? $row['at_confirmations'] : [];
             $confIdx = null;

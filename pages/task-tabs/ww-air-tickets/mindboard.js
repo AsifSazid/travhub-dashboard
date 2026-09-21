@@ -11,8 +11,26 @@ window._renderMindboard = function _renderMindboard() {
     panel.style.cssText = 'display:flex;flex-direction:column;padding:0;';
 
     panel.innerHTML = `
+    <!-- Generate Summary/Quotation sticky action bar — শুধু note select করলে দেখা যায় -->
+    <div id="at-gen-actionbar" class="hidden" style="flex-shrink:0;background:#EEF2FF;border-bottom:1px solid #C7D2FE;padding:8px 14px;display:flex;align-items:center;gap:8px;">
+        <span id="at-gen-count" style="font-size:11px;font-weight:600;color:#4338CA;">0 selected</span>
+        <div style="flex:1;"></div>
+        <button onclick="window._genGenerate('summary')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#fff;color:#4338CA;border:1px solid #C7D2FE;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-align-left mr-1"></i>Generate Summary
+        </button>
+        <button onclick="window._genGenerate('quotation')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#fff;color:#4338CA;border:1px solid #C7D2FE;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-file-invoice mr-1"></i>Generate Quotation
+        </button>
+        <button onclick="window._genGenerate('both')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-layer-group mr-1"></i>Generate Both
+        </button>
+        <button onclick="window._genClearSelection()" title="Clear selection" style="padding:5px 8px;font-size:11px;background:transparent;color:#6B7280;border:none;cursor:pointer;">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
     <!-- Chat bubbles (scrollable) -->
-    <div id="at-notes-list" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:calc(100vh - 350px);">
+    <div id="at-notes-list" style="flex:1;overflow-y:auto;padding:12px 14px 12px 34px;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:calc(100vh - 350px);">
         <div class="text-center py-6 text-gray-300 text-sm"><i class="fas fa-spinner fa-spin"></i></div>
     </div>
 
@@ -77,7 +95,6 @@ window._renderMindboard = function _renderMindboard() {
     // ── Setup paste, drag & drop for textarea ──────────────────
     const ta = document.getElementById('at-note-text');
     if (ta) {
-        // Paste support for images
         ta.addEventListener('paste', function(e) {
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -93,7 +110,6 @@ window._renderMindboard = function _renderMindboard() {
             }
         });
 
-        // Drag & drop support
         ta.addEventListener('dragover', function(e) {
             e.preventDefault();
             this.style.borderColor = '#6366f1';
@@ -117,31 +133,23 @@ window._renderMindboard = function _renderMindboard() {
         });
     }
 
-    // ── Close menus — handled by _attachMenuDelegation IIFE ──
     atLoadNotes();
 
     // ── GDS Panel: wrap mindboard in flex row ─────────────────
-    // ⚠️ এই panel gds-panel.js-এর _gdsInjectPanel() ব্যবহার করে না — নিজের
-    // নিজস্ব HTML বানায় (Quotation/Booking/Confirmation থেকে আলাদা কোড path)।
-    // তাই GDS/Portal sub-tab bar এখানে আলাদাভাবে বসাতে হচ্ছে
-    // (_gdsSubTabsHtml('1') — gds-panel.js-এর একই helper reuse করে)।
     const mbPanel = document.getElementById('at-panel-mindboard');
     if (mbPanel && !mbPanel.querySelector('#at-gds-panel')) {
         const saved = localStorage.getItem('at_gds_width');
         const gdsW  = saved ? saved + 'px' : '340px';
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'display:flex;height:100%;';
-        // Move panel children into left div
         const leftDiv = document.createElement('div');
         leftDiv.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;';
         while (mbPanel.firstChild) leftDiv.appendChild(mbPanel.firstChild);
-        // Divider
         const divider = document.createElement('div');
         divider.id = 'at-gds-divider';
         divider.style.cssText = 'width:4px;background:#f1f5f9;cursor:col-resize;flex-shrink:0;transition:background .15s;';
         divider.onmouseover = () => divider.style.background = '#6366f1';
         divider.onmouseout  = () => divider.style.background = '#f1f5f9';
-        // GDS panel
         const gdsDiv = document.createElement('div');
         gdsDiv.id = 'at-gds-panel-1';
         gdsDiv.style.cssText = `width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow-y:auto;min-height:300px;max-height:calc(100vh - 350px);;`;
@@ -173,7 +181,6 @@ window._renderMindboard = function _renderMindboard() {
 
 // ── File select handler ──────────────────────────────────────
 window._at.pendingFile = null;
-// Multi-file selection
 window._at.pendingFiles = [];
 window.atFilesSelected = function(input) {
     if (!input.files.length) return;
@@ -186,7 +193,6 @@ window.atFilesSelected = function(input) {
     input.value = '';
 };
 
-// Legacy single-file support
 window.atFileSelected = function(input) {
     if (!input.files[0]) return;
     atFilesSelected(input);
@@ -199,10 +205,8 @@ window.atClearFile = function() {
     if (mp) { mp.style.display = 'none'; mp.innerHTML = ''; }
 };
 
-// atSendNote — unified send (text or files)
 window.atSendNote = async function() {
     if (window._at.pendingFiles.length > 0) {
-        // Upload all pending files
         const files = [...window._at.pendingFiles];
         atClearFile();
         for (const file of files) {
@@ -220,7 +224,6 @@ window.atSendNote = async function() {
         await atLoadNotes();
         return;
     }
-    // Text note
     atAddTextNote();
 };
 
@@ -242,7 +245,6 @@ window.atRecToggle = async function() {
             const btn = document.getElementById('at-rec-btn');
             if (btn) { btn.style.background = '#fdf2f8'; btn.innerHTML = '<i class="fas fa-microphone" style="color:#db2777;font-size:.75rem;"></i>'; }
             window._at.recording = false;
-            // Upload
             const fd = new FormData();
             fd.append('action', 'upload');
             fd.append('work_sys_id', window._at.cfg.workSysId);
@@ -358,6 +360,28 @@ window._renderNotes = function _renderNotes(notes) {
     setTimeout(() => { list.scrollTop = list.scrollHeight; }, 50);
 }
 
+// ── Selected notes for Generate Summary/Quotation feature ────
+window._at.selectedNoteIds = window._at.selectedNoteIds || new Set();
+
+window._genToggleNoteSelect = function(sysId, checked) {
+    if (checked) window._at.selectedNoteIds.add(sysId);
+    else window._at.selectedNoteIds.delete(sysId);
+    _genUpdateActionBar();
+};
+
+function _genUpdateActionBar() {
+    const bar = document.getElementById('at-gen-actionbar');
+    if (!bar) return;
+    const count = window._at.selectedNoteIds.size;
+    if (count > 0) {
+        bar.classList.remove('hidden');
+        const countEl = document.getElementById('at-gen-count');
+        if (countEl) countEl.textContent = `${count} selected`;
+    } else {
+        bar.classList.add('hidden');
+    }
+}
+
 // ── Note Bubble with Three-Dot Menu ──────────────────────────
 window._noteBubble = function _noteBubble(n) {
     const dateStr  = n.meta_data?.created_by_date?.date ?? '';
@@ -368,7 +392,16 @@ window._noteBubble = function _noteBubble(n) {
     const fileUrl  = n.serve_url ?? n.file_url ?? '';
     const fileName = n.file_name ?? '';
 
-    // ── Menu HTML ──────────────────────────────────────────────
+    // "Used in Q-00X" badge — meta_data.used_in_quotations থেকে পড়ে,
+    // save_quotation action note-এর meta_data আপডেট করে (backend দ্রষ্টব্য)
+    function _genUsedBadgeHtml() {
+        const usedIn = n.meta_data?.used_in_quotations ?? [];
+        if (!usedIn.length) return '';
+        return `<span style="display:inline-block;margin-top:4px;padding:1px 6px;font-size:9px;font-weight:700;background:#EEF2FF;color:#4338CA;border-radius:10px;">
+            <i class="fas fa-file-invoice" style="font-size:8px;"></i> Used in ${usedIn.map(_e).join(', ')}
+        </span>`;
+    }
+
     function menuHTML() {
         const itemStyle   = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
         const dangerStyle = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#dc2626;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
@@ -377,6 +410,7 @@ window._noteBubble = function _noteBubble(n) {
         if (n.note_type === 'text') {
             const enc = encodeURIComponent(content);
             items += `<button onclick="atCopyText('${enc}')" style="${itemStyle}"><i class="fas fa-copy" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Copy</button>`;
+            if (canDel) items += `<button onclick="atEditNoteStart('${sysId}')" style="${itemStyle}"><i class="fas fa-pen" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Edit</button>`;
 
         } else if (n.note_type === 'image') {
             items += `<button onclick="atCopyImage('${fileUrl}')" style="${itemStyle}"><i class="fas fa-copy" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Copy Image</button>`;
@@ -400,27 +434,36 @@ window._noteBubble = function _noteBubble(n) {
 
     // ── Text Note ──────────────────────────────────────────────
     if (n.note_type === 'text') {
-        // Calculate approximate width based on content length
+        // ⚠️ আগে contentLength অনুযায়ী fixed px min-width (320/480/640px)
+        // ছিল — GDS panel resize করে left content area ছোট করলে bubble
+        // container-এর চেয়ে বড় হয়ে horizontal overflow করত (scrollbar
+        // চলে আসত)। এখন percentage + CSS min() দিয়ে container-relative
+        // width — panel যত ছোট-বড়ই হোক, bubble কখনো container-এর বাইরে
+        // যাবে না; একই সাথে খুব বড় panel-এ ছোট content-ও অযথা বেশি চওড়া
+        // হবে না (px cap বজায় থাকে)।
         const contentLength = content.length;
-        let minWidth = '120px';
-        let maxWidth = '85%';
-        
-        if (contentLength < 20) {
-            minWidth = '320px';
-        } else if (contentLength < 50) {
-            minWidth = '480px';
-        } else {
-            minWidth = '640px';
-        }
-        
-        return `<div class="at-note-bubble at-note-text" style="align-self:flex-start;min-width:${minWidth};max-width:${maxWidth};">
-            <div class="text-sm text-gray-700 whitespace-pre-line" style="word-wrap:break-word;">${_e(content)}</div>
-            <div class="flex items-center justify-between mt-1.5">
-                <span class="text-[10px] text-gray-300">${_e(dateStr)}</span>
-                <div style="position:relative;">
-                    <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
-                    ${menuHTML()}
+        let minWidthPct, pxCap;
+        if (contentLength < 20) { minWidthPct = '25%'; pxCap = '320px'; }
+        else if (contentLength < 50) { minWidthPct = '45%'; pxCap = '480px'; }
+        else { minWidthPct = '65%'; pxCap = '640px'; }
+        const minWidth = `min(${minWidthPct}, ${pxCap})`;
+        const maxWidth = '85%';
+
+        return `<div class="at-note-bubble at-note-text" id="at-note-bubble-${sysId}" style="align-self:flex-start;min-width:${minWidth};max-width:${maxWidth};position:relative;">
+            <input type="checkbox" class="at-gen-select-cb" data-note-id="${sysId}"
+                onchange="window._genToggleNoteSelect('${sysId}', this.checked)"
+                ${window._at.selectedNoteIds.has(n.sys_id) ? 'checked' : ''}
+                style="position:absolute;top:6px;left:-22px;width:16px;height:16px;cursor:pointer;">
+            <div id="at-note-view-${sysId}">
+                <div class="text-sm text-gray-700 whitespace-pre-line" style="word-wrap:break-word;">${_e(content)}</div>
+                <div class="flex items-center justify-between mt-1.5">
+                    <span class="text-[10px] text-gray-300">${_e(dateStr)}</span>
+                    <div style="position:relative;">
+                        <button ${toggleMenu} class="at-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
+                        ${menuHTML()}
+                    </div>
                 </div>
+                ${_genUsedBadgeHtml()}
             </div>
         </div>`;
     }
@@ -438,7 +481,6 @@ window._noteBubble = function _noteBubble(n) {
             return `<div style="position:relative;margin-bottom:6px;border-radius:8px;overflow:hidden;background:#f9fafb;">
                 <img src="${pgUrl}" loading="lazy" onclick="atViewImg('${pgUrl}')"
                     style="width:100%;display:block;cursor:zoom-in;border-radius:8px;">
-                <!-- per-page actions -->
                 <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;">
                     <button onclick="atCopyPageImage('${pgUrl}')" title="Copy"
                         style="width:26px;height:26px;background:rgba(255,255,255,.9);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);">
@@ -477,6 +519,10 @@ window._noteBubble = function _noteBubble(n) {
     }
     if (n.note_type === 'image') {
         return `<div class="at-note-bubble at-note-image" style="align-self:flex-start;max-width:780px;position:relative;">
+            <input type="checkbox" class="at-gen-select-cb" data-note-id="${sysId}"
+                onchange="window._genToggleNoteSelect('${sysId}', this.checked)"
+                ${window._at.selectedNoteIds.has(n.sys_id) ? 'checked' : ''}
+                style="position:absolute;top:6px;left:-22px;width:16px;height:16px;cursor:pointer;z-index:2;">
             <img src="${fileUrl}" loading="lazy" onclick="atViewImg('${fileUrl}')"
                 style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;cursor:zoom-in;display:block;background:#f9fafb;">
             ${content ? `<div class="text-xs text-gray-500 mt-1 px-1">${_e(content)}</div>` : ''}
@@ -487,6 +533,7 @@ window._noteBubble = function _noteBubble(n) {
                     ${menuHTML()}
                 </div>
             </div>
+            ${_genUsedBadgeHtml()}
         </div>`;
     }
 
@@ -575,7 +622,6 @@ window.atCopyImage = async function(url) {
             finalBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
             URL.revokeObjectURL(img.src);
         }
-        // floating menu click এ focus চলে যায় — window focus হওয়ার পর copy করি
         window.focus();
         await new Promise(r => setTimeout(r, 100));
         await navigator.clipboard.write([
@@ -633,7 +679,6 @@ window.atCopyPageImage = async function(pgUrl) {
 window.atSharePdfPages = async function(noteSysId) {
     const serveBase = window._at.cfg.api.fileServe ?? window._at.cfg.api.notes.replace('api/tasks/notes.php', 'api/file/serve.php');
     const pdfUrl    = `${serveBase}?note_id=${encodeURIComponent(noteSysId)}&dl=1`;
-    // notes থেকে file_name নিই
     try {
         const res  = await fetch(`${window._at.cfg.api.notes}?action=list&work_sys_id=${encodeURIComponent(window._at.cfg.workSysId)}`);
         const json = await res.json();
@@ -656,7 +701,6 @@ window.atShareFile = async function(url, fileName, mimeType) {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({ files: [file], title: fileName });
         } else {
-            // Desktop বা unsupported browser → download
             const a = document.createElement('a');
             a.href     = URL.createObjectURL(blob);
             a.download = fileName;
@@ -674,7 +718,6 @@ window.atShareFile = async function(url, fileName, mimeType) {
     }
 };
 (function _attachMenuDelegation() {
-    // Guard: tab switch এ script reload হলে duplicate listener হবে না
     if (window._atMenuDelegationAttached) return;
     window._atMenuDelegationAttached = true;
 
@@ -687,7 +730,6 @@ window.atShareFile = async function(url, fileName, mimeType) {
     }
 
     document.addEventListener('click', function(e) {
-        // Floating menu এর ভেতরে click → item action চলুক, তারপর close
         if (e.target.closest('#at-floating-menu')) {
             setTimeout(_closeMenu, 120);
             return;
@@ -729,15 +771,12 @@ window.atShareFile = async function(url, fileName, mimeType) {
                 floating.style.visibility = 'visible';
             }, 50);
             return;
-            return;
         }
 
-        // Click outside (কোনো btn বা menu না) → close
         if (_activeMenuId) _closeMenu();
 
-    }); // bubble phase (no capture)
+    });
 
-    // Close on any scroll
     window.addEventListener('scroll', _closeMenu, true);
 
 })();
@@ -745,6 +784,62 @@ window.atShareFile = async function(url, fileName, mimeType) {
 
 
 // ── Delete Note ───────────────────────────────────────────────
+// ── Edit Text Note (inline) ──────────────────────────────────
+window.atEditNoteStart = function(sysId) {
+    const note = window._at.currentNotes.find(n => n.sys_id === sysId);
+    if (!note) return;
+    const creator = note.meta_data?.created_by_date?.user ?? note.created_by ?? '';
+    if (creator && creator !== (window.CURRENT_USER ?? '')) {
+        atT('error', 'Permission denied — শুধু creator edit করতে পারবে');
+        return;
+    }
+
+    const viewEl = document.getElementById(`at-note-view-${sysId}`);
+    if (!viewEl) return;
+
+    const original = note.content ?? '';
+    viewEl.innerHTML = `
+        <textarea id="at-edit-ta-${sysId}" rows="3"
+            style="width:100%;border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;font-size:.85rem;color:#374151;resize:vertical;outline:none;font-family:inherit;">${_e(original)}</textarea>
+        <div class="flex items-center justify-end gap-2 mt-1.5">
+            <button onclick="atEditNoteCancel('${sysId}')" style="padding:5px 10px;font-size:.72rem;font-weight:600;background:#F3F4F6;color:#374151;border:none;border-radius:8px;cursor:pointer;">Cancel</button>
+            <button onclick="atEditNoteSave('${sysId}')" style="padding:5px 10px;font-size:.72rem;font-weight:600;background:#4F46E5;color:#fff;border:none;border-radius:8px;cursor:pointer;">Save</button>
+        </div>`;
+
+    const ta = document.getElementById(`at-edit-ta-${sysId}`);
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+};
+
+window.atEditNoteCancel = function(sysId) {
+    // সহজ উপায় — গোটা note list-ই re-render করে দিলে original content
+    // ফিরে আসে, আলাদাভাবে view-HTML পুনর্গঠনের দরকার নেই
+    _renderNotes(window._at.currentNotes);
+};
+
+window.atEditNoteSave = async function(sysId) {
+    const ta = document.getElementById(`at-edit-ta-${sysId}`);
+    const newContent = ta?.value.trim();
+    if (!newContent) { atT('error', 'Note খালি রাখা যাবে না'); return; }
+
+    try {
+        const res = await fetch(window._at.cfg.api.notes, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update', note_sys_id: sysId, content: newContent }),
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            atT('success', 'Note updated!');
+            await atLoadNotes();
+        } else {
+            atT('error', json.message || 'Update ব্যর্থ');
+        }
+    } catch (e) {
+        atT('error', 'Network error');
+        console.error(e);
+    }
+};
+
 window.atDeleteNote = async function(sysId) {
     const note    = window._at.currentNotes.find(n => n.sys_id === sysId);
     const creator = note?.meta_data?.created_by_date?.user ?? note?.created_by ?? '';
@@ -800,7 +895,6 @@ window.atAddTextNote = async function() {
         fd.append('board', 'mindboard');
         fd.append('content', content);
         
-        // ── PDF Conversion ──────────────────────────────────
         if (window._at.pendingFile.type === 'application/pdf') {
             fd.append('convert_pdf', 'true');
         }
@@ -842,3 +936,411 @@ window.atAddTextNote = async function() {
         console.error(e);
     }
 };
+
+// ═══════════════════════════════════════════════════════════════
+// GENERATE SUMMARY / QUOTATION FROM SELECTED NOTES
+// ═══════════════════════════════════════════════════════════════
+
+window._genClearSelection = function() {
+    window._at.selectedNoteIds.clear();
+    document.querySelectorAll('.at-gen-select-cb').forEach(cb => cb.checked = false);
+    _genUpdateActionBar();
+};
+
+window._genGenerate = async function(mode) {
+    const noteIds = [...window._at.selectedNoteIds];
+    if (!noteIds.length) { atT('error', 'কমপক্ষে একটা note select করুন'); return; }
+
+    _genShowLoadingModal(mode);
+
+    try {
+        const res = await fetch('/api/air-tickets/generate-from-notes.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                work_sys_id: window._at.cfg.workSysId,
+                note_sys_ids: noteIds,
+                action: mode,
+            }),
+        });
+        const json = await res.json();
+        if (!json.success) {
+            _genCloseModal();
+            atT('error', json.message || 'Generate ব্যর্থ হয়েছে');
+            return;
+        }
+        _genRenderResultModal(mode, json);
+    } catch (e) {
+        _genCloseModal();
+        atT('error', 'Network error');
+        console.error(e);
+    }
+};
+
+function _genShowLoadingModal(mode) {
+    let overlay = document.getElementById('at-gen-modal-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'at-gen-modal-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
+        document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:32px;text-align:center;min-width:280px;">
+            <i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4338CA;"></i>
+            <p style="margin-top:12px;font-size:13px;color:#4B5563;">Generating ${mode === 'both' ? 'Summary & Quotation' : mode === 'summary' ? 'Summary' : 'Quotation'}…</p>
+        </div>`;
+    overlay.style.display = 'flex';
+}
+
+function _genCloseModal() {
+    const overlay = document.getElementById('at-gen-modal-overlay');
+    if (overlay) overlay.remove();
+}
+
+// ── Result modal — Summary and/or Quotation ──────────────────────
+let _genCurrentResult = null; // { mode, summary_text, quotation }
+
+function _genRenderResultModal(mode, data) {
+    _genCurrentResult = { mode, ...data };
+    const overlay = document.getElementById('at-gen-modal-overlay');
+    if (!overlay) return;
+
+    const showSummary   = mode === 'summary' || mode === 'both';
+    const showQuotation = mode === 'quotation' || mode === 'both';
+
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:760px;max-height:90vh;overflow-y-auto;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F1F5F9;flex-shrink:0;">
+                <h3 style="font-size:15px;font-weight:700;color:#1F2937;margin:0;">
+                    <i class="fas fa-wand-magic-sparkles mr-2" style="color:#4338CA;"></i>Generated ${mode === 'both' ? 'Summary & Quotation' : mode === 'summary' ? 'Summary' : 'Quotation'}
+                </h3>
+                <button onclick="_genCloseModal()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding:20px;overflow-y:auto;flex:1;">
+                ${showSummary ? _genSummarySectionHtml(data.summary_text) : ''}
+                ${showSummary && showQuotation ? '<div style="height:1px;background:#F1F5F9;margin:20px 0;"></div>' : ''}
+                ${showQuotation ? _genQuotationSectionHtml(data.quotation) : ''}
+            </div>
+            ${mode === 'both' ? `
+            <div style="padding:14px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="_genSaveBoth()" style="padding:8px 16px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+                    <i class="fas fa-save mr-1"></i>Save Both
+                </button>
+            </div>` : ''}
+        </div>`;
+}
+
+function _genSummarySectionHtml(summaryText) {
+    // ⚠️ Gemini paragraph + "• Option N…" bullet list \n দিয়ে আলাদা করে
+    // পাঠায় — কিন্তু plain HTML-এ \n নিজে থেকে line-break হয় না (browser
+    // whitespace collapse করে দেয়)। white-space:pre-wrap দিয়ে raw \n-কেই
+    // visual line-break বানানো হচ্ছে, _e() এর escape এখনো bypass হয় না
+    // (XSS-নিরাপদ থাকে, শুধু whitespace-টা preserve হয়)।
+    return `
+    <div id="at-gen-summary-section">
+        <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">Summary</label>
+        <div id="at-gen-summary-text" contenteditable="true"
+            style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;font-size:13px;color:#374151;line-height:1.7;min-height:80px;white-space:pre-wrap;">${_e(summaryText || '')}</div>
+        <button onclick="_genSaveSummary()" style="margin-top:10px;padding:7px 14px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-save mr-1"></i>Save Summary in Mindboard
+        </button>
+    </div>`;
+}
+
+function _genQuotationSectionHtml(quotation) {
+    if (!quotation) return '<p style="color:#9CA3AF;font-size:12px;">No quotation data</p>';
+    const type = quotation.detected_type === 'soto' ? 'soto' : 'gds';
+
+    return `
+    <div id="at-gen-quotation-section">
+        <div style="display:flex;align-items:center;justify-content:between;gap:10px;margin-bottom:10px;">
+            <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;flex:1;">Quotation</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;color:#6B7280;">Type:</span>
+                <select id="at-gen-quot-type" onchange="_genRegenerateQuotation()" style="font-size:11px;padding:3px 8px;border:1px solid #E5E7EB;border-radius:6px;">
+                    <option value="gds" ${type==='gds'?'selected':''}>GDS</option>
+                    <option value="soto" ${type==='soto'?'selected':''}>SOTO</option>
+                </select>
+                <button onclick="_genRegenerateQuotation()" title="Regenerate with selected type"
+                    style="font-size:11px;padding:4px 8px;background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;border-radius:6px;cursor:pointer;">
+                    <i class="fas fa-sync-alt"></i> Regenerate
+                </button>
+            </div>
+        </div>
+        <div id="at-gen-quot-body">${_genQuotFormHtml(quotation)}</div>
+        <button onclick="_genSaveQuotation()" style="margin-top:10px;padding:7px 14px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-save mr-1"></i>Save as Quotation
+        </button>
+    </div>`;
+}
+
+// Quotation-tab এর GDS/SOTO ফর্ম-এর সরল read-only-ish preview — সম্পূর্ণ
+// interactive builder এখানে পুনরায় বানানো এই ফিচারের scope-এর বাইরে;
+// এখানে generated data readable table আকারে দেখানো হয়, Save করলে সেটাই
+// at_quotations এ যায় (পরে Quotation tab থেকে edit করা যাবে, যেভাবে
+// অন্য যেকোনো quotation করা যায়)।
+function _genQuotFormHtml(quotation) {
+    const type = quotation.detected_type === 'soto' ? 'soto' : 'gds';
+    if (type === 'gds') {
+        const g = quotation.gds || {};
+        const segs  = g.segments || [];
+        const fares = g.fares    || [];
+        return `
+        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;font-size:12px;">
+            <div style="margin-bottom:8px;"><b>Airline:</b> ${_e(g.airline || '—')}</div>
+            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-bottom:10px;">
+                <thead><tr style="color:#6B7280;text-align:left;">
+                    <th style="padding:4px;">Flight</th><th>Route</th><th>Date</th><th>Dep</th><th>Arr</th>
+                </tr></thead>
+                <tbody>
+                    ${segs.map(s => `<tr style="border-top:1px solid #E5E7EB;">
+                        <td style="padding:4px;">${_e(s.flight||'')}</td><td>${_e(s.route||'')}</td>
+                        <td>${_e(s.date||'')}</td><td>${_e(s.departure||'')}</td><td>${_e(s.arrival||'')}</td>
+                    </tr>`).join('') || '<tr><td colspan="5" style="padding:6px;color:#9CA3AF;">No segments detected</td></tr>'}
+                </tbody>
+            </table>
+            <div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;">Fares (all amounts in BDT)</div>
+            <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                <thead><tr style="color:#6B7280;text-align:left;">
+                    <th style="padding:4px;">Type</th><th>Pax</th><th>Base</th><th>Gross</th><th>Net</th><th>Payable</th><th>Total</th>
+                </tr></thead>
+                <tbody>
+                    ${fares.map(rawF => { const f = _genCalcGdsFare(rawF); return `<tr style="border-top:1px solid #E5E7EB;">
+                        <td style="padding:4px;">${_e(f.type)}</td><td>${f.pax}</td>
+                        <td>${f.base_fare}</td><td>${f.gross_fare}</td><td>${f.net_fare}</td>
+                        <td>${f.payable}</td><td style="font-weight:700;color:#4338CA;">${f.total_payable}</td>
+                    </tr>`; }).join('') || '<tr><td colspan="7" style="padding:6px;color:#9CA3AF;">No fares detected</td></tr>'}
+                </tbody>
+            </table>
+            <p style="font-size:10px;color:#9CA3AF;margin-top:6px;">Commission ${AT_GEN_DEFAULT_COMM_PCT}%, Govt Tax ${AT_GEN_DEFAULT_GOVT_PCT}% ধরে হিসাব করা হয়েছে (Quotation tab-এর ডিফল্ট) — Save-এর পরে Quotation tab-এ গিয়ে rate বদলে recalculate করা যাবে।</p>
+        </div>`;
+    }
+    // SOTO — এখন multiple baggage/price option (so.prices[]) সাপোর্ট করে
+    const so = quotation.soto || {};
+    const segs   = so.segments || [];
+    const prices = (so.prices && so.prices.length) ? so.prices : [];
+    const currency = so.currency || 'BDT';
+    return `
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;font-size:12px;">
+        <div style="margin-bottom:6px;"><b>Route:</b> ${_e(so.route||'—')} &nbsp; <b>Airline:</b> ${_e(so.airline||'—')} &nbsp; <b>Trip:</b> ${_e(so.trip_option||'—')} &nbsp; <b>Class:</b> ${_e(so.class||'—')}</div>
+        <div style="margin-bottom:8px;"><b>Pax:</b> ${so.pax_adult||0} Adult, ${so.pax_child||0} Child, ${so.pax_infant||0} Infant &nbsp; <b>Currency:</b> ${_e(currency)}</div>
+        <table style="width:100%;font-size:11px;border-collapse:collapse;margin-bottom:10px;">
+            <thead><tr style="color:#6B7280;text-align:left;"><th style="padding:4px;">Flight</th><th>Date</th><th>Dep</th><th>Arr</th></tr></thead>
+            <tbody>
+                ${segs.map(s => `<tr style="border-top:1px solid #E5E7EB;">
+                    <td style="padding:4px;">${_e(s.airline||'')} ${_e(s.flight_no||'')}</td><td>${_e(s.date||'')}</td>
+                    <td>${_e(s.dep_airport||'')} ${_e(s.dep_time||'')}</td><td>${_e(s.arr_airport||'')} ${_e(s.arr_time||'')}</td>
+                </tr>`).join('') || '<tr><td colspan="4" style="padding:6px;color:#9CA3AF;">No segments detected</td></tr>'}
+            </tbody>
+        </table>
+        <div style="font-weight:700;margin-bottom:4px;">Fare Options:</div>
+        ${prices.length ? prices.map(p => `
+        <div style="border-top:1px solid #E5E7EB;padding:6px 0;">
+            <div>${_e(p.desc||'—')} — Adult ${p.adult||0} ${_e(currency)}${p.child?`, Child ${p.child} ${_e(currency)}`:''}${p.infant?`, Infant ${p.infant} ${_e(currency)}`:''}</div>
+            ${p.facility ? `<div style="color:#6B7280;font-size:10px;">${_e(p.facility)}</div>` : ''}
+        </div>`).join('') : '<div style="color:#9CA3AF;">No price detected</div>'}
+        <div style="margin-top:6px;"><b>Refundable:</b> ${_e(so.refundable_status||'—')} &nbsp; <b>Changeable:</b> ${_e(so.changeable_status||'—')}</div>
+    </div>`;
+}
+
+// Regenerate — dropdown-এ বেছে নেওয়া type জোর করে আবার generate করে
+window._genRegenerateQuotation = async function() {
+    const type = document.getElementById('at-gen-quot-type')?.value || 'gds';
+    const noteIds = [...window._at.selectedNoteIds];
+    if (!noteIds.length) return;
+
+    const body = document.getElementById('at-gen-quot-body');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:16px;"><i class="fas fa-spinner fa-spin" style="color:#4338CA;"></i></div>';
+
+    try {
+        const res = await fetch('/api/air-tickets/generate-from-notes.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                work_sys_id: window._at.cfg.workSysId,
+                note_sys_ids: noteIds,
+                action: 'quotation',
+                quotation_type_hint: type,
+            }),
+        });
+        const json = await res.json();
+        if (!json.success) { atT('error', json.message || 'Regenerate ব্যর্থ'); return; }
+        _genCurrentResult.quotation = json.quotation;
+        if (body) body.innerHTML = _genQuotFormHtml(json.quotation);
+    } catch (e) {
+        atT('error', 'Network error');
+        console.error(e);
+    }
+};
+
+// ── Save Summary (নতুন text-note হিসেবে Mind Board-এ) ────────────
+window._genSaveSummary = async function() {
+    const el = document.getElementById('at-gen-summary-text');
+    const text = el?.innerText.trim();
+    if (!text) { atT('error', 'Summary খালি'); return; }
+
+    try {
+        const res = await fetch(window._at.cfg.api.notes, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'store', work_sys_id: window._at.cfg.workSysId,
+                service_slug: window._at.cfg.serviceSlug ?? 'air_ticket',
+                board: 'mindboard', content: '📝 Summary:\n' + text,
+            }),
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            atT('success', 'Summary saved in Mindboard!');
+            window._genClearSelection();
+            _genCloseModal();
+            await atLoadNotes();
+        } else {
+            atT('error', json.message || 'Save ব্যর্থ');
+        }
+    } catch (e) {
+        atT('error', 'Network error');
+        console.error(e);
+    }
+};
+
+// ── Save Quotation (at_quotations এ, save_quotation action দিয়ে) ─
+window._genSaveQuotation = async function() {
+    const q = _genCurrentResult?.quotation;
+    if (!q) { atT('error', 'Quotation data নেই'); return; }
+
+    const type = document.getElementById('at-gen-quot-type')?.value || q.detected_type || 'gds';
+    const payload = _genBuildQuotationSavePayload(q, type);
+    // যেই note গুলো থেকে এই quotation তৈরি হয়েছে, সেগুলোর sys_id পাঠানো হচ্ছে —
+    // backend এগুলোর meta_data-তে "used_in_quotations" মার্ক করবে (Mind Board-এ
+    // badge দেখানোর জন্য, নিচের _genNoteUsedBadge() দ্রষ্টব্য)
+    payload.source_note_ids = [...window._at.selectedNoteIds];
+
+    try {
+        const res = await fetch(window._at.cfg.api.airTickets, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, action: 'save_quotation', work_sys_id: window._at.cfg.workSysId }),
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            atT('success', 'Quotation saved!');
+            window._genClearSelection();
+            _genCloseModal();
+            // ⚠️ আগে এখানে reload হতো না — Quotation tab-এ গিয়ে ডেটা দেখতে
+            // page refresh লাগত। এখন save হওয়ার সাথে সাথেই window._at.data
+            // ফ্রেশ করে দিচ্ছি, আর Mind Board-এর note গুলোও নতুন badge সহ
+            // reload করছি যাতে "Used in Q-00X" সাথে সাথে দেখা যায়।
+            if (typeof window._atReload === 'function') await window._atReload();
+            await atLoadNotes();
+        } else {
+            atT('error', json.message || 'Save ব্যর্থ');
+        }
+    } catch (e) {
+        atT('error', 'Network error');
+        console.error(e);
+    }
+};
+
+window._genSaveBoth = async function() {
+    await window._genSaveSummary();
+    await window._genSaveQuotation();
+};
+
+// GDS/SOTO detected data থেকে save_quotation-এর payload shape বানানো
+// ⚠️ Quotation tab-এ "Process GDS" চাপলে যেই calculation হয় (_gdsCalcFare()
+// এর হুবহু formula, quotation.js), Mind Board থেকে সেভ করার সময়ও একই
+// calculation চালানো হচ্ছে — যাতে Quotation tab-এ গিয়ে select করলে
+// commission/govt-tax/net/payable সব field আগে থেকেই ঠিকভাবে ভরা থাকে,
+// শুধু raw gross_fare না।
+const AT_GEN_DEFAULT_COMM_PCT = 7;    // ৭% কমিশন — Quotation tab-এর ডিফল্ট
+const AT_GEN_DEFAULT_GOVT_PCT = 0.3;  // ০.৩% govt tax — Quotation tab-এর ডিফল্ট
+
+function _genCalcGdsFare(f) {
+    const base  = +(f.base_fare  || 0);
+    const gross = +(f.gross_fare || 0);
+    const iata  = +(f.iata_charge || 0);
+    const commission_a = Math.round(base  * (AT_GEN_DEFAULT_COMM_PCT / 100));
+    const govt_tax_b   = Math.round(gross * (AT_GEN_DEFAULT_GOVT_PCT / 100));
+    const net_fare      = Math.max(0, Math.round(gross - commission_a + govt_tax_b + iata));
+    const payable        = Math.max(0, Math.round((gross + net_fare) / 2));
+    const total_payable  = payable * +(f.pax || 1);
+    return {
+        type: f.type || 'ADT',
+        pax: +(f.pax || 1),
+        base_fare: base,
+        taxes: +(f.taxes || 0),
+        gross_fare: gross,
+        commission_a, govt_tax_b,
+        iata_charge: iata,
+        net_fare,
+        payable,
+        payable_edited: false,
+        total_payable,
+    };
+}
+
+function _genBuildQuotationSavePayload(q, type) {
+    if (type === 'gds') {
+        const g = q.gds || {};
+        const rawFares = g.fares || [];
+        const fares = rawFares.map(_genCalcGdsFare);
+        const grossFare    = fares.reduce((s,f) => s + f.gross_fare * f.pax, 0);
+        const netFare      = fares.reduce((s,f) => s + f.net_fare   * f.pax, 0);
+        const totalPayable = fares.reduce((s,f) => s + f.total_payable, 0);
+        return {
+            type: 'gds',
+            title: g.airline || 'AI Generated Quotation',
+            airline: g.airline || '',
+            segments_json: g.segments || [],
+            pricing_json: fares,
+            raw_input: '',
+            copy_text: '',
+            gross_fare: grossFare,
+            net_fare: netFare,
+            total_payable: totalPayable,
+        };
+    }
+    // SOTO — Gemini এখন so.prices[] হিসেবেই multiple baggage/price option
+    // (facility field সহ) দেয়, সরাসরি সেটাই form_data.prices-এ বসছে —
+    // Quotation tab-এর Add/Remove Baggage Option ফিচারের সাথে সরাসরি সামঞ্জস্যপূর্ণ
+    const so = q.soto || {};
+    const prices = (so.prices && so.prices.length) ? so.prices.map(p => ({
+        desc:     p.desc     || '',
+        facility: p.facility || '',
+        adult:    +(p.adult  || 0),
+        child:    +(p.child  || 0),
+        infant:   +(p.infant || 0),
+    })) : [{ desc: '', facility: '', adult: 0, child: 0, infant: 0 }];
+    const currency   = so.currency || 'BDT';
+    const airlineVal = so.airline || (so.segments && so.segments[0]?.airline) || '';
+    const grossFare  = prices[0].adult * (so.pax_adult || 0);
+    return {
+        type: 'soto',
+        title: `${so.trip_option||''} — ${so.route||''}`,
+        airline: airlineVal,
+        segments_json: so.segments || [],
+        pricing_json: [],
+        raw_input: '',
+        copy_text: '',
+        gross_fare: grossFare,
+        net_fare: grossFare,
+        total_payable: grossFare,
+        form_data: {
+            trip_option: so.trip_option || 'One Way',
+            class: so.class || 'Economy',
+            airline: airlineVal,
+            route: so.route || '',
+            pax_adult: so.pax_adult || 0,
+            pax_child: so.pax_child || 0,
+            pax_infant: so.pax_infant || 0,
+            refundable: so.refundable_status || 'Refundable',
+            changeable: so.changeable_status || 'Changeable',
+            currency, conversion_rate: 1,
+            prices,
+            percentage: 0,
+            ve_fixed_price: 0,
+            raw_text: '',
+            business_text: '',
+            notes: so.notes || [],
+        },
+    };
+}

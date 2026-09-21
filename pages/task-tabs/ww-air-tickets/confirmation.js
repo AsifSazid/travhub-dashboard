@@ -132,6 +132,30 @@ window._renderConfDetail = function _renderConfDetail(c, b) {
     const isPending   = (c.status ?? 'pending') === 'pending';
     const isConfirmed = (c.status ?? 'pending') === 'confirmed';
 
+    // ⚠️ booking.total_payable সবসময় BDT-তে সেভ থাকে (conversion আগেই হয়ে
+    // যায় Quotation/Booking সেভ করার সময়) — কিন্তু মূল currency (যেমন EUR)
+    // যদি BDT না হয়, সেটা booking.form_data.currency-তে থাকে। এখানে শুধু
+    // reference হিসেবে সেটা পাশে দেখানো হচ্ছে, নতুন করে কোনো conversion
+    // logic লাগছে না (সংখ্যাটা already সঠিকভাবে BDT-তে convert করা আছে)।
+    // ⚠️ আগে শুধু "(orig. EUR)" দেখাত — শুধু currency নাম, আসল original
+    // amount না। এখন form_data.prices[0].adult (Booking-এ যেটাই একমাত্র
+    // বেঁচে থাকা baggage/price option হোক না কেন) সরাসরি দেখানো হচ্ছে,
+    // reverse-calculate (total_payable/conversion_rate) না করে — কারণ
+    // direct stored value-ই সবচেয়ে নির্ভুল, rounding error এড়ায়।
+    const origCurrency = b?.form_data?.currency;
+    const origAmount   = b?.form_data?.prices?.[0]?.adult;
+    const currencyNote = (origCurrency && origCurrency !== 'BDT')
+        ? ` <span style="color:#9CA3AF;font-weight:500;font-size:10px;">(orig. ${_e(origCurrency)}${origAmount ? ' ' + _fmt(origAmount) : ''})</span>`
+        : '';
+
+    // ⚠️ আগে Delete button শুধু 'failed'/'cancelled' status-এ দেখাত — কিন্তু
+    // UI-তে confirmation-কে failed/cancelled করার কোনো উপায়ই নেই (শুধু
+    // pending ↔ confirmed টগল হয়), তাই বাস্তবে delete button কখনোই দেখা
+    // যেত না। এখন 'pending' status-এও delete করা যাবে, শুধু 'confirmed' +
+    // task already তৈরি হয়ে গেলে block থাকবে (সেই লিংক ভাঙা data-integrity
+    // ঝুঁকিপূর্ণ)।
+    const canDeleteConf = !(isConfirmed && hasTask);
+
     detail.innerHTML = `
     <div class="flex items-center justify-between mb-4">
         <div>
@@ -175,7 +199,7 @@ window._renderConfDetail = function _renderConfDetail(c, b) {
     ${b ? `<div class="bg-green-50 border border-green-100 rounded-xl p-3 mb-4 grid grid-cols-2 gap-3">
         <div><span class="text-[10px] text-gray-400 uppercase">Airline</span><div class="font-semibold text-gray-700 text-sm">${_e(b.airline??'—')}</div></div>
         <div><span class="text-[10px] text-gray-400 uppercase">PNR</span><div class="font-semibold text-gray-700 text-sm">${_e(b.pnr??'—')}</div></div>
-        <div><span class="text-[10px] text-gray-400 uppercase">Total</span><div class="font-bold text-green-600 text-sm">৳ ${_fmt(b.total_payable)}</div></div>
+        <div><span class="text-[10px] text-gray-400 uppercase">Total</span><div class="font-bold text-green-600 text-sm">৳ ${_fmt(b.total_payable)}${currencyNote}</div></div>
         <div><span class="text-[10px] text-gray-400 uppercase">Added At</span><div class="text-gray-500 text-xs">${_e(c.added_at??'—')}</div></div>
     </div>` : ''}
 
@@ -278,7 +302,7 @@ window._renderConfDetail = function _renderConfDetail(c, b) {
             class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition flex items-center gap-1.5">
             <i class="fas fa-file-download text-xs"></i>
         </a>
-        ${(c.status === 'failed' || c.status === 'cancelled') && !hasTask ? `
+        ${canDeleteConf ? `
         <button onclick="atRemoveConf('${_e(c.sys_id)}')"
             class="px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg text-sm transition">
             <i class="fas fa-trash-alt text-xs"></i>
@@ -353,7 +377,7 @@ window._loadConfTravelers = async function _loadConfTravelers(confSysId) {
     }
 }
 
-// ── Conf file pending state ───────────────────────────────────
+// ── Conf file pending state ────────────────────────────────────
 window._at.confPending = {}; // confSysId → File[]
 
 window._confAddFiles = function _confAddFiles(confSysId, files) {
@@ -459,10 +483,10 @@ window.atConfUploadPending = async function(confSysId) {
     }
 };
 
-// ── Drag & drop (old handler kept for compat) ─────────────────
+// ── Drag & drop (old handler kept for compat) ──────────────────
 window.atConfFileDrop = window.atConfDrop;
 
-// ── Delete conf file ──────────────────────────────────────────
+// ── Delete conf file ────────────────────────────────────────────
 window.atDeleteConfFile = async function(confSysId, fileIndex, fileName) {
     if (!confirm(`Delete "${fileName}"?`)) return;
     try {
@@ -477,7 +501,7 @@ window.atDeleteConfFile = async function(confSysId, fileIndex, fileName) {
     } catch { atT('error', 'Network error'); }
 };
 
-// ── View conf files formatted (task-air.php style) ────────────
+// ── View conf files formatted (task-air.php style) ─────────────
 window.atViewConfFiles = function(confSysId) {
     const c = (window._at.data?.at_confirmations ?? []).find(x => x.sys_id === confSysId);
     if (!c) return;
@@ -516,19 +540,216 @@ window.atUpdateConfStatus = async function(confId, status) {
     } catch { atT('error','Network error'); }
 };
 
-window.atConfirmAndCreateTask = async function(confId) {
+window.atConfirmAndCreateTask = function(confId) {
+    const c = (window._at.data?.at_confirmations??[]).find(x=>x.sys_id===confId);
+    const bookings = window._at.data?.at_bookings ?? [];
+    const b = bookings.find(x=>x.sys_id===c?.booking_sys_id);
+    _openConfirmTaskModal(confId, b);
+};
+
+// ── Confirm & Create Task modal — collects vendor/own-account payment + note
+// before creating the task, so the vendor payment financial entry is filled
+// in at the exact moment the task is created (not left for later).
+function _openConfirmTaskModal(confId, booking) {
+    const old = document.getElementById('atConfirmTaskModal');
+    if (old) old.remove();
+
+    const suggestedPurpose = booking
+        ? `Air Ticket Payment — ${booking.airline??''} ${booking.pnr?('PNR '+booking.pnr):''}`.trim()
+        : 'Air Ticket Payment';
+    const suggestedAmount = booking?.total_payable ?? '';
+
+    const modal = document.createElement('div');
+    modal.id = 'atConfirmTaskModal';
+    modal.className = 'fixed inset-0 z-[80] flex items-center justify-center p-4';
+    modal.style.background = 'rgba(0,0,0,.45)';
+    modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-check-circle mr-2 text-indigo-500"></i>Confirm & Create Task</h3>
+            <button onclick="document.getElementById('atConfirmTaskModal').remove()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+            <p class="text-xs text-gray-400">Task তৈরির সাথে সাথে vendor payment-ও রেকর্ড হয়ে যাবে। চাইলে স্কিপ করতে পারেন — পরে Task-এর Financial ট্যাব থেকেও যোগ করা যাবে।</p>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Vendor</label>
+                <div class="relative" id="atctVendorWrap">
+                    <input id="atctVendorSearch" placeholder="Search for a vendor…" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400" autocomplete="off"
+                        oninput="_atctFilterList('vendor', this.value)" onfocus="_atctFilterList('vendor', this.value)">
+                    <ul id="atctVendorDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
+                </div>
+                <input type="hidden" id="atctVendorId">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1.5">Transaction Type</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center justify-center gap-1.5 p-2 border-2 border-emerald-500 bg-emerald-50 text-emerald-700 rounded-lg cursor-pointer text-xs font-semibold" id="atctModeRealtimeLbl">
+                        <input type="radio" name="atct_txn_mode" value="realtime" class="hidden" checked onchange="_atctToggleMode()"><i class="fa-solid fa-bolt"></i>Real-time</label>
+                    <label class="flex items-center justify-center gap-1.5 p-2 border-2 border-gray-200 text-gray-500 rounded-lg cursor-pointer text-xs font-semibold" id="atctModeNonRealtimeLbl">
+                        <input type="radio" name="atct_txn_mode" value="non_realtime" class="hidden" onchange="_atctToggleMode()"><i class="fa-solid fa-clock-rotate-left"></i>Non-real-time</label>
+                </div>
+            </div>
+            <div id="atctAccountSection">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Own Account</label>
+                <div class="relative" id="atctAccountWrap">
+                    <input id="atctAccountSearch" placeholder="Search for an account…" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400" autocomplete="off"
+                        oninput="_atctFilterList('account', this.value)" onfocus="_atctFilterList('account', this.value)">
+                    <ul id="atctAccountDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
+                </div>
+                <input type="hidden" id="atctAccountId">
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Purpose</label>
+                <textarea id="atctPurpose" rows="2" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">${_e(suggestedPurpose)}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Note <span class="text-gray-300 font-normal">(optional)</span></label>
+                <input id="atctNote" placeholder="Any notes…" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Amount ৳</label>
+                <input type="number" step="0.01" min="0" id="atctAmount" value="${_e(String(suggestedAmount))}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
+            </div>
+
+            <div class="flex gap-2 pt-1">
+                <button onclick="_atctSkipAndCreate('${_e(confId)}')" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">Skip Payment</button>
+                <button onclick="_atctConfirmWithPayment('${_e(confId)}')" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
+                    <i class="fas fa-check mr-1.5"></i>Confirm & Pay
+                </button>
+            </div>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+    _atctLoadVendorsAccounts();
+}
+
+function _atctToggleMode() {
+    const isRealtime = document.querySelector('input[name="atct_txn_mode"]:checked')?.value === 'realtime';
+    document.getElementById('atctAccountSection').classList.toggle('hidden', !isRealtime);
+    document.getElementById('atctModeRealtimeLbl').className    = 'flex items-center justify-center gap-1.5 p-2 border-2 rounded-lg cursor-pointer text-xs font-semibold ' + (isRealtime ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500');
+    document.getElementById('atctModeNonRealtimeLbl').className = 'flex items-center justify-center gap-1.5 p-2 border-2 rounded-lg cursor-pointer text-xs font-semibold ' + (!isRealtime ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500');
+}
+
+let _atctVendors = [], _atctAccounts = [];
+
+async function _atctLoadVendorsAccounts() {
+    try {
+        const [vRes, aRes] = await Promise.all([fetch(window._at.cfg.api.allVendors), fetch(window._at.cfg.api.allAccounts)]);
+        const vJson = await vRes.json(), aJson = await aRes.json();
+        _atctVendors  = vJson.vendors  ?? [];
+        _atctAccounts = aJson.accounts ?? [];
+        if (!_atctVendors.length) document.getElementById('atctVendorSearch').placeholder = 'কোনো vendor পাওয়া যায়নি';
+        if (!_atctAccounts.length) document.getElementById('atctAccountSearch').placeholder = 'কোনো account পাওয়া যায়নি';
+    } catch(e) {
+        console.error('Vendor/Account load failed:', e);
+        atT('error', 'Vendor/Account list load failed: ' + e.message);
+        document.getElementById('atctVendorSearch').placeholder = 'Load failed — console দেখুন';
+    }
+}
+
+function _atctFilterList(kind, q) {
+    const isVendor = kind === 'vendor';
+    const dd = document.getElementById(isVendor ? 'atctVendorDrop' : 'atctAccountDrop');
+    const source = isVendor ? _atctVendors : _atctAccounts;
+    const nameKey = isVendor ? 'name' : 'acc_name';
+    const v = q.toLowerCase().trim();
+    const list = v ? source.filter(x => (x[nameKey]||'').toLowerCase().includes(v)) : source.slice(0, 15);
+    if (!list.length) {
+        dd.innerHTML = `<li class="px-4 py-3 text-center text-gray-400 text-xs">কিছু পাওয়া যায়নি</li>`;
+        dd.classList.remove('hidden');
+        return;
+    }
+    dd.innerHTML = list.map(x => `
+        <li class="px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b last:border-b-0 text-sm text-gray-800"
+            onclick="_atctSelectItem('${kind}','${x.sys_id}','${_e(x[nameKey]||x.sys_id).replace(/'/g,"\\'")}')">
+            ${_e(x[nameKey] ?? x.sys_id)}
+        </li>`).join('');
+    dd.classList.remove('hidden');
+}
+
+function _atctSelectItem(kind, sysId, name) {
+    const isVendor = kind === 'vendor';
+    document.getElementById(isVendor ? 'atctVendorSearch' : 'atctAccountSearch').value = name;
+    document.getElementById(isVendor ? 'atctVendorId'     : 'atctAccountId').value     = sysId;
+    document.getElementById(isVendor ? 'atctVendorDrop'   : 'atctAccountDrop').classList.add('hidden');
+}
+
+document.addEventListener('click', e => {
+    ['atctVendorWrap', 'atctAccountWrap'].forEach(wrapId => {
+        const wrap = document.getElementById(wrapId);
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById(wrapId === 'atctVendorWrap' ? 'atctVendorDrop' : 'atctAccountDrop')?.classList.add('hidden');
+        }
+    });
+});
+
+async function _atctSkipAndCreate(confId) {
+    document.getElementById('atConfirmTaskModal')?.remove();
+    await _atctDoConfirm(confId, null);
+}
+
+async function _atctConfirmWithPayment(confId) {
+    const txnMode = document.querySelector('input[name="atct_txn_mode"]:checked')?.value; // 'realtime' | 'non_realtime'
+    const amount = parseFloat(document.getElementById('atctAmount').value);
+    const purpose = document.getElementById('atctPurpose').value.trim();
+    const note = document.getElementById('atctNote').value.trim();
+    const vendorId = document.getElementById('atctVendorId').value;
+    const accountId = document.getElementById('atctAccountId').value;
+
+    if (amount && amount > 0) {
+        if (!purpose) { atT('error', 'Purpose দিন'); return; }
+        if (!vendorId) { atT('error', 'একটা Vendor সিলেক্ট করুন'); return; }
+        if (txnMode === 'realtime' && !accountId) { atT('error', 'Real-time payment-এর জন্য একটা Account সিলেক্ট করুন'); return; }
+    }
+
+    // Read all values BEFORE removing the modal — the elements won't exist after remove()
+    const payment = (amount && amount > 0) ? {
+        amount, purpose, note, txnMode, vendorId,
+        accountId: txnMode === 'realtime' ? accountId : null,
+    } : null;
+
+    document.getElementById('atConfirmTaskModal')?.remove();
+    await _atctDoConfirm(confId, payment);
+}
+
+async function _atctDoConfirm(confId, payment) {
     if (!confirm('Confirm this booking and create a task?')) return;
     try {
         const json = await window._atApi({ action:'confirm_and_create_task', conf_sys_id: confId });
         if (json.status === 'success') {
             atT('success', json.auto_task_id ? `Confirmed! Task: ${json.auto_task_id}` : 'Confirmed!');
+
+            // Auto-create the vendor payment financial entry, scoped to the new task
+            if (payment && json.task_created && json.auto_task_id) {
+                try {
+                    const feRes = await fetch(window._at.cfg.api.saveFinancial, {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({
+                            type: 'credit',
+                            amount: payment.amount,
+                            purpose: payment.purpose,
+                            vendor_id: payment.vendorId,
+                            transaction_mode: payment.txnMode,
+                            account_id: payment.accountId,
+                            work_id: json.work_sys_id,
+                            task_id: json.auto_task_id,
+                            date: new Date().toISOString().slice(0,10),
+                            ref: payment.note || undefined,
+                        }),
+                    });
+                    const feJson = await feRes.json();
+                    if (!feJson.success) atT('error', 'Task created, but vendor payment failed: ' + (feJson.message??''));
+                } catch(e) { atT('error', 'Task created, but vendor payment request failed'); }
+            }
+
             await window._atReload();
             _renderConfirmation();
-            // Reload confirmed tasks in show-works.php
             if (typeof window.reloadConfirmedTasks === 'function') window.reloadConfirmedTasks();
         } else atT('error', json.message ?? 'Failed');
     } catch { atT('error','Network error'); }
-};
+}
 
 window.atSaveConfDetails = async function(confId) {
     const tickets = (document.getElementById(`at-conf-tickets-${confId}`)?.value??'').split(',').map(t=>t.trim()).filter(Boolean);

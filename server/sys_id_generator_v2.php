@@ -56,6 +56,8 @@ function _v2Registry(): array
         'traveler_groups'         => ['table' => 'traveler_groups',         'short' => 'GR'],
         'traveler_group_members'  => ['table' => 'traveler_group_members',  'short' => 'GM'],
         'portal_links'        => ['table' => 'portal_links',        'short' => 'PL'],
+        'financial_entries'   => ['table' => 'financial_entries',   'short' => 'FE'],
+        'ac_banking_stmts'    => ['table' => 'ac_banking_stmts',    'short' => 'AS'],
     ];
 }
 

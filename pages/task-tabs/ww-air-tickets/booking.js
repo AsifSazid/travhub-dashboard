@@ -98,19 +98,26 @@ window._bCard = function _bCard(b) {
 }
 
 window.atNewBooking = function() {
-    window._at.activeBSysId = null; window._at.gdsSegments = []; window._at.gdsFares = [];
+    // ⚠️ activeQSysId ও reset করা হচ্ছে — নাহলে Quotation tab থেকে ফিরে
+    // আসা leftover id-এর কারণে GDS ফর্মে দুটো delete button (atDeleteQ +
+    // atDeleteB) একসাথে দেখা যাচ্ছিল, আর Save/Update label-ও ভুল হচ্ছিল।
+    window._at.activeBSysId = null; window._at.activeQSysId = null;
+    window._at.gdsSegments = []; window._at.gdsFares = [];
+    window._at.sotoPrices = null;
     _renderBBuilder(null);
     _loadBookingTravelers();
 };
 
 window.atSelectBooking = function(sysId) {
     window._at.activeBSysId = sysId;
+    window._at.activeQSysId = null; // same reason as atNewBooking()
     const b = (window._at.data?.at_bookings ?? []).find(x => x.sys_id === sysId);
     if (!b) return;
     document.querySelectorAll('#at-b-list .at-q-card').forEach(c => c.classList.remove('active'));
     event?.currentTarget?.classList.add('active');
     window._at.gdsSegments = b.segments_json ?? [];
     window._at.gdsFares    = b.pricing_json  ?? [];
+    window._at.sotoPrices  = null; // পরের booking-এর নিজস্ব form_data.prices দিয়ে fresh init হোক
     _renderBBuilder(b);
     if (b.type === 'gds' || !b.type) setTimeout(() => _recalcAllFares('b'), 50);
     _loadBookingTravelers();
@@ -161,10 +168,10 @@ window._renderBBuilder = function _renderBBuilder(b) {
         </div>
     </div>
 
-    <div id="at-b-body">${type === 'soto' ? _sotoHtml(b) : _gdsHtml(b, 'b')}</div>
+    <div id="at-b-body">${type === 'soto' ? _sotoHtml(b, 'b') : _gdsHtml(b, 'b')}</div>
 `;}
 
-// ── Booking travelers table ───────────────────────────────────
+// ── Booking travelers table ─────────────────────────────────────
 window._loadBookingTravelers = async function _loadBookingTravelers() {
     const el = document.getElementById('at-b-travelers');
     if (!el) return;
@@ -252,8 +259,12 @@ window.atBUnlinkTraveler = async function(travelerSysId, name) {
 };
 
 window.atBTypeChange = function(type) {
+    // ⚠️ type radio বদলালে window._at.sotoPrices ও reset করা দরকার,
+    // নাহলে GDS→SOTO টগল করলে আগের booking-এর leftover prices array
+    // নতুন ফর্মে ভুলভাবে থেকে যেতে পারে
+    window._at.sotoPrices = null;
     const body = document.getElementById('at-b-body');
-    if (body) body.innerHTML = type === 'soto' ? _sotoHtml(null) : _gdsHtml(null, 'b');
+    if (body) body.innerHTML = type === 'soto' ? _sotoHtml(null, 'b') : _gdsHtml(null, 'b');
 };
 
 window.atDeleteB = async function() {

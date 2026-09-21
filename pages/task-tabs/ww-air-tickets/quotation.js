@@ -88,7 +88,7 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
     <!-- Fares -->
     <div class="mb-4">
         <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Passenger Fare Calculation</label>
+            <label class="text-xs font-bold text-gray-500 uppercase">Passenger Fare Calculation <span class="text-gray-400 normal-case font-normal">(all amounts in BDT)</span></label>
             <button onclick="atGdsAddFare('${pfx}')" class="text-xs text-indigo-500 hover:text-indigo-700 font-semibold"><i class="fas fa-plus mr-1"></i>Add Fare</button>
         </div>
         <div class="overflow-x-auto rounded-xl border border-gray-100">
@@ -98,7 +98,7 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
                     <div>Type</div><div>Pax</div><div>Base</div><div>Taxes</div><div>Gross</div>
                     <div>A(Comm)</div><div>B(Govt)</div><div>IATA</div><div>Net</div><div>Payable</div><div>Total</div><div></div>
                 </div>
-                <div id="at-${pfx}-fares-area" class="divide-y divide-gray-50">${window._at.gdsFaresArea(pfx)}</div>
+                <div id="at-${pfx}-fares-area" class="divide-y divide-gray-50">${_gdsFaresArea(pfx)}</div>
             </div>
         </div>
     </div>
@@ -140,7 +140,12 @@ window._gdsSegsArea = function _gdsSegsArea(pfx) {
 }
 
 // ── Fare rows ─────────────────────────────────────────────────
-function _gdsFaresArea(pfx) {
+// ⚠️ BUG FIX: এটা আগে plain `function _gdsFaresArea(pfx) {...}` ছিল, কখনো
+// window._at namespace-এ attach হয়নি। কিন্তু বাকি সব কল সাইট
+// (`_gdsHtml`, `atExtractGds`, `atRmFare`) `window._at.gdsFaresArea(pfx)`
+// হিসেবে কল করে — ফলে "window._at.gdsFaresArea is not a function" error
+// দিয়ে atNewQuotation()/atSelectBooking() ভেঙে যাচ্ছিল (কোনো ফর্মই আসছিল না)।
+window._at.gdsFaresArea = function _gdsFaresArea(pfx) {
     if (!window._at.gdsFares.length) return `<div class="text-center py-4 text-gray-300 text-xs">No fares. Process GDS or Add.</div>`;
     return window._at.gdsFares.map((f,i) => `
     <div class="grid gap-2 px-3 py-2 items-center" style="grid-template-columns:65px 50px 105px 95px 105px 95px 95px 95px 105px 125px 130px 44px">
@@ -158,6 +163,11 @@ function _gdsFaresArea(pfx) {
         <button class="at-fare-rm text-red-400 hover:text-red-600 text-xs" data-pfx="${pfx}" data-idx="${i}"><i class="fas fa-trash"></i></button>
     </div>`).join('');
 }
+// Local (module-scope) alias — এই ফাইলের ভেতরের কল সাইট (_gdsHtml প্রথম
+// রেন্ডারে) `_gdsFaresArea(pfx)` (window prefix ছাড়া) হিসেবেও ডাকে, তাই
+// সেই ব্যবহারও কাজ করার জন্য একটা plain function reference রাখা হলো যেটা
+// একই implementation-কে point করে।
+function _gdsFaresArea(pfx) { return window._at.gdsFaresArea(pfx); }
 
 // ── Event delegation ──────────────────────────────────────────
 (function _attachGdsDelegation() {
@@ -437,8 +447,18 @@ window.atAddFare = window.atGdsAddFare;
 window.atRmFare  = function(i,pfx){ window._at.gdsFares.splice(i,1); const a=document.getElementById(`at-${pfx}-fares-area`); if(a) a.innerHTML=window._at.gdsFaresArea(pfx); atGdsPreview(pfx); };
 
 // ── SOTO HTML ─────────────────────────────────────────────────
-window._sotoHtml = function _sotoHtml(q) {
+window._sotoHtml = function _sotoHtml(q, pfx) {
+    pfx = pfx || 'q'; // caller pfx না পাঠালে quotation ধরে নেওয়া হয় (backward compat)
     const fd = q?.form_data ?? {};
+    // Baggage/price option গুলো dynamic array — আগে fixed [0,1] দুটো ছিল,
+    // এখন Add/Remove করা যায়। এই ফাংশন প্রতিবার call হলে fd.prices থেকে
+    // fresh reload করে, existing edits (atSotoAddPrice দিয়ে যোগ করা) হারিয়ে
+    // না যাওয়ার জন্য শুধু window._at.sotoPrices আগে থেকে না থাকলেই reset করি।
+    if (!window._at.sotoPrices || !q) {
+        window._at.sotoPrices = (fd.prices && fd.prices.length) ? fd.prices.map(p => ({...p})) : [
+            { desc: '', facility: '', adult: '', child: '', infant: '' },
+        ];
+    }
     return `
     <!-- Screenshot / Text Extract -->
     <div class="mb-4 border border-gray-100 rounded-xl p-4 bg-gray-50">
@@ -470,8 +490,8 @@ window._sotoHtml = function _sotoHtml(q) {
         <div id="at-soto-extract-prog" class="hidden mt-2 text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Extracting…</div>
     </div>
 
-    <!-- Trip type & Route -->
-    <div class="grid grid-cols-2 gap-3 mb-4">
+    <!-- Trip type, Route & Airline -->
+    <div class="grid grid-cols-3 gap-3 mb-4">
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Trip Type</label>
             <select id="at-soto-trip" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
@@ -481,6 +501,12 @@ window._sotoHtml = function _sotoHtml(q) {
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Route</label>
             <input id="at-soto-route" value="${_e(fd.route??'')}" placeholder="DAC - DXB"
+                class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
+        </div>
+        <div>
+            <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Airline</label>
+            <input id="at-soto-airline" value="${_e(fd.airline??'')}" placeholder="Turkish Airlines"
+                oninput="atSotoGenCopy()"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
         </div>
     </div>
@@ -504,21 +530,13 @@ window._sotoHtml = function _sotoHtml(q) {
         </div>
     </div>
 
-    <!-- Pricing -->
-    <div class="space-y-3 mb-4">
-        ${[0,1].map(i => `<div class="border border-gray-100 rounded-xl p-3 bg-gray-50">
-            <input id="at-soto-bag-${i}" placeholder="Baggage option…" value="${_e(fd.prices?.[i]?.desc??'')}"
-                oninput="atSotoGenCopy()"
-                class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs mb-2 focus:outline-none focus:border-indigo-400">
-            <div class="grid grid-cols-3 gap-2">
-                <div><label class="text-[10px] text-gray-400 uppercase">Adult ৳</label>
-                    <input type="number" id="at-soto-p${i}-adult" value="${fd.prices?.[i]?.adult??''}" oninput="atSotoGenCopy()" class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400"></div>
-                <div><label class="text-[10px] text-gray-400 uppercase">Child ৳</label>
-                    <input type="number" id="at-soto-p${i}-child" value="${fd.prices?.[i]?.child??''}" oninput="atSotoGenCopy()" class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400"></div>
-                <div><label class="text-[10px] text-gray-400 uppercase">Infant ৳</label>
-                    <input type="number" id="at-soto-p${i}-infant" value="${fd.prices?.[i]?.infant??''}" oninput="atSotoGenCopy()" class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400"></div>
-            </div>
-        </div>`).join('')}
+    <!-- Pricing (dynamic baggage options) -->
+    <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-bold text-gray-500 uppercase">Baggage / Price Options</label>
+            <button onclick="atSotoAddPrice()" class="text-xs text-indigo-500 hover:text-indigo-700 font-semibold"><i class="fas fa-plus mr-1"></i>Add Baggage Option</button>
+        </div>
+        <div id="at-soto-prices-list" class="space-y-3">${_sotoPricesHtml(fd.currency || 'BDT')}</div>
     </div>
 
     <!-- Refundable / Changeable -->
@@ -537,6 +555,25 @@ window._sotoHtml = function _sotoHtml(q) {
                 <label class="flex items-center gap-1.5 text-sm cursor-pointer"><input type="radio" name="at-soto-change" value="Not Changeable" ${fd.changeable==='Not Changeable'?'checked':''}> No</label>
             </div>
         </div>
+    </div>
+
+    <!-- Currency & Conversion -->
+    <div class="border border-amber-100 rounded-xl p-3 bg-amber-50 mb-4">
+        <label class="text-xs font-bold text-amber-700 uppercase block mb-2">Currency</label>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="text-[10px] text-gray-500 uppercase">Currency</label>
+                <input id="at-soto-currency" value="${_e(fd.currency??'BDT')}" placeholder="USD, BDT, AED…"
+                    oninput="atSotoRefreshCurrencyLabels();atSotoGenCopy()"
+                    class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 bg-white">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-500 uppercase">Conversion Rate (to BDT)</label>
+                <input type="number" id="at-soto-conv-rate" value="${fd.conversion_rate??1}" min="0" step="0.01" oninput="atSotoGenCopy()"
+                    class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 bg-white">
+            </div>
+        </div>
+        <p class="text-[10px] text-amber-500 mt-1">Currency BDT না হলে, price input-এর মান সেই currency-তে ধরে output text-এ BDT-তে convert করে দেখানো হবে।</p>
     </div>
 
     <!-- Business Markup -->
@@ -597,14 +634,81 @@ window._sotoHtml = function _sotoHtml(q) {
         </div>
     </div>
 
-    <button onclick="atSaveQ('soto')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
-        <i class="fas fa-save mr-1.5"></i>${window._at.activeQSysId ? 'Update' : 'Save'} Quotation
-    </button>`;
+    <div class="flex gap-2">
+        <button onclick="atSaveQ('${pfx}')" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
+            <i class="fas fa-save mr-1.5"></i>${pfx==='b' ? (window._at.activeBSysId ? 'Update Booking' : 'Save Booking') : (window._at.activeQSysId ? 'Update Quotation' : 'Save Quotation')}
+        </button>
+        ${pfx==='q'&&window._at.activeQSysId ? `<button onclick="atDeleteQ()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>` : ''}
+        ${pfx==='b'&&window._at.activeBSysId ? `<button onclick="atDeleteB()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>` : ''}
+    </div>`;
 }
 
 // ── SOTO helpers ──────────────────────────────────────────────
 window._at.sotoNotes = [];
 window._at.sotoFile = null;
+window._at.sotoPrices = null; // _sotoHtml() এ initialize হয়
+
+// Dynamic baggage/price option rows রেন্ডার — Adult/Child/Infant label-এ
+// currency দেখায় (parameter হিসেবে নেওয়া হয়, DOM lookup না — কারণ প্রথমবার
+// পুরো _sotoHtml() একসাথে বসার সময় at-soto-currency input তখনো DOM-এ থাকে
+// না, getElementById করলে null আসত এবং সবসময় ডিফল্ট BDT দেখাত)
+function _sotoPricesHtml(currency) {
+    currency = (currency || document.getElementById('at-soto-currency')?.value || 'BDT').trim().toUpperCase() || 'BDT';
+    return window._at.sotoPrices.map((p, i) => `
+    <div class="border border-gray-100 rounded-xl p-3 bg-gray-50" data-price-row="${i}">
+        <div class="flex items-center gap-2 mb-2">
+            <input id="at-soto-bag-${i}" placeholder="Baggage option… (e.g. Checked 30kg)" value="${_e(p.desc??'')}"
+                oninput="window._at.sotoPrices[${i}].desc=this.value;atSotoGenCopy()"
+                class="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400">
+            ${window._at.sotoPrices.length > 1 ? `<button onclick="atSotoRmPrice(${i})" title="Remove"
+                class="text-red-400 hover:text-red-600 text-xs w-6 h-6 flex-shrink-0 flex items-center justify-center"><i class="fas fa-times"></i></button>` : ''}
+        </div>
+        <!-- Facility/Flexibility — refundability, change fee, meals ইত্যাদির জন্য আলাদা free-text field -->
+        <input id="at-soto-fac-${i}" placeholder="Facility… (e.g. Non-refundable, Change fee $106, Meals included)" value="${_e(p.facility??'')}"
+            oninput="window._at.sotoPrices[${i}].facility=this.value;atSotoGenCopy()"
+            class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs mb-2 focus:outline-none focus:border-indigo-400">
+        <div class="grid grid-cols-3 gap-2">
+            <div><label class="text-[10px] text-gray-400 uppercase">Adult (${_e(currency)})</label>
+                <input type="number" id="at-soto-p${i}-adult" value="${p.adult??''}"
+                    oninput="window._at.sotoPrices[${i}].adult=this.value;atSotoGenCopy()"
+                    class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400"></div>
+            <div><label class="text-[10px] text-gray-400 uppercase">Child (${_e(currency)})</label>
+                <input type="number" id="at-soto-p${i}-child" value="${p.child??''}"
+                    oninput="window._at.sotoPrices[${i}].child=this.value;atSotoGenCopy()"
+                    class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400"></div>
+            <div><label class="text-[10px] text-gray-400 uppercase">Infant (${_e(currency)})</label>
+                <input type="number" id="at-soto-p${i}-infant" value="${p.infant??''}"
+                    oninput="window._at.sotoPrices[${i}].infant=this.value;atSotoGenCopy()"
+                    class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400"></div>
+        </div>
+    </div>`).join('');
+}
+
+// Currency field বদলালে price row-এর Adult/Child/Infant label-এ নতুন
+// currency দেখানোর জন্য শুধু list-টা re-render করি (input value গুলো
+// window._at.sotoPrices-এ already সংরক্ষিত থাকায় হারায় না)
+window.atSotoRefreshCurrencyLabels = function() {
+    const list = document.getElementById('at-soto-prices-list');
+    const cur  = document.getElementById('at-soto-currency')?.value || 'BDT';
+    if (list) list.innerHTML = _sotoPricesHtml(cur);
+};
+
+window.atSotoAddPrice = function() {
+    window._at.sotoPrices.push({ desc: '', facility: '', adult: '', child: '', infant: '' });
+    const list = document.getElementById('at-soto-prices-list');
+    const cur  = document.getElementById('at-soto-currency')?.value || 'BDT';
+    if (list) list.innerHTML = _sotoPricesHtml(cur);
+    atSotoGenCopy();
+};
+
+window.atSotoRmPrice = function(i) {
+    if (window._at.sotoPrices.length <= 1) return; // কমপক্ষে একটা option থাকা দরকার
+    window._at.sotoPrices.splice(i, 1);
+    const list = document.getElementById('at-soto-prices-list');
+    const cur  = document.getElementById('at-soto-currency')?.value || 'BDT';
+    if (list) list.innerHTML = _sotoPricesHtml(cur);
+    atSotoGenCopy();
+};
 
 window.atSotoFileSelect = function(input) {
     if (!input.files[0]) return;
@@ -677,6 +781,7 @@ function _sotoFillForm(data) {
 window.atSotoGenCopy = function() {
     const trip    = document.getElementById('at-soto-trip')?.value ?? 'One Way';
     const route   = document.getElementById('at-soto-route')?.value ?? '';
+    const airline = document.getElementById('at-soto-airline')?.value ?? '';
     const cls     = document.querySelector('input[name="at-soto-class"]:checked')?.value ?? 'Economy';
     const adult   = +(document.getElementById('at-soto-adult')?.value??0);
     const child   = +(document.getElementById('at-soto-child')?.value??0);
@@ -685,27 +790,43 @@ window.atSotoGenCopy = function() {
     const change  = document.querySelector('input[name="at-soto-change"]:checked')?.value ?? '';
     const pct     = +(document.getElementById('at-soto-pct')?.value??0);
     const fixed   = +(document.getElementById('at-soto-fixed')?.value??0);
+    const currency  = (document.getElementById('at-soto-currency')?.value ?? 'BDT').trim().toUpperCase() || 'BDT';
+    const convRate  = +(document.getElementById('at-soto-conv-rate')?.value ?? 1) || 1;
     const label   = trip==='One Way'?'One Way Ticket':trip==='Round Trip'?'Round Ticket':'Multi City Ticket';
 
     const paxParts = [adult>0?`${adult} Adult`:'', child>0?`${child} Child`:'', infant>0?`${infant} Infant`:''].filter(Boolean).join(', ');
 
-    const applyMarkup = (price) => { const b=+price; if(!b||b<=0) return ''; return Math.round(b + b*pct/100 + fixed); };
+    // Currency BDT না হলে input value-কে সেই currency-তে ধরে conversion rate
+    // দিয়ে BDT-তে রূপান্তর করা হয় — raw output-এ মূল currency দেখানো হয়,
+    // business output-এ markup + BDT conversion দুটোই প্রযোজ্য হয়
+    const toBdt = (price) => currency === 'BDT' ? +price : Math.round(+price * convRate);
+    const applyMarkup = (bdtPrice) => { const b=+bdtPrice; if(!b||b<=0) return ''; return Math.round(b + b*pct/100 + fixed); };
 
+    const airlineLine = airline ? `Airline: ${airline}\n` : '';
+    const currencyNote = currency !== 'BDT' ? ` (orig. ${currency}, rate ${convRate})` : '';
     let raw='', biz='';
-    raw += `*${label}*\nRoute: ${route} ${paxParts}\n${cls}\n\n*Price:*\n`;
-    biz += `*${label}*\nRoute: ${route} ${paxParts}\n${cls}\n\n*Price:*\n`;
+    raw += `*${label}*\nRoute: ${route} ${paxParts}\n${airlineLine}${cls}\n\n*Price:*\n`;
+    biz += `*${label}*\nRoute: ${route} ${paxParts}\n${airlineLine}${cls}\n\n*Price:*\n`;
 
-    [0,1].forEach(i => {
-        const bag   = document.getElementById(`at-soto-bag-${i}`)?.value ?? '';
-        const pa    = +(document.getElementById(`at-soto-p${i}-adult`)?.value??0);
-        const pc    = +(document.getElementById(`at-soto-p${i}-child`)?.value??0);
-        const pi    = +(document.getElementById(`at-soto-p${i}-infant`)?.value??0);
-        if (!pa && !pc && !pi) return;
-        const rawParts = [pa>0?`Adult ${pa.toLocaleString('en-BD')}`:'', pc>0?`Child ${pc.toLocaleString('en-BD')}`:'', pi>0?`Infant ${pi.toLocaleString('en-BD')}`:''].filter(Boolean).join(' | ');
-        const bizPa = applyMarkup(pa), bizPc = applyMarkup(pc), bizPi = applyMarkup(pi);
+    // ⚠️ Multiple fare/baggage option একটাই quotation-এর ভেতরে —
+    // window._at.sotoPrices dynamic array (Add/Remove করা যায়) থেকে পড়ছে।
+    // প্রতিটা option-এর সাথে facility/flexibility details (non-refundable,
+    // change fee ইত্যাদি) আলাদা লাইনে বসছে।
+    (window._at.sotoPrices || []).forEach((row, i) => {
+        const bag      = row.desc ?? '';
+        const facility = row.facility ?? '';
+        const paOrig = +(row.adult||0), pcOrig = +(row.child||0), piOrig = +(row.infant||0);
+        if (!paOrig && !pcOrig && !piOrig) return;
+
+        const paBdt = toBdt(paOrig), pcBdt = toBdt(pcOrig), piBdt = toBdt(piOrig);
+
+        const rawParts = [paBdt>0?`Adult ${paBdt.toLocaleString('en-BD')}`:'', pcBdt>0?`Child ${pcBdt.toLocaleString('en-BD')}`:'', piBdt>0?`Infant ${piBdt.toLocaleString('en-BD')}`:''].filter(Boolean).join(' | ');
+        const bizPa = applyMarkup(paBdt), bizPc = applyMarkup(pcBdt), bizPi = applyMarkup(piBdt);
         const bizParts = [bizPa?`Adult ${Number(bizPa).toLocaleString('en-BD')}`:'', bizPc?`Child ${Number(bizPc).toLocaleString('en-BD')}`:'', bizPi?`Infant ${Number(bizPi).toLocaleString('en-BD')}`:''].filter(Boolean).join(' | ');
-        raw += `• ${bag}: BDT -> ${rawParts}\n`;
+
+        raw += `• ${bag}: BDT${currencyNote} -> ${rawParts}\n`;
         biz += `• ${bag}: BDT -> ${bizParts}\n`;
+        if (facility) { raw += `   (${facility})\n`; biz += `   (${facility})\n`; }
     });
 
     raw += `\n${refund} | ${change}`;
@@ -734,11 +855,39 @@ window.atSotoRmNote = function(i) { window._at.sotoNotes.splice(i,1); document.g
 
 // Save quotation (GDS or SOTO)
 window.atSaveQ = async function(pfx) {
-    const typeEl = document.querySelector('input[name="at-q-type"]:checked');
-    const qType  = typeEl?.value ?? 'gds';
+    // ⚠️ আগে এখানে সবসময় input[name="at-q-type"] থেকে qType পড়া হতো —
+    // কিন্তু Booking-এর existing (edit mode) ফর্মে (_renderBBuilder, b
+    // truthy) কোনো radio-ই নেই (শুধু type-pill দেখানো হয়, ভিন্ন নাম
+    // at-b-type-sel ব্যবহৃত হয় শুধু নতুন booking তৈরির সময়) — ফলে
+    // querySelector সবসময় null পেত, qType ডিফল্ট 'gds'-এ পড়ে যেত, এমনকি
+    // SOTO booking edit/update করার সময়ও। এর ফলে SOTO booking ভুলভাবে
+    // GDS হিসেবে সেভ হয়ে যাচ্ছিল (currency/prices সব হারিয়ে, ৳0 দেখাত)।
+    // এখন pfx অনুযায়ী সঠিক উৎস থেকে qType নির্ণয় করা হচ্ছে।
+    let qType;
+    if (pfx === 'b') {
+        const bTypeEl = document.querySelector('input[name="at-b-type-sel"]:checked');
+        if (bTypeEl) {
+            qType = bTypeEl.value; // নতুন booking তৈরির সময় (radio আছে)
+        } else if (window._at.activeBSysId) {
+            const activeB = (window._at.data?.at_bookings ?? []).find(x => x.sys_id === window._at.activeBSysId);
+            qType = activeB?.type ?? 'gds'; // existing booking edit — radio নেই, booking-এর নিজস্ব type ব্যবহার
+        } else {
+            qType = 'gds';
+        }
+    } else {
+        const typeEl = document.querySelector('input[name="at-q-type"]:checked');
+        qType = typeEl?.value ?? 'gds';
+    }
     let body = { type: qType };
 
-    if (qType === 'gds' || pfx === 'b') {
+    // ⚠️ আগে এখানে `qType === 'gds' || pfx === 'b'` ছিল — মানে Booking
+    // context (pfx==='b') হলে qType যাই হোক (SOTO হলেও) সবসময় GDS branch
+    // চলে যেত, window._at.gdsSegments/gdsFares থেকে ডেটা তুলতে চাইত যা
+    // SOTO booking-এর জন্য খালি/অপ্রাসঙ্গিক থাকে — ফলে Currency, prices,
+    // facility সব হারিয়ে যেত এবং Update কার্যত কিছুই সেভ করত না।
+    // এখন qType-ই একমাত্র নির্ধারক, pfx শুধু কোন field-id ব্যবহার হবে
+    // (at-b-* vs at-q-*) সেটা ঠিক করে, কোন branch চলবে সেটা না।
+    if (qType === 'gds') {
         atGenCopy(pfx === 'b' ? 'b' : 'q');
         body.airline       = document.getElementById(`at-${pfx==='b'?'b':'q'}-airline`)?.value ?? '';
         body.segments_json = window._at.gdsSegments;
@@ -759,30 +908,44 @@ window.atSaveQ = async function(pfx) {
         const infant = +(document.getElementById('at-soto-infant')?.value ?? 0);
         const pct    = +(document.getElementById('at-soto-pct')?.value ?? 0);
         const fixed  = +(document.getElementById('at-soto-fixed')?.value ?? 0);
-        const prices = [0,1].map(i => ({
-            desc:   document.getElementById(`at-soto-bag-${i}`)?.value ?? '',
-            adult:  +(document.getElementById(`at-soto-p${i}-adult`)?.value ?? 0),
-            child:  +(document.getElementById(`at-soto-p${i}-child`)?.value ?? 0),
-            infant: +(document.getElementById(`at-soto-p${i}-infant`)?.value ?? 0),
+        // ⚠️ আগে fixed [0,1] দুটো বক্স থেকে prices বানাতো — এখন
+        // window._at.sotoPrices (dynamic Add/Remove) থেকে নেওয়া হচ্ছে,
+        // input value-গুলো itself এই array-তেই live sync থাকে (oninput handler)।
+        // facility ফিল্ড প্রতিটা baggage/price option-এর সাথে refundability/
+        // change-fee ইত্যাদি ধরে রাখে।
+        const prices  = (window._at.sotoPrices || []).map(p => ({
+            desc:     p.desc ?? '',
+            facility: p.facility ?? '',
+            adult:    +(p.adult  || 0),
+            child:    +(p.child  || 0),
+            infant:   +(p.infant || 0),
         }));
+        const airline  = document.getElementById('at-soto-airline')?.value ?? '';
+        const currency = (document.getElementById('at-soto-currency')?.value ?? 'BDT').trim().toUpperCase() || 'BDT';
+        const convRate = +(document.getElementById('at-soto-conv-rate')?.value ?? 1) || 1;
         const rawText = document.getElementById('at-soto-raw-out')?.value ?? '';
         const bizText = document.getElementById('at-soto-biz-out')?.value ?? '';
 
         body.title      = `${trip} — ${document.getElementById('at-soto-route')?.value ?? ''}`;
+        body.airline    = airline;
         body.copy_text  = bizText;
         body.raw_input  = rawText;
         body.form_data  = {
-            trip_option: trip, class: cls,
+            trip_option: trip, class: cls, airline,
             route: document.getElementById('at-soto-route')?.value ?? '',
             pax_adult: adult, pax_child: child, pax_infant: infant,
             refundable: refund, changeable: change,
             prices, percentage: pct, ve_fixed_price: fixed,
+            currency, conversion_rate: convRate,
             raw_text: rawText, business_text: bizText,
             notes: window._at.sotoNotes.filter(Boolean),
         };
-        const applyM = (p) => Math.round((+p || 0) * (1 + pct/100) + fixed);
-        body.total_payable = applyM(prices[0].adult) * adult;
-        body.gross_fare    = prices[0].adult * adult;
+        const toBdt   = (p) => currency === 'BDT' ? (+p||0) : Math.round((+p||0) * convRate);
+        const applyM  = (bdtP) => Math.round((+bdtP || 0) * (1 + pct/100) + fixed);
+        const firstPrice   = prices[0] || { adult: 0 };
+        const firstAdultBdt = toBdt(firstPrice.adult);
+        body.total_payable = applyM(firstAdultBdt) * adult;
+        body.gross_fare    = firstAdultBdt * adult;
     }
 
     if (pfx === 'b') {
@@ -932,10 +1095,11 @@ window._qCard = function _qCard(q) {
         <div class="text-xs font-semibold text-gray-700 truncate">${_e(q.airline||q.title||'—')}</div>
         <div class="text-[11px] text-gray-400">${_e(route)}</div>
         <div class="flex items-center justify-between mt-1">
-            <span class="text-[11px] font-bold text-indigo-600">৳ ${_fmt(q.total_payable)}</span>
+            <span class="text-[11px] font-bold text-indigo-600">৳ ${_fmt(q.total_payable)} BDT${(q.form_data?.currency && q.form_data.currency !== 'BDT') ? ` <span style="color:#9CA3AF;font-weight:500;">(orig. ${_e(q.form_data.currency)})</span>` : ''}</span>
             <span class="at-pill ${phase.pill}" style="font-size:.6rem">${phase.label}</span>
         </div>
         ${q.note ? `<div class="text-[10px] text-gray-300 mt-0.5 truncate" title="${_e(q.note)}">${_e(q.note)}</div>` : ''}
+        ${(q.source_note_ids && q.source_note_ids.length) ? `<div class="text-[9px] text-indigo-400 mt-0.5"><i class="fas fa-sticky-note" style="font-size:8px;"></i> From ${q.source_note_ids.length} Mind Board note${q.source_note_ids.length>1?'s':''}</div>` : ''}
     </div>`;
 }
 
@@ -953,7 +1117,8 @@ window.atToggleQSel = function(sysId, cb) {
 };
 
 window.atNewQuotation = function() {
-    window._at.activeQSysId = null; window._at.gdsSegments = []; window._at.gdsFares = [];
+    window._at.activeQSysId = null; window._at.activeBSysId = null; window._at.gdsSegments = []; window._at.gdsFares = [];
+    window._at.sotoPrices = null;
     _renderQBuilder(null);
     window._at.qSelectedIds.clear();
     document.getElementById('at-q-move-multi')?.classList.add('hidden');
@@ -961,12 +1126,14 @@ window.atNewQuotation = function() {
 
 window.atSelectQuotation = function(sysId) {
     window._at.activeQSysId = sysId;
+    window._at.activeBSysId = null; // Booking tab থেকে ফিরে এলেও leftover id-তে "Update Booking" লেবেল না দেখাক
     const q = (window._at.data?.at_quotations ?? []).find(x => x.sys_id === sysId);
     if (!q) return;
     document.querySelectorAll('#at-q-list .at-q-card').forEach(c => c.classList.remove('active'));
     event?.currentTarget?.classList.add('active');
     window._at.gdsSegments = q.segments_json ?? [];
     window._at.gdsFares    = q.pricing_json  ?? [];
+    window._at.sotoPrices  = null; // পরের quotation-এর নিজস্ব form_data.prices দিয়ে fresh init হোক
     _renderQBuilder(q);
     if (q.type === 'gds' || !q.type) setTimeout(() => _recalcAllFares('q'), 50);
 };
@@ -987,12 +1154,12 @@ window._renderQBuilder = function _renderQBuilder(q) {
             <span class="text-sm">SOTO</span>
         </label>
     </div>
-    <div id="at-q-body">${type === 'gds' ? _gdsHtml(q, 'q') : _sotoHtml(q)}</div>`;
+    <div id="at-q-body">${type === 'gds' ? _gdsHtml(q, 'q') : _sotoHtml(q, 'q')}</div>`;
 }
 
 window.atQTypeChange = function(type) {
     const body = document.getElementById('at-q-body');
-    if (body) body.innerHTML = type === 'gds' ? _gdsHtml(null, 'q') : _sotoHtml(null);
+    if (body) body.innerHTML = type === 'gds' ? _gdsHtml(null, 'q') : _sotoHtml(null, 'q');
 };
 
 window.atMoveSelectedToBooking = async function() {

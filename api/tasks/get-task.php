@@ -50,6 +50,14 @@ try {
         $work['service_type'] = $work['service_type'] ? json_decode($work['service_type'], true) : [];
     }
 
+    // ── 2b. Service assignment (who is assigned to the service this task came from) ──
+    $serviceWork = null;
+    if (!empty($task['service_work_sys_id'])) {
+        $stmtSw = $pdo->prepare("SELECT sys_id, service_name, assigned_to, assigned_to_name FROM service_works WHERE sys_id = ? LIMIT 1");
+        $stmtSw->execute([$task['service_work_sys_id']]);
+        $serviceWork = $stmtSw->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
     // ── 3. Financial entries ──────────────────────────────────
     $stmt3 = $pdo->prepare("
         SELECT * FROM financial_entries WHERE task_sys_id = ?
@@ -90,11 +98,12 @@ try {
 
     ob_clean();
     echo json_encode([
-        'status'  => 'success',
-        'task'    => $task,
-        'work'    => $work,
-        'entries' => $entries,
-        'at_data' => $atData,   // air_ticket হলে data, অন্য service হলে null
+        'status'       => 'success',
+        'task'         => $task,
+        'work'         => $work,
+        'entries'      => $entries,
+        'at_data'      => $atData,   // air_ticket হলে data, অন্য service হলে null
+        'service_work' => $serviceWork, // assigned_to_name — কে এই service-এ assigned
     ]);
 
 } catch (Exception $e) {

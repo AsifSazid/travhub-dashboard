@@ -7,7 +7,13 @@ if (substr($ip_port, -1) !== '/') { $ip_port .= '/'; }
 
 $getWorkApi       = $ip_port . 'api/works/get-work.php';
 $updateStatusApi  = $ip_port . 'api/works/update-status.php';
-$assignApi        = $ip_port . 'api/works/assign.php';
+$assignApi        = $ip_port . 'api/works/assign-lead.php';
+$assignServiceApi = $ip_port . 'api/works/assign-service.php';
+$saveFinancialApi = $ip_port . 'api/financial_entries_v2/store.php';
+$taskFinEntriesApi= $ip_port . 'api/financial_entries_v2/task-fin-entries.php';
+$allVendorsApi    = $ip_port . 'api/vendors/all-vendors.php';
+$allAccountsApi   = $ip_port . 'api/accounts/all-trxnable-accounts.php';
+$employeesApi     = $ip_port . 'api/employees/all-employees.php';
 $addServiceApi    = $ip_port . 'api/works/add-service.php';
 $deptApi          = $ip_port . 'api/masterdata/departments/endpoints.php';
 $workTravelersApi = $ip_port . 'api/works/travelers.php';
@@ -122,6 +128,9 @@ $deepLinkSw = $_GET['sw'] ?? '';
             <!-- Common info chips -->
             <div class="flex items-center gap-3 ml-3" id="commonInfoStrip"></div>
             <div class="flex-1"></div>
+            <button onclick="openWorkLeadModal()" id="workLeadBtn" class="px-3 py-1.5 bg-white border border-gray-200 hover:border-indigo-300 text-gray-600 rounded-lg text-xs font-medium transition">
+                <i class="fas fa-user-shield mr-1.5 text-indigo-400"></i><span id="workLeadLabel">Assign Lead</span>
+            </button>
             <button onclick="openStatusModal()" class="px-3 py-1.5 bg-white border border-gray-200 hover:border-indigo-300 text-gray-600 rounded-lg text-xs font-medium transition">
                 <i class="fas fa-tag mr-1.5"></i>Status
             </button>
@@ -171,6 +180,22 @@ $deepLinkSw = $_GET['sw'] ?? '';
             <!-- ── RIGHT SIDEBAR ──────────────────────────── -->
             <div id="rightSidebar">
                 <div id="sidebarResizeHandle"></div>
+
+                <!-- Active Service — Assigned To -->
+                <div class="sc p-3" id="svcAssignCard">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-user-check text-indigo-500 text-xs"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700">Assigned To</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400" id="svcAssignServiceName">—</span>
+                    </div>
+                    <button onclick="openServiceAssignModal()" id="svcAssignBtn" class="w-full text-left px-3 py-2 rounded-lg border border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition text-xs text-gray-400">
+                        <i class="fas fa-user-plus mr-1.5"></i>Not assigned — click to assign
+                    </button>
+                </div>
 
                 <!-- Travelers (always open, no accordion) -->
                 <div class="sc p-3">
@@ -335,6 +360,67 @@ $deepLinkSw = $_GET['sw'] ?? '';
             <button onclick="changeStatus('in_progress')" class="py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium hover:bg-blue-100 transition">🔵 In Progress</button>
             <button onclick="changeStatus('done')"        class="py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 text-sm font-medium hover:bg-green-100 transition">✅ Done</button>
             <button onclick="changeStatus('cancelled')"   class="py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm font-medium hover:bg-red-100 transition">❌ Cancelled</button>
+        </div>
+    </div>
+</div>
+
+<!-- Work Lead Modal -->
+<div id="workLeadModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-user-shield mr-2 text-indigo-500"></i>Work Lead</h3>
+            <button onclick="closeModal('workLeadModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+            <p class="text-xs text-gray-400">Work Lead পুরো Work-এর দায়িত্বে থাকবেন — কোন service কাকে দেওয়া হবে তিনিই ঠিক করবেন।</p>
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Assign To</label>
+                <div class="relative" id="wlEmpWrap">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none"></i>
+                    <input type="text" id="wlEmpInput" placeholder="Search employee…" class="f-input pl-8" autocomplete="off"
+                        oninput="_filterEmpGeneric(this.value,'wl')" onfocus="_filterEmpGeneric(this.value,'wl')">
+                    <ul id="wlEmpDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
+                </div>
+                <input type="hidden" id="wlEmpVal">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="saveWorkLead(null)" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-user-slash mr-1"></i>Remove
+                </button>
+                <button onclick="saveWorkLead()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-check mr-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Service Assign Modal -->
+<div id="svcAssignModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-user-check mr-2 text-indigo-500"></i>Assign Service — <span id="svcAssignModalSvcName" class="text-indigo-500">—</span></h3>
+            <button onclick="closeModal('svcAssignModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Assign To</label>
+                <div class="relative" id="svcEmpWrap">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none"></i>
+                    <input type="text" id="svcEmpInput" placeholder="Search employee…" class="f-input pl-8" autocomplete="off"
+                        oninput="_filterEmpGeneric(this.value,'svc')" onfocus="_filterEmpGeneric(this.value,'svc')">
+                    <ul id="svcEmpDrop" class="absolute w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-44 overflow-auto shadow-xl hidden z-50"></ul>
+                </div>
+                <input type="hidden" id="svcEmpVal">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="saveServiceAssign(null)" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-user-slash mr-1"></i>Remove
+                </button>
+                <button onclick="saveServiceAssign()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-check mr-1"></i>Save
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -652,6 +738,13 @@ const CURRENT_USER = "<?php echo htmlspecialchars($_SESSION['user_name'] ?? '');
 const API = {
     getWork:       "<?php echo $getWorkApi; ?>",
     status:        "<?php echo $updateStatusApi; ?>",
+    assign:        "<?php echo $assignApi; ?>",
+    assignService: "<?php echo $assignServiceApi; ?>",
+    saveFinancial: "<?php echo $saveFinancialApi; ?>",
+    taskFinEntries:"<?php echo $taskFinEntriesApi; ?>",
+    allVendors:    "<?php echo $allVendorsApi; ?>",
+    allAccounts:   "<?php echo $allAccountsApi; ?>",
+    employees:     "<?php echo $employeesApi; ?>",
     addService:    "<?php echo $addServiceApi; ?>",
     depts:         "<?php echo $deptApi; ?>",
     workTravelers: "<?php echo $workTravelersApi; ?>",
@@ -681,6 +774,8 @@ let _mbNotes        = [];
 let _mbFile         = null;
 let allDepts         = [];
 let activeServiceSlug = null;
+let activeServiceWorkSysId = null;
+let _allServiceWorks = []; // cached full service_works rows (with assigned_to)
 
 // ════════════════════════════════════════════════════════════
 // LOAD
@@ -714,6 +809,7 @@ function renderPage() {
 
     document.getElementById('breadWorkId').textContent   = WORK_SYS_ID;
     document.getElementById('workStatusBadge').innerHTML = badgeHtml(workData.work_status);
+    renderWorkLeadBadge();
 
     // Common info strip — breadcrumb এর পাশে
     const segLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
@@ -734,6 +830,133 @@ function renderPage() {
         ? `<a href="create-leads.php?id=${esc(workData.lead_sys_id)}" class="font-mono text-xs text-indigo-500 hover:underline">${esc(workData.lead_sys_id)}</a>`
         : '<span class="text-xs text-gray-400">—</span>';
 }
+
+// ════════════════════════════════════════════════════════════
+// WORK LEAD + SERVICE-WISE ASSIGNMENT
+// ════════════════════════════════════════════════════════════
+function _wlName(a) { if (!a) return null; try { return typeof a === 'string' ? JSON.parse(a).name : a.name; } catch(e) { return null; } }
+function _wlSysId(a) { if (!a) return null; try { return typeof a === 'string' ? JSON.parse(a).sys_id : a.sys_id; } catch(e) { return null; } }
+
+function renderWorkLeadBadge() {
+    const name = _wlName(workData.assigned_to);
+    const btn  = document.getElementById('workLeadBtn');
+    const lbl  = document.getElementById('workLeadLabel');
+    if (name) {
+        lbl.textContent = name;
+        btn.classList.add('border-indigo-300', 'text-indigo-600');
+    } else {
+        lbl.textContent = 'Assign Lead';
+        btn.classList.remove('border-indigo-300', 'text-indigo-600');
+    }
+}
+
+function openWorkLeadModal() {
+    document.getElementById('workLeadModal').classList.remove('hidden');
+    const existingName = _wlName(workData.assigned_to) || '';
+    const existingId    = _wlSysId(workData.assigned_to) || '';
+    document.getElementById('wlEmpInput').value = existingName ? `${existingId} | ${existingName}` : '';
+    document.getElementById('wlEmpVal').value   = existingId;
+    _filterEmpGeneric('', 'wl');
+}
+
+async function saveWorkLead(explicitNull) {
+    let assignedTo = null;
+    if (explicitNull !== null) {
+        const id   = document.getElementById('wlEmpVal').value.trim();
+        const name = document.getElementById('wlEmpInput').value.split('|').pop()?.trim();
+        if (!id) { showToast('error', 'একজন employee সিলেক্ট করুন'); return; }
+        assignedTo = { sys_id: id, name: name || id };
+    }
+    try {
+        const r = await fetch(API.assign, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ sys_id: WORK_SYS_ID, assigned_to: assignedTo }) });
+        const j = await r.json();
+        if (j.status === 'success') {
+            workData.assigned_to = assignedTo ? JSON.stringify(assignedTo) : null;
+            renderWorkLeadBadge();
+            showToast('success', j.message || 'Saved');
+            closeModal('workLeadModal');
+        } else showToast('error', j.message || 'Failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+// ── Service-wise assignment ──────────────────────────────────
+function renderSvcAssignCard() {
+    const sw = _allServiceWorks.find(s => s.sys_id === activeServiceWorkSysId);
+    document.getElementById('svcAssignServiceName').textContent = sw?.service_name ?? '—';
+    const btn = document.getElementById('svcAssignBtn');
+    if (sw?.assigned_to_name) {
+        btn.innerHTML = `<i class="fas fa-user-check mr-1.5 text-indigo-500"></i><span class="text-gray-700 font-medium">${esc(sw.assigned_to_name)}</span>`;
+        btn.className = 'w-full text-left px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 transition text-xs';
+    } else {
+        btn.innerHTML = `<i class="fas fa-user-plus mr-1.5"></i>Not assigned — click to assign`;
+        btn.className = 'w-full text-left px-3 py-2 rounded-lg border border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition text-xs text-gray-400';
+    }
+}
+
+function openServiceAssignModal() {
+    if (!activeServiceWorkSysId) { showToast('error', 'কোনো service selected নেই'); return; }
+    const sw = _allServiceWorks.find(s => s.sys_id === activeServiceWorkSysId);
+    document.getElementById('svcAssignModalSvcName').textContent = sw?.service_name ?? '—';
+    document.getElementById('svcAssignModal').classList.remove('hidden');
+    const existingId   = sw?.assigned_to ?? '';
+    const existingName = sw?.assigned_to_name ?? '';
+    document.getElementById('svcEmpInput').value = existingName ? `${existingId} | ${existingName}` : '';
+    document.getElementById('svcEmpVal').value   = existingId;
+    _filterEmpGeneric('', 'svc');
+}
+
+async function saveServiceAssign(explicitNull) {
+    let assignedTo = null;
+    if (explicitNull !== null) {
+        const id   = document.getElementById('svcEmpVal').value.trim();
+        const name = document.getElementById('svcEmpInput').value.split('|').pop()?.trim();
+        if (!id) { showToast('error', 'একজন employee সিলেক্ট করুন'); return; }
+        assignedTo = { sys_id: id, name: name || id };
+    }
+    try {
+        const r = await fetch(API.assignService, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ service_work_sys_id: activeServiceWorkSysId, assigned_to: assignedTo }) });
+        const j = await r.json();
+        if (j.status === 'success') {
+            const sw = _allServiceWorks.find(s => s.sys_id === activeServiceWorkSysId);
+            if (sw) { sw.assigned_to = assignedTo?.sys_id ?? null; sw.assigned_to_name = assignedTo?.name ?? null; }
+            renderSvcAssignCard();
+            showToast('success', j.message || 'Saved');
+            closeModal('svcAssignModal');
+        } else showToast('error', j.message || 'Failed');
+    } catch(e) { showToast('error', 'Network error'); }
+}
+
+// ── Shared employee-search dropdown (prefix-based: 'wl' or 'svc') ──
+let _empData2 = [], _empLoaded2 = false;
+async function _loadEmployees2() { if (_empLoaded2) return; try { const r = await fetch(API.employees); const j = await r.json(); _empData2 = j.employees ?? []; _empLoaded2 = true; } catch(e) {} }
+function _empName2(e) { try { if (e.name?.startsWith('{')) return JSON.parse(e.name).primary ?? e.name; return e.name ?? 'Unknown'; } catch(e) { return e.name ?? 'Unknown'; } }
+function _filterEmpGeneric(q, prefix) {
+    const dd = document.getElementById(`${prefix}EmpDrop`); if (!dd) return;
+    _loadEmployees2().then(() => {
+        const v = q.toLowerCase().trim();
+        const list = v ? _empData2.filter(e => (e.name||'').toLowerCase().includes(v)) : _empData2.slice(0, 15);
+        if (!list.length) { dd.innerHTML = `<li class="px-4 py-3 text-center text-gray-400 text-xs">No employees</li>`; dd.classList.remove('hidden'); return; }
+        dd.innerHTML = list.map(e => {
+            const n = _empName2(e);
+            return `<li class="px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b last:border-b-0 flex items-center gap-2" onclick="_selEmpGeneric('${e.sys_id}','${n.replace(/'/g,"\\'")}','${prefix}')">
+                <div class="w-7 h-7 bg-indigo-600 rounded-full text-white flex items-center justify-center text-xs font-bold">${n[0]?.toUpperCase()??'E'}</div>
+                <div><div class="text-sm font-medium text-gray-800">${esc(n)}</div><div class="text-xs text-gray-400 font-mono">${e.sys_id}</div></div>
+            </li>`;
+        }).join('');
+        dd.classList.remove('hidden');
+    });
+}
+function _selEmpGeneric(id, name, prefix) {
+    document.getElementById(`${prefix}EmpInput`).value = `${id} | ${name}`;
+    document.getElementById(`${prefix}EmpVal`).value   = id;
+    document.getElementById(`${prefix}EmpDrop`).classList.add('hidden');
+}
+document.addEventListener('click', e => {
+    ['wl','svc'].forEach(prefix => {
+        const wrap = document.getElementById(`${prefix}EmpWrap`);
+        if (wrap && !wrap.contains(e.target)) document.getElementById(`${prefix}EmpDrop`)?.classList.add('hidden');
+    });
+});
 
 // ════════════════════════════════════════════════════════════
 // OVERVIEW
@@ -834,6 +1057,7 @@ function renderSpecialIns(w, activeSlug) {
 // SERVICE MODULE TABS
 // ════════════════════════════════════════════════════════════
 function renderServiceModuleTabs(sws) {
+    _allServiceWorks = sws;
     const bar   = document.getElementById('svcModuleTabBar');
     const empty = document.getElementById('svc-module-empty');
 
@@ -875,6 +1099,8 @@ function switchServiceModule(slug, swSysId, btn) {
 
 function loadServiceModule(slug, swSysId) {
     activeServiceSlug = slug;
+    activeServiceWorkSysId = swSysId;
+    renderSvcAssignCard();
     const mount = document.getElementById('at-tab-mount');
     mount.innerHTML = '';
 
@@ -901,7 +1127,7 @@ function loadServiceModule(slug, swSysId) {
             paxAdult:     common.pax_adult  ?? 0,
             paxChild:     common.pax_child  ?? 0,
             paxInfant:    common.pax_infant ?? 0,
-            api: { airTickets:API.airTickets, notes:API.notes, workTravelers:API.workTravelers },
+            api: { airTickets:API.airTickets, notes:API.notes, workTravelers:API.workTravelers, saveFinancial:API.saveFinancial, taskFinEntries:API.taskFinEntries, allVendors:API.allVendors, allAccounts:API.allAccounts },
         });
     } else {
         const info = SVC_INFO[slug] ?? { icon:'fa-circle', label:slug };

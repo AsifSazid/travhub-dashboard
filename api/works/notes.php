@@ -10,6 +10,7 @@
  * GET  ?action=list&task_sys_id=X        → task board notes
  * GET  ?action=list&work_sys_id=X        → work board notes
  * POST action=store { task_sys_id|work_sys_id, work_sys_id, content }
+ * POST action=update { note_sys_id, content }  → edit an existing text note
  * POST (multipart)  action=upload + file field
  * POST action=delete { note_sys_id }
  * POST action=reorder { items:[{sys_id, sort_order}] }
@@ -54,6 +55,51 @@ if ($method === 'POST' && !empty($_POST)) {
 }
 
 $userName = $_SESSION['user_name'] ?? 'system';
+
+// ── Helper: is this specific note locked because a task was created from ──
+// a quotation/booking/confirmation chain that traces back to it?
+// Chain: note (meta_data.used_in_quotations[]) → quotation → booking
+//        (quotation_sys_id match) → confirmation (booking_sys_id match)
+//        → tasks (work_sys_id + confirmation_sys_id match)
+function _wkNoteChainLocked(PDO $pdo, array $note): bool
+{
+    $workSysId = $note['work_sys_id'] ?? '';
+    if (!$workSysId) return false;
+
+    $meta = $note['meta_data'] ? (json_decode($note['meta_data'], true) ?: []) : [];
+    $usedInQ = $meta['used_in_quotations'] ?? [];
+    if (empty($usedInQ)) return false; // not used in any quotation yet — never locked
+
+    $s = $pdo->prepare("SELECT at_bookings, at_confirmations FROM air_tickets WHERE work_sys_id = ? LIMIT 1");
+    $s->execute([$workSysId]);
+    $at = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$at) return false;
+
+    $bookings      = json_decode($at['at_bookings'] ?? '[]', true) ?: [];
+    $confirmations = json_decode($at['at_confirmations'] ?? '[]', true) ?: [];
+
+    $bookingIds = array_column(array_filter($bookings, fn($b) => in_array($b['quotation_sys_id'] ?? null, $usedInQ, true)), 'sys_id');
+    if (!$bookingIds) return false;
+
+    $confIds = array_column(array_filter($confirmations, fn($c) => in_array($c['booking_sys_id'] ?? null, $bookingIds, true)), 'sys_id');
+    if (!$confIds) return false;
+
+    $placeholders = implode(',', array_fill(0, count($confIds), '?'));
+    $t = $pdo->prepare("SELECT sys_id FROM tasks WHERE work_sys_id = ? AND confirmation_sys_id IN ($placeholders) LIMIT 1");
+    $t->execute(array_merge([$workSysId], $confIds));
+    return (bool)$t->fetchColumn();
+}
+
+function _wkNoteLockedResponse(): void
+{
+    ob_clean();
+    http_response_code(403);
+    echo json_encode([
+        'status'  => 'error',
+        'message' => 'A task has already been created from a quotation built on this note — it is now locked and cannot be edited or deleted.',
+        'locked'  => true,
+    ]);
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -270,6 +316,47 @@ try {
             echo json_encode(['status' => 'success', 'sys_id' => $ids['sys_id']]);
             break;
 
+        // ── UPDATE TEXT NOTE ──────────────────────────────────
+        // শুধু text-type note-এর content edit করার জন্য। শুধুমাত্র note-এর
+        // creator-ই edit করতে পারবে (delete-এর মতো একই permission নিয়ম)।
+        case 'update':
+            $noteSysId = $body['note_sys_id'] ?? '';
+            $content   = trim($body['content'] ?? '');
+            if (!$noteSysId) throw new Exception('note_sys_id required');
+            if ($content === '') throw new Exception('content required');
+
+            $n = $pdo->prepare("SELECT * FROM task_notes WHERE sys_id=? LIMIT 1");
+            $n->execute([$noteSysId]);
+            $note = $n->fetch(PDO::FETCH_ASSOC);
+            if (!$note) throw new Exception('Note not found');
+
+            if (($note['board_type'] ?? 'task') === 'work' && _wkNoteChainLocked($pdo, $note)) {
+                _wkNoteLockedResponse(); break;
+            }
+
+            if ($note['note_type'] !== 'text') throw new Exception('শুধু text note edit করা যায়');
+
+            $meta    = $note['meta_data'] ? json_decode($note['meta_data'], true) : [];
+            $creator = $meta['created_by_date']['user'] ?? $note['created_by'] ?? null;
+            if ($creator && $creator !== $userName) {
+                ob_clean();
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Permission denied — শুধু creator edit করতে পারবে']);
+                break;
+            }
+
+            // edited_at metadata-তে যোগ করা হচ্ছে (কবে edit হয়েছে ট্র্যাক রাখতে),
+            // used_in_quotations-এর মতো meta_data-র বাকি key অক্ষত রেখে merge করা হয়
+            $meta['edited_at'] = date('d-m-Y H:i');
+            $meta['edited_by'] = $userName;
+
+            $pdo->prepare("UPDATE task_notes SET content=?, meta_data=? WHERE sys_id=?")
+                ->execute([$content, json_encode($meta, JSON_UNESCAPED_UNICODE), $noteSysId]);
+
+            ob_clean();
+            echo json_encode(['status' => 'success']);
+            break;
+
         // ── UPLOAD MEDIA NOTE ─────────────────────────────────
         case 'upload':
             $taskSysId   = $_POST['task_sys_id']  ?? '';
@@ -421,6 +508,10 @@ try {
             $note = $n->fetch(PDO::FETCH_ASSOC);
             if (!$note) throw new Exception('Note not found');
 
+            if (($note['board_type'] ?? 'task') === 'work' && _wkNoteChainLocked($pdo, $note)) {
+                _wkNoteLockedResponse(); break;
+            }
+
             $pages     = json_decode($note['pages_json'] ?? '[]', true) ?? [];
             $pageIndex = (int)$pageIndex;
             if (!isset($pages[$pageIndex])) throw new Exception('Page not found');
@@ -495,6 +586,21 @@ try {
 
             // Creator check — only the creator can delete
             if ($note) {
+                if (($note['board_type'] ?? 'task') === 'work' && _wkNoteChainLocked($pdo, $note)) {
+                    _wkNoteLockedResponse(); break;
+                }
+
+                // Dependency order — if this note is used in any (non-locked) quotation,
+                // that quotation must be deleted first, before the note can go.
+                $meta0   = $note['meta_data'] ? (json_decode($note['meta_data'], true) ?: []) : [];
+                $usedInQ = $meta0['used_in_quotations'] ?? [];
+                if (!empty($usedInQ)) {
+                    ob_clean();
+                    http_response_code(409);
+                    echo json_encode(['status' => 'error', 'message' => 'এই Note একটা Quotation-এ ব্যবহৃত হয়েছে — আগে সেই Quotation delete করুন।']);
+                    break;
+                }
+
                 $meta    = $note['meta_data'] ? json_decode($note['meta_data'], true) : [];
                 $creator = $meta['created_by_date']['user'] ?? $note['created_by'] ?? null;
                 if ($creator && $creator !== $userName) {
@@ -539,6 +645,7 @@ try {
         case 'reorder':
             $items = $body['items'] ?? [];
             if (empty($items)) throw new Exception('items required');
+
             $stmt = $pdo->prepare("UPDATE task_notes SET sort_order=? WHERE sys_id=?");
             foreach ($items as $item) {
                 $stmt->execute([(int)$item['sort_order'], $item['sys_id']]);

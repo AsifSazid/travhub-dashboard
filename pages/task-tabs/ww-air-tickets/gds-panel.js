@@ -19,10 +19,6 @@ window._gdsCopyAll = function() {
 };
 
 // ── GDS / Portal sub-tab state ────────────────────────────────
-// stage -> 'gds' | 'portal'। GDS সবসময় ডিফল্টে খোলা থাকে; Portal ক্লিক
-// করলে Air Ticket-এর portal credential (Master Data > Portal Links থেকে)
-// দেখায়। GDS panel-এর ভেতরের বাকি কোনো লজিক (divider resize, regenerate,
-// derived-facts) স্পর্শ করা হয়নি — শুধু header-এর নিচে একটা নতুন layer।
 window._gdsSubTabState = window._gdsSubTabState || {};
 
 function _gdsSubTabsHtml(stage) {
@@ -42,8 +38,6 @@ function _gdsSubTabsHtml(stage) {
 
 window._gdsSwitchSubTab = function(stage, key) {
     window._gdsSubTabState[stage] = key;
-
-    // tab-bar visual state রিফ্রেশ
     const tabBar = document.getElementById(`at-gds-subtabs-${stage}`);
     if (tabBar) tabBar.outerHTML = _gdsSubTabsHtml(stage);
 
@@ -63,35 +57,25 @@ window._gdsSwitchSubTab = function(stage, key) {
     }
 };
 
-// ── Portal tab — Air Ticket portal credentials (Master Data থেকে) ────
-// Grid state: 3-column, শুধু portal name (+নিজের credential থাকলে preview)।
-// Expanded state (Show More): সেই card full-width নেয়, নিচে সব VISIBLE
-// credential (is_hide/access-check pass করা গুলোই) লিস্ট আকারে দেখায় —
-// hidden credential-এর অস্তিত্বই বোঝানো হয় না, শুধু can_view=true গুলোই আসে।
-window._gdsExpandedPortal = window._gdsExpandedPortal || null; // sys_id | null
+window._gdsExpandedPortal = window._gdsExpandedPortal || null;
 window._gdsPortalsCache   = window._gdsPortalsCache   || [];
 
 async function _gdsRenderPortalTab(container) {
     container.innerHTML = `<div style="padding:16px;color:#8A93A8;font-size:12px;"><i class="fas fa-spinner fa-spin mr-1"></i> Loading portals…</div>`;
-
     try {
         const res  = await fetch('/api/masterdata/portal-links.php?portal_type=air_ticket', { credentials: 'include' });
         const json = await res.json();
-
         if (!json.success) {
             container.innerHTML = `<div style="padding:16px;color:#E8817A;font-size:12px;">Error: ${_gdsEsc(json.message || 'Failed to load portals')}</div>`;
             return;
         }
-
         const portals = json.portals ?? [];
         window._gdsPortalsCache = portals;
         window._gdsExpandedPortal = null;
-
         if (!portals.length) {
             container.innerHTML = `<div style="padding:16px;color:#8A93A8;font-size:12px;">No Air Ticket portals added yet.<br><a href="../pages/portal-links.php" target="_blank" style="color:#50BC81;">Add one in Master Data →</a></div>`;
             return;
         }
-
         _gdsRenderPortalGrid(container);
     } catch (e) {
         container.innerHTML = `<div style="padding:16px;color:#E8817A;font-size:12px;">Network error loading portals.</div>`;
@@ -102,7 +86,6 @@ async function _gdsRenderPortalTab(container) {
 function _gdsRenderPortalGrid(container) {
     const portals  = window._gdsPortalsCache;
     const expanded = window._gdsExpandedPortal;
-
     container.innerHTML = `<div style="padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
         ${portals.map(p => expanded === p.sys_id
             ? `<div style="grid-column:1/-1;">${_gdsPortalCardExpanded(p)}</div>`
@@ -111,14 +94,10 @@ function _gdsRenderPortalGrid(container) {
     </div>`;
 }
 
-// ⚠️ Collapsed card-এ password কখনোই দেখানো হয় না — শুধু portal name, আর
-// current user-এর নিজের credential থাকলে সেটার username (password না)
-// preview হিসেবে। পূর্ণ credential list শুধু expand করলেই আসে।
 function _gdsPortalCardCollapsed(p) {
     const creds  = p.credentials ?? [];
     const mine   = creds.find(c => c.is_mine);
     const url    = p.portal_url ? _gdsEsc(p.portal_url) : '';
-
     return `<div style="background:#1C2340;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:10px 12px;cursor:pointer;"
                  onclick="_gdsExpandPortal('${p.sys_id}')"
                  onmouseover="this.style.borderColor='rgba(80,188,129,.4)'"
@@ -131,16 +110,10 @@ function _gdsPortalCardCollapsed(p) {
     </div>`;
 }
 
-// Expanded card — full-width, সব visible credential দেখায়
 function _gdsPortalCardExpanded(p) {
     const creds = p.credentials ?? [];
     const url   = p.portal_url ? _gdsEsc(p.portal_url) : '';
-
-    // ⚠️ শুধু can_view=true credential-ই এখানে আসে (backend visibility-check
-    // pass করে DB থেকেই এভাবে আসে) — hidden credential "Restricted" বলেও
-    // দেখানো হয় না, সেই credential-এর অস্তিত্বই UI-তে reflect হয় না
     const visibleCreds = creds.filter(c => c.can_view);
-
     const credRows = visibleCreds.length ? visibleCreds.map(c => `
         <div style="display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);">
             <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -153,7 +126,6 @@ function _gdsPortalCardExpanded(p) {
             </div>
         </div>
     `).join('') : `<div style="padding:8px 0;color:#5E6883;font-size:11px;">No accessible credentials</div>`;
-
     return `<div style="background:#1C2340;border:1px solid rgba(80,188,129,.4);border-radius:6px;padding:12px 14px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <span style="color:#fff;font-size:13px;font-weight:700;flex:1;">${_gdsEsc(p.portal_name)}</span>
@@ -168,10 +140,6 @@ function _gdsPortalCardExpanded(p) {
 
 window._gdsExpandPortal = function(sysId) {
     window._gdsExpandedPortal = sysId;
-    const container = document.querySelector('[id^="at-gds-body-"]')?.closest('div')?.parentElement
-        ?? document.querySelector('[id^="at-gds-body-"]');
-    // সহজ উপায় — যেই container-এ grid render হয়েছিল সেটা re-render করাই যথেষ্ট;
-    // active gds-body খুঁজে বের করে তার ভেতরের portal-grid wrapper রিফ্রেশ করি
     const activeBody = [...document.querySelectorAll('[id^="at-gds-body-"]')].find(el => el.querySelector('[style*="grid-template-columns"]'));
     if (activeBody) _gdsRenderPortalGrid(activeBody);
 };
@@ -204,17 +172,16 @@ function _gdsInjectPanel(panel, stage) {
         ? _gdsRenderStoredCommands(storedCmds)
         : _gdsCommandsHtml(stage, facts);
 
-    // Panel কে flex container বানাও — সব tabs এ GDS panel ঠিকমতো দেখাবে
     panel.style.cssText = 'display:flex;flex-direction:column;padding:0;overflow:hidden;';
 
     panel.innerHTML = `
-    <div style="display:flex;gap:0;align-items:stretch;flex:1;min-height:400px;overflow:hidden;">
+    <div style="display:flex;gap:0;align-items:stretch;height:calc(100vh - 350px);min-height:400px;overflow:hidden;">
         <div style="flex:1;min-width:0;overflow-y:auto;padding:20px;">${existingContent}</div>
-        <div style="display:flex;align-items:stretch;">
+        <div style="display:flex;align-items:stretch;height:100%;flex-shrink:0;">
             <div id="at-gds-divider-${stage}" style="width:4px;background:#f1f5f9;cursor:col-resize;flex-shrink:0;transition:background .15s;"
                 onmouseover="this.style.background='#6366f1'"
                 onmouseout="this.style.background='#f1f5f9'"></div>
-            <div id="at-gds-panel-${stage}" style="width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow:hidden;">
+            <div id="at-gds-panel-${stage}" style="width:${gdsW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow-y:auto;height:100%;min-height:300px;">
                 <div style="background:#1C2340;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0;">
                     <div style="flex:1;">
                         <div style="color:#fff;font-size:12px;font-weight:700;">GDS Commands</div>
@@ -231,7 +198,6 @@ function _gdsInjectPanel(panel, stage) {
         </div>
     </div>`;
 
-    // commands আলাদাভাবে inject — template literal এ বসালে onclick ভাঙে
     const gdsBodyEl = panel.querySelector(`#at-gds-body-${stage}`);
     if (gdsBodyEl) gdsBodyEl.insertAdjacentHTML('beforeend', cmdHtml);
 
@@ -245,11 +211,8 @@ function _gdsInjectPanel(panel, stage) {
 // ── Render stored commands (from DB) ──────────────────────────
 function _gdsRenderStoredCommands(cmds) {
     if (!cmds || !cmds.length) return '<div style="padding:16px;color:#4A5372;font-size:12px;">No commands generated yet.</div>';
-
     const tok = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
     window._gdsStoredCmds = cmds.filter(c => !c.divider && !c.note_only && c.cmd).map(c => c.cmd || '');
-
     let n = 0, cmdIdx = 0;
     const html = cmds.map(c => {
         if (c.divider)   return `<div style="padding:10px 14px 4px;color:#4A5372;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;">${tok(c.label ?? '')}</div>`;
@@ -267,7 +230,6 @@ function _gdsRenderStoredCommands(cmds) {
             <span class="gds-note" style="color:#5E6883;font-size:11px;margin-left:auto;padding-left:20px;white-space:nowrap;flex-shrink:0;">${note}</span>
         </div>`;
     }).join('');
-
     return `
     <div style="background:rgba(0,0,0,.15);padding:8px 14px;display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93A8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:1;">${n} commands</span>
@@ -456,12 +418,10 @@ function _gdsGetDerivedFacts() {
     const segs   = atData.segments_json ?? (atData.at_quotations?.[0]?.segments_json ?? []);
     const cfg    = window._at.cfg ?? {};
 
-    // Primary source: config (from segment_data.common via show-works.php)
     let adtCount = +(cfg.paxAdult  ?? 0);
     let chdCount = +(cfg.paxChild  ?? 0);
     let infCount = +(cfg.paxInfant ?? 0);
 
-    // Fallback: quotation pricing_json (only if config has no pax data)
     if (!adtCount && !chdCount) {
         const pricingJson = atData.at_quotations?.[0]?.pricing_json ?? [];
         pricingJson.forEach(p => {
