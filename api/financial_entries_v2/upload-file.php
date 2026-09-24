@@ -26,6 +26,8 @@ ob_start();
 date_default_timezone_set('Asia/Dhaka');
 
 require_once '../../server/db_connection.php';
+require_once '../../server/permissions.php';
+requireFullAccountingAccess($pdo, true);
 require_once '../../server/smb_upload_handler.php';
 
 header('Content-Type: application/json');

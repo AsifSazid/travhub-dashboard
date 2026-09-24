@@ -1,5 +1,8 @@
 <?php
 include_once('./authenticate.php');
+require_once '../server/db_connection.php';
+require_once '../server/permissions.php';
+requireFullAccountingAccess($pdo, false);
 $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898', '/');
 ?>
 <!DOCTYPE html>
@@ -7,7 +10,7 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profit & Loss — TravHub</title>
+    <title>Profit &amp; Loss — TravHub</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -22,557 +25,371 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
 <main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
 <div class="p-6">
 
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">
-                <i class="fas fa-chart-line text-green-600 mr-2"></i>Profit & Loss
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">Revenue, Cost, Discount, Net Profit</p>
+            <h1 class="text-2xl font-bold text-gray-900"><i class="fas fa-chart-line text-purple-600 mr-2"></i>Profit &amp; Loss</h1>
+            <p class="text-sm text-gray-500 mt-1">Revenue, COGS, and refund-charge profit</p>
         </div>
         <div class="relative" id="exportDropdownWrap">
-            <button onclick="toggleExportMenu()"
-                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+            <button onclick="toggleExportMenu()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center gap-2">
                 <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down ml-1 text-xs"></i>
             </button>
             <div id="exportMenu" class="hidden absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-                <button onclick="exportData('csv')"   class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
-                    <i class="fas fa-file-csv text-green-600"></i> CSV
-                </button>
-                <button onclick="exportData('excel')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
-                    <i class="fas fa-file-excel text-green-700"></i> Excel
-                </button>
-                <button onclick="exportData('pdf')"   class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
-                    <i class="fas fa-file-pdf text-red-600"></i> PDF
-                </button>
+                <button onclick="exportData('csv')"  class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"><i class="fas fa-file-csv text-green-600"></i> CSV</button>
+                <button onclick="exportData('excel')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"><i class="fas fa-file-excel text-green-700"></i> Excel</button>
+                <button onclick="exportData('pdf')"  class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"><i class="fas fa-file-pdf text-red-600"></i> PDF</button>
             </div>
         </div>
     </div>
 
     <!-- Filters -->
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            <!-- Date From -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
-                <input type="date" id="f-date-from" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-            </div>
-            <!-- Date To -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Date To</label>
-                <input type="date" id="f-date-to" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-            </div>
-            <!-- Quick Month -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Quick Month</label>
-                <input type="month" id="f-month" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-            </div>
-            <!-- Client -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Client</label>
-                <select id="f-client" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-                    <option value="">All Clients</option>
-                </select>
-            </div>
-            <!-- Vendor -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Vendor</label>
-                <select id="f-vendor" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-                    <option value="">All Vendors</option>
-                </select>
-            </div>
-            <!-- Work -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Work</label>
-                <select id="f-work" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-                    <option value="">All Works</option>
-                </select>
-            </div>
-            <!-- Task -->
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Task</label>
-                <select id="f-task" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400">
-                    <option value="">All Tasks</option>
-                </select>
-            </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div><label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
+                <input type="date" id="f-date-from" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"></div>
+            <div><label class="block text-xs font-medium text-gray-500 mb-1">Date To</label>
+                <input type="date" id="f-date-to" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"></div>
+            <div><label class="block text-xs font-medium text-gray-500 mb-1">Client</label>
+                <select id="f-client" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"><option value="">All Clients</option></select></div>
+            <div><label class="block text-xs font-medium text-gray-500 mb-1">Vendor</label>
+                <select id="f-vendor" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"><option value="">All Vendors</option></select></div>
+            <div><label class="block text-xs font-medium text-gray-500 mb-1">Work</label>
+                <select id="f-work" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"><option value="">All Works</option></select></div>
+            <div><label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
+                <input type="text" id="f-search" placeholder="Name / Purpose..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"></div>
         </div>
         <div class="flex gap-2 mt-3">
-            <button onclick="applyFilters()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
-                <i class="fas fa-search mr-1"></i> Apply
-            </button>
-            <button onclick="clearFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium">
-                <i class="fas fa-redo mr-1"></i> Clear
-            </button>
-            <!-- View toggle -->
+            <button onclick="applyFilters()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium"><i class="fas fa-search mr-1"></i> Apply</button>
+            <button onclick="clearFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium"><i class="fas fa-redo mr-1"></i> Clear</button>
             <div class="ml-auto flex gap-2">
-                <button onclick="setView('summary')" id="v-summary"
-                    class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">Summary</button>
-                <button onclick="setView('breakdown')" id="v-breakdown"
-                    class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Breakdown</button>
-                <button onclick="setView('detail')" id="v-detail"
-                    class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Detail</button>
+                <button onclick="setView('summary')" id="v-summary" class="px-3 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white">Summary</button>
+                <button onclick="setView('breakdown')" id="v-breakdown" class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Breakdown</button>
+                <button onclick="setView('detail')" id="v-detail" class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Detail</button>
             </div>
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div id="panel-summary">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <div class="bg-white rounded-xl border-l-4 border-blue-500 p-4 shadow-sm">
-                <p class="text-xs font-medium text-gray-500">Revenue</p>
-                <p id="s-revenue" class="text-2xl font-bold text-blue-700 mt-1">—</p>
-                <p class="text-xs text-gray-400 mt-1">Total Sale</p>
+    <div id="loadingBar" class="hidden text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-purple-500"></i></div>
+
+    <!-- Summary view -->
+    <div id="view-summary">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500">Revenue</p><p class="text-xl font-bold text-indigo-600 mt-1" id="s-revenue">—</p>
             </div>
-            <div class="bg-white rounded-xl border-l-4 border-red-500 p-4 shadow-sm">
-                <p class="text-xs font-medium text-gray-500">COGS</p>
-                <p id="s-cogs" class="text-2xl font-bold text-red-700 mt-1">—</p>
-                <p class="text-xs text-gray-400 mt-1">Cost of Goods Sold</p>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500">COGS</p><p class="text-xl font-bold text-amber-600 mt-1" id="s-cogs">—</p>
             </div>
-            <div class="bg-white rounded-xl border-l-4 border-green-500 p-4 shadow-sm">
-                <p class="text-xs font-medium text-gray-500">Gross Profit</p>
-                <p id="s-gross" class="text-2xl font-bold text-green-700 mt-1">—</p>
-                <p class="text-xs text-gray-400 mt-1">Revenue - COGS</p>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500">Gross Profit</p><p class="text-xl font-bold text-emerald-600 mt-1" id="s-gross">—</p>
             </div>
-            <div class="bg-white rounded-xl border-l-4 border-orange-500 p-4 shadow-sm">
-                <p class="text-xs font-medium text-gray-500">Discount</p>
-                <p id="s-discount" class="text-2xl font-bold text-orange-700 mt-1">—</p>
-                <p class="text-xs text-gray-400 mt-1">Total Discount Given</p>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500">Refund Charge Profit</p><p class="text-xl font-bold text-teal-600 mt-1" id="s-refund-profit">—</p>
             </div>
-            <div class="bg-white rounded-xl border-l-4 border-indigo-500 p-4 shadow-sm">
-                <p class="text-xs font-medium text-gray-500">Net Profit</p>
-                <p id="s-net" class="text-2xl font-bold text-indigo-700 mt-1">—</p>
-                <p id="s-margin" class="text-xs text-gray-400 mt-1">Margin: —</p>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500">Office Expense</p><p class="text-xl font-bold text-rose-600 mt-1" id="s-expense">—</p>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500">Payroll Expense</p><p class="text-xl font-bold text-rose-600 mt-1" id="s-payroll">—</p>
             </div>
         </div>
-
-        <!-- Client + Vendor tables -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- Client wise -->
-            <div class="bg-white rounded-xl border border-gray-200">
-                <div class="p-4 border-b">
-                    <h3 class="font-semibold text-gray-800"><i class="fas fa-users text-blue-500 mr-2"></i>Client Wise</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                            <tr>
-                                <th class="px-4 py-3 text-left">Client</th>
-                                <th class="px-4 py-3 text-right">Sale</th>
-                                <th class="px-4 py-3 text-right">Receive</th>
-                                <th class="px-4 py-3 text-right">Discount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="client-tbody" class="divide-y divide-gray-100"></tbody>
-                    </table>
-                </div>
+        <div class="bg-purple-600 rounded-xl p-5 text-white mb-6 flex items-center justify-between">
+            <div><p class="text-sm text-purple-100">Net Profit</p><p class="text-3xl font-bold mt-1" id="s-net">—</p></div>
+            <div class="text-right"><p class="text-sm text-purple-100">Margin</p><p class="text-2xl font-bold mt-1" id="s-margin">—</p></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div class="p-3 bg-gray-50 border-b text-sm font-semibold text-gray-700">By Client (Sales)</div>
+                <table class="min-w-full text-sm"><tbody id="s-client-tbody"></tbody></table>
             </div>
-            <!-- Vendor wise -->
-            <div class="bg-white rounded-xl border border-gray-200">
-                <div class="p-4 border-b">
-                    <h3 class="font-semibold text-gray-800"><i class="fas fa-building text-red-500 mr-2"></i>Vendor Wise</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                            <tr>
-                                <th class="px-4 py-3 text-left">Vendor</th>
-                                <th class="px-4 py-3 text-right">Purchase</th>
-                                <th class="px-4 py-3 text-right">Payment</th>
-                                <th class="px-4 py-3 text-right">Discount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="vendor-tbody" class="divide-y divide-gray-100"></tbody>
-                    </table>
-                </div>
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div class="p-3 bg-gray-50 border-b text-sm font-semibold text-gray-700">By Vendor (Purchases)</div>
+                <table class="min-w-full text-sm"><tbody id="s-vendor-tbody"></tbody></table>
             </div>
         </div>
     </div>
 
-    <!-- Breakdown Panel -->
-    <div id="panel-breakdown" class="hidden">
-        <div class="bg-white rounded-xl border border-gray-200 mb-4">
-            <div class="p-4 border-b flex justify-between items-center">
-                <h3 class="font-semibold text-gray-800">Period Breakdown</h3>
-                <div class="flex gap-2">
-                    <button onclick="setPeriod('monthly')" id="p-monthly"
-                        class="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white">Monthly</button>
-                    <button onclick="setPeriod('daily')" id="p-daily"
-                        class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-200 text-gray-700">Daily</button>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Period</th>
-                            <th class="px-4 py-3 text-right text-blue-600">Revenue</th>
-                            <th class="px-4 py-3 text-right text-red-600">COGS</th>
-                            <th class="px-4 py-3 text-right text-orange-600">Discount</th>
-                            <th class="px-4 py-3 text-right text-green-600">Net Profit</th>
-                        </tr>
-                    </thead>
-                    <tbody id="breakdown-tbody" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
+    <!-- Breakdown view -->
+    <div id="view-breakdown" class="hidden bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="p-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+            <span class="text-xs text-gray-500">Period:</span>
+            <select id="b-period" onchange="loadBreakdown()" class="px-2 py-1 border border-gray-300 rounded text-sm">
+                <option value="monthly">Monthly</option><option value="daily">Daily</option>
+            </select>
         </div>
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50"><tr>
+                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Period</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Revenue</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">COGS</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Refund Charge Profit</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Expense</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Payroll</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Net Profit</th>
+            </tr></thead>
+            <tbody id="breakdown-tbody"></tbody>
+        </table>
     </div>
 
-    <!-- Detail Panel -->
-    <div id="panel-detail" class="hidden">
-        <div class="bg-white rounded-xl border border-gray-200">
-            <div class="p-4 border-b">
-                <h3 class="font-semibold text-gray-800">Entry Details</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Date</th>
-                            <th class="px-4 py-3 text-left">Type</th>
-                            <th class="px-4 py-3 text-left">Name</th>
-                            <th class="px-4 py-3 text-left">Purpose</th>
-                            <th class="px-4 py-3 text-left">Work/Task</th>
-                            <th class="px-4 py-3 text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detail-tbody" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
-            <div id="detail-pagination" class="p-4 flex justify-between items-center border-t text-sm text-gray-500"></div>
-        </div>
-    </div>
-
-    <!-- Loading -->
-    <div id="loading" class="hidden fixed inset-0 bg-white/70 flex items-center justify-center z-50">
-        <div class="text-center">
-            <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
-            <p class="mt-2 text-gray-600 text-sm">Loading...</p>
-        </div>
+    <!-- Detail view -->
+    <div id="view-detail" class="hidden bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50"><tr>
+                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Date</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Entry Type</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Party</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Purpose</th>
+                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Amount</th>
+            </tr></thead>
+            <tbody id="detail-tbody"></tbody>
+        </table>
+        <div id="detail-pagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500"></div>
     </div>
 
 </div>
 </main>
 
-<script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
-
 <script>
-const IP   = '<?php echo $ip_port; ?>';
-const API  = `${IP}/api/reports/profit/endpoints.php`;
-
-let currentView   = 'summary';
+const API = "<?php echo $ip_port; ?>/api/reports/profit_v2/endpoints.php";
+let currentView = 'summary';
 let currentPeriod = 'monthly';
-let currentPage   = 1;
+let currentPage = 1;
 
-const fmt = n => '৳' + parseFloat(n || 0).toLocaleString('en-BD', {minimumFractionDigits:2, maximumFractionDigits:2});
+function fmt(n) { return '৳' + (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadFilters();
-    loadData();
-    // Month quick select
-    document.getElementById('f-month').addEventListener('change', function() {
-        if (!this.value) return;
-        const [y, m] = this.value.split('-');
-        const last   = new Date(y, m, 0).getDate();
-        document.getElementById('f-date-from').value = `${y}-${m}-01`;
-        document.getElementById('f-date-to').value   = `${y}-${m}-${String(last).padStart(2,'0')}`;
-    });
-});
-
-async function loadFilters() {
-    const r = await fetch(`${API}?action=filters`);
-    const d = await r.json();
-    if (!d.success) return;
-    populateSelect('f-client', d.clients, 'All Clients');
-    populateSelect('f-vendor', d.vendors, 'All Vendors');
-    populateSelect('f-work',   d.works,   'All Works');
-    populateSelect('f-task',   d.tasks,   'All Tasks');
-}
-
-function populateSelect(id, items, placeholder) {
-    const sel = document.getElementById(id);
-    sel.innerHTML = `<option value="">${placeholder}</option>`;
-    (items||[]).forEach(i => {
-        const o = document.createElement('option');
-        o.value = i.id; o.textContent = i.name;
-        sel.appendChild(o);
-    });
-}
-
-function buildParams(extra = {}) {
+function buildParams() {
     const p = new URLSearchParams();
-    const from = document.getElementById('f-date-from').value;
-    const to   = document.getElementById('f-date-to').value;
+    const df = document.getElementById('f-date-from').value;
+    const dt = document.getElementById('f-date-to').value;
     const client = document.getElementById('f-client').value;
     const vendor = document.getElementById('f-vendor').value;
-    const work   = document.getElementById('f-work').value;
-    const task   = document.getElementById('f-task').value;
-    if (from)   p.set('date_from', from);
-    if (to)     p.set('date_to', to);
+    const work = document.getElementById('f-work').value;
+    const search = document.getElementById('f-search').value;
+    if (df) p.set('date_from', df);
+    if (dt) p.set('date_to', dt);
     if (client) p.set('client_id', client);
     if (vendor) p.set('vendor_id', vendor);
-    if (work)   p.set('work_id', work);
-    if (task)   p.set('task_id', task);
-    Object.entries(extra).forEach(([k,v]) => p.set(k,v));
+    if (work) p.set('work_id', work);
+    if (search) p.set('search', search);
     return p.toString();
 }
 
-function setLoading(v) { document.getElementById('loading').classList.toggle('hidden', !v); }
+function setView(v) {
+    currentView = v;
+    ['summary','breakdown','detail'].forEach(x => {
+        document.getElementById(`view-${x}`).classList.toggle('hidden', x !== v);
+        document.getElementById(`v-${x}`).className = `px-3 py-2 rounded-lg text-sm font-medium ${x===v?'bg-purple-600 text-white':'bg-gray-200 text-gray-700'}`;
+    });
+    if (v === 'summary') loadSummary();
+    if (v === 'breakdown') loadBreakdown();
+    if (v === 'detail') { currentPage = 1; loadDetail(); }
+}
 
-async function loadData() {
-    setLoading(true);
-    if (currentView === 'summary')   await loadSummary();
-    if (currentView === 'breakdown') await loadBreakdown();
-    if (currentView === 'detail')    await loadDetail();
-    setLoading(false);
+function applyFilters() {
+    if (currentView === 'summary')   loadSummary();
+    if (currentView === 'breakdown') loadBreakdown();
+    if (currentView === 'detail')    { currentPage = 1; loadDetail(); }
+}
+function clearFilters() {
+    ['f-date-from','f-date-to','f-search'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-client').value = '';
+    document.getElementById('f-vendor').value = '';
+    document.getElementById('f-work').value = '';
+    applyFilters();
+}
+function setLoading(b) { document.getElementById('loadingBar').classList.toggle('hidden', !b); }
+
+async function loadFilterOptions() {
+    try {
+        const r = await fetch(`${API}?action=filters`);
+        const d = await r.json();
+        if (!d.success) return;
+        const cSel = document.getElementById('f-client'), vSel = document.getElementById('f-vendor'), wSel = document.getElementById('f-work');
+        (d.clients||[]).forEach(c => cSel.innerHTML += `<option value="${c.id}">${c.name||c.id}</option>`);
+        (d.vendors||[]).forEach(v => vSel.innerHTML += `<option value="${v.id}">${v.name||v.id}</option>`);
+        (d.works||[]).forEach(w => wSel.innerHTML += `<option value="${w.id}">${w.name||w.id}</option>`);
+    } catch(e) {}
 }
 
 async function loadSummary() {
-    const r = await fetch(`${API}?action=summary&${buildParams()}`);
-    const d = await r.json();
-    if (!d.success) return;
-    const s = d.summary;
-    document.getElementById('s-revenue').textContent  = fmt(s.revenue);
-    document.getElementById('s-cogs').textContent     = fmt(s.cogs);
-    document.getElementById('s-gross').textContent    = fmt(s.gross_profit);
-    document.getElementById('s-discount').textContent = fmt(s.discount);
-    const netEl = document.getElementById('s-net');
-    netEl.textContent = fmt(s.net_profit);
-    netEl.className   = `text-2xl font-bold mt-1 ${s.net_profit >= 0 ? 'text-indigo-700' : 'text-red-700'}`;
-    document.getElementById('s-margin').textContent   = `Margin: ${s.margin_pct}%`;
+    setLoading(true);
+    try {
+        const r = await fetch(`${API}?action=summary&${buildParams()}`);
+        const d = await r.json();
+        if (!d.success) return;
+        const s = d.summary;
+        document.getElementById('s-revenue').textContent = fmt(s.revenue);
+        document.getElementById('s-cogs').textContent = fmt(s.cogs);
+        document.getElementById('s-gross').textContent = fmt(s.gross_profit);
+        document.getElementById('s-refund-profit').textContent = fmt(s.refund_charge_profit);
+        document.getElementById('s-expense').textContent = fmt(s.total_expense);
+        document.getElementById('s-payroll').textContent = fmt(s.total_payroll_expense);
+        document.getElementById('s-net').textContent = fmt(s.net_profit);
+        document.getElementById('s-margin').textContent = s.margin_pct + '%';
 
-    // Client table
-    const ctb = document.getElementById('client-tbody');
-    ctb.innerHTML = (d.clients||[]).map(c => `
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800">${c.user_name}</td>
-            <td class="px-4 py-3 text-right text-blue-700">${fmt(c.sale)}</td>
-            <td class="px-4 py-3 text-right text-green-700">${fmt(c.receive)}</td>
-            <td class="px-4 py-3 text-right text-orange-700">${fmt(c.discount)}</td>
-        </tr>`).join('') || '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No data</td></tr>';
+        document.getElementById('s-client-tbody').innerHTML = (d.clients||[]).map(c => `
+            <tr class="border-t border-gray-100"><td class="px-4 py-2 text-gray-700">${c.user_name||c.user_sys_id}</td>
+            <td class="px-4 py-2 text-right font-medium text-indigo-600">${fmt(c.sale)}</td></tr>`).join('') || '<tr><td class="px-4 py-4 text-center text-gray-400">No data</td></tr>';
 
-    // Vendor table
-    const vtb = document.getElementById('vendor-tbody');
-    vtb.innerHTML = (d.vendors||[]).map(v => `
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800">${v.user_name}</td>
-            <td class="px-4 py-3 text-right text-red-700">${fmt(v.purchase)}</td>
-            <td class="px-4 py-3 text-right text-green-700">${fmt(v.payment)}</td>
-            <td class="px-4 py-3 text-right text-orange-700">${fmt(v.discount)}</td>
-        </tr>`).join('') || '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No data</td></tr>';
+        document.getElementById('s-vendor-tbody').innerHTML = (d.vendors||[]).map(v => `
+            <tr class="border-t border-gray-100"><td class="px-4 py-2 text-gray-700">${v.user_name||v.user_sys_id}</td>
+            <td class="px-4 py-2 text-right font-medium text-amber-600">${fmt(v.purchase)}</td></tr>`).join('') || '<tr><td class="px-4 py-4 text-center text-gray-400">No data</td></tr>';
+    } finally { setLoading(false); }
 }
 
 async function loadBreakdown() {
-    const r = await fetch(`${API}?action=breakdown&period=${currentPeriod}&${buildParams()}`);
-    const d = await r.json();
-    if (!d.success) return;
-    const tb = document.getElementById('breakdown-tbody');
-    tb.innerHTML = (d.rows||[]).map(row => {
-        const profitCls = row.net_profit >= 0 ? 'text-green-700 font-semibold' : 'text-red-700 font-semibold';
-        return `<tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-700">${row.period}</td>
-            <td class="px-4 py-3 text-right text-blue-700">${fmt(row.revenue)}</td>
-            <td class="px-4 py-3 text-right text-red-700">${fmt(row.cogs)}</td>
-            <td class="px-4 py-3 text-right text-orange-700">${fmt(row.discount)}</td>
-            <td class="px-4 py-3 text-right ${profitCls}">${fmt(row.net_profit)}</td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No data</td></tr>';
+    currentPeriod = document.getElementById('b-period').value;
+    setLoading(true);
+    try {
+        const r = await fetch(`${API}?action=breakdown&period=${currentPeriod}&${buildParams()}`);
+        const d = await r.json();
+        if (!d.success) return;
+        document.getElementById('breakdown-tbody').innerHTML = (d.rows||[]).map(row => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 font-medium text-gray-700">${row.period}</td>
+                <td class="px-4 py-3 text-right text-indigo-600">${fmt(row.revenue)}</td>
+                <td class="px-4 py-3 text-right text-amber-600">${fmt(row.cogs)}</td>
+                <td class="px-4 py-3 text-right text-teal-600">${fmt(row.refund_charge_profit)}</td>
+                <td class="px-4 py-3 text-right text-rose-600">${fmt(row.expense)}</td>
+                <td class="px-4 py-3 text-right text-rose-600">${fmt(row.payroll_expense)}</td>
+                <td class="px-4 py-3 text-right font-semibold ${row.net_profit>=0?'text-emerald-700':'text-rose-600'}">${fmt(row.net_profit)}</td>
+            </tr>`).join('') || '<tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">No data</td></tr>';
+    } finally { setLoading(false); }
 }
 
 async function loadDetail() {
-    const r = await fetch(`${API}?action=detail&page=${currentPage}&per_page=50&${buildParams()}`);
-    const d = await r.json();
-    if (!d.success) return;
+    setLoading(true);
+    try {
+        const r = await fetch(`${API}?action=detail&page=${currentPage}&per_page=50&${buildParams()}`);
+        const d = await r.json();
+        if (!d.success) return;
+        document.getElementById('detail-tbody').innerHTML = (d.rows||[]).map(row => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${(row.date||'').substring(0,10)}</td>
+                <td class="px-4 py-3"><span class="text-xs px-2 py-0.5 rounded-full ${row.entry_type==='Sale'?'bg-indigo-100 text-indigo-700':row.entry_type==='Purchase'?'bg-amber-100 text-amber-700':'bg-teal-100 text-teal-700'}">${row.entry_type}</span></td>
+                <td class="px-4 py-3 text-gray-700">${row.user_name||row.user_sys_id||'—'}</td>
+                <td class="px-4 py-3 text-gray-600 max-w-xs truncate">${row.purpose||'—'}</td>
+                <td class="px-4 py-3 text-right font-medium">${fmt(row.amount)}</td>
+            </tr>`).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No data</td></tr>';
 
-    const rtColors = { 1:'bg-blue-100 text-blue-700', 2:'bg-red-100 text-red-700', 5:'bg-orange-100 text-orange-700' };
-    const rtLabels = { 1:'Sale', 2:'Purchase', 5:'Discount' };
-
-    const tb = document.getElementById('detail-tbody');
-    tb.innerHTML = (d.rows||[]).map(row => `
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${(row.date||'').substring(0,10)}</td>
-            <td class="px-4 py-3">
-                <span class="px-2 py-0.5 rounded text-xs font-medium ${rtColors[row.related_type]||'bg-gray-100 text-gray-700'}">
-                    ${rtLabels[row.related_type]||'—'}
-                </span>
-            </td>
-            <td class="px-4 py-3 text-gray-800 font-medium">${row.user_name||'—'}</td>
-            <td class="px-4 py-3 text-gray-600 max-w-xs truncate">${row.purpose||'—'}</td>
-            <td class="px-4 py-3 text-xs text-gray-400">${row.work_title||'—'}${row.task_title?' / '+row.task_title:''}</td>
-            <td class="px-4 py-3 text-right font-semibold ${row.related_type==1?'text-blue-700':row.related_type==2?'text-red-700':'text-orange-700'}">${fmt(row.amount)}</td>
-        </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No data</td></tr>';
-
-    // Pagination
-    const pag = document.getElementById('detail-pagination');
-    pag.innerHTML = `
-        <span>Showing page ${d.page} of ${d.pages} (${d.total} entries)</span>
-        <div class="flex gap-2">
-            ${d.page > 1 ? `<button onclick="goPage(${d.page-1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Prev</button>` : ''}
-            ${d.page < d.pages ? `<button onclick="goPage(${d.page+1})" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>` : ''}
-        </div>`;
+        const pag = document.getElementById('detail-pagination');
+        pag.innerHTML = `<span>Page ${d.page} of ${d.pages} (${d.total} entries)</span>
+            <div class="flex gap-2">
+                ${d.page > 1 ? `<button onclick="goPage(${d.page-1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Prev</button>` : ''}
+                ${d.page < d.pages ? `<button onclick="goPage(${d.page+1})" class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">Next</button>` : ''}
+            </div>`;
+    } finally { setLoading(false); }
 }
-
 function goPage(p) { currentPage = p; loadDetail(); }
 
-function setView(v) {
-    currentView = v;
-    ['summary','breakdown','detail'].forEach(name => {
-        document.getElementById(`panel-${name}`).classList.toggle('hidden', name !== v);
-        const btn = document.getElementById(`v-${name}`);
-        btn.className = name === v
-            ? 'px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white'
-            : 'px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700';
-    });
-    currentPage = 1;
-    loadData();
-}
-
-function setPeriod(p) {
-    currentPeriod = p;
-    ['monthly','daily'].forEach(name => {
-        const btn = document.getElementById(`p-${name}`);
-        btn.className = name === p
-            ? 'px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white'
-            : 'px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-200 text-gray-700';
-    });
-    loadBreakdown();
-}
-
-function applyFilters() { currentPage = 1; loadData(); }
-
-function clearFilters() {
-    ['f-date-from','f-date-to','f-month'].forEach(id => document.getElementById(id).value = '');
-    ['f-client','f-vendor','f-work','f-task'].forEach(id => document.getElementById(id).value = '');
-    currentPage = 1;
-    loadData();
-}
-
-function toggleExportMenu() {
-    document.getElementById('exportMenu').classList.toggle('hidden');
-}
+function toggleExportMenu() { document.getElementById('exportMenu').classList.toggle('hidden'); }
 document.addEventListener('click', e => {
-    if (!document.getElementById('exportDropdownWrap')?.contains(e.target)) {
-        document.getElementById('exportMenu')?.classList.add('hidden');
-    }
+    if (!document.getElementById('exportDropdownWrap')?.contains(e.target)) document.getElementById('exportMenu')?.classList.add('hidden');
 });
 
 async function exportData(type = 'csv') {
     document.getElementById('exportMenu')?.classList.add('hidden');
     setLoading(true);
     try {
-        const r = await fetch(`${API}?action=export&${buildParams()}`);
-        const d = await r.json();
-        if (!d.success) { alert('Export failed'); return; }
-        const s = d.summary;
+        let filename, rows, colWidths, boldCells;
+        const dateSuffix = new Date().toISOString().split('T')[0];
 
-        const filename = `profit-loss-${new Date().toISOString().split('T')[0]}`;
-        const rows = [
-            ['Profit & Loss Report', '', ''],
-            ['', '', ''],
-            ['Summary', '', ''],
-            ['Revenue (Total Sale)', parseFloat(s.revenue), ''],
-            ['COGS (Total Purchase)', parseFloat(s.cogs), ''],
-            ['Gross Profit', parseFloat(s.gross_profit), ''],
-            ['Discount Given', parseFloat(s.discount), ''],
-            ['Net Profit', parseFloat(s.net_profit), ''],
-            ['Profit Margin', s.margin_pct + '%', ''],
-            ['', '', ''],
-            ['Client Wise', '', ''],
-            ['Client', 'Sale', 'Receive', 'Discount'],
-            ...(d.clients||[]).map(c => [c.user_name, parseFloat(c.sale), parseFloat(c.receive), parseFloat(c.discount)]),
-            ['', '', '', ''],
-            ['Vendor Wise', '', '', ''],
-            ['Vendor', 'Purchase', 'Payment', 'Discount'],
-            ...(d.vendors||[]).map(v => [v.user_name, parseFloat(v.purchase), parseFloat(v.payment), parseFloat(v.discount)]),
-        ];
+        if (currentView === 'summary') {
+            const r = await fetch(`${API}?action=summary&${buildParams()}`);
+            const d = await r.json();
+            if (!d.success) { alert('Export failed'); return; }
+            const s = d.summary;
+            filename = `profit-summary-${dateSuffix}`;
+            rows = [
+                ['Profit & Loss — Summary', '', ''],
+                ['Revenue', s.revenue, ''],
+                ['COGS', s.cogs, ''],
+                ['Gross Profit', s.gross_profit, ''],
+                ['Refund Charge (Client)', s.refund_charge_client, ''],
+                ['Refund Charge (Vendor)', s.refund_charge_vendor, ''],
+                ['Refund Charge Profit', s.refund_charge_profit, ''],
+                ['Office Expense', s.total_expense, ''],
+                ['Payroll Expense', s.total_payroll_expense, ''],
+                ['Net Profit', s.net_profit, ''],
+                ['Margin %', s.margin_pct, ''],
+                ['', '', ''],
+                ['Client', 'Sale', ''],
+                ...(d.clients||[]).map(c => [c.user_name||c.user_sys_id, parseFloat(c.sale), '']),
+                ['', '', ''],
+                ['Vendor', 'Purchase', ''],
+                ...(d.vendors||[]).map(v => [v.user_name||v.user_sys_id, parseFloat(v.purchase), '']),
+            ];
+            colWidths = [{wch:28},{wch:18},{wch:12}];
+            boldCells = ['A1','A13','A16'];
+
+        } else if (currentView === 'breakdown') {
+            const r = await fetch(`${API}?action=breakdown&period=${currentPeriod}&${buildParams()}`);
+            const d = await r.json();
+            if (!d.success) { alert('Export failed'); return; }
+            filename = `profit-breakdown-${currentPeriod}-${dateSuffix}`;
+            rows = [
+                ['Profit & Loss — Breakdown', '', '', '', '', '', ''],
+                ['Period', 'Revenue', 'COGS', 'Refund Charge Profit', 'Expense', 'Payroll', 'Net Profit'],
+                ...(d.rows||[]).map(row => [row.period, parseFloat(row.revenue), parseFloat(row.cogs), parseFloat(row.refund_charge_profit), parseFloat(row.expense), parseFloat(row.payroll_expense), parseFloat(row.net_profit)]),
+            ];
+            colWidths = [{wch:14},{wch:18},{wch:18},{wch:20},{wch:14},{wch:14},{wch:18}];
+            boldCells = ['A1','A2'];
+
+        } else {
+            filename = `profit-detail-${dateSuffix}`;
+            const allRows = [];
+            let page = 1, pages = 1;
+            do {
+                const r = await fetch(`${API}?action=detail&page=${page}&per_page=500&${buildParams()}`);
+                const d = await r.json();
+                if (!d.success) { alert('Export failed'); return; }
+                allRows.push(...(d.rows||[]));
+                pages = d.pages || 1;
+                page++;
+            } while (page <= pages);
+            rows = [
+                ['Profit & Loss — Detail', '', '', '', ''],
+                ['Date', 'Entry Type', 'Party', 'Purpose', 'Amount'],
+                ...allRows.map(row => [(row.date||'').substring(0,10), row.entry_type, row.user_name||row.user_sys_id||'', row.purpose||'', parseFloat(row.amount)]),
+            ];
+            colWidths = [{wch:12},{wch:14},{wch:22},{wch:30},{wch:14}];
+            boldCells = ['A1','A2'];
+        }
 
         if (type === 'csv') {
             const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
             dlFile('data:text/csv;charset=utf-8,' + encodeURIComponent(csv), filename + '.csv');
-
         } else if (type === 'excel') {
             const ws = XLSX.utils.aoa_to_sheet(rows);
-            ws['!cols'] = [{wch:35},{wch:20},{wch:20},{wch:20}];
-            // Bold summary rows
-            ['A1','A3','A11','A15'].forEach(cell => {
-                if (ws[cell]) ws[cell].s = { font: { bold: true } };
-            });
+            ws['!cols'] = colWidths;
+            boldCells.forEach(cell => { if (ws[cell]) ws[cell].s = { font: { bold: true } }; });
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Profit & Loss');
+            XLSX.utils.book_append_sheet(wb, ws, 'Profit');
             XLSX.writeFile(wb, filename + '.xlsx');
-
         } else if (type === 'pdf') {
-            exportPDF(s, d.clients||[], d.vendors||[], filename);
+            exportPDF('Profit & Loss Report', rows, filename);
         }
-    } finally {
-        setLoading(false);
-    }
+    } finally { setLoading(false); }
 }
 
-function dlFile(href, filename) {
-    const a = document.createElement('a');
-    a.href = href; a.download = filename; a.click();
-}
-
-function exportPDF(s, clients, vendors, filename) {
+function dlFile(href, filename) { const a = document.createElement('a'); a.href = href; a.download = filename; a.click(); }
+function exportPDF(title, rows, filename) {
     const win = window.open('', '_blank');
-    const netColor = s.net_profit >= 0 ? '#059669' : '#dc2626';
-    const clientRows = clients.map(c => `<tr>
-        <td>${c.user_name}</td>
-        <td class="text-right">${parseFloat(c.sale).toFixed(2)}</td>
-        <td class="text-right">${parseFloat(c.receive).toFixed(2)}</td>
-        <td class="text-right">${parseFloat(c.discount).toFixed(2)}</td>
-    </tr>`).join('');
-    const vendorRows = vendors.map(v => `<tr>
-        <td>${v.user_name}</td>
-        <td class="text-right">${parseFloat(v.purchase).toFixed(2)}</td>
-        <td class="text-right">${parseFloat(v.payment).toFixed(2)}</td>
-        <td class="text-right">${parseFloat(v.discount).toFixed(2)}</td>
-    </tr>`).join('');
-
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Profit & Loss Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; color: #111; }
-        h2 { color: #166534; margin-bottom: 4px; }
-        .meta { color: #6b7280; font-size: 11px; margin-bottom: 16px; }
-        .summary-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 24px; }
-        .card { background: #f3f4f6; border-radius: 8px; padding: 12px; }
-        .card .label { font-size: 10px; color: #6b7280; margin-bottom: 4px; }
-        .card .value { font-size: 16px; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-        th { background: #166534; color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
-        td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
-        tr:nth-child(even) td { background: #f9fafb; }
-        .text-right { text-align: right; }
-        h3 { margin: 16px 0 8px; font-size: 13px; color: #374151; }
-        @media print { button { display: none; } }
+    const html = `<html><head><title>${title}</title><style>
+        body{font-family:Arial,sans-serif;padding:20px;} h1{font-size:18px;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;} td,th{border:1px solid #ddd;padding:6px 8px;font-size:12px;text-align:left;}
+        tr:first-child td{font-weight:bold;background:#f3f4f6;}
     </style></head><body>
-    <h2>Profit & Loss Report</h2>
-    <p class="meta">Generated: ${new Date().toLocaleString()}</p>
-    <div class="summary-grid">
-        <div class="card"><div class="label">Revenue</div><div class="value" style="color:#1d4ed8">${parseFloat(s.revenue).toFixed(2)}</div></div>
-        <div class="card"><div class="label">COGS</div><div class="value" style="color:#dc2626">${parseFloat(s.cogs).toFixed(2)}</div></div>
-        <div class="card"><div class="label">Gross Profit</div><div class="value" style="color:#059669">${parseFloat(s.gross_profit).toFixed(2)}</div></div>
-        <div class="card"><div class="label">Discount</div><div class="value" style="color:#d97706">${parseFloat(s.discount).toFixed(2)}</div></div>
-        <div class="card"><div class="label">Net Profit</div><div class="value" style="color:${netColor}">${parseFloat(s.net_profit).toFixed(2)} (${s.margin_pct}%)</div></div>
-    </div>
-    <h3>Client Wise</h3>
-    <table>
-        <thead><tr><th>Client</th><th>Sale</th><th>Receive</th><th>Discount</th></tr></thead>
-        <tbody>${clientRows||'<tr><td colspan="4" style="text-align:center;color:#9ca3af">No data</td></tr>'}</tbody>
-    </table>
-    <h3>Vendor Wise</h3>
-    <table>
-        <thead><tr><th>Vendor</th><th>Purchase</th><th>Payment</th><th>Discount</th></tr></thead>
-        <tbody>${vendorRows||'<tr><td colspan="4" style="text-align:center;color:#9ca3af">No data</td></tr>'}</tbody>
-    </table>
-    <button onclick="window.print()" style="padding:8px 20px;background:#166534;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">
-        🖨️ Print / Save as PDF
-    </button>
+    <h1>${title}</h1>
+    <table>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>
+    <script>window.onload=()=>window.print()<\/script>
     </body></html>`;
     win.document.write(html);
     win.document.close();
 }
+
+document.addEventListener('DOMContentLoaded', () => { loadFilterOptions(); loadSummary(); });
 </script>
+<script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 </body>
 </html>

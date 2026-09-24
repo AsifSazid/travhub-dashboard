@@ -231,7 +231,7 @@ $getClient = $ip_port . "api/clients/get-client.php?cid=$clientId";
                         <div class="grid grid-cols-2 gap-6 h-full">
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
-                                    <?php include('sc-accounting.php') ?> <!-- sc means show client -->
+                                    <?php include('show-client-ledger.php') ?> <!-- sc means show client -->
                                 </div>
                             </div>
                         </div>

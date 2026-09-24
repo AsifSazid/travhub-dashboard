@@ -58,6 +58,12 @@ function _v2Registry(): array
         'portal_links'        => ['table' => 'portal_links',        'short' => 'PL'],
         'financial_entries'   => ['table' => 'financial_entries',   'short' => 'FE'],
         'ac_banking_stmts'    => ['table' => 'ac_banking_stmts',    'short' => 'AS'],
+        'ac_instrument_tracking' => ['table' => 'ac_instrument_tracking', 'short' => 'IT'],
+        'gateway_payments' => ['table' => 'gateway_payments', 'short' => 'GP'],
+        'loans' => ['table' => 'loans', 'short' => 'LN'],
+        'loan_installments' => ['table' => 'loan_installments', 'short' => 'LI'],
+        'loan_repayments' => ['table' => 'loan_repayments', 'short' => 'LR'],
+        'employee_permissions' => ['table' => 'employee_permissions', 'short' => 'PM'],
     ];
 }
 

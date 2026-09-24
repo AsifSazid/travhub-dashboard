@@ -13,6 +13,8 @@
 session_start();
 
 require '../../server/db_connection.php';
+require_once '../../server/permissions.php';
+requireFullAccountingAccess($pdo, true);
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

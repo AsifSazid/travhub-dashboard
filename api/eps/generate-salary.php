@@ -237,75 +237,28 @@ try {
         ':meta_data' => $metaDataJson
     ]);
 
-    $salaryId = $pdo->lastInsertId();
+    $salaryId = $pdo->lastInsertId(); // kept for backward-compat with any caller reading it
 
-    $updateBankStmt = $pdo->prepare("
-        UPDATE ac_banking 
-        SET balance = :balance 
-        WHERE sys_id = :sys_id
-    ");
-    $updateBankStmt->execute([
-        ':balance' => $newFromBalance,
-        ':sys_id' => $fromAccountId
-    ]);
-
-    if ($updateBankStmt->rowCount() < 1) {
-        throw new Exception('Failed to update bank balance');
-    }
-
-    $stmtIds = generateIDs('ac_banking_stmts');
-    $stmtMeta = buildMetaData(null, $userName);
-
-    $particularType = ucfirst(str_replace('_', ' ', $paymentType));
-
-    $bankStmt = $pdo->prepare("
-        INSERT INTO ac_banking_stmts (
-            uuid,
-            sys_id,
-            ledger_db_id,
-            name,
-            date,
-            particular,
-            withdraw,
-            deposit,
-            balance,
-            ref,
-            meta_data
-        ) VALUES (
-            :uuid,
-            :sys_id,
-            :ledger_db_id,
-            :name,
-            :date,
-            :particular,
-            :withdraw,
-            :deposit,
-            :balance,
-            :ref,
-            :meta_data
-        )
-    ");
-
-    $bankStmt->execute([
-        ':uuid' => $stmtIds['uuid'],
-        ':sys_id' => $stmtIds['sys_id'],
-        ':ledger_db_id' => $fromAccountId,
-        ':name' => $fromAccountName,
-        ':date' => $paymentDate,
-        ':particular' => $particularType . ' payment of ' . $empName . ' for ' . $monthOfSalary,
-        ':withdraw' => $netPayableSalary,
-        ':deposit' => 0,
-        ':balance' => $newFromBalance,
-        ':ref' => $ids['sys_id'],
-        ':meta_data' => $stmtMeta
-    ]);
+    // ── Money movement moved to the Disbursement step ──────────────
+    // Previously this Prepare step immediately debited ac_banking, wrote an
+    // ac_banking_stmts row, and posted financial_entries. That's wrong for
+    // the real-world flow: Prepare -> Authorization (letter sent to bank)
+    // -> Collection (employee confirms funds landed) -> Verify (company
+    // confirms the claim) -> Disbursement (company's account is ACTUALLY
+    // debited here). No account balance or accounting entry should exist
+    // until Disbursement -- see update-slip-flow.php's 'disburse' action,
+    // which now does everything this block used to do.
+    // $fromAccountId / $fromAccountName / $netPayableSalary are already
+    // stored on the payroll_finals row (from_account, net_payable_salary)
+    // for the Disbursement step to read later.
 
     $pdo->commit();
 
     echo json_encode([
         'success' => true,
         'message' => 'Payment generated successfully',
-        'salary_id' => $salaryId,
+        'sys_id' => $ids['sys_id'],   // primary identifier — use this, not salary_id
+        'salary_id' => $salaryId,     // legacy numeric id, kept for backward-compat only
         'slip_id' => $ids['sys_id'],
         'data' => [
             'employee_name' => $empName,
@@ -319,8 +272,8 @@ try {
             'total_deduction' => $totalDeduction,
             'net_payable_salary' => $netPayableSalary,
             'payment_account' => $fromAccountName . ' (' . $fromAccountId . ')',
-            'previous_balance' => $currentBalance,
-            'new_balance' => $newFromBalance,
+            'current_balance' => $currentBalance, // unchanged -- no money has moved yet
+            'projected_balance_after_disbursement' => $newFromBalance, // informational only
             'status' => 'prepared'
         ]
     ]);

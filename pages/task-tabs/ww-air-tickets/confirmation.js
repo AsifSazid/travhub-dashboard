@@ -608,9 +608,10 @@ function _openConfirmTaskModal(confId, booking) {
                 <label class="block text-xs font-medium text-gray-700 mb-1">Note <span class="text-gray-300 font-normal">(optional)</span></label>
                 <input id="atctNote" placeholder="Any notes…" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
             </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Amount ৳</label>
-                <input type="number" step="0.01" min="0" id="atctAmount" value="${_e(String(suggestedAmount))}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
+            <div class="grid grid-cols-3 gap-2">
+                <div><label class="block text-[10px] text-gray-500 mb-0.5">QTY</label><input type="number" step="0.01" min="0" id="atctQty" class="w-full px-2 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400 atct-calc" placeholder="0"></div>
+                <div><label class="block text-[10px] text-gray-500 mb-0.5">Rate</label><input type="number" step="0.01" min="0" id="atctRate" class="w-full px-2 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400 atct-calc" placeholder="0.00"></div>
+                <div><label class="block text-[10px] text-gray-500 mb-0.5">Amount ৳</label><input type="number" step="0.01" min="0" id="atctAmount" value="${_e(String(suggestedAmount))}" class="w-full px-2 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400 atct-calc"></div>
             </div>
 
             <div class="flex gap-2 pt-1">
@@ -622,6 +623,7 @@ function _openConfirmTaskModal(confId, booking) {
         </div>
     </div>`;
     document.body.appendChild(modal);
+    _atctSetupQtyRateCalc();
     _atctLoadVendorsAccounts();
 }
 
@@ -693,6 +695,7 @@ async function _atctSkipAndCreate(confId) {
 async function _atctConfirmWithPayment(confId) {
     const txnMode = document.querySelector('input[name="atct_txn_mode"]:checked')?.value; // 'realtime' | 'non_realtime'
     const amount = parseFloat(document.getElementById('atctAmount').value);
+    const qtyRate = _atctBuildQtyRate('atctQty', 'atctRate');
     const purpose = document.getElementById('atctPurpose').value.trim();
     const note = document.getElementById('atctNote').value.trim();
     const vendorId = document.getElementById('atctVendorId').value;
@@ -706,12 +709,38 @@ async function _atctConfirmWithPayment(confId) {
 
     // Read all values BEFORE removing the modal — the elements won't exist after remove()
     const payment = (amount && amount > 0) ? {
-        amount, purpose, note, txnMode, vendorId,
+        amount, qtyRate, purpose, note, txnMode, vendorId,
         accountId: txnMode === 'realtime' ? accountId : null,
     } : null;
 
     document.getElementById('atConfirmTaskModal')?.remove();
     await _atctDoConfirm(confId, payment);
+}
+
+// Matches show-tasks.php's _finBuildQtyRate helper exactly, so the JSON
+// shape store.php expects is identical regardless of which form built it.
+function _atctBuildQtyRate(qtyId, rateId) {
+    const qty = parseFloat(document.getElementById(qtyId)?.value) || null;
+    const rate = parseFloat(document.getElementById(rateId)?.value) || null;
+    if (!qty && !rate) return null;
+    return JSON.stringify({ qty: qty||0, rate: rate||0 });
+}
+
+// Matches show-tasks.php's _finSetupCalc helper exactly — any two of
+// QTY/Rate/Amount fill the third.
+function _atctSetupQtyRateCalc() {
+    const q = document.getElementById('atctQty'), r = document.getElementById('atctRate'), a = document.getElementById('atctAmount');
+    if (!q || !r || !a) return;
+    let lastEdited = null;
+    function calc() {
+        const qty = parseFloat(q.value) || null, rate = parseFloat(r.value) || null, amt = parseFloat(a.value) || null;
+        if (lastEdited !== 'amount' && qty && rate) a.value = (qty*rate).toFixed(2);
+        else if (lastEdited !== 'rate' && qty && amt) r.value = (amt/qty).toFixed(2);
+        else if (lastEdited !== 'qty' && rate && amt) q.value = (amt/rate).toFixed(2);
+    }
+    q.addEventListener('input', () => { lastEdited='qty'; calc(); });
+    r.addEventListener('input', () => { lastEdited='rate'; calc(); });
+    a.addEventListener('input', () => { lastEdited='amount'; calc(); });
 }
 
 async function _atctDoConfirm(confId, payment) {
@@ -729,6 +758,7 @@ async function _atctDoConfirm(confId, payment) {
                         body: JSON.stringify({
                             type: 'credit',
                             amount: payment.amount,
+                            qty_rate: payment.qtyRate,
                             purpose: payment.purpose,
                             vendor_id: payment.vendorId,
                             transaction_mode: payment.txnMode,

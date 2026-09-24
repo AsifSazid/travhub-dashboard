@@ -26,6 +26,9 @@
 //   balance              = money-in-hand proxy: total_deposit - total_vendor_payment
 
 require '../../server/db_connection.php';
+session_start();
+require_once '../../server/permissions.php';
+requireFullAccountingAccess($pdo, true);
 
 header('Content-Type: application/json');
 

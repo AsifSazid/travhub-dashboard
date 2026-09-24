@@ -347,6 +347,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ==================== META DATA ====================
         $meta_data = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
 
+        // ==================== PUBLIC PAYMENT LINK TOKEN ====================
+        // Unguessable token for the public pay-invoice.php page -- acts as a
+        // substitute for login, so it must be long and random (32 raw bytes
+        // -> 64 hex chars, effectively unguessable).
+        $public_token = bin2hex(random_bytes(32));
+
         // ==================== INSERT INTO DATABASE ====================
         $stmt = $pdo->prepare("
             INSERT INTO invoices (
@@ -355,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 total_amount, paid_amount, due_amount,
                 total_amount_in_words, work_items,
                 financial_entry_ids,
-                vendor_payment_methods, status, meta_data,
+                vendor_payment_methods, status, public_token, meta_data,
                 created_at, updated_at
             ) VALUES (
                 :uuid, :sys_id, :date,
@@ -363,7 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :total_amount, :paid_amount, :due_amount,
                 :words, :work_items,
                 :fe_ids,
-                :vendor_methods, :status, :meta_data,
+                :vendor_methods, :status, :public_token, :meta_data,
                 NOW(), NOW()
             )
         ");
@@ -383,6 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':fe_ids'         => $financial_entry_ids_json,
             ':vendor_methods' => $vendor_payment_methods_json,
             ':status'         => 0,
+            ':public_token'   => $public_token,
             ':meta_data'      => $meta_data
         ]);
 

@@ -1,5 +1,8 @@
 <?php
 include_once('./authenticate.php');
+require_once '../server/db_connection.php';
+require_once '../server/permissions.php';
+requireFullAccountingAccess($pdo, false);
 $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898', '/');
 ?>
 <!DOCTYPE html>
@@ -90,13 +93,17 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
             <button onclick="clearFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium">
                 <i class="fas fa-redo mr-1"></i> Clear
             </button>
-            <div class="ml-auto flex gap-2">
+            <div class="ml-auto flex gap-2 flex-wrap">
                 <button onclick="setView('summary')" id="v-summary"
                     class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">Summary</button>
                 <button onclick="setView('breakdown')" id="v-breakdown"
                     class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Breakdown</button>
                 <button onclick="setView('detail')" id="v-detail"
                     class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Detail</button>
+                <button onclick="setView('payment')" id="v-payment"
+                    class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Payment</button>
+                <button onclick="setView('receive')" id="v-receive"
+                    class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Receive</button>
             </div>
         </div>
     </div>
@@ -221,6 +228,52 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
         </div>
     </div>
 
+    <!-- Payment Panel (cash-out only) -->
+    <div id="panel-payment" class="hidden">
+        <div class="bg-white rounded-xl border border-gray-200">
+            <div class="p-4 border-b"><h3 class="font-semibold text-gray-800">Payments Made (Cash Out)</h3></div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Date</th>
+                            <th class="px-4 py-3 text-left">Account</th>
+                            <th class="px-4 py-3 text-left">Paid To</th>
+                            <th class="px-4 py-3 text-left">Type</th>
+                            <th class="px-4 py-3 text-left">Particular</th>
+                            <th class="px-4 py-3 text-right text-red-600">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-tbody" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+            <div id="payment-pagination" class="p-4 flex justify-between items-center border-t text-sm text-gray-500"></div>
+        </div>
+    </div>
+
+    <!-- Receive Panel (cash-in only) -->
+    <div id="panel-receive" class="hidden">
+        <div class="bg-white rounded-xl border border-gray-200">
+            <div class="p-4 border-b"><h3 class="font-semibold text-gray-800">Money Received (Cash In)</h3></div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Date</th>
+                            <th class="px-4 py-3 text-left">Account</th>
+                            <th class="px-4 py-3 text-left">Received From</th>
+                            <th class="px-4 py-3 text-left">Type</th>
+                            <th class="px-4 py-3 text-left">Particular</th>
+                            <th class="px-4 py-3 text-right text-green-600">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receive-tbody" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+            <div id="receive-pagination" class="p-4 flex justify-between items-center border-t text-sm text-gray-500"></div>
+        </div>
+    </div>
+
     <!-- Loading -->
     <div id="loading" class="hidden fixed inset-0 bg-white/70 flex items-center justify-center z-50">
         <div class="text-center">
@@ -236,7 +289,7 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
 
 <script>
 const IP   = '<?php echo $ip_port; ?>';
-const API  = `${IP}/api/reports/cashflow/endpoints.php`;
+const API  = `${IP}/api/reports/cashflow_v2/endpoints.php`;
 
 let currentView   = 'summary';
 let currentPeriod = 'monthly';
@@ -309,6 +362,8 @@ async function loadData() {
     if (currentView === 'summary')   await loadSummary();
     if (currentView === 'breakdown') await loadBreakdown();
     if (currentView === 'detail')    await loadDetail();
+    if (currentView === 'payment')   await loadPayment();
+    if (currentView === 'receive')   await loadReceive();
     setLoading(false);
 }
 
@@ -396,11 +451,81 @@ async function loadDetail() {
         </div>`;
 }
 
+// Payment = cash-out rows only (money paid to a vendor, a refund paid to a
+// client, an account-to-account transfer out, etc.) Receive is the mirror.
+// Both reuse action=detail (same underlying ac_banking_stmts rows as the
+// Detail view) and just filter to the relevant direction + skip zero rows.
+async function loadPayment() {
+    const r = await fetch(`${API}?action=detail&page=${currentPage}&per_page=50&${buildParams()}`);
+    const d = await r.json();
+    if (!d.success) return;
+
+    const rows = (d.rows||[]).filter(row => parseFloat(row.cash_out) > 0);
+    const tb = document.getElementById('payment-tbody');
+    tb.innerHTML = rows.map(row => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${(row.date||'').substring(0,10)}</td>
+            <td class="px-4 py-3 font-medium text-gray-800">${row.account_name||'—'}</td>
+            <td class="px-4 py-3 text-gray-700">${row.source_user_name||'—'}</td>
+            <td class="px-4 py-3">${accountHeadBadge(row.source_account_head)}</td>
+            <td class="px-4 py-3 text-gray-600 max-w-xs truncate">${row.particular||'—'}</td>
+            <td class="px-4 py-3 text-right text-red-700 font-medium">${fmt(row.cash_out)}</td>
+        </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No payments on this page</td></tr>';
+
+    const pag = document.getElementById('payment-pagination');
+    pag.innerHTML = `
+        <span>Page ${d.page} of ${d.pages} (payments are filtered client-side per page)</span>
+        <div class="flex gap-2">
+            ${d.page > 1 ? `<button onclick="goPage(${d.page-1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Prev</button>` : ''}
+            ${d.page < d.pages ? `<button onclick="goPage(${d.page+1})" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>` : ''}
+        </div>`;
+}
+
+async function loadReceive() {
+    const r = await fetch(`${API}?action=detail&page=${currentPage}&per_page=50&${buildParams()}`);
+    const d = await r.json();
+    if (!d.success) return;
+
+    const rows = (d.rows||[]).filter(row => parseFloat(row.cash_in) > 0);
+    const tb = document.getElementById('receive-tbody');
+    tb.innerHTML = rows.map(row => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${(row.date||'').substring(0,10)}</td>
+            <td class="px-4 py-3 font-medium text-gray-800">${row.account_name||'—'}</td>
+            <td class="px-4 py-3 text-gray-700">${row.source_user_name||'—'}</td>
+            <td class="px-4 py-3">${accountHeadBadge(row.source_account_head)}</td>
+            <td class="px-4 py-3 text-gray-600 max-w-xs truncate">${row.particular||'—'}</td>
+            <td class="px-4 py-3 text-right text-green-700 font-medium">${fmt(row.cash_in)}</td>
+        </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No receives on this page</td></tr>';
+
+    const pag = document.getElementById('receive-pagination');
+    pag.innerHTML = `
+        <span>Page ${d.page} of ${d.pages} (receives are filtered client-side per page)</span>
+        <div class="flex gap-2">
+            ${d.page > 1 ? `<button onclick="goPage(${d.page-1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Prev</button>` : ''}
+            ${d.page < d.pages ? `<button onclick="goPage(${d.page+1})" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>` : ''}
+        </div>`;
+}
+
+function accountHeadBadge(head) {
+    const map = {
+        purchase: ['Vendor Payment', 'bg-amber-100 text-amber-700'],
+        accounts_payable: ['Vendor Payment', 'bg-amber-100 text-amber-700'],
+        sales: ['Client Sale', 'bg-indigo-100 text-indigo-700'],
+        accounts_receivable: ['Client Receive', 'bg-sky-100 text-sky-700'],
+        vendor_refund_receivable: ['Vendor Refund', 'bg-teal-100 text-teal-700'],
+        client_refund_payable: ['Client Refund', 'bg-orange-100 text-orange-700'],
+        bank_account: ['Transfer', 'bg-gray-100 text-gray-600'],
+    };
+    const [label, cls] = map[head] || ['Other', 'bg-gray-100 text-gray-600'];
+    return `<span class="text-xs px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
+}
+
 function goPage(p) { currentPage = p; loadDetail(); }
 
 function setView(v) {
     currentView = v;
-    ['summary','breakdown','detail'].forEach(name => {
+    ['summary','breakdown','detail','payment','receive'].forEach(name => {
         document.getElementById(`panel-${name}`).classList.toggle('hidden', name !== v);
         const btn = document.getElementById(`v-${name}`);
         btn.className = name === v
@@ -444,23 +569,112 @@ async function exportData(type = 'csv') {
     document.getElementById('exportMenu')?.classList.add('hidden');
     setLoading(true);
     try {
-        const r = await fetch(`${API}?action=export&${buildParams()}`);
-        const d = await r.json();
-        if (!d.success) { alert('Export failed'); return; }
+        let filename, rows, colWidths, boldCells;
+        const dateSuffix = new Date().toISOString().split('T')[0];
 
-        const filename = `cashflow-${new Date().toISOString().split('T')[0]}`;
-        const rows = [
-            ['Cash Flow Report', '', '', '', ''],
-            ['Total Cash In', d.overall.total_in, '', '', ''],
-            ['Total Cash Out', d.overall.total_out, '', '', ''],
-            ['Net Cash Flow', d.overall.net_flow, '', '', ''],
-            ['', '', '', '', ''],
-            ['Account', 'Cash In', 'Cash Out', 'Net Flow', 'Closing Balance'],
-            ...(d.accounts||[]).map(a => [a.account_name, parseFloat(a.cash_in), parseFloat(a.cash_out), parseFloat(a.net_flow), parseFloat(a.closing_balance)]),
-            ['', '', '', '', ''],
-            ['Method', 'Cash In', 'Cash Out', 'Net Flow', 'Count'],
-            ...(d.methods||[]).map(m => [(m.transfer_method||'').toUpperCase(), parseFloat(m.cash_in), parseFloat(m.cash_out), parseFloat(m.net_flow), m.count]),
-        ];
+        if (currentView === 'summary') {
+            const r = await fetch(`${API}?action=export&${buildParams()}`);
+            const d = await r.json();
+            if (!d.success) { alert('Export failed'); return; }
+
+            filename = `cashflow-summary-${dateSuffix}`;
+            rows = [
+                ['Cash Flow Report — Summary', '', '', '', ''],
+                ['Total Cash In', d.overall.total_in, '', '', ''],
+                ['Total Cash Out', d.overall.total_out, '', '', ''],
+                ['Net Cash Flow', d.overall.net_flow, '', '', ''],
+                ['', '', '', '', ''],
+                ['Account', 'Cash In', 'Cash Out', 'Net Flow', 'Closing Balance'],
+                ...(d.accounts||[]).map(a => [a.account_name, parseFloat(a.cash_in), parseFloat(a.cash_out), parseFloat(a.net_flow), parseFloat(a.closing_balance)]),
+                ['', '', '', '', ''],
+                ['Method', 'Cash In', 'Cash Out', 'Net Flow', 'Count'],
+                ...(d.methods||[]).map(m => [(m.transfer_method||'').toUpperCase(), parseFloat(m.cash_in), parseFloat(m.cash_out), parseFloat(m.net_flow), m.count]),
+            ];
+            colWidths = [{wch:30},{wch:18},{wch:18},{wch:18},{wch:20}];
+            boldCells = ['A1','A6','A9'];
+
+        } else if (currentView === 'breakdown') {
+            const r = await fetch(`${API}?action=breakdown&period=${currentPeriod}&${buildParams()}`);
+            const d = await r.json();
+            if (!d.success) { alert('Export failed'); return; }
+
+            filename = `cashflow-breakdown-${currentPeriod}-${dateSuffix}`;
+            rows = [
+                ['Cash Flow Report — Breakdown', '', '', '', ''],
+                ['Period', 'Cash In', 'Cash Out', 'Net Flow', 'Transactions'],
+                ...(d.rows||[]).map(row => [row.period, parseFloat(row.cash_in), parseFloat(row.cash_out), parseFloat(row.net_flow), row.transaction_count]),
+            ];
+            colWidths = [{wch:14},{wch:18},{wch:18},{wch:18},{wch:16}];
+            boldCells = ['A1','A2'];
+
+        } else if (currentView === 'detail') { // fetch every page (no artificial limit) for a complete export
+            filename = `cashflow-detail-${dateSuffix}`;
+            const allRows = [];
+            let page = 1, pages = 1;
+            do {
+                const r = await fetch(`${API}?action=detail&page=${page}&per_page=500&${buildParams()}`);
+                const d = await r.json();
+                if (!d.success) { alert('Export failed'); return; }
+                allRows.push(...(d.rows||[]));
+                pages = d.pages || 1;
+                page++;
+            } while (page <= pages);
+
+            rows = [
+                ['Cash Flow Report — Detail', '', '', '', '', '', ''],
+                ['Date', 'Account', 'Particular', 'Method', 'Cash In', 'Cash Out', 'Balance'],
+                ...allRows.map(row => [
+                    (row.date||'').substring(0,10), row.account_name||'', row.particular||'',
+                    (row.transfer_method||'').toUpperCase(),
+                    row.cash_in > 0 ? parseFloat(row.cash_in) : '', row.cash_out > 0 ? parseFloat(row.cash_out) : '',
+                    parseFloat(row.balance),
+                ]),
+            ];
+            colWidths = [{wch:12},{wch:22},{wch:30},{wch:12},{wch:14},{wch:14},{wch:16}];
+            boldCells = ['A1','A2'];
+
+        } else if (currentView === 'payment') {
+            filename = `cashflow-payment-${dateSuffix}`;
+            const allRows = [];
+            let page = 1, pages = 1;
+            do {
+                const r = await fetch(`${API}?action=detail&page=${page}&per_page=500&${buildParams()}`);
+                const d = await r.json();
+                if (!d.success) { alert('Export failed'); return; }
+                allRows.push(...(d.rows||[]).filter(row => parseFloat(row.cash_out) > 0));
+                pages = d.pages || 1;
+                page++;
+            } while (page <= pages);
+
+            rows = [
+                ['Cash Flow Report — Payments (Cash Out)', '', '', '', ''],
+                ['Date', 'Account', 'Paid To', 'Particular', 'Amount'],
+                ...allRows.map(row => [(row.date||'').substring(0,10), row.account_name||'', row.source_user_name||'', row.particular||'', parseFloat(row.cash_out)]),
+            ];
+            colWidths = [{wch:12},{wch:22},{wch:20},{wch:30},{wch:14}];
+            boldCells = ['A1','A2'];
+
+        } else { // receive
+            filename = `cashflow-receive-${dateSuffix}`;
+            const allRows = [];
+            let page = 1, pages = 1;
+            do {
+                const r = await fetch(`${API}?action=detail&page=${page}&per_page=500&${buildParams()}`);
+                const d = await r.json();
+                if (!d.success) { alert('Export failed'); return; }
+                allRows.push(...(d.rows||[]).filter(row => parseFloat(row.cash_in) > 0));
+                pages = d.pages || 1;
+                page++;
+            } while (page <= pages);
+
+            rows = [
+                ['Cash Flow Report — Receives (Cash In)', '', '', '', ''],
+                ['Date', 'Account', 'Received From', 'Particular', 'Amount'],
+                ...allRows.map(row => [(row.date||'').substring(0,10), row.account_name||'', row.source_user_name||'', row.particular||'', parseFloat(row.cash_in)]),
+            ];
+            colWidths = [{wch:12},{wch:22},{wch:20},{wch:30},{wch:14}];
+            boldCells = ['A1','A2'];
+        }
 
         if (type === 'csv') {
             const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
@@ -468,10 +682,8 @@ async function exportData(type = 'csv') {
 
         } else if (type === 'excel') {
             const ws = XLSX.utils.aoa_to_sheet(rows);
-            // Column widths
-            ws['!cols'] = [{wch:30},{wch:18},{wch:18},{wch:18},{wch:20}];
-            // Bold header rows
-            ['A1','A6','A9'].forEach(cell => {
+            ws['!cols'] = colWidths;
+            boldCells.forEach(cell => {
                 if (ws[cell]) ws[cell].s = { font: { bold: true } };
             });
             const wb = XLSX.utils.book_new();

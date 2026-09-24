@@ -195,7 +195,7 @@ $getVendor = $ip_port . "api/vendors/get-vendor.php?vid=$vendorId";
                             <div class="col-span-2 justify-center h-full w-full">
                                 <div class="text-center">
                                     <h2 class="text-2xl font-semibold text-gray-800 mb-4">Financial Transactions</h2>
-                                    <?php include('sv-accounting.php') ?> <!-- sc means show vendor -->
+                                    <?php include('show-vendor-ledger.php') ?> <!-- sc means show vendor -->
                                 </div>
                             </div>
                         </div>

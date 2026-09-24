@@ -18,9 +18,12 @@
 session_start();
 
 require '../../server/db_connection.php';
+require_once '../../server/permissions.php';
+requireFullAccountingAccess($pdo, true);
 require '../../server/uuid_with_system_id_generator.php';
 require_once '../../server/sys_id_generator_v2.php';
 require '../../server/generate_meta_data.php';
+require_once '../../server/finance_helpers.php'; // isInstrumentMethod()
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -45,6 +48,8 @@ try {
     $ref         = $input['ref'] ?? null;
     $workId      = $input['work_id'] ?? null;
     $taskId      = $input['task_id'] ?? null;
+    $paymentMethod = strtolower($input['payment_method'] ?? 'cash');
+    $instrumentNo  = $input['instrument_no'] ?? null;
 
     $errors = [];
     if (!$saleGroupId) $errors[] = 'sale_group_id is required';
@@ -172,25 +177,9 @@ try {
         'type' => 'debit', 'related_type' => 3, 'amount' => $amount,
     ]));
 
-    $newBalance = $oldBalance + $amount;
-    $pdo->prepare("UPDATE ac_banking SET balance = ? WHERE sys_id = ?")
-        ->execute([$newBalance, $accountId]);
-
-    $stmtIds  = generateV2IDs($pdo, 'ac_banking_stmts');
-    $stmtMeta = buildMetaData(null, $userName);
-    $pdo->prepare("
-        INSERT INTO ac_banking_stmts
-        (uuid, sys_id, ledger_db_id, name, date, particular,
-         withdraw, deposit, balance, related_type, meta_data, ref)
-        VALUES
-        (:uuid, :sys_id, :ledger, :name, :date, :particular,
-         0, :deposit, :balance, 1, :meta, :ref)
-    ")->execute([
-        ':uuid' => $stmtIds['uuid'], ':sys_id' => $stmtIds['sys_id'],
-        ':ledger' => $accountId, ':name' => $accountName, ':date' => $date,
-        ':particular' => $finalPurpose, ':deposit' => $amount, ':balance' => $newBalance,
-        ':meta' => $stmtMeta, ':ref' => $bankEntrySysId,
-    ]);
+    postBankLegV2($pdo, $accountId, $accountName, $oldBalance, $amount, 'in', $date,
+        $finalPurpose, $bankEntrySysId, $userName,
+        $paymentMethod, $clientId, $clientName, 'client', $instrumentNo);
 
     http_response_code(201);
     echo json_encode([

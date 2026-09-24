@@ -33,6 +33,8 @@ $totalRecords = count($salaryRows);
 $preparedCount = 0;
 $collectedCount = 0;
 $authorizedCount = 0;
+$verifiedCount = 0;
+$paidCount = 0;
 
 foreach ($salaryRows as $row) {
     $totalPaid += (float)($row['net_payable_salary'] ?? 0);
@@ -43,6 +45,10 @@ foreach ($salaryRows as $row) {
         $authorizedCount++;
     } elseif ($workflowStatus === 'collected') {
         $collectedCount++;
+    } elseif ($workflowStatus === 'verified') {
+        $verifiedCount++;
+    } elseif ($workflowStatus === 'paid') {
+        $paidCount++;
     } else {
         $preparedCount++;
     }
@@ -74,8 +80,10 @@ function paymentTypeLabel($type)
 function workflowBadgeClass($status)
 {
     return match ($status) {
-        'authorized' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'collected' => 'bg-purple-100 text-purple-700 border-purple-200',
+        'authorized' => 'bg-purple-100 text-purple-700 border-purple-200',
+        'collected' => 'bg-green-100 text-green-700 border-green-200',
+        'verified' => 'bg-amber-100 text-amber-700 border-amber-200',
+        'paid' => 'bg-teal-100 text-teal-700 border-teal-200',
         default => 'bg-yellow-100 text-yellow-700 border-yellow-200'
     };
 }
@@ -356,7 +364,7 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                     <div class="p-4 rounded-xl bg-blue-50 border border-blue-100">
                         <p class="text-sm text-blue-600">Total Records</p>
                         <h3 class="text-2xl font-bold text-blue-900"><?php echo $totalRecords; ?></h3>
@@ -372,9 +380,19 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                         <h3 class="text-2xl font-bold text-yellow-900"><?php echo $preparedCount; ?></h3>
                     </div>
 
+                    <div class="p-4 rounded-xl bg-purple-50 border border-purple-100">
+                        <p class="text-sm text-purple-600">Sent to Bank</p>
+                        <h3 class="text-2xl font-bold text-purple-900"><?php echo $authorizedCount; ?></h3>
+                    </div>
+
                     <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                        <p class="text-sm text-emerald-600">Authorized</p>
-                        <h3 class="text-2xl font-bold text-emerald-900"><?php echo $authorizedCount; ?></h3>
+                        <p class="text-sm text-emerald-600">Collected / Verified</p>
+                        <h3 class="text-2xl font-bold text-emerald-900"><?php echo $collectedCount + $verifiedCount; ?></h3>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-teal-50 border border-teal-100">
+                        <p class="text-sm text-teal-600">Disbursed</p>
+                        <h3 class="text-2xl font-bold text-teal-900"><?php echo $paidCount; ?></h3>
                     </div>
                 </div>
 
@@ -436,10 +454,14 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                                 $preparedInfo = json_decode($row['prepared_info'] ?? '{}', true);
                                 $collectedInfo = json_decode($row['collected_info'] ?? '{}', true);
                                 $authorizedInfo = json_decode($row['authorized_info'] ?? '{}', true);
+                                $verifiedInfo = json_decode($row['verified_info'] ?? '{}', true);
+                                $disbursedInfo = json_decode($row['disbursed_info'] ?? '{}', true);
 
                                 $preparedBy = $preparedInfo['user_name'] ?? '';
                                 $collectedBy = $collectedInfo['user_name'] ?? '';
                                 $authorizedBy = $authorizedInfo['user_name'] ?? '';
+                                $verifiedBy = $verifiedInfo['user_name'] ?? '';
+                                $disbursedBy = $disbursedInfo['user_name'] ?? '';
                             ?>
 
                             <div class="salary-card rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden"
@@ -513,12 +535,20 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                                             <?php echo $preparedBy ? safeText($preparedBy) : 'Pending'; ?>
                                         </div>
                                         <div>
-                                            <strong>Collected:</strong>
+                                            <strong>Sent to Bank (Authorized):</strong>
+                                            <?php echo $authorizedBy ? safeText($authorizedBy) : 'Pending'; ?>
+                                        </div>
+                                        <div>
+                                            <strong>Collected (by employee):</strong>
                                             <?php echo $collectedBy ? safeText($collectedBy) : 'Pending'; ?>
                                         </div>
                                         <div>
-                                            <strong>Authorized:</strong>
-                                            <?php echo $authorizedBy ? safeText($authorizedBy) : 'Pending'; ?>
+                                            <strong>Verified:</strong>
+                                            <?php echo $verifiedBy ? safeText($verifiedBy) : 'Pending'; ?>
+                                        </div>
+                                        <div>
+                                            <strong>Disbursed:</strong>
+                                            <?php echo $disbursedBy ? safeText($disbursedBy) : 'Pending'; ?>
                                         </div>
                                     </div>
 
@@ -537,21 +567,50 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
                                         </a>
 
                                         <?php if ($workflowStatus === 'prepared'): ?>
+                                            <button onclick="openAuthLetterModal('<?php echo safeText($slipId); ?>', '<?php echo safeText($row['employee_name'] ?? ''); ?>')"
+                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded-lg transition">
+                                                <i class="fas fa-file-signature"></i>
+                                                Generate Authorization Letter
+                                            </button>
+                                            <button onclick="updateSlipFlow('<?php echo safeText($slipId); ?>', 'authorize')"
+                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition">
+                                                <i class="fas fa-paper-plane"></i>
+                                                Mark Sent to Bank
+                                            </button>
+                                        <?php elseif ($workflowStatus === 'authorized'): ?>
+                                            <span class="px-4 py-2 bg-purple-100 text-purple-700 text-sm rounded-lg font-semibold">
+                                                <i class="fas fa-paper-plane"></i>
+                                                Sent to Bank
+                                            </span>
                                             <button onclick="updateSlipFlow('<?php echo safeText($slipId); ?>', 'collect')"
                                                     class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition">
                                                 <i class="fas fa-hand-holding-dollar"></i>
-                                                Collected
+                                                Employee Confirmed Collection
                                             </button>
                                         <?php elseif ($workflowStatus === 'collected'): ?>
-                                            <button onclick="updateSlipFlow('<?php echo safeText($slipId); ?>', 'authorize')"
-                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition">
-                                                <i class="fas fa-check-circle"></i>
-                                                Authorize
+                                            <span class="px-4 py-2 bg-green-100 text-green-700 text-sm rounded-lg font-semibold">
+                                                <i class="fas fa-hand-holding-dollar"></i>
+                                                Collected (unverified)
+                                            </span>
+                                            <button onclick="updateSlipFlow('<?php echo safeText($slipId); ?>', 'verify')"
+                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg transition">
+                                                <i class="fas fa-magnifying-glass-dollar"></i>
+                                                Verify Collection
                                             </button>
-                                        <?php elseif ($workflowStatus === 'authorized'): ?>
-                                            <span class="px-4 py-2 bg-emerald-100 text-emerald-700 text-sm rounded-lg font-semibold">
+                                        <?php elseif ($workflowStatus === 'verified'): ?>
+                                            <span class="px-4 py-2 bg-amber-100 text-amber-700 text-sm rounded-lg font-semibold">
                                                 <i class="fas fa-circle-check"></i>
-                                                Authorized
+                                                Verified
+                                            </span>
+                                            <button onclick="openDisburseModal('<?php echo safeText($slipId); ?>')"
+                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-lg transition">
+                                                <i class="fas fa-money-check-dollar"></i>
+                                                Disburse (Debit Our Account)
+                                            </button>
+                                        <?php elseif ($workflowStatus === 'paid'): ?>
+                                            <span class="px-4 py-2 bg-teal-100 text-teal-700 text-sm rounded-lg font-semibold">
+                                                <i class="fas fa-circle-check"></i>
+                                                Disbursed
                                             </span>
                                         <?php endif; ?>
                                     </div>
@@ -857,10 +916,12 @@ function initSalaryHistoryFilters() {
     sortFilter?.addEventListener('change', applyFilters);
 }
 
-function updateSlipFlow(slipId, action) {
-    let message = action === 'collect'
-        ? 'Confirm employee collected this payment?'
-        : 'Confirm authorization for this payment?';
+function updateSlipFlow(slipId, action, extra = {}) {
+    let message =
+        action === 'authorize' ? 'Confirm the Authorization Letter has been sent to the bank?'
+        : action === 'collect'  ? 'Confirm the employee has reported receiving the funds?'
+        : action === 'verify'   ? 'Confirm you have verified the employee actually received the funds?'
+        : 'Confirm disbursement — this will debit our own account now. Proceed?';
 
     if (!confirm(message)) {
         return;
@@ -873,7 +934,8 @@ function updateSlipFlow(slipId, action) {
         },
         body: JSON.stringify({
             slip_id: slipId,
-            action: action
+            action: action,
+            ...extra
         })
     })
     .then(res => res.json())
@@ -890,7 +952,139 @@ function updateSlipFlow(slipId, action) {
         alert('Server error occurred');
     });
 }
+
+// ── Disburse (Payment Method selection) ──────────────────────
+function openDisburseModal(slipId) {
+    document.getElementById('disburseSlipId').value = slipId;
+    document.getElementById('disburseModal').classList.remove('hidden');
+}
+function closeDisburseModal() {
+    document.getElementById('disburseModal').classList.add('hidden');
+}
+function toggleDisburseInstrument() {
+    const method = document.getElementById('disburseMethod').value;
+    document.getElementById('disburseInstrumentWrap').classList.toggle('hidden', method !== 'cheque');
+}
+function submitDisburse() {
+    const slipId = document.getElementById('disburseSlipId').value;
+    const paymentMethod = document.getElementById('disburseMethod').value;
+    const instrumentNo = document.getElementById('disburseInstrumentNo').value.trim();
+
+    if (paymentMethod === 'cheque' && !instrumentNo) { alert('Enter the cheque number'); return; }
+    if (!confirm('Confirm disbursement — this will debit our own account now. Proceed?')) return;
+
+    closeDisburseModal();
+
+    fetch("<?php echo safeText($ip_port); ?>api/eps/update-slip-flow.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            slip_id: slipId, action: 'disburse',
+            payment_method: paymentMethod, instrument_no: instrumentNo || undefined,
+        })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) { alert('✓ ' + res.message); location.reload(); }
+        else { alert('✗ ' + res.message); }
+    })
+    .catch(err => { console.error(err); alert('Server error occurred'); });
+}
+
+// ── Authorization Letter ──────────────────────────────────────
+function openAuthLetterModal(slipId, employeeName) {
+    document.getElementById('authLetterSlipId').value = slipId;
+    document.getElementById('authLetterEmployeeLabel').textContent = employeeName || 'this employee';
+    document.getElementById('authLetterModal').classList.remove('hidden');
+}
+function closeAuthLetterModal() {
+    document.getElementById('authLetterModal').classList.add('hidden');
+}
+function submitAuthLetter() {
+    const slipId = document.getElementById('authLetterSlipId').value;
+    const bankName = document.getElementById('authLetterBankName').value.trim();
+    const bankBranch = document.getElementById('authLetterBankBranch').value.trim();
+    const accountNo = document.getElementById('authLetterAccountNo').value.trim();
+    const designation = document.getElementById('authLetterDesignation').value.trim();
+
+    if (!bankName) { alert('Bank name is required'); return; }
+    if (!accountNo) { alert("Employee's bank account number is required"); return; }
+
+    const params = new URLSearchParams({
+        slip_id: slipId,
+        bank_name: bankName,
+        bank_branch: bankBranch,
+        employee_bank_account: accountNo,
+        employee_designation: designation,
+    });
+    window.open("<?php echo safeText($ip_port); ?>api/eps/generate-authorization-letter.php?" + params.toString(), '_blank');
+    closeAuthLetterModal();
+}
 </script>
+
+<!-- Disburse Modal -->
+<div id="disburseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.45);">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-money-check-dollar mr-2 text-teal-600"></i>Disburse Payment</h3>
+            <button onclick="closeDisburseModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+            <input type="hidden" id="disburseSlipId">
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
+                <select id="disburseMethod" onchange="toggleDisburseInstrument()" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400">
+                    <option value="cash">Cash</option>
+                    <option value="npsb">NPSB</option>
+                    <option value="rtgs">RTGS</option>
+                    <option value="bftn">BFTN</option>
+                    <option value="eft">EFT</option>
+                    <option value="cheque">Cheque</option>
+                </select>
+            </div>
+            <div id="disburseInstrumentWrap" class="hidden">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Cheque/Instrument No.</label>
+                <input type="text" id="disburseInstrumentNo" placeholder="Cheque number" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400">
+                <p class="text-[11px] text-gray-400 mt-1">এই পেমেন্ট hold থাকবে instrument clear না হওয়া পর্যন্ত।</p>
+            </div>
+            <button onclick="submitDisburse()" class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition">
+                <i class="fas fa-check mr-1.5"></i>Confirm Disbursement
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Authorization Letter Modal -->
+<div id="authLetterModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.45);">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-file-signature mr-2 text-gray-600"></i>Authorization Letter — <span id="authLetterEmployeeLabel"></span></h3>
+            <button onclick="closeAuthLetterModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+            <input type="hidden" id="authLetterSlipId">
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Bank Name <span class="text-red-500">*</span></label>
+                <input type="text" id="authLetterBankName" placeholder="e.g., Dutch Bangla Bank Ltd." class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Branch <span class="text-gray-300 font-normal">(optional)</span></label>
+                <input type="text" id="authLetterBankBranch" placeholder="e.g., Gulshan" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Employee's Bank Account No. <span class="text-red-500">*</span></label>
+                <input type="text" id="authLetterAccountNo" placeholder="Account number" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Designation <span class="text-gray-300 font-normal">(optional)</span></label>
+                <input type="text" id="authLetterDesignation" placeholder="e.g., Software Engineer" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400">
+            </div>
+            <button onclick="submitAuthLetter()" class="w-full py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-xl text-sm font-semibold transition">
+                <i class="fas fa-file-export mr-1.5"></i>Generate Letter
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

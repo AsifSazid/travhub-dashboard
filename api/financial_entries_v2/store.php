@@ -44,9 +44,12 @@
 session_start();
 
 require '../../server/db_connection.php';
+require_once '../../server/permissions.php';
+requireFullAccountingAccess($pdo, true);
 require '../../server/uuid_with_system_id_generator.php';
 require_once '../../server/sys_id_generator_v2.php';
 require '../../server/generate_meta_data.php';
+require_once '../../server/finance_helpers.php'; // isInstrumentMethod()
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -109,6 +112,8 @@ try {
     $taskId     = $input['task_id']    ?? null;
     $ref        = $input['ref']        ?? null;
     $qtyRate    = $input['qty_rate']   ?? null; // JSON string: {"qty":2,"rate":18000}
+    $paymentMethod = strtolower($input['payment_method'] ?? 'cash'); // cash|npsb|rtgs|bftn|eft|cheque
+    $instrumentNo  = $input['instrument_no'] ?? null; // required for cheque
 
     $userName = $_SESSION['user_name'] ?? 'system';
 
@@ -211,50 +216,6 @@ try {
         return $ids['sys_id'];
     }
 
-    /* ================= Helper: bank leg (ac_banking + ac_banking_stmts) ================= */
-    // $direction: 'out' (money leaves the account) or 'in' (money enters it)
-    function _postBankLeg(PDO $pdo, string $accountId, string $accountName, float $oldBalance, float $amount, string $direction, string $date, string $particular, string $refEntrySysId, string $userName): void
-    {
-        $stmtIds  = generateV2IDs($pdo, 'ac_banking_stmts');
-        $stmtMeta = buildMetaData(null, $userName);
-
-        if ($direction === 'out') {
-            $newBalance = $oldBalance - $amount;
-            $pdo->prepare("UPDATE ac_banking SET balance = :bal WHERE sys_id = :id")
-                ->execute([':bal' => $newBalance, ':id' => $accountId]);
-            $pdo->prepare("
-                INSERT INTO ac_banking_stmts
-                (uuid, sys_id, ledger_db_id, name, date, particular,
-                 withdraw, deposit, balance, related_type, meta_data, ref)
-                VALUES
-                (:uuid, :sys_id, :ledger, :name, :date, :particular,
-                 :withdraw, 0, :balance, 2, :meta, :ref)
-            ")->execute([
-                ':uuid' => $stmtIds['uuid'], ':sys_id' => $stmtIds['sys_id'],
-                ':ledger' => $accountId, ':name' => $accountName, ':date' => $date,
-                ':particular' => $particular, ':withdraw' => $amount, ':balance' => $newBalance,
-                ':meta' => $stmtMeta, ':ref' => $refEntrySysId,
-            ]);
-        } else {
-            $newBalance = $oldBalance + $amount;
-            $pdo->prepare("UPDATE ac_banking SET balance = :bal WHERE sys_id = :id")
-                ->execute([':bal' => $newBalance, ':id' => $accountId]);
-            $pdo->prepare("
-                INSERT INTO ac_banking_stmts
-                (uuid, sys_id, ledger_db_id, name, date, particular,
-                 withdraw, deposit, balance, related_type, meta_data, ref)
-                VALUES
-                (:uuid, :sys_id, :ledger, :name, :date, :particular,
-                 0, :deposit, :balance, 1, :meta, :ref)
-            ")->execute([
-                ':uuid' => $stmtIds['uuid'], ':sys_id' => $stmtIds['sys_id'],
-                ':ledger' => $accountId, ':name' => $accountName, ':date' => $date,
-                ':particular' => $particular, ':deposit' => $amount, ':balance' => $newBalance,
-                ':meta' => $stmtMeta, ':ref' => $refEntrySysId,
-            ]);
-        }
-    }
-
     $groupId = generateV2SysId($pdo, 'financial_entries'); // this call's shared transaction_group_id
     $entrySysIds = [];
 
@@ -300,8 +261,9 @@ try {
                     'type' => 'credit', 'related_type' => 2, 'amount' => $amount,
                 ]));
                 $entrySysIds['bank_entry_sys_id'] = $bankEntrySysId;
-                _postBankLeg($pdo, $accountId, $accountName, $oldBalance, $amount, 'out', $date,
-                    "Payment to {$vendorName} — {$purpose}", $bankEntrySysId, $userName);
+                postBankLegV2($pdo, $accountId, $accountName, $oldBalance, $amount, 'out', $date,
+                    "Payment to {$vendorName} — {$purpose}", $bankEntrySysId, $userName,
+                    $paymentMethod, $vendorId, $vendorName, 'vendor', $instrumentNo);
             }
         } else {
             // Vendor refund: payable decreases (debit)
@@ -317,8 +279,9 @@ try {
                     'type' => 'debit', 'related_type' => 3, 'amount' => $amount,
                 ]));
                 $entrySysIds['bank_entry_sys_id'] = $bankEntrySysId;
-                _postBankLeg($pdo, $accountId, $accountName, $oldBalance, $amount, 'in', $date,
-                    "Refund from {$vendorName} — {$purpose}", $bankEntrySysId, $userName);
+                postBankLegV2($pdo, $accountId, $accountName, $oldBalance, $amount, 'in', $date,
+                    "Refund from {$vendorName} — {$purpose}", $bankEntrySysId, $userName,
+                    $paymentMethod, $vendorId, $vendorName, 'vendor', $instrumentNo);
             }
         }
 

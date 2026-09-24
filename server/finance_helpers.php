@@ -416,14 +416,172 @@ function insertDiscountEntry($pdo, $discountAmount, $userType, $userSysId, $user
 }
 
 /**
- * Instant payment methods কিনা check
- * cash, mfs, npsb → instant (bank update হয়)
- * cheque, bftn-eft → instrument (pending)
+ * FILE PATH: /server/finance_helpers.php (appended section)
+ *
+ * ── v2 double-entry helper: ac_banking.category -> account_head ──
+ * Used by financial_entries_v2/store-expense.php and store-asset.php to
+ * resolve which account_head a given ac_banking row represents, based on
+ * its Chart of Accounts category (set in pages/create-accounts.php).
+ *
+ * Bank/Cash/MFS categories map to 'bank_account' (transactionable=yes,
+ * balance-tracked, usable as a payment source). Expense/Fixed Asset/Equity
+ * categories are classification-only accounts (transactionable=no, no
+ * balance tracking of their own -- their "value" is derived by summing
+ * financial_entries, the same way accounts_payable/accounts_receivable are).
  */
-function isInstantMethod($method) {
-    return in_array(strtolower($method), ['cash', 'mfs', 'npsb', 'online'], true);
+/**
+ * Payment-method classification, used by postBankLegV2() to decide whether
+ * to move ac_banking.balance immediately (instant) or hold it pending
+ * clearance in ac_instrument_tracking (instrument).
+ *
+ * NOTE: these were referenced by postBankLegV2() throughout this session
+ * without actually being defined anywhere in the codebase -- every
+ * payment-method-aware endpoint (store.php, pay-outstanding.php,
+ * receive-outstanding.php, refund-settle-*.php, store-expense.php,
+ * store-asset.php, update-slip-flow.php's disburse step, and this file's
+ * own settle.php) would have fatally errored the first time a real payment
+ * came through. Defined here to fix that.
+ */
+function isInstantMethod(string $method): bool
+{
+    return in_array(strtolower($method), ['cash', 'npsb', 'rtgs', 'eft', 'gateway'], true);
 }
 
-function isInstrumentMethod($method) {
-    return in_array(strtolower($method), ['cheque', 'bftn-eft'], true);
+function isInstrumentMethod(string $method): bool
+{
+    return in_array(strtolower($method), ['cheque', 'bftn'], true);
+}
+
+/**
+ * ── v2 shared: instrument-aware bank leg posting ──────────────────
+ * Used by every financial_entries_v2 endpoint that moves real money
+ * (store.php, pay-outstanding.php, receive-outstanding.php,
+ * refund-settle-vendor.php, refund-settle-client.php, store-expense.php,
+ * store-asset.php, and the payroll disburse step). Centralizing this here
+ * means the instant-vs-instrument branching logic exists in exactly one
+ * place.
+ *
+ * $direction: 'out' (money leaves the account) or 'in' (money enters it)
+ * $paymentMethod: 'cash' | 'npsb' | 'rtgs' | 'bftn' | 'eft' | 'cheque'
+ *
+ * For instant methods, updates ac_banking.balance + ac_banking_stmts
+ * immediately, exactly as before payment-method tracking existed.
+ * For instrument methods (cheque/bftn/eft), does NOT touch ac_banking.
+ * balance yet -- creates a pending row in ac_instrument_tracking instead;
+ * api/acc-instrument-tracking/process-cleared.php (pre-existing module)
+ * applies the balance change once the instrument actually clears.
+ */
+function postBankLegV2(PDO $pdo, string $accountId, string $accountName, float $oldBalance, float $amount, string $direction, string $date, string $particular, string $refEntrySysId, string $userName, string $paymentMethod = 'cash', ?string $counterpartyId = null, ?string $counterpartyName = null, ?string $counterpartyType = null, ?string $instrumentNo = null, ?string $bankName = null): void
+{
+    if (isInstrumentMethod($paymentMethod)) {
+        createPendingInstrumentV2($pdo, [
+            'instrument_type' => $paymentMethod, 'instrument_no' => $instrumentNo,
+            'account_id' => $accountId, 'account_name' => $accountName,
+            'bank_name' => $bankName ?: $accountName,
+            'amount' => $amount, 'date' => $date, 'remarks' => $particular,
+            'direction' => $direction,
+            'counterparty_id' => $counterpartyId, 'counterparty_name' => $counterpartyName,
+            'counterparty_type' => $counterpartyType,
+            'ref_entry_sys_id' => $refEntrySysId, 'user_name' => $userName,
+        ]);
+        return; // balance/stmts deferred to process-cleared.php
+    }
+
+    $stmtIds  = generateV2IDs($pdo, 'ac_banking_stmts');
+    $stmtMeta = buildMetaData(null, $userName);
+
+    if ($direction === 'out') {
+        $newBalance = $oldBalance - $amount;
+        $pdo->prepare("UPDATE ac_banking SET balance = :bal WHERE sys_id = :id")
+            ->execute([':bal' => $newBalance, ':id' => $accountId]);
+        $pdo->prepare("
+            INSERT INTO ac_banking_stmts
+            (uuid, sys_id, ledger_db_id, name, date, particular,
+             withdraw, deposit, balance, related_type, meta_data, ref, transfer_method)
+            VALUES
+            (:uuid, :sys_id, :ledger, :name, :date, :particular,
+             :withdraw, 0, :balance, 2, :meta, :ref, :method)
+        ")->execute([
+            ':uuid' => $stmtIds['uuid'], ':sys_id' => $stmtIds['sys_id'],
+            ':ledger' => $accountId, ':name' => $accountName, ':date' => $date,
+            ':particular' => $particular, ':withdraw' => $amount, ':balance' => $newBalance,
+            ':meta' => $stmtMeta, ':ref' => $refEntrySysId, ':method' => $paymentMethod,
+        ]);
+    } else {
+        $newBalance = $oldBalance + $amount;
+        $pdo->prepare("UPDATE ac_banking SET balance = :bal WHERE sys_id = :id")
+            ->execute([':bal' => $newBalance, ':id' => $accountId]);
+        $pdo->prepare("
+            INSERT INTO ac_banking_stmts
+            (uuid, sys_id, ledger_db_id, name, date, particular,
+             withdraw, deposit, balance, related_type, meta_data, ref, transfer_method)
+            VALUES
+            (:uuid, :sys_id, :ledger, :name, :date, :particular,
+             0, :deposit, :balance, 1, :meta, :ref, :method)
+        ")->execute([
+            ':uuid' => $stmtIds['uuid'], ':sys_id' => $stmtIds['sys_id'],
+            ':ledger' => $accountId, ':name' => $accountName, ':date' => $date,
+            ':particular' => $particular, ':deposit' => $amount, ':balance' => $newBalance,
+            ':meta' => $stmtMeta, ':ref' => $refEntrySysId, ':method' => $paymentMethod,
+        ]);
+    }
+}
+
+/**
+ * Creates a pending ac_instrument_tracking row for a held payment method,
+ * matching the exact schema/format used by
+ * api/acc-instrument-tracking/store.php so process-cleared.php can pick it
+ * up normally. related_from/related_to use that module's "sys_id||name"
+ * pipe format.
+ */
+function createPendingInstrumentV2(PDO $pdo, array $p): string
+{
+    $ids  = generateV2IDs($pdo, 'ac_instrument_tracking');
+    $meta = buildMetaData(null, $p['user_name']);
+
+    $isOut = $p['direction'] === 'out';
+    $relatedFrom = $isOut ? "{$p['account_id']}||{$p['account_name']}" : "{$p['counterparty_id']}||{$p['counterparty_name']}";
+    $relatedTo   = $isOut ? "{$p['counterparty_id']}||{$p['counterparty_name']}" : "{$p['account_id']}||{$p['account_name']}";
+    $relatedType = $isOut ? 'a2p' : 'received';
+
+    $pdo->prepare("
+        INSERT INTO ac_instrument_tracking (
+            uuid, sys_id, instrument_type, trnx_type, instrument_no, payment_to,
+            account_name, bank_name, instrument_date,
+            amount, related_type, related_from, related_to, status, date,
+            remarks, meta_data
+        ) VALUES (
+            :uuid, :sys_id, :instrument_type, :trnx_type, :instrument_no, :payment_to,
+            :account_name, :bank_name, :instrument_date,
+            :amount, :related_type, :related_from, :related_to, 'pending', :date,
+            :remarks, :meta_data
+        )
+    ")->execute([
+        ':uuid' => $ids['uuid'], ':sys_id' => $ids['sys_id'],
+        ':instrument_type' => strtoupper($p['instrument_type']), ':trnx_type' => $isOut ? 'debit' : 'credit',
+        ':instrument_no' => $p['instrument_no'], ':payment_to' => $p['counterparty_type'],
+        ':account_name' => $p['account_name'], ':bank_name' => $p['bank_name'],
+        ':instrument_date' => $p['date'], ':amount' => $p['amount'],
+        ':related_type' => $relatedType, ':related_from' => $relatedFrom, ':related_to' => $relatedTo,
+        ':date' => $p['date'], ':remarks' => $p['remarks'], ':meta_data' => json_encode($meta),
+    ]);
+
+    return $ids['sys_id'];
+}
+{
+    $bankLike = ['Bank Account', 'Cash in Hand', 'MFS - Mobile Financial Services',
+                 'Current Assets', 'Accounts Receivable/Debtors', 'Non-current Assets'];
+    $expenseLike = ['Expenses', 'Cost of sales', 'Other Expense'];
+    $assetLike = ['Fixed Assets'];
+    $equityLike = ['Equity'];
+
+    if (in_array($category, $expenseLike, true)) return 'expense';
+    if (in_array($category, $assetLike, true))   return 'fixed_asset';
+    if (in_array($category, $equityLike, true))  return 'equity';
+    if (in_array($category, $bankLike, true))    return 'bank_account';
+
+    // Unrecognized/legacy category (e.g. rows created before categories
+    // existed) -- default to bank_account, the original assumption every
+    // ac_banking row made before this mapping was introduced.
+    return 'bank_account';
 }

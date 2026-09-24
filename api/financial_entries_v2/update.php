@@ -23,6 +23,8 @@
 session_start();
 
 require '../../server/db_connection.php';
+require_once '../../server/permissions.php';
+requireFullAccountingAccess($pdo, true);
 require '../../server/generate_meta_data.php';
 require '../../server/uuid_with_system_id_generator.php';
 require_once '../../server/sys_id_generator_v2.php';

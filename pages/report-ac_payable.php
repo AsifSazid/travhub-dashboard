@@ -1,452 +1,319 @@
 <?php
 include_once('./authenticate.php');
-$ip_port = @file_get_contents('../ippath.txt');
-if (empty($ip_port)) {
-    $ip_port = "http://103.104.219.3:898";
-}
-
-$base_ip_path = trim($ip_port, "/");
+require_once '../server/db_connection.php';
+require_once '../server/permissions.php';
+requireFullAccountingAccess($pdo, false);
+$ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898', '/');
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payable Report | TravHub Global Limited</title>
-    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
+    <title>Accounts Payable — TravHub</title>
+    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: { navy: '#1A2039', green: '#50BC81' },
-            fontFamily: { sans: ['Poppins', 'sans-serif'] }
-          }
-        }
-      }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-
-    <style>body{font-family:'Poppins',sans-serif;}</style>
 </head>
-<body class="bg-gray-50 text-navy">
+<body class="bg-gray-50">
+<?php include '../elements/header.php'; ?>
+<?php include '../elements/aside.php'; ?>
+<?php include '../elements/preview-model.php'; ?>
 
-    <?php include '../elements/header.php'; ?>
-    <?php include '../elements/aside.php'; ?>
+<main id="mainContent" class="pt-16 pl-64 transition-all duration-300">
+<div class="p-6">
 
-    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300 h-full">
-        <div class="max-w-7xl mx-auto p-4 md:p-6">
-
-          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <div>
-              <h1 class="text-xl md:text-2xl font-semibold text-navy">Payable Report</h1>
-              <p class="text-sm text-gray-500">Vendor-wise: Purchase − Payment − Discount/Refund</p>
-            </div>
-
-            <div class="relative">
-              <button id="exportBtn" class="flex items-center gap-2 bg-navy text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-navy/90">
-                Download
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-              </button>
-              <div id="exportMenu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-100 z-20 overflow-hidden">
-                <div class="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">With current filter</div>
-                <button data-type="csv"  data-scope="filtered" class="export-action w-full text-left px-4 py-2 text-sm hover:bg-gray-50">CSV</button>
-                <button data-type="xlsx" data-scope="filtered" class="export-action w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Excel (.xlsx)</button>
-                <button data-type="pdf"  data-scope="filtered" class="export-action w-full text-left px-4 py-2 text-sm hover:bg-gray-50">PDF</button>
-                <div class="border-t border-gray-100"></div>
-                <div class="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">Without filter (all)</div>
-                <button data-type="csv"  data-scope="all" class="export-action w-full text-left px-4 py-2 text-sm hover:bg-gray-50">CSV</button>
-                <button data-type="xlsx" data-scope="all" class="export-action w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Excel (.xlsx)</button>
-                <button data-type="pdf"  data-scope="all" class="export-action w-full text-left px-4 py-2 text-sm hover:bg-gray-50">PDF</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div class="bg-white rounded-xl border border-gray-100 p-4">
-              <p class="text-xs text-gray-400 mb-1">Vendors with Dues</p>
-              <p id="sumCount" class="text-2xl font-semibold text-navy">0</p>
-            </div>
-            <div class="bg-white rounded-xl border border-gray-100 p-4">
-              <p class="text-xs text-gray-400 mb-1">Total Payable</p>
-              <p id="sumAmount" class="text-2xl font-semibold text-green">৳ 0.00</p>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl border border-gray-100 p-4 mb-3">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <label class="text-xs text-gray-500">From Date</label>
-                <input type="date" id="f_date_from" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              </div>
-              <div>
-                <label class="text-xs text-gray-500">To Date</label>
-                <input type="date" id="f_date_to" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              </div>
-              <div>
-                <label class="text-xs text-gray-500">Quick Month</label>
-                <input type="month" id="f_month" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              </div>
-              <div>
-                <label class="text-xs text-gray-500">Search Vendor</label>
-                <input type="text" id="f_search" placeholder="Vendor name / sys_id" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              </div>
-              <div class="flex items-end gap-2">
-                <button id="applyFilter" class="flex-1 bg-green text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-green/90">Apply</button>
-                <button id="clearFilter" class="flex-1 border border-gray-300 text-gray-500 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">Clear</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl border border-gray-100 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-navy text-white">
-                <tr>
-                  <th class="px-3 py-2 text-left">Vendor</th>
-                  <th class="px-3 py-2 text-right">Total Purchase</th>
-                  <th class="px-3 py-2 text-right">Total Payment</th>
-                  <th class="px-3 py-2 text-right">Discount/Refund</th>
-                  <th class="px-3 py-2 text-right">Payable</th>
-                  <th class="px-3 py-2 text-left">Last Activity</th>
-                  <th class="px-3 py-2 text-center">Details</th>
-                </tr>
-              </thead>
-              <tbody id="tableBody">
-                <tr><td colspan="7" class="text-center py-6 text-gray-400">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="flex items-center justify-between mt-4">
-            <p id="pageInfo" class="text-xs text-gray-500">-</p>
-            <div class="flex gap-2">
-              <button id="prevPage" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Prev</button>
-              <button id="nextPage" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Next</button>
-            </div>
-          </div>
-
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                <i class="fas fa-file-invoice-dollar text-amber-600 mr-2"></i>Accounts Payable
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">How much you still owe each vendor</p>
         </div>
-    </main>
-
-    <!-- Drilldown modal -->
-    <div id="detailModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center p-4">
-      <div class="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white">
-          <h3 id="detailTitle" class="font-semibold text-navy">Vendor Ledger</h3>
-          <button id="closeDetail" class="text-gray-400 hover:text-gray-600">&times;</button>
+        <div class="relative" id="exportDropdownWrap">
+            <button onclick="toggleExportMenu()"
+                class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down ml-1 text-xs"></i>
+            </button>
+            <div id="exportMenu" class="hidden absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+                <button onclick="exportData('csv')"  class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"><i class="fas fa-file-csv text-green-600"></i> CSV</button>
+                <button onclick="exportData('excel')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"><i class="fas fa-file-excel text-green-700"></i> Excel</button>
+                <button onclick="exportData('pdf')"  class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"><i class="fas fa-file-pdf text-red-600"></i> PDF</button>
+            </div>
         </div>
-        <div class="p-4">
-          <table class="w-full text-xs">
-            <thead class="text-gray-500">
-              <tr>
-                <th class="text-left py-1">Date</th>
-                <th class="text-left py-1">Purpose</th>
-                <th class="text-left py-1">Type</th>
-                <th class="text-right py-1">Amount</th>
-              </tr>
-            </thead>
-            <tbody id="detailBody"></tbody>
-          </table>
-        </div>
-      </div>
     </div>
 
-    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
+    <!-- Filters -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
+                <input type="date" id="f-date-from" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date To</label>
+                <input type="date" id="f-date-to" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Amount Min</label>
+                <input type="number" step="0.01" id="f-amount-min" placeholder="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Amount Max</label>
+                <input type="number" step="0.01" id="f-amount-max" placeholder="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Search Vendor</label>
+                <input type="text" id="f-search" placeholder="Vendor name / ID..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+            </div>
+        </div>
+        <div class="flex gap-2 mt-3">
+            <button onclick="applyFilters()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium"><i class="fas fa-search mr-1"></i> Apply</button>
+            <button onclick="clearFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium"><i class="fas fa-redo mr-1"></i> Clear</button>
+            <div class="ml-auto flex gap-2">
+                <button onclick="setView('list')" id="v-list" class="px-3 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white">Vendor List</button>
+                <button onclick="setView('detail')" id="v-detail" class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">Detail</button>
+            </div>
+        </div>
+    </div>
 
-    <script>
-    (function () {
-      'use strict';
+    <!-- Summary cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <p class="text-xs text-gray-500">Vendors with Outstanding Balance</p>
+            <p class="text-2xl font-bold text-gray-800 mt-1" id="sum-vendor-count">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <p class="text-xs text-gray-500">Total Payable</p>
+            <p class="text-2xl font-bold text-amber-600 mt-1" id="sum-total-payable">—</p>
+        </div>
+    </div>
 
-      const API = '/api/reports/payable/endpoints.php';
-      const TYPE_LABEL = { 2: 'Purchase', 4: 'Payment', 5: 'Discount/Refund' };
+    <div id="loadingBar" class="hidden text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-amber-500"></i></div>
 
-      let state = { page: 1, per_page: 25, pages: 1 };
+    <!-- List view -->
+    <div id="view-list" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Vendor</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Total Purchases</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Paid/Reversed</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Payable Balance</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Last Activity</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Entries</th>
+                    </tr>
+                </thead>
+                <tbody id="list-tbody"></tbody>
+            </table>
+        </div>
+        <div id="list-pagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500"></div>
+    </div>
 
-      document.addEventListener('DOMContentLoaded', () => {
-        fetchData();
-        bindEvents();
-      });
+    <!-- Detail view -->
+    <div id="view-detail" class="hidden bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="p-3 bg-gray-50 border-b border-gray-100 text-xs text-gray-500" id="detail-vendor-label">Select a vendor from the List view to see its transactions, or use Search above.</div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Date</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Purpose</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Work</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Type</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="detail-tbody"></tbody>
+            </table>
+        </div>
+    </div>
 
-      function bindEvents() {
-        // Month quick select
-        const monthEl = document.getElementById('f_month');
-        if (monthEl) {
-          monthEl.addEventListener('change', function() {
-            if (!this.value) return;
-            const [y, m] = this.value.split('-');
-            const last = new Date(y, m, 0).getDate();
-            document.getElementById('f_date_from').value = `${y}-${m}-01`;
-            document.getElementById('f_date_to').value   = `${y}-${m}-${String(last).padStart(2,'0')}`;
-          });
+</div>
+</main>
+
+<script>
+const API = "<?php echo $ip_port; ?>/api/reports/payable_v2/endpoints.php";
+let currentView = 'list';
+let currentPage = 1;
+let selectedVendorId = null;
+
+function fmt(n) { return '৳' + (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function buildParams() {
+    const p = new URLSearchParams();
+    const df = document.getElementById('f-date-from').value;
+    const dt = document.getElementById('f-date-to').value;
+    const amin = document.getElementById('f-amount-min').value;
+    const amax = document.getElementById('f-amount-max').value;
+    const search = document.getElementById('f-search').value;
+    if (df) p.set('date_from', df);
+    if (dt) p.set('date_to', dt);
+    if (amin) p.set('amount_min', amin);
+    if (amax) p.set('amount_max', amax);
+    if (search) p.set('search', search);
+    return p.toString();
+}
+
+function setView(v) {
+    currentView = v;
+    document.getElementById('view-list').classList.toggle('hidden', v !== 'list');
+    document.getElementById('view-detail').classList.toggle('hidden', v !== 'detail');
+    ['list','detail'].forEach(x => {
+        document.getElementById(`v-${x}`).className = `px-3 py-2 rounded-lg text-sm font-medium ${x===v?'bg-amber-600 text-white':'bg-gray-200 text-gray-700'}`;
+    });
+    if (v === 'list') loadList();
+}
+
+function applyFilters() { currentPage = 1; if (currentView === 'list') loadList(); }
+function clearFilters() {
+    ['f-date-from','f-date-to','f-amount-min','f-amount-max','f-search'].forEach(id => document.getElementById(id).value = '');
+    applyFilters();
+}
+function setLoading(b) { document.getElementById('loadingBar').classList.toggle('hidden', !b); }
+
+async function loadList() {
+    setLoading(true);
+    try {
+        const r = await fetch(`${API}?action=list&page=${currentPage}&${buildParams()}`);
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('sum-vendor-count').textContent = d.summary.total_vendors;
+        document.getElementById('sum-total-payable').textContent = fmt(d.summary.total_payable);
+
+        const tb = document.getElementById('list-tbody');
+        tb.innerHTML = (d.rows||[]).map(row => `
+            <tr class="hover:bg-gray-50 cursor-pointer" onclick="openVendorDetail('${row.user_sys_id}','${(row.user_name||'').replace(/'/g,"\\'")}')">
+                <td class="px-4 py-3 font-medium text-gray-800">${row.user_name||row.user_sys_id}</td>
+                <td class="px-4 py-3 text-right text-gray-600">${fmt(row.total_purchase_credits)}</td>
+                <td class="px-4 py-3 text-right text-green-700">${fmt(row.total_payments_and_reversals)}</td>
+                <td class="px-4 py-3 text-right font-semibold text-amber-700">${fmt(row.payable_balance)}</td>
+                <td class="px-4 py-3 text-gray-500">${(row.last_activity_date||'').substring(0,10)}</td>
+                <td class="px-4 py-3 text-right text-gray-500">${row.entry_count}</td>
+            </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No outstanding payables</td></tr>';
+
+        const pag = document.getElementById('list-pagination');
+        pag.innerHTML = `<span>Page ${d.page} of ${d.pages} (${d.total} vendors)</span>
+            <div class="flex gap-2">
+                ${d.page > 1 ? `<button onclick="goPage(${d.page-1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Prev</button>` : ''}
+                ${d.page < d.pages ? `<button onclick="goPage(${d.page+1})" class="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700">Next</button>` : ''}
+            </div>`;
+    } finally { setLoading(false); }
+}
+function goPage(p) { currentPage = p; loadList(); }
+
+function openVendorDetail(vendorId, vendorName) {
+    selectedVendorId = vendorId;
+    document.getElementById('f-search').value = vendorName;
+    setView('detail');
+    loadDetail();
+}
+
+async function loadDetail() {
+    if (!selectedVendorId) { document.getElementById('detail-tbody').innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">Select a vendor from the List view first</td></tr>'; return; }
+    setLoading(true);
+    try {
+        document.getElementById('detail-vendor-label').textContent = `Showing all accounts_payable entries for: ${document.getElementById('f-search').value}`;
+        const r = await fetch(`${API}?action=detail&user_sys_id=${encodeURIComponent(selectedVendorId)}`);
+        const d = await r.json();
+        if (!d.success) return;
+        document.getElementById('detail-tbody').innerHTML = (d.rows||[]).map(row => {
+            const isDebit = (row.type||'').toLowerCase()==='debit';
+            return `<tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${(row.date||'').substring(0,10)}</td>
+                <td class="px-4 py-3 text-gray-800">${row.purpose||'—'}</td>
+                <td class="px-4 py-3 text-gray-500">${row.work_title||row.work_sys_id||'—'}</td>
+                <td class="px-4 py-3"><span class="text-xs font-bold ${isDebit?'text-green-600':'text-amber-600'}">${isDebit?'DEBIT (paid)':'CREDIT (purchase)'}</span></td>
+                <td class="px-4 py-3 text-right font-medium">${fmt(row.amount)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No entries</td></tr>';
+    } finally { setLoading(false); }
+}
+
+function toggleExportMenu() { document.getElementById('exportMenu').classList.toggle('hidden'); }
+document.addEventListener('click', e => {
+    if (!document.getElementById('exportDropdownWrap')?.contains(e.target)) document.getElementById('exportMenu')?.classList.add('hidden');
+});
+
+async function exportData(type = 'csv') {
+    document.getElementById('exportMenu')?.classList.add('hidden');
+    setLoading(true);
+    try {
+        let filename, rows, colWidths, boldCells;
+        const dateSuffix = new Date().toISOString().split('T')[0];
+
+        if (currentView === 'list') {
+            const r = await fetch(`${API}?action=export&${buildParams()}`);
+            const d = await r.json();
+            if (!d.success) { alert('Export failed'); return; }
+            filename = `payable-list-${dateSuffix}`;
+            rows = [
+                ['Accounts Payable — Vendor List', '', '', '', ''],
+                ['Total Vendors', d.summary.total_vendors, '', '', ''],
+                ['Total Payable', d.summary.total_payable, '', '', ''],
+                ['', '', '', '', ''],
+                ['Vendor', 'Total Purchases', 'Paid/Reversed', 'Payable Balance', 'Entries'],
+                ...(d.rows||[]).map(row => [row.user_name||row.user_sys_id, parseFloat(row.total_purchase_credits), parseFloat(row.total_payments_and_reversals), parseFloat(row.payable_balance), row.entry_count]),
+            ];
+            colWidths = [{wch:28},{wch:18},{wch:18},{wch:18},{wch:12}];
+            boldCells = ['A1','A5'];
+        } else {
+            if (!selectedVendorId) { alert('Select a vendor first'); return; }
+            const r = await fetch(`${API}?action=detail&user_sys_id=${encodeURIComponent(selectedVendorId)}`);
+            const d = await r.json();
+            if (!d.success) { alert('Export failed'); return; }
+            filename = `payable-detail-${dateSuffix}`;
+            rows = [
+                ['Accounts Payable — Detail', '', '', '', ''],
+                ['Date', 'Purpose', 'Work', 'Type', 'Amount'],
+                ...(d.rows||[]).map(row => [(row.date||'').substring(0,10), row.purpose||'', row.work_title||row.work_sys_id||'', (row.type||'').toUpperCase(), parseFloat(row.amount)]),
+            ];
+            colWidths = [{wch:12},{wch:30},{wch:20},{wch:10},{wch:14}];
+            boldCells = ['A1','A2'];
         }
-        document.getElementById('applyFilter').addEventListener('click', () => { state.page = 1; fetchData(); });
-        document.getElementById('clearFilter').addEventListener('click', () => {
-          document.getElementById('f_date_from').value = '';
-          document.getElementById('f_date_to').value = '';
-          document.getElementById('f_search').value = '';
-          state.page = 1;
-          fetchData();
-        });
-        document.getElementById('prevPage').addEventListener('click', () => { if (state.page > 1) { state.page--; fetchData(); } });
-        document.getElementById('nextPage').addEventListener('click', () => { if (state.page < state.pages) { state.page++; fetchData(); } });
 
-        document.getElementById('exportBtn').addEventListener('click', (e) => {
-          e.stopPropagation();
-          document.getElementById('exportMenu').classList.toggle('hidden');
-        });
-        document.addEventListener('click', () => document.getElementById('exportMenu').classList.add('hidden'));
-
-        document.querySelectorAll('.export-action').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            runExport(btn.dataset.type, btn.dataset.scope);
-          });
-        });
-
-        document.getElementById('closeDetail').addEventListener('click', () => {
-          document.getElementById('detailModal').classList.add('hidden');
-        });
-      }
-
-      function buildParams(action, scopeAll) {
-        const p = new URLSearchParams();
-        p.append('action', action);
-
-        if (!scopeAll) {
-          const dateFrom = document.getElementById('f_date_from').value;
-          const dateTo   = document.getElementById('f_date_to').value;
-          const search   = document.getElementById('f_search').value;
-          if (dateFrom) p.append('date_from', dateFrom);
-          if (dateTo) p.append('date_to', dateTo);
-          if (search) p.append('search', search);
+        if (type === 'csv') {
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            dlFile('data:text/csv;charset=utf-8,' + encodeURIComponent(csv), filename + '.csv');
+        } else if (type === 'excel') {
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            ws['!cols'] = colWidths;
+            boldCells.forEach(cell => { if (ws[cell]) ws[cell].s = { font: { bold: true } }; });
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Payable');
+            XLSX.writeFile(wb, filename + '.xlsx');
+        } else if (type === 'pdf') {
+            exportPDF('Accounts Payable Report', rows, filename);
         }
+    } finally { setLoading(false); }
+}
 
-        if (action === 'list') {
-          p.append('page', state.page);
-          p.append('per_page', state.per_page);
-        }
-        return p;
-      }
+function dlFile(href, filename) {
+    const a = document.createElement('a'); a.href = href; a.download = filename; a.click();
+}
 
-      async function fetchData() {
-        const params = buildParams('list', false);
-        document.getElementById('tableBody').innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400">Loading...</td></tr>`;
+function exportPDF(title, rows, filename) {
+    const win = window.open('', '_blank');
+    const html = `<html><head><title>${title}</title><style>
+        body{font-family:Arial,sans-serif;padding:20px;} h1{font-size:18px;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;} td,th{border:1px solid #ddd;padding:6px 8px;font-size:12px;text-align:left;}
+        tr:first-child td{font-weight:bold;background:#f3f4f6;}
+    </style></head><body>
+    <h1>${title}</h1>
+    <table>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>
+    <script>window.onload=()=>window.print()<\/script>
+    </body></html>`;
+    win.document.write(html);
+    win.document.close();
+}
 
-        try {
-          const res = await fetch(`${API}?${params.toString()}`);
-          const data = await res.json();
-          if (!data.success) {
-            document.getElementById('tableBody').innerHTML = `<tr><td colspan="7" class="text-center py-6 text-red-400">Failed to load data.</td></tr>`;
-            return;
-          }
-          renderTable(data.rows);
-          renderSummary(data.summary);
-          state.pages = data.pages || 1;
-          document.getElementById('pageInfo').textContent = `Page ${data.page} of ${data.pages} — ${data.total} vendors`;
-        } catch (err) {
-          console.error(err);
-          document.getElementById('tableBody').innerHTML = `<tr><td colspan="7" class="text-center py-6 text-red-400">Error loading report.</td></tr>`;
-        }
-      }
-
-      function renderSummary(summary) {
-        document.getElementById('sumCount').textContent = summary.total_vendors;
-        document.getElementById('sumAmount').textContent = '৳ ' + Number(summary.total_payable).toLocaleString('en-BD', { minimumFractionDigits: 2 });
-      }
-
-      function renderTable(rows) {
-        const tbody = document.getElementById('tableBody');
-        if (!rows.length) {
-          tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400">No outstanding payables.</td></tr>`;
-          return;
-        }
-        tbody.innerHTML = rows.map(r => `
-          <tr class="border-t border-gray-100 hover:bg-gray-50">
-            <td class="px-3 py-2 font-medium">${r.user_name || '-'}</td>
-            <td class="px-3 py-2 text-right">${fmt(r.total_purchase)}</td>
-            <td class="px-3 py-2 text-right">${fmt(r.total_payment)}</td>
-            <td class="px-3 py-2 text-right">${fmt(r.total_discount)}</td>
-            <td class="px-3 py-2 text-right font-semibold ${r.payable_balance > 0 ? 'text-red-500' : 'text-green'}">${fmt(r.payable_balance)}</td>
-            <td class="px-3 py-2 text-xs text-gray-500">${formatDate(r.last_activity_date)}</td>
-            <td class="px-3 py-2 text-center">
-              <button class="view-detail text-navy hover:underline text-xs" data-id="${r.user_sys_id}" data-name="${r.user_name}">View</button>
-            </td>
-          </tr>
-        `).join('');
-
-        document.querySelectorAll('.view-detail').forEach(btn => {
-          btn.addEventListener('click', () => openDetail(btn.dataset.id, btn.dataset.name));
-        });
-      }
-
-      async function openDetail(userSysId, name) {
-        document.getElementById('detailTitle').textContent = `${name} — Ledger`;
-        document.getElementById('detailBody').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-400">Loading...</td></tr>`;
-        document.getElementById('detailModal').classList.remove('hidden');
-
-        try {
-          const res = await fetch(`${API}?action=detail&user_sys_id=${encodeURIComponent(userSysId)}`);
-          const data = await res.json();
-          if (!data.success || !data.rows.length) {
-            document.getElementById('detailBody').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-400">No entries.</td></tr>`;
-            return;
-          }
-          document.getElementById('detailBody').innerHTML = data.rows.map(r => `
-            <tr class="border-t border-gray-50">
-              <td class="py-1">${formatDate(r.date)}</td>
-              <td class="py-1">${r.purpose || '-'}</td>
-              <td class="py-1">${TYPE_LABEL[r.related_type] || r.related_type}</td>
-              <td class="py-1 text-right">${fmt(r.amount)}</td>
-            </tr>
-          `).join('');
-        } catch (err) {
-          document.getElementById('detailBody').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-400">Error loading detail.</td></tr>`;
-        }
-      }
-
-      function fmt(n) { return Number(n).toLocaleString('en-BD', { minimumFractionDigits: 2 }); }
-      function formatDate(d) {
-        if (!d) return '-';
-        const dt = new Date(d);
-        return isNaN(dt) ? d : dt.toLocaleDateString('en-GB');
-      }
-
-
-      function getActiveFilters() {
-        const filters = [];
-        const from = document.getElementById('f_date_from')?.value;
-        const to   = document.getElementById('f_date_to')?.value;
-        const search = document.getElementById('f_search')?.value;
-        const month  = document.getElementById('f_month')?.value;
-        if (from)   filters.push({ label: 'From', value: from });
-        if (to)     filters.push({ label: 'To', value: to });
-        if (month)  filters.push({ label: 'Month', value: month });
-        if (search) filters.push({ label: 'Search', value: search });
-        const amtMin = document.getElementById('f_amount_min')?.value;
-        const amtMax = document.getElementById('f_amount_max')?.value;
-        if (amtMin) filters.push({ label: 'Min Amount', value: amtMin });
-        if (amtMax) filters.push({ label: 'Max Amount', value: amtMax });
-        // Multi-selects
-        ['f_client','f_vendor','f_work','f_task'].forEach(id => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          const sel = [...el.selectedOptions].map(o => o.text);
-          if (sel.length) filters.push({ label: el.previousElementSibling?.textContent || id, value: sel.join(', ') });
-        });
-        const paid = document.getElementById('f_is_paid')?.value;
-        if (paid !== '' && paid !== undefined) filters.push({ label: 'Paid', value: paid === '1' ? 'Yes' : 'No' });
-        return filters;
-      }
-
-      function updateFilterBar() {
-        const filters = getActiveFilters();
-        const bar  = document.getElementById('activeFilterBar');
-        const tags = document.getElementById('filterTags');
-        if (!bar || !tags) return;
-        if (!filters.length) { bar.classList.add('hidden'); tags.innerHTML = ''; return; }
-        bar.classList.remove('hidden');
-        tags.innerHTML = filters.map(f =>
-          `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
-            <span class="font-medium">${f.label}:</span> ${f.value}
-          </span>`
-        ).join('');
-      }
-
-      function getFilterSummaryText() {
-        const filters = getActiveFilters();
-        if (!filters.length) return 'No filters applied';
-        return 'Filters: ' + filters.map(f => `${f.label}: ${f.value}`).join(' | ');
-      }
-
-      async function runExport(type, scope) {
-        const params = buildParams('export', scope === 'all');
-        document.getElementById('exportMenu').classList.add('hidden');
-
-        try {
-          const res = await fetch(`${API}?${params.toString()}`);
-          const data = await res.json();
-          if (!data.success) { alert('Export failed.'); return; }
-
-          const rows = data.rows.map(r => ({
-            Vendor: r.user_name,
-            'Total Purchase': Number(r.total_purchase).toFixed(2),
-            'Total Payment': Number(r.total_payment).toFixed(2),
-            'Discount/Refund': Number(r.total_discount).toFixed(2),
-            Payable: Number(r.payable_balance).toFixed(2),
-            'Last Activity': formatDate(r.last_activity_date),
-          }));
-
-          const filenameBase = `payable-report-${scope}-${new Date().toISOString().slice(0,10)}`;
-          if (type === 'csv') exportCSV(rows, filenameBase);
-          else if (type === 'xlsx') exportXLSX(rows, filenameBase);
-          else if (type === 'pdf') exportPDF(rows, filenameBase, data.summary);
-        } catch (err) {
-          console.error(err);
-          alert('Export failed.');
-        }
-      }
-
-      function exportCSV(rows, filenameBase) {
-        // Filter summary row যোগ করি
-        const filterRow = [{ 'Filter': getFilterSummaryText() }];
-        const wsSummary = XLSX.utils.json_to_sheet(filterRow);
-        const wsData    = XLSX.utils.json_to_sheet(rows);
-        // Combine: summary + blank + data
-        const csvSummary = XLSX.utils.sheet_to_csv(wsSummary);
-        const csvData    = XLSX.utils.sheet_to_csv(wsData);
-        const csv = csvSummary + '\n' + csvData;
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        downloadBlob(blob, `${filenameBase}.csv`);
-      }
-      function exportCSV_ORIG(rows, filenameBase) {
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const csv = XLSX.utils.sheet_to_csv(ws);
-        downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `${filenameBase}.csv`);
-      }
-      function exportXLSX(rows, filenameBase) {
-        // Filter summary যোগ করি — প্রথম ২ row
-        const filterText = getFilterSummaryText();
-        const ws = XLSX.utils.json_to_sheet([]);
-        XLSX.utils.sheet_add_aoa(ws, [[filterText], ['']], { origin: 'A1' });
-        XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });
-        ws['A1'].s = { font: { italic: true, color: { rgb: '6B7280' } } };
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Payable');
-        XLSX.writeFile(wb, `${filenameBase}.xlsx`);
-      }
-      function exportPDF(rows, filenameBase, summary) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: 'landscape' });
-        doc.setFontSize(14);
-        doc.text('Payable Report', 14, 15);
-        doc.setFontSize(9);
-        doc.text(`Vendors: ${summary.total_vendors}   Total Payable: ${Number(summary.total_payable).toFixed(2)}`, 14, 21);
-        doc.autoTable({
-          startY: 26,
-          head: [['Vendor', 'Total Purchase', 'Total Payment', 'Discount/Refund', 'Payable', 'Last Activity']],
-          body: rows.map(r => [r.Vendor, r['Total Purchase'], r['Total Payment'], r['Discount/Refund'], r.Payable, r['Last Activity']]),
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [26, 32, 57] },
-        });
-        doc.save(`${filenameBase}.pdf`);
-      }
-      function downloadBlob(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-      }
-
-    })();
-    </script>
-
+document.addEventListener('DOMContentLoaded', loadList);
+</script>
+<script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 </body>
 </html>

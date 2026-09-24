@@ -1370,6 +1370,22 @@ function _finRenderTable(groups) {
                             <input type="number" step="0.01" min="0.01" max="${due}" id="fin_payAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
                         </div>
                         <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Payment Method</label>
+                            <select id="fin_payMethod${gi}" class="f-input text-xs" onchange="_finTogglePayInstrument(${gi})">
+                                <option value="cash">Cash</option>
+                                <option value="npsb">NPSB</option>
+                                <option value="rtgs">RTGS</option>
+                                <option value="bftn">BFTN</option>
+                                <option value="eft">EFT</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div id="fin_payInstrumentWrap${gi}" class="hidden">
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Cheque/Instrument No.</label>
+                            <input type="text" id="fin_payInstrumentNo${gi}" placeholder="Cheque number" class="f-input text-xs">
+                            <p class="text-[10px] text-gray-400 mt-0.5">এই পেমেন্ট hold থাকবে instrument clear না হওয়া পর্যন্ত — account balance তখনই কমবে।</p>
+                        </div>
+                        <div>
                             <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
                             <input type="date" id="fin_payDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
                         </div>
@@ -1426,6 +1442,21 @@ function _finRenderTable(groups) {
                             <input type="number" step="0.01" min="0.01" max="${due}" id="fin_refundSettleAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
                         </div>
                         <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Payment Method</label>
+                            <select id="fin_refundSettleMethod${gi}" class="f-input text-xs" onchange="_finToggleRefundSettleInstrument(${gi})">
+                                <option value="cash">Cash</option>
+                                <option value="npsb">NPSB</option>
+                                <option value="rtgs">RTGS</option>
+                                <option value="bftn">BFTN</option>
+                                <option value="eft">EFT</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div id="fin_refundSettleInstrumentWrap${gi}" class="hidden">
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Cheque/Instrument No.</label>
+                            <input type="text" id="fin_refundSettleInstrumentNo${gi}" placeholder="Cheque number" class="f-input text-xs">
+                        </div>
+                        <div>
                             <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
                             <input type="date" id="fin_refundSettleDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
                         </div>
@@ -1453,6 +1484,21 @@ function _finRenderTable(groups) {
                         <div>
                             <label class="block text-[11px] font-medium text-gray-600 mb-1">Amount ৳ <span class="text-gray-400 font-normal">(সম্পূর্ণ বা আংশিক)</span></label>
                             <input type="number" step="0.01" min="0.01" max="${due}" id="fin_receiveAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Payment Method</label>
+                            <select id="fin_receiveMethod${gi}" class="f-input text-xs" onchange="_finToggleReceiveInstrument(${gi})">
+                                <option value="cash">Cash</option>
+                                <option value="npsb">NPSB</option>
+                                <option value="rtgs">RTGS</option>
+                                <option value="bftn">BFTN</option>
+                                <option value="eft">EFT</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div id="fin_receiveInstrumentWrap${gi}" class="hidden">
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Cheque/Instrument No.</label>
+                            <input type="text" id="fin_receiveInstrumentNo${gi}" placeholder="Cheque number" class="f-input text-xs">
                         </div>
                         <div>
                             <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
@@ -1511,6 +1557,21 @@ function _finRenderTable(groups) {
                             <input type="number" step="0.01" min="0.01" max="${due}" id="fin_refundSettleAmount${gi}" value="${due.toFixed(2)}" class="f-input text-xs">
                         </div>
                         <div>
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Payment Method</label>
+                            <select id="fin_refundSettleMethod${gi}" class="f-input text-xs" onchange="_finToggleRefundSettleInstrument(${gi})">
+                                <option value="cash">Cash</option>
+                                <option value="npsb">NPSB</option>
+                                <option value="rtgs">RTGS</option>
+                                <option value="bftn">BFTN</option>
+                                <option value="eft">EFT</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div id="fin_refundSettleInstrumentWrap${gi}" class="hidden">
+                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Cheque/Instrument No.</label>
+                            <input type="text" id="fin_refundSettleInstrumentNo${gi}" placeholder="Cheque number" class="f-input text-xs">
+                        </div>
+                        <div>
                             <label class="block text-[11px] font-medium text-gray-600 mb-1">Date</label>
                             <input type="date" id="fin_refundSettleDate${gi}" value="${new Date().toISOString().slice(0,10)}" class="f-input text-xs">
                         </div>
@@ -1547,21 +1608,36 @@ function _finSelectPayAccount(gi, sysId, name) {
     document.getElementById(`fin_payAccountDrop${gi}`).classList.add('hidden');
 }
 
+// Generic instrument-field toggle, reused by every Payment Method dropdown
+// in this file (Pay Now, Receive Now, Refund Settlement forms) — shows the
+// Instrument No. field only when Cheque is selected.
+function _finToggleInstrumentField(selectId, wrapId) {
+    const method = document.getElementById(selectId).value;
+    document.getElementById(wrapId).classList.toggle('hidden', method !== 'cheque');
+}
+function _finTogglePayInstrument(gi) { _finToggleInstrumentField(`fin_payMethod${gi}`, `fin_payInstrumentWrap${gi}`); }
+function _finToggleReceiveInstrument(gi) { _finToggleInstrumentField(`fin_receiveMethod${gi}`, `fin_receiveInstrumentWrap${gi}`); }
+function _finToggleRefundSettleInstrument(gi) { _finToggleInstrumentField(`fin_refundSettleMethod${gi}`, `fin_refundSettleInstrumentWrap${gi}`); }
+
 async function _finSubmitPayNow(gi, purchaseGroupId, vendorId) {
     const accountId = document.getElementById(`fin_payAccountId${gi}`).value;
     const amount = parseFloat(document.getElementById(`fin_payAmount${gi}`).value);
     const date = document.getElementById(`fin_payDate${gi}`).value;
+    const paymentMethod = document.getElementById(`fin_payMethod${gi}`).value;
+    const instrumentNo = document.getElementById(`fin_payInstrumentNo${gi}`)?.value.trim() || '';
 
     if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
     if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
     if (!vendorId) { showToast('error', 'Vendor তথ্য পাওয়া যায়নি'); return; }
+    if (paymentMethod === 'cheque' && !instrumentNo) { showToast('error', 'Cheque number দিন'); return; }
 
     try {
         const res = await fetch(API.payOutstanding, {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({
                 purchase_group_id: purchaseGroupId, vendor_id: vendorId, account_id: accountId,
-                amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
+                amount, date, payment_method: paymentMethod, instrument_no: instrumentNo || undefined,
+                work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
             }),
         });
         const json = await res.json();
@@ -1599,17 +1675,21 @@ async function _finSubmitReceiveNow(gi, saleGroupId, clientId) {
     const accountId = document.getElementById(`fin_receiveAccountId${gi}`).value;
     const amount = parseFloat(document.getElementById(`fin_receiveAmount${gi}`).value);
     const date = document.getElementById(`fin_receiveDate${gi}`).value;
+    const paymentMethod = document.getElementById(`fin_receiveMethod${gi}`).value;
+    const instrumentNo = document.getElementById(`fin_receiveInstrumentNo${gi}`)?.value.trim() || '';
 
     if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
     if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
     if (!clientId) { showToast('error', 'Client তথ্য পাওয়া যায়নি'); return; }
+    if (paymentMethod === 'cheque' && !instrumentNo) { showToast('error', 'Cheque number দিন'); return; }
 
     try {
         const res = await fetch(API.receiveOutstanding, {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({
                 sale_group_id: saleGroupId, client_id: clientId, account_id: accountId,
-                amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
+                amount, date, payment_method: paymentMethod, instrument_no: instrumentNo || undefined,
+                work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID,
             }),
         });
         const json = await res.json();
@@ -1700,15 +1780,18 @@ async function _finSubmitRefundSettleVendor(gi, refundGroupId, vendorId) {
     const accountId = document.getElementById(`fin_refundSettleAccountId${gi}`).value;
     const amount = parseFloat(document.getElementById(`fin_refundSettleAmount${gi}`).value);
     const date = document.getElementById(`fin_refundSettleDate${gi}`).value;
+    const paymentMethod = document.getElementById(`fin_refundSettleMethod${gi}`).value;
+    const instrumentNo = document.getElementById(`fin_refundSettleInstrumentNo${gi}`)?.value.trim() || '';
 
     if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
     if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
     if (!vendorId) { showToast('error', 'Vendor তথ্য পাওয়া যায়নি'); return; }
+    if (paymentMethod === 'cheque' && !instrumentNo) { showToast('error', 'Cheque number দিন'); return; }
 
     try {
         const res = await fetch(API.refundSettleVendor, {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ refund_group_id: refundGroupId, vendor_id: vendorId, account_id: accountId, amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID }),
+            body: JSON.stringify({ refund_group_id: refundGroupId, vendor_id: vendorId, account_id: accountId, amount, date, payment_method: paymentMethod, instrument_no: instrumentNo || undefined, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID }),
         });
         const json = await res.json();
         if (json.success) { showToast('success', json.message || 'Refund settled'); finLoadEntries(); }
@@ -1720,15 +1803,18 @@ async function _finSubmitRefundSettleClient(gi, refundGroupId, clientId) {
     const accountId = document.getElementById(`fin_refundSettleAccountId${gi}`).value;
     const amount = parseFloat(document.getElementById(`fin_refundSettleAmount${gi}`).value);
     const date = document.getElementById(`fin_refundSettleDate${gi}`).value;
+    const paymentMethod = document.getElementById(`fin_refundSettleMethod${gi}`).value;
+    const instrumentNo = document.getElementById(`fin_refundSettleInstrumentNo${gi}`)?.value.trim() || '';
 
     if (!accountId) { showToast('error', 'একটা Account সিলেক্ট করুন'); return; }
     if (!amount || amount <= 0) { showToast('error', 'সঠিক amount দিন'); return; }
     if (!clientId) { showToast('error', 'Client তথ্য পাওয়া যায়নি'); return; }
+    if (paymentMethod === 'cheque' && !instrumentNo) { showToast('error', 'Cheque number দিন'); return; }
 
     try {
         const res = await fetch(API.refundSettleClient, {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ refund_group_id: refundGroupId, client_id: clientId, account_id: accountId, amount, date, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID }),
+            body: JSON.stringify({ refund_group_id: refundGroupId, client_id: clientId, account_id: accountId, amount, date, payment_method: paymentMethod, instrument_no: instrumentNo || undefined, work_id: taskData?.work_sys_id, task_id: TASK_SYS_ID }),
         });
         const json = await res.json();
         if (json.success) { showToast('success', json.message || 'Refund settled'); finLoadEntries(); }

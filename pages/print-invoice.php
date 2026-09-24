@@ -225,6 +225,14 @@ try {
     // ============ END MERGE ============
 
     // Prepare data for template
+    // PLACEHOLDER: adjust to your actual domain once deployed.
+    $baseDomain = 'https://YOUR_DOMAIN_HERE';
+    $publicPayUrl = $baseDomain . '/pages/pay-invoice.php?id=' . urlencode($invoice['sys_id']) . '&token=' . urlencode($invoice['public_token'] ?? '');
+    // Using the QRServer free API rather than a PHP QR library, to avoid an
+    // extra Composer dependency for one image -- swap for a local generator
+    // if offline rendering or a Composer-free-but-self-hosted QR is preferred.
+    $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($publicPayUrl);
+
     $form_data = [
         'invoice_no' => $invoice['sys_id'] ?? 'N/A',
         'date' => isset($invoice['date']) ? date('d/m/Y', strtotime($invoice['date'])) : 'N/A',
@@ -233,6 +241,8 @@ try {
         'due_amount' => $invoice['due_amount'] ?? 0,
         'status' => (int)($invoice['status'] ?? 0), // 1=paid
         'total_amount_in_words' => $invoice['total_amount_in_words'] ?? '',
+        'public_pay_url' => $publicPayUrl,
+        'qr_code_url' => $qrCodeUrl,
 
         // Vendor data from JSON
         'vendor_logo' => $vendor_data['logo'] ?? '',
@@ -606,6 +616,18 @@ ob_start();
                 <td>In Word: <?php echo htmlspecialchars($form_data['total_amount_in_words']); ?></td>
             </tr>
         </table>
+
+        <?php if ($form_data['due_amount'] > 0.009): ?>
+        <!-- Online Payment QR Code -->
+        <table class="no-border" style="margin-top: 12px;">
+            <tr>
+                <td style="text-align: center; padding-top: 8px;">
+                    <img src="<?php echo htmlspecialchars($form_data['qr_code_url']); ?>" alt="Scan to Pay" style="width: 110px; height: 110px;">
+                    <div style="font-size: 11px; color: #555; margin-top: 4px;">Scan to pay online</div>
+                </td>
+            </tr>
+        </table>
+        <?php endif; ?>
 
         <!-- Payment Information -->
         <?php

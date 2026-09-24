@@ -4,7 +4,12 @@ require '../../server/db_connection.php';
 
 header('Content-Type: application/json'); // Tell the client this is JSON
 
-$epsId = $_GET['eps_id'];
+$epsId = $_GET['eps_id'] ?? '';
+
+if ($epsId === '') {
+    echo json_encode(['success' => false, 'message' => 'eps_id is required']);
+    exit;
+}
 
 try {
     $stmt = $pdo->prepare("
