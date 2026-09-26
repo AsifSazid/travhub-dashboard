@@ -76,7 +76,7 @@ try {
     $merchantTransactionId = date('YmdHis') . random_int(1000, 9999);
 
     // PLACEHOLDER: adjust these URLs to your actual domain once deployed.
-    $baseUrl    = 'https://YOUR_DOMAIN_HERE/api/epsgw';
+    $baseUrl    = 'https://dev.travhub.com.bd/api/epsgw';
     $successUrl = "{$baseUrl}/verify-callback.php?invoice_id=" . urlencode($invoiceId) . "&token=" . urlencode($token) . "&result=success";
     $failUrl    = "{$baseUrl}/verify-callback.php?invoice_id=" . urlencode($invoiceId) . "&token=" . urlencode($token) . "&result=fail";
     $cancelUrl  = "{$baseUrl}/verify-callback.php?invoice_id=" . urlencode($invoiceId) . "&token=" . urlencode($token) . "&result=cancel";

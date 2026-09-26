@@ -226,7 +226,7 @@ try {
 
     // Prepare data for template
     // PLACEHOLDER: adjust to your actual domain once deployed.
-    $baseDomain = 'https://YOUR_DOMAIN_HERE';
+    $baseDomain = 'https://dev.travhub.com.bd';
     $publicPayUrl = $baseDomain . '/pages/pay-invoice.php?id=' . urlencode($invoice['sys_id']) . '&token=' . urlencode($invoice['public_token'] ?? '');
     // Using the QRServer free API rather than a PHP QR library, to avoid an
     // extra Composer dependency for one image -- swap for a local generator

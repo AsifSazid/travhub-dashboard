@@ -25,7 +25,7 @@
  */
 
 // ================= PLACEHOLDER CREDENTIALS — REPLACE BEFORE USE =================
-define('EPS_BASE_URL', 'https://pgapi.eps.com.bd/v1'); // sandbox; use https://pgapi.eps.com.bd/v1 for production
+define('EPS_BASE_URL', 'https://sandboxpgapi.eps.com.bd/v1'); // sandbox; use https://pgapi.eps.com.bd/v1 for production
 define('EPS_USERNAME', 'travhub.asif@gmail.com');
 define('EPS_PASSWORD', 'Merchant@123');
 define('EPS_MERCHANT_ID', '41df1b0a-8941-4192-b7f3-7e61d4b8d06c');
@@ -114,16 +114,8 @@ function epsgwGetToken(PDO $pdo): string
         throw new Exception('EPS GetToken failed: ' . ($body['errorMessage'] ?? 'unknown error'));
     }
 
-    // EPS returns expireDate as ISO 8601 (e.g. "2026-09-26T11:38:55.3696096Z"),
-    // but MySQL DATETIME needs 'Y-m-d H:i:s' -- convert before storing, or
-    // every insert fails with SQLSTATE[22007]. EPS's fractional seconds can
-    // have 7 digits, which PHP's DateTime doesn't always accept cleanly, so
-    // truncate to 6 (microseconds) first as a safety net.
-    $rawExpireDate = preg_replace('/(\.\d{6})\d*Z?$/', '$1', $body['expireDate']);
-    $expireDateFormatted = (new DateTime($rawExpireDate))->format('Y-m-d H:i:s');
-
     $pdo->prepare("INSERT INTO ac_gateway_tokens (gateway, token, expire_date, created_at) VALUES ('eps', ?, ?, NOW())")
-        ->execute([$body['token'], $expireDateFormatted]);
+        ->execute([$body['token'], $body['expireDate']]);
 
     return $body['token'];
 }

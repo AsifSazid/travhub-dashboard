@@ -98,56 +98,38 @@ try {
 
     $finalPurpose = "EPS Gateway settlement — Invoice {$gatewayPayment['invoice_sys_id']} ({$clientName})";
 
-    function _insertFinancialEntry(PDO $pdo, array $f): string
-    {
-        $ids  = generateV2IDs($pdo, 'financial_entries');
-        $meta = buildMetaData(null, $f['user_name_actor']);
-        $pdo->prepare("
-            INSERT INTO financial_entries (
-                uuid, sys_id, transaction_group_id,
-                user_sys_id, user_name, user_type, account_head, vendor_type,
-                date, purpose, type, related_type,
-                is_paid, is_partial, is_discounted,
-                amount, qty_rate, ref, meta_data
-            ) VALUES (
-                :uuid, :sys_id, :group_id,
-                :user_sys_id, :user_name, :user_type, :account_head, :vendor_type,
-                :date, :purpose, :type, :related_type,
-                1, 0, 0,
-                :amount, NULL, :ref, :meta_data
-            )
-        ")->execute([
-            ':uuid' => $ids['uuid'], ':sys_id' => $ids['sys_id'], ':group_id' => $f['group_id'],
-            ':user_sys_id' => $f['user_sys_id'], ':user_name' => $f['user_name'], ':user_type' => $f['user_type'],
-            ':account_head' => $f['account_head'], ':vendor_type' => $f['vendor_type'],
-            ':date' => $f['date'], ':purpose' => $f['purpose'], ':type' => $f['type'], ':related_type' => $f['related_type'],
-            ':amount' => $f['amount'], ':ref' => $f['ref'], ':meta_data' => $meta,
-        ]);
-        return $ids['sys_id'];
+    /* ================= Resolve the pending leg into a real bank_account leg =================
+       verify-callback.php already created the accounts_receivable leg AND a
+       placeholder account_head='gateway_pending' leg (no real ac_banking
+       account was known yet at that point). This step does NOT create a new
+       financial_entries group -- it converts that pending leg in place into
+       the real bank_account leg, now that we know which account the money
+       actually landed in. This keeps both legs under the same
+       transaction_group_id, so reports/ledgers see one balanced group, not two. */
+    $groupId = $gatewayPayment['financial_entries_group_id'];
+    if (!$groupId) {
+        throw new Exception('No financial_entries_group_id found on this gateway payment -- it may predate this settlement flow; use the manual reconciliation path instead.');
     }
 
-    $groupId = generateV2SysId($pdo, 'financial_entries');
-    $baseRow = [
-        'date' => $date, 'purpose' => $finalPurpose,
-        'ref' => $gatewayPaymentId, // links back to the gateway_payments row, not a specific sale
-        'user_name_actor' => $userName, 'group_id' => $groupId,
-    ];
+    $pendingStmt = $pdo->prepare("
+        SELECT sys_id FROM financial_entries
+        WHERE transaction_group_id = ? AND account_head = 'gateway_pending'
+        LIMIT 1
+    ");
+    $pendingStmt->execute([$groupId]);
+    $pendingEntrySysId = $pendingStmt->fetchColumn();
+    if (!$pendingEntrySysId) {
+        throw new Exception('No pending gateway_pending financial_entries leg found for this group -- it may already be settled.');
+    }
 
-    $arEntrySysId = _insertFinancialEntry($pdo, array_merge($baseRow, [
-        'user_sys_id' => $clientId, 'user_name' => $clientName, 'user_type' => 'client',
-        'account_head' => 'accounts_receivable', 'vendor_type' => null,
-        'type' => 'credit', 'related_type' => 0, 'amount' => $amount,
-    ]));
+    $pdo->prepare("
+        UPDATE financial_entries
+        SET user_sys_id = ?, user_name = ?, account_head = 'bank_account', vendor_type = 1,
+            date = ?, purpose = ?
+        WHERE sys_id = ?
+    ")->execute([$accountId, $accountName, $date, $finalPurpose, $pendingEntrySysId]);
 
-    $bankEntrySysId = _insertFinancialEntry($pdo, array_merge($baseRow, [
-        'user_sys_id' => $accountId, 'user_name' => $accountName, 'user_type' => 'account',
-        'account_head' => 'bank_account', 'vendor_type' => 1,
-        'type' => 'debit', 'related_type' => 1, 'amount' => $amount,
-    ]));
-
-    // Gateway settlements are always instant from our side -- the money is
-    // already confirmed to have landed, so this always uses 'gateway' as an
-    // instant-equivalent method (never an instrument/hold state).
+    $bankEntrySysId = $pendingEntrySysId;
     postBankLegV2($pdo, $accountId, $accountName, $oldBalance, $amount, 'in', $date,
         $finalPurpose, $bankEntrySysId, $userName,
         'gateway', $clientId, $clientName, 'client', null);

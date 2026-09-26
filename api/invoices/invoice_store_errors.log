@@ -23,3 +23,4 @@ Stack trace:
 Stack trace:
 #0 {main}
   thrown in /www/wwwroot/192.168.4.202/travhub-admin/api/invoices/store.php on line 307
+[24-Sep-2026 22:14:23 Asia/Dhaka] Invoice Store Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'public_token' in 'INSERT INTO' in /www/wwwroot/192.168.0.168/dev/api/invoices/store.php:357
