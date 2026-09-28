@@ -1,25 +1,28 @@
 <?php
 // PATH: /api/permissions/toggle.php
 //
-// Grants or revokes a permission for one employee. Only a super-admin
-// (login.role='0') may call this -- granting/revoking access is itself an
-// accounting-adjacent admin action, so it uses the same super-admin
-// convention as the rest of this codebase rather than requiring the
-// permission being granted (that would let an accounting-access holder
-// grant it to others, which the user hasn't asked for).
+// Grants or revokes accounting permissions for one employee. Super-admin
+// only (login.role = '0'): being allowed to grant access must not itself be
+// something an accounting-access holder can hand out to others.
 //
-// POST { employee_sys_id, permission_key, grant: true|false }
+// POST {
+//   employee_sys_id,
+//   grant: true|false,
+//   permission_key:  'report_profit'                    -- one key, or
+//   permission_keys: ['report_profit', 'entry_expense'] -- several at once
+// }
+// Only keys defined in server/permissions.php (plus the master
+// 'full_accounting_access') are accepted, so a typo or a made-up key can
+// never be written into the table.
 
 session_start();
 
 require '../../server/db_connection.php';
 require_once '../../server/sys_id_generator_v2.php';
 require '../../server/generate_meta_data.php';
+require_once '../../server/permissions.php';
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -27,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-if (($_SESSION['role'] ?? null) !== '0') {
+if ((string)($_SESSION['role'] ?? '') !== '0') {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Only a super-admin can grant or revoke permissions']);
     exit;
@@ -36,51 +39,71 @@ if (($_SESSION['role'] ?? null) !== '0') {
 try {
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
-    $employeeSysId  = trim($input['employee_sys_id'] ?? '');
-    $permissionKey  = trim($input['permission_key'] ?? '');
-    $grant          = !empty($input['grant']);
+    $employeeSysId = trim($input['employee_sys_id'] ?? '');
+    $grant         = !empty($input['grant']);
 
-    if (!$employeeSysId || !$permissionKey) {
+    $keys = [];
+    if (!empty($input['permission_keys']) && is_array($input['permission_keys'])) {
+        $keys = $input['permission_keys'];
+    } elseif (!empty($input['permission_key'])) {
+        $keys = [$input['permission_key']];
+    }
+    $keys = array_values(array_unique(array_map('trim', $keys)));
+
+    if (!$employeeSysId || !$keys) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'employee_sys_id and permission_key are required']);
+        echo json_encode(['success' => false, 'message' => 'employee_sys_id and at least one permission key are required']);
+        exit;
+    }
+
+    $allowed = array_merge(allAccountingPermissionKeys(), ['full_accounting_access']);
+    $unknown = array_diff($keys, $allowed);
+    if ($unknown) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Unknown permission key(s): ' . implode(', ', $unknown)]);
         exit;
     }
 
     $adminName = $_SESSION['user_name'] ?? 'system';
 
-    if ($grant) {
-        // Idempotent: if an active grant already exists, do nothing; if a
-        // previously-revoked row exists, re-activate it rather than
-        // inserting a duplicate.
-        $existing = $pdo->prepare("SELECT sys_id, revoked_at FROM employee_permissions WHERE employee_sys_id = ? AND permission_key = ?");
-        $existing->execute([$employeeSysId, $permissionKey]);
-        $row = $existing->fetch(PDO::FETCH_ASSOC);
+    $pdo->beginTransaction();
 
-        if ($row && $row['revoked_at'] === null) {
-            echo json_encode(['success' => true, 'message' => 'Already granted']);
-            exit;
-        }
+    foreach ($keys as $key) {
+        if ($grant) {
+            // Idempotent: already active -> nothing; previously revoked ->
+            // reactivate that row rather than inserting a duplicate.
+            $existing = $pdo->prepare("SELECT sys_id, revoked_at FROM employee_permissions WHERE employee_sys_id = ? AND permission_key = ?");
+            $existing->execute([$employeeSysId, $key]);
+            $row = $existing->fetch(PDO::FETCH_ASSOC);
 
-        if ($row) {
-            $pdo->prepare("UPDATE employee_permissions SET revoked_at = NULL, granted_by = ?, granted_at = NOW() WHERE sys_id = ?")
-                ->execute([$adminName, $row['sys_id']]);
+            if ($row && $row['revoked_at'] === null) continue;
+
+            if ($row) {
+                $pdo->prepare("UPDATE employee_permissions SET revoked_at = NULL, granted_by = ?, granted_at = NOW() WHERE sys_id = ?")
+                    ->execute([$adminName, $row['sys_id']]);
+            } else {
+                $ids  = generateV2IDs($pdo, 'employee_permissions');
+                $meta = buildMetaData(null, $adminName);
+                $pdo->prepare("
+                    INSERT INTO employee_permissions (uuid, sys_id, employee_sys_id, permission_key, granted_by, granted_at, meta_data)
+                    VALUES (?, ?, ?, ?, ?, NOW(), ?)
+                ")->execute([$ids['uuid'], $ids['sys_id'], $employeeSysId, $key, $adminName, $meta]);
+            }
         } else {
-            $ids = generateV2IDs($pdo, 'employee_permissions');
-            $meta = buildMetaData(null, $adminName);
-            $pdo->prepare("
-                INSERT INTO employee_permissions (uuid, sys_id, employee_sys_id, permission_key, granted_by, granted_at, meta_data)
-                VALUES (?, ?, ?, ?, ?, NOW(), ?)
-            ")->execute([$ids['uuid'], $ids['sys_id'], $employeeSysId, $permissionKey, $adminName, $meta]);
+            $pdo->prepare("UPDATE employee_permissions SET revoked_at = NOW() WHERE employee_sys_id = ? AND permission_key = ? AND revoked_at IS NULL")
+                ->execute([$employeeSysId, $key]);
         }
-
-        echo json_encode(['success' => true, 'message' => 'Permission granted']);
-    } else {
-        $pdo->prepare("UPDATE employee_permissions SET revoked_at = NOW() WHERE employee_sys_id = ? AND permission_key = ? AND revoked_at IS NULL")
-            ->execute([$employeeSysId, $permissionKey]);
-        echo json_encode(['success' => true, 'message' => 'Permission revoked']);
     }
 
+    $pdo->commit();
+
+    echo json_encode([
+        'success' => true,
+        'message' => ($grant ? 'Granted ' : 'Revoked ') . count($keys) . ' permission' . (count($keys) === 1 ? '' : 's'),
+    ]);
+
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Server error', 'error' => $e->getMessage()]);
 }

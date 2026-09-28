@@ -500,6 +500,18 @@ $API = [
 // CORE
 // ════════════════════════════════════════════════════════════
 const TASK_SYS_ID = "<?php echo htmlspecialchars($taskSysId); ?>";
+// What this user may do in the Financial tab. This only decides which buttons to
+// SHOW -- the server enforces the same rules on every request, so hiding a button
+// is a convenience, never the protection.
+const FIN_CAN = <?php
+    require_once __DIR__ . '/../server/permissions.php';
+    echo json_encode([
+        'work'    => canWorkOnTaskFinance($pdo, $taskSysId),
+        'pay'     => canMoveMoney($pdo, $taskSysId, 'entry_payment', 'ledger_vendor'),
+        'receive' => canMoveMoney($pdo, $taskSysId, 'entry_receive', 'ledger_client'),
+        'refund'  => canMoveMoney($pdo, $taskSysId, 'entry_refund',  'ledger_vendor'),
+    ]);
+?>;
 const API = <?php echo json_encode($API); ?>;
 let taskData = null, workData = null, serviceWorkData = null;
 
@@ -1239,6 +1251,10 @@ async function finLoadEntries() {
     try {
         const res = await fetch(API.taskFinEntries + '?task_id=' + encodeURIComponent(TASK_SYS_ID));
         const json = await res.json();
+        if (res.status === 403) {
+            document.getElementById('fin_tableBody').innerHTML = `<tr><td colspan="6" class="px-3 py-6 text-center text-gray-400 text-sm">এই task-এর financial তথ্য দেখার অনুমতি আপনার নেই।</td></tr>`;
+            return;
+        }
         if (!json.success) return;
         _finTransactions = json.finStmts ?? [];
         _finGroups = json.groups ?? [];
@@ -1299,6 +1315,10 @@ function _finRenderTable(groups) {
         legs.forEach(l => { try { fileCount += (JSON.parse(l.files_json||'[]')||[]).length; } catch(e){} });
         const amount = g.amount ?? parseFloat(primary.amount||0);
         const due = g.due ?? 0;
+        // Editing/deleting an entry that moved bank money is itself a money action:
+        // a bank credit was a payment out, a bank debit was money received.
+        const bankLeg = legs.find(l => l.account_head === 'bank_account');
+        const canEditDelete = FIN_CAN.work && (!bankLeg || (bankLeg.type === 'credit' ? FIN_CAN.pay : FIN_CAN.receive));
 
         return `
         <tr class="hover:bg-gray-50 transition cursor-pointer border-t-2 border-gray-100" onclick="_finToggleGroup(${gi})">
@@ -1315,8 +1335,10 @@ function _finRenderTable(groups) {
             </td>
             <td class="px-3 py-2">${fileCount ? `<i class="fas fa-paperclip text-indigo-400"></i> ${fileCount}` : '—'}</td>
             <td class="px-3 py-2 whitespace-nowrap" onclick="event.stopPropagation()">
+                ${canEditDelete ? `
                 <button onclick="finEditTransaction('${primary.sys_id}')" class="px-1.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded mr-1" title="Edit"><i class="fas fa-edit text-[10px]"></i></button>
                 <button onclick="finDeleteTransaction('${primary.sys_id}')" class="px-1.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded" title="Delete (removes all linked legs)"><i class="fas fa-trash text-[10px]"></i></button>
+                ` : '<span class="text-gray-300">—</span>'}
             </td>
         </tr>
         <tr id="fin-group-${gi}" class="hidden">
@@ -1349,7 +1371,7 @@ function _finRenderTable(groups) {
                         }).join('')}
                     </tbody>
                 </table>
-                ${g.payable ? `
+                ${(g.payable && FIN_CAN.pay) ? `
                 <div class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-xs font-semibold text-amber-700"><i class="fas fa-hand-holding-usd mr-1"></i>৳${due.toFixed(2)} বাকি আছে ${escHtml(g.who)}-কে</p>
@@ -1394,7 +1416,7 @@ function _finRenderTable(groups) {
                         </button>
                     </div>
                 </div>` : ''}
-                ${(g.event_type === 'purchase') ? `
+                ${(g.event_type === 'purchase' && FIN_CAN.refund) ? `
                 <div class="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-xs font-semibold text-rose-700"><i class="fas fa-undo mr-1"></i>${escHtml(g.who)}-এর থেকে Refund</p>
@@ -1421,7 +1443,7 @@ function _finRenderTable(groups) {
                         </button>
                     </div>
                 </div>` : ''}
-                ${(g.event_type === 'vendor_refund' && g.refund_receivable) ? `
+                ${(g.event_type === 'vendor_refund' && g.refund_receivable && FIN_CAN.refund) ? `
                 <div class="mt-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-xs font-semibold text-teal-700"><i class="fas fa-hourglass-half mr-1"></i>৳${due.toFixed(2)} refund এখনো account-এ আসেনি</p>
@@ -1465,7 +1487,7 @@ function _finRenderTable(groups) {
                         </button>
                     </div>
                 </div>` : ''}
-                ${g.receivable ? `
+                ${(g.receivable && FIN_CAN.receive) ? `
                 <div class="mt-2 p-3 bg-sky-50 border border-sky-200 rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-xs font-semibold text-sky-700"><i class="fas fa-hand-holding-usd mr-1"></i>৳${due.toFixed(2)} বাকি আছে ${escHtml(g.who)}-এর কাছ থেকে</p>
@@ -1509,7 +1531,7 @@ function _finRenderTable(groups) {
                         </button>
                     </div>
                 </div>` : ''}
-                ${(g.event_type === 'sale') ? `
+                ${(g.event_type === 'sale' && FIN_CAN.refund) ? `
                 <div class="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-xs font-semibold text-rose-700"><i class="fas fa-undo mr-1"></i>${escHtml(g.who)}-কে Refund</p>
@@ -1536,7 +1558,7 @@ function _finRenderTable(groups) {
                         </button>
                     </div>
                 </div>` : ''}
-                ${(g.event_type === 'client_refund' && g.refund_payable) ? `
+                ${(g.event_type === 'client_refund' && g.refund_payable && FIN_CAN.refund) ? `
                 <div class="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-xs font-semibold text-orange-700"><i class="fas fa-hourglass-half mr-1"></i>৳${due.toFixed(2)} refund এখনো দেওয়া হয়নি</p>

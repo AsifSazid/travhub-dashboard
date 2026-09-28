@@ -45,7 +45,6 @@ session_start();
 
 require '../../server/db_connection.php';
 require_once '../../server/permissions.php';
-requireFullAccountingAccess($pdo, true);
 require '../../server/uuid_with_system_id_generator.php';
 require_once '../../server/sys_id_generator_v2.php';
 require '../../server/generate_meta_data.php';
@@ -110,6 +109,15 @@ try {
     $txnMode    = $input['transaction_mode'] ?? null; // vendor-side only
     $workId     = $input['work_id']    ?? null;
     $taskId     = $input['task_id']    ?? null;
+    // Money only moves when a bank account is attached: a real-time vendor
+    // payment, or a client "Receive Now". Everything else is plain bookkeeping
+    // and follows the task rule alone.
+    $movesMoney = !empty($accountId) && (!empty($vendorId) || !empty($clientId));
+    if ($movesMoney) {
+        requireMoneyAccess($pdo, $taskId, !empty($vendorId) ? 'entry_payment' : 'entry_receive', !empty($vendorId) ? 'ledger_vendor' : 'ledger_client');
+    } else {
+        requireTaskOrPermission($pdo, $taskId, 'full_accounting_access');
+    }
     $ref        = $input['ref']        ?? null;
     $qtyRate    = $input['qty_rate']   ?? null; // JSON string: {"qty":2,"rate":18000}
     $paymentMethod = strtolower($input['payment_method'] ?? 'cash'); // cash|npsb|rtgs|bftn|eft|cheque

@@ -18,3 +18,5 @@ server-name.txt
 /grok
 /pages/vendor/smb/
 /pages/vendor/icewind/smb/
+
+/server/epsgw_gateway.php

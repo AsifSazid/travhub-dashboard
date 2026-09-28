@@ -14,7 +14,6 @@ session_start();
 
 require '../../server/db_connection.php';
 require_once '../../server/permissions.php';
-requireFullAccountingAccess($pdo, true);
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -30,6 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
     $transactionId = $input['id'] ?? '';
+    $taskOfEntry = taskIdForFinancialEntry($pdo, (string)$transactionId);
+    $money = moneyPermissionsForEntry($pdo, (string)$transactionId);
+    if ($money) {
+        requireMoneyAccess($pdo, $taskOfEntry, $money['money'], $money['ledger']);
+    } else {
+        requireTaskOrPermission($pdo, $taskOfEntry, 'full_accounting_access');
+    }
 
     if (empty($transactionId)) {
         http_response_code(400);

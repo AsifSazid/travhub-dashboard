@@ -3,6 +3,11 @@
 // Get current page file name
 $currentPage = basename($_SERVER['PHP_SELF']);
 
+// Needed to hide accounting links from people who lack the matching permission.
+// Most pages already have $pdo; connect only if this one does not.
+if (!isset($pdo)) { require_once __DIR__ . '/../server/db_connection.php'; }
+require_once __DIR__ . '/../server/permissions.php';
+
 ?>
 
 <aside id="sidebar" class="fixed top-16 left-0 h-[calc(100vh-4rem)] bg-slate-800 text-white z-20 w-64 flex flex-col transition-all duration-300">
@@ -132,6 +137,50 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-chart-bar mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Analytics</span>
                     </a>
+
+                    <div class="border-t border-slate-600 my-2"></div>
+                    <p class="px-3 text-[10px] uppercase tracking-wide text-gray-500 sidebar-text">Double-Entry Accounting</p>
+
+<?php if (canAccess($pdo, 'entry_expense')): ?>
+                    <a href="accounts-expense.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'accounts-expense.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-receipt mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Record Expense</span>
+                    </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'entry_asset')): ?>
+                    <a href="accounts-asset.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'accounts-asset.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-desktop mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Record Asset Purchase</span>
+                    </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'loans_view')): ?>
+                    <a href="loans-list.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'loans-list.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-hand-holding-dollar mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Loan Management</span>
+                    </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'gateway_settle')): ?>
+                    <a href="pending-gateway-settlements.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'pending-gateway-settlements.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-building-columns mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Gateway Settlements</span>
+                    </a>
+<?php endif; ?>
+                    <?php if (($_SESSION['role'] ?? null) == '0'): ?>
+                    <a href="manage-permissions.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'manage-permissions.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-user-shield mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Manage Permissions</span>
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -146,54 +195,86 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </button>
 
                 <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+<?php if (canAccess($pdo, 'report_profit')): ?>
                     <a href="report-profit.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-profit.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-money-bill-trend-up mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Profit</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_cashflow')): ?>
                     <a href="report-cashflow.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-cashflow.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-water mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">CashFlow</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_payment')): ?>
                     <a href="report-payment.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-payment.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-square-caret-up mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Payment</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_receive')): ?>
                     <a href="report-receive.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-receive.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-square-caret-down mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Receive</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_sale')): ?>
                     <a href="report-sale.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-sale.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-circle-check mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Sale</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_purchase')): ?>
                     <a href="report-purchase.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-purchase.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-square-check mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Purchase</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_payable')): ?>
                     <a href="report-ac_payable.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-ac_payable.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-circle-up mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">A/C Payable</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_receivable')): ?>
                     <a href="report-ac_receivable.php"
                         class="flex items-center p-3 rounded-lg 
                        <?= $currentPage == 'report-ac_receivable.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-circle-down mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">A/C Recievable</span>
                     </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_expense')): ?>
+                    <a href="report-expense.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-expense.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-receipt mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Expense</span>
+                    </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_asset')): ?>
+                    <a href="report-asset.php"
+                        class="flex items-center p-3 rounded-lg 
+                       <?= $currentPage == 'report-asset.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-desktop mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Fixed Assets</span>
+                    </a>
+<?php endif; ?>
                 </div>
             </div>
             

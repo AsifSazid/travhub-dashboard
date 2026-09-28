@@ -1,60 +1,69 @@
 <?php
 // PATH: /api/permissions/list.php
 //
-// Lists all employees alongside their current grant status for a given
-// permission_key, joined against their department (as a helpful default/
-// filter in the UI, per the user's department-based starting point) --
-// but the actual access decision always comes from employee_permissions,
-// never inferred from department.
+// Feeds pages/manage-permissions.php: every employee with the list of
+// accounting permissions currently granted to them, plus the permission
+// catalog itself (so the page renders whatever server/permissions.php
+// defines and never has its own copy of the list to keep in sync).
 //
-// GET ?permission_key=full_accounting_access
+// Department is returned only so the page can group and filter employees;
+// it is never used to decide access.
 
 session_start();
 require '../../server/db_connection.php';
+require_once '../../server/permissions.php';
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? null) !== '0') {
+// (string) cast: role can arrive as int 0 or string '0' depending on the mysqli setup.
+if ((string)($_SESSION['role'] ?? '') !== '0') {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Only a super-admin can view this list']);
     exit;
 }
 
-$permissionKey = $_GET['permission_key'] ?? 'full_accounting_access';
-
 try {
-    $stmt = $pdo->prepare("
-        SELECT
-            e.sys_id, e.name, e.department_id, e.department_name,
-            ep.granted_at, ep.granted_by,
-            (ep.sys_id IS NOT NULL AND ep.revoked_at IS NULL) AS has_access
-        FROM employees e
-        LEFT JOIN employee_permissions ep
-            ON ep.employee_sys_id = e.sys_id
-            AND ep.permission_key = :pk
-            AND ep.revoked_at IS NULL
-        ORDER BY e.department_name ASC, e.name ASC
-    ");
-    $stmt->execute([':pk' => $permissionKey]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $employees = $pdo->query("
+        SELECT sys_id, name, department_id, department_name
+        FROM employees
+        ORDER BY department_name ASC, name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($rows as &$r) {
-        $r['has_access'] = (bool)$r['has_access'];
+    $grantRows = $pdo->query("
+        SELECT employee_sys_id, permission_key
+        FROM employee_permissions
+        WHERE revoked_at IS NULL
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $keysByEmployee = [];
+    foreach ($grantRows as $r) {
+        $keysByEmployee[$r['employee_sys_id']][] = $r['permission_key'];
     }
 
-    // Group by department for the UI's collapsible sections
-    $byDept = [];
-    foreach ($rows as $r) {
-        $dept = $r['department_name'] ?: 'No Department';
-        $byDept[$dept][] = $r;
+    $validKeys   = allAccountingPermissionKeys();
+    $masterCount = 0;
+
+    foreach ($employees as &$e) {
+        $keys = $keysByEmployee[$e['sys_id']] ?? [];
+        $e['permissions']   = array_values($keys);
+        $e['has_master']    = in_array('full_accounting_access', $keys, true);
+        $e['granted_count'] = count(array_intersect($keys, $validKeys));
+        if ($e['has_master']) $masterCount++;
+    }
+    unset($e);
+
+    $byDepartment = [];
+    foreach ($employees as $e) {
+        $byDepartment[$e['department_name'] ?: 'No Department'][] = $e;
     }
 
     echo json_encode([
-        'success'        => true,
-        'permission_key' => $permissionKey,
-        'employees'      => $rows,
-        'by_department'  => $byDept,
-        'granted_count'  => count(array_filter($rows, fn($r) => $r['has_access'])),
-        'total_count'    => count($rows),
+        'success'       => true,
+        'catalog'       => accountingPermissionCatalog(),
+        'total_keys'    => count($validKeys),
+        'employees'     => $employees,
+        'by_department' => $byDepartment,
+        'total_count'   => count($employees),
+        'master_count'  => $masterCount,
     ]);
 
 } catch (Throwable $e) {

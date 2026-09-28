@@ -24,7 +24,6 @@ session_start();
 
 require '../../server/db_connection.php';
 require_once '../../server/permissions.php';
-requireFullAccountingAccess($pdo, true);
 require '../../server/generate_meta_data.php';
 require '../../server/uuid_with_system_id_generator.php';
 require_once '../../server/sys_id_generator_v2.php';
@@ -77,6 +76,13 @@ try {
     }
 
     $transactionId = $input['id'];
+    $taskOfEntry = taskIdForFinancialEntry($pdo, (string)$transactionId);
+    $money = moneyPermissionsForEntry($pdo, (string)$transactionId);
+    if ($money) {
+        requireMoneyAccess($pdo, $taskOfEntry, $money['money'], $money['ledger']);
+    } else {
+        requireTaskOrPermission($pdo, $taskOfEntry, 'full_accounting_access');
+    }
     $newAmount     = (float)$input['amount'];
     $newPurpose    = trim($input['purpose']);
     $newDate       = $input['date'];
