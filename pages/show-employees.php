@@ -12,7 +12,7 @@ $getEmployeeApi = $ip_port . "api/employees/get-employee.php?employee_id=$employ
 $getEmployeeFinEntriesApi = $ip_port . "api/financial_entries/fin-entries.php?id=$employeeId";
 $getNotificationApi = $ip_port . "api/financial_entries/fin-notification.php?id=$employeeId";
 
-$API_BASE = "https://travhub.com.bd/travhub-admin/";
+$API_BASE = "https://dev.travhub.com.bd/";
 $getEmployeeApi = $API_BASE . "api/employees/get-employee.php?employee_id=" . urlencode($employeeId);
 
 // Server-side API call (for OG meta)
@@ -325,10 +325,42 @@ if ($response) {
                     <!-- Documents Tab -->
                     <div id="documents" class="tab-content active">
                         <div class="grid grid-cols-2 gap-6 h-full">
-                            <div class="col-span-2 justify-center h-full w-full">
-                                <div class="text-center">
-
+                            <div class="col-span-2 h-full w-full">
+                                <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Generate Document</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    <button onclick="openAppointmentLetterModal()" class="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-file-signature"></i> Appointment Letter
+                                    </button>
+                                    <button onclick="generateSalaryCertificate()" class="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-file-invoice"></i> Salary Certificate
+                                    </button>
+                                    <button onclick="generateIdCard()" class="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-id-card"></i> ID Card
+                                    </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Appointment Letter type-selection modal -->
+                    <div id="appointmentLetterModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.45);">
+                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                            <div class="flex items-center justify-between p-4 border-b border-gray-100">
+                                <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-file-signature mr-2 text-indigo-600"></i>Appointment Letter</h3>
+                                <button onclick="closeAppointmentLetterModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="p-4 space-y-3">
+                                <p class="text-xs text-gray-500 mb-2">এই কর্মচারীর জন্য কোন ধরনের letter তৈরি হবে?</p>
+                                <button onclick="generateAppointmentLetter('permanent')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition text-left px-4">
+                                    <i class="fas fa-user-check mr-2"></i>Permanent Appointment
+                                    <div class="text-xs font-normal text-indigo-100 mt-0.5">Bangladesh Labour Act 2006 — permanent worker, 6-month probation</div>
+                                </button>
+                                <button onclick="generateAppointmentLetter('probationary')" class="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition text-left px-4">
+                                    <i class="fas fa-user-clock mr-2"></i>Probationary Employee
+                                </button>
+                                <button onclick="generateAppointmentLetter('intern')" class="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition text-left px-4">
+                                    <i class="fas fa-user-graduate mr-2"></i>Intern
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -693,12 +725,34 @@ if ($response) {
                 window.print();
             });
             
-            // Edit button functionality (placeholder)
+            // Edit button -> the actual Edit Employee page
             document.getElementById('editButton').addEventListener('click', function() {
-                alert('Edit functionality would open a form to update employee information.');
-                // In a real application, this would redirect to an edit page or open a modal
+                window.location.href = 'edit-employee.php?sys_id=<?php echo urlencode($employeeId); ?>';
             });
         });
+
+        // ── Document generation ─────────────────────────────────────
+        const EMPLOYEE_SYS_ID = <?php echo json_encode($employeeId); ?>;
+        const DOC_BASE_URL = "<?php echo $ip_port; ?>";
+
+        function openAppointmentLetterModal() { document.getElementById('appointmentLetterModal').classList.remove('hidden'); }
+        function closeAppointmentLetterModal() { document.getElementById('appointmentLetterModal').classList.add('hidden'); }
+
+        function generateAppointmentLetter(letterType) {
+            closeAppointmentLetterModal();
+            const url = `${DOC_BASE_URL}pages/generate-appointment-letter.php?employee_id=${encodeURIComponent(EMPLOYEE_SYS_ID)}&letter_type=${encodeURIComponent(letterType)}`;
+            window.open(url, '_blank');
+        }
+
+        function generateSalaryCertificate() {
+            const url = `${DOC_BASE_URL}pages/generate-salary-certificate.php?employee_id=${encodeURIComponent(EMPLOYEE_SYS_ID)}`;
+            window.open(url, '_blank');
+        }
+
+        function generateIdCard() {
+            const url = `${DOC_BASE_URL}pages/generate-id-card.php?employee_id=${encodeURIComponent(EMPLOYEE_SYS_ID)}`;
+            window.open(url, '_blank');
+        }
     </script>
 </body>
 

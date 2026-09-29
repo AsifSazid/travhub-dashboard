@@ -6,7 +6,33 @@ if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
 }
 
-$storeEmployeeApi = $ip_port . "api/employees/store.php";
+$storeEmployeeApi  = $ip_port . "api/employees/store.php";
+$updateEmployeeApi = $ip_port . "api/employees/update.php";
+$getEmployeeApi    = $ip_port . "api/employees/get-employee.php";
+
+$employeeSysId = $_GET['sys_id'] ?? $_GET['id'] ?? '';
+if (!$employeeSysId) {
+    die('<div style="font-family:Arial,sans-serif;padding:60px;text-align:center;color:#666;"><h2>Missing employee</h2><p>No sys_id was given to edit.</p></div>');
+}
+
+// Load the employee's current data server-side so the form can be
+// pre-filled on first render, instead of showing a blank form and filling
+// it in with a second JS request after the page has already painted.
+require_once __DIR__ . '/../server/db_connection.php';
+$empStmt = $pdo->prepare("SELECT * FROM employees WHERE sys_id = ? LIMIT 1");
+$empStmt->execute([$employeeSysId]);
+$existingEmployee = $empStmt->fetch(PDO::FETCH_ASSOC);
+if (!$existingEmployee) {
+    die('<div style="font-family:Arial,sans-serif;padding:60px;text-align:center;color:#666;"><h2>Employee not found</h2><p>No employee with sys_id ' . htmlspecialchars($employeeSysId) . '.</p></div>');
+}
+$existingCompanyInfo = json_decode($existingEmployee['company_related_info'] ?? '{}', true) ?: [];
+$existingBasicInfo    = json_decode($existingEmployee['basic_info'] ?? '{}', true) ?: [];
+$existingPhone        = json_decode($existingEmployee['phone'] ?? '{}', true) ?: [];
+$existingEmail        = json_decode($existingEmployee['email'] ?? '{}', true) ?: [];
+$existingAddress      = json_decode($existingEmployee['address'] ?? '{}', true) ?: [];
+$existingEmergency    = json_decode($existingEmployee['emergency_contact'] ?? '{}', true) ?: [];
+
+function efVal($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 
 ?>
 
@@ -15,7 +41,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add New Employee</title>
+    <title>Edit Employee</title>
     <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -102,21 +128,6 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
     <!-- Sidebar -->
     <?php include '../elements/aside.php'; ?>
     
-    <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
-        </div>
-    </div>
-    
     <!-- Main Content -->
     <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300 h-full">
         <div class="p-6">
@@ -132,7 +143,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     </svg>
                                 </div>
                                 <div>
-                                    <h1 class="text-2xl font-bold text-gray-800">Add New Employee</h1>
+                                    <h1 class="text-2xl font-bold text-gray-800">Edit Employee — <?php echo efVal($existingEmployee["name"]); ?></h1>
                                     <p class="text-gray-600 text-sm mt-1">Fill in the details below to add a new employee to the system</p>
                                 </div>
                             </div>
@@ -214,9 +225,15 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     <div>
                                         <label class="form-label mb-1">Profile Photo <span class="text-gray-400 font-normal">(ID Card-এ ব্যবহার হবে)</span></label>
                                         <div class="flex items-center gap-4">
-                                            <img id="profilePhotoPreview" src="../assets/images/default-avatar.png" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23e5e7eb%22/%3E%3Ccircle cx=%2250%22 cy=%2238%22 r=%2216%22 fill=%22%239ca3af%22/%3E%3Cellipse cx=%2250%22 cy=%2280%22 rx=%2228%22 ry=%2220%22 fill=%22%239ca3af%22/%3E%3C/svg%3E'" class="w-20 h-20 rounded-full object-cover border-2 border-gray-200">
-                                            <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp"
-                                                class="text-sm text-gray-600" onchange="previewProfilePhoto(this)">
+                                            <img id="profilePhotoPreview"
+                                                src="<?php echo !empty($existingEmployee['profile_photo']) ? efVal($ip_port . 'storage/' . $existingEmployee['profile_photo']) : "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23e5e7eb%22/%3E%3Ccircle cx=%2250%22 cy=%2238%22 r=%2216%22 fill=%22%239ca3af%22/%3E%3Cellipse cx=%2250%22 cy=%2280%22 rx=%2228%22 ry=%2220%22 fill=%22%239ca3af%22/%3E%3C/svg%3E"; ?>"
+                                                onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23e5e7eb%22/%3E%3Ccircle cx=%2250%22 cy=%2238%22 r=%2216%22 fill=%22%239ca3af%22/%3E%3Cellipse cx=%2250%22 cy=%2280%22 rx=%2228%22 ry=%2220%22 fill=%22%239ca3af%22/%3E%3C/svg%3E'"
+                                                class="w-20 h-20 rounded-full object-cover border-2 border-gray-200">
+                                            <div>
+                                                <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp"
+                                                    class="text-sm text-gray-600" onchange="previewProfilePhoto(this)">
+                                                <p class="text-xs text-gray-400 mt-1">নতুন ছবি না দিলে আগেরটাই থাকবে</p>
+                                            </div>
                                         </div>
                                     </div>
                                     <div>
@@ -224,7 +241,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                             Full Name <span class="required-star">*</span>
                                         </label>
                                         <div class="relative">
-                                            <input type="text" id="fullName" name="full_name"
+                                            <input type="text" id="fullName" name="full_name" value="<?php echo efVal($existingEmployee["name"]); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="John Doe" required>
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -239,7 +256,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                                 Date of Birth
                                             </label>
                                             <div class="relative">
-                                                <input type="date" id="dateOfBirth" name="date_of_birth"
+                                                <input type="date" id="dateOfBirth" name="date_of_birth" value="<?php echo efVal($existingBasicInfo["date_of_birth"] ?? ""); ?>"
                                                     class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                     max="<?php echo date('Y-m-d'); ?>">
                                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -265,7 +282,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                             Primary Phone <span class="required-star">*</span>
                                         </label>
                                         <div class="relative">
-                                            <input type="tel" id="primaryPhone" name="primary_phone"
+                                            <input type="tel" id="primaryPhone" name="primary_phone" value="<?php echo efVal($existingPhone["primary_no"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="+1 (555) 123-4567" required>
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -279,7 +296,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                             Primary Email <span class="required-star">*</span>
                                         </label>
                                         <div class="relative">
-                                            <input type="email" id="primaryEmail" name="primary_email"
+                                            <input type="email" id="primaryEmail" name="primary_email" value="<?php echo efVal($existingEmail["primary"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="john.doe@company.com" required>
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -309,7 +326,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                             Designation <span class="required-star">*</span>
                                         </label>
                                         <div class="relative">
-                                            <input type="text" id="designation" name="designation"
+                                            <input type="text" id="designation" name="designation" value="<?php echo efVal($existingCompanyInfo["designation"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="Software Engineer" required>
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -325,7 +342,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                         <div class="relative">
                                             <textarea id="companyRole" name="company_role" rows="3"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                                placeholder="Describe the employee's role..." required></textarea>
+                                                placeholder="Describe the employee's role..." required><?php echo efVal($existingCompanyInfo["company_role"] ?? ""); ?></textarea>
                                             <div class="absolute top-3 left-3">
                                                 <i class="fas fa-tasks text-gray-400"></i>
                                             </div>
@@ -337,7 +354,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                             Date of Join <span class="required-star">*</span>
                                         </label>
                                         <div class="relative">
-                                            <input type="date" id="dateOfJoin" name="date_of_join"
+                                            <input type="date" id="dateOfJoin" name="date_of_join" value="<?php echo efVal($existingCompanyInfo["date_of_join"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <i class="fas fa-calendar-check text-gray-400"></i>
@@ -354,31 +371,31 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
 
                                     <div>
                                         <label for="fatherName" class="form-label mb-1">Father's Name</label>
-                                        <input type="text" id="fatherName" name="father_name"
+                                        <input type="text" id="fatherName" name="father_name" value="<?php echo efVal($existingCompanyInfo["father_name"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
 
                                     <div>
                                         <label for="motherName" class="form-label mb-1">Mother's Name</label>
-                                        <input type="text" id="motherName" name="mother_name"
+                                        <input type="text" id="motherName" name="mother_name" value="<?php echo efVal($existingCompanyInfo["mother_name"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
 
                                     <div>
                                         <label for="spouseName" class="form-label mb-1">Spouse's Name (if applicable)</label>
-                                        <input type="text" id="spouseName" name="spouse_name"
+                                        <input type="text" id="spouseName" name="spouse_name" value="<?php echo efVal($existingCompanyInfo["spouse_name"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
 
                                     <div>
                                         <label for="nidNo" class="form-label mb-1">National ID (NID) No.</label>
-                                        <input type="text" id="nidNo" name="nid_no"
+                                        <input type="text" id="nidNo" name="nid_no" value="<?php echo efVal($existingCompanyInfo["nid_no"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
 
                                     <div>
                                         <label for="grossSalary" class="form-label mb-1">Gross Monthly Salary (BDT)</label>
-                                        <input type="number" step="0.01" min="0" id="grossSalary" name="gross_salary"
+                                        <input type="number" step="0.01" min="0" id="grossSalary" name="gross_salary" value="<?php echo efVal($existingCompanyInfo["gross_salary"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             placeholder="50000">
                                         <p class="text-xs text-gray-400 mt-1">Appointment Letter-এ Basic 50% / House Rent 30% / Medical 10% / Conveyance 10% হিসেবে ভাগ হবে</p>
@@ -386,13 +403,13 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
 
                                     <div>
                                         <label for="reportingToName" class="form-label mb-1">Reporting To — Name</label>
-                                        <input type="text" id="reportingToName" name="reporting_to_name"
+                                        <input type="text" id="reportingToName" name="reporting_to_name" value="<?php echo efVal($existingCompanyInfo["reporting_to_name"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
 
                                     <div>
                                         <label for="reportingToDesignation" class="form-label mb-1">Reporting To — Designation</label>
-                                        <input type="text" id="reportingToDesignation" name="reporting_to_designation"
+                                        <input type="text" id="reportingToDesignation" name="reporting_to_designation" value="<?php echo efVal($existingCompanyInfo["reporting_to_designation"] ?? ""); ?>"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
                                 </div>
@@ -414,7 +431,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     <div>
                                         <label class="form-label mb-1">Address Line 1</label>
                                         <div class="relative">
-                                            <input type="text" name="address_line_1"
+                                            <input type="text" name="address_line_1" value="<?php echo efVal($existingAddress["address_line_1"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="Street address">
                                             <i class="fas fa-road absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
@@ -424,7 +441,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     <div>
                                         <label class="form-label mb-1">Address Line 2</label>
                                         <div class="relative">
-                                            <input type="text" name="address_line_2"
+                                            <input type="text" name="address_line_2" value="<?php echo efVal($existingAddress["address_line_2"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="Apartment, suite">
                                             <i class="fas fa-home absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
@@ -436,13 +453,13 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                         <div>
                                             <label class="form-label mb-1">City</label>
                                             <div class="relative">
-                                                <input type="text" name="city" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="city" value="<?php echo efVal($existingAddress["city"] ?? ""); ?>" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 <i class="fa-solid fa-city absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                             </div>
                                         <div class="mt-4">
                                             <label class="form-label mb-1">State</label>
                                             <div class="relative">
-                                                <input type="text" name="state" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="state" value="<?php echo efVal($existingAddress["state"] ?? ""); ?>" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 <i class="fa-solid fa-globe absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                             </div>
                                         </div>
@@ -451,7 +468,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     <div>
                                         <label class="form-label mb-1">ZIP Code</label>
                                         <div class="relative">
-                                            <input type="text" name="zip_code" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <input type="text" name="zip_code" value="<?php echo efVal($existingAddress["zip_code"] ?? ""); ?>" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <i class="fa-solid fa-signs-post absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                         </div>
                                     </div>
@@ -508,7 +525,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                     <div>
                                         <label class="form-label mb-1">Emergency Contact Person</label>
                                         <div class="relative">
-                                            <input type="text" name="emergency_contact_person"
+                                            <input type="text" name="emergency_contact_person" value="<?php echo efVal($existingEmergency["person"] ?? ""); ?>"
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="Emergency Contact Person">
                                             <i class="fas fa-user absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
@@ -519,14 +536,14 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                                         <div>
                                             <label class="form-label mb-1">Relationship</label>
                                             <div class="relative">
-                                                <input type="text" name="relation" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="relation" value="<?php echo efVal($existingEmergency["relation"] ?? ""); ?>" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 <i class="fa-solid fa-users absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                             </div>
                                         </div>
                                         <div>
                                             <label class="form-label mb-1">Phone No</label>
                                             <div class="relative">
-                                                <input type="text" name="emergency_phone" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="emergency_phone" value="<?php echo efVal($existingEmergency["phone"] ?? ""); ?>" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 <i class="fa-solid fa-phone absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
                                             </div>
                                         </div>
@@ -606,7 +623,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
                             <button type="submit"
                                 class="px-6 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 <i class="fas fa-user-plus mr-2"></i>
-                                Add Employee
+                                Update Employee
                             </button>
                         </div>
                     </div>
@@ -618,7 +635,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
     <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
     <script>
-        const API_URL_FOR_CLIENT_STORE = "<?php echo $storeEmployeeApi; ?>";
+        const API_URL_FOR_UPDATE = "<?php echo $updateEmployeeApi; ?>";
         const API_URL_FOR_PHOTO_UPLOAD = "<?php echo $ip_port; ?>api/employees/upload-photo.php";
 
         function previewProfilePhoto(input) {
@@ -627,6 +644,7 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
             reader.onload = e => { document.getElementById('profilePhotoPreview').src = e.target.result; };
             reader.readAsDataURL(input.files[0]);
         }
+        const EXISTING_SYS_ID = <?php echo json_encode($employeeSysId); ?>;
 
         console.log(droppedFiles);
 
@@ -635,6 +653,28 @@ $storeEmployeeApi = $ip_port . "api/employees/store.php";
             // Set max date for date of join to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateOfJoin').max = today;
+
+            // Pre-fill Department and Blood Group -- these two are normally
+            // set by picking from a dropdown, whose hidden value field this
+            // page also relies on, so set both the visible text and the
+            // hidden value directly here rather than re-deriving them from
+            // departments.php's own (differently-scoped) id list.
+            const existingDeptId   = <?php echo json_encode($existingEmployee['department_id'] ?? ''); ?>;
+            const existingDeptName = <?php echo json_encode($existingEmployee['department_name'] ?? ($existingCompanyInfo['department'] ?? '')); ?>;
+            if (existingDeptName) {
+                const deptInput = document.getElementById('departmentInput');
+                const deptHidden = document.getElementById('selectedDepartmentId');
+                if (deptInput) deptInput.value = existingDeptName;
+                if (deptHidden) deptHidden.value = existingDeptId;
+            }
+
+            const existingBloodGroup = <?php echo json_encode($existingBasicInfo['blood_group'] ?? ''); ?>;
+            if (existingBloodGroup) {
+                const bgInput = document.getElementById('bloodGroupInput');
+                const bgHidden = document.getElementById('selectedBloodGroupValue');
+                if (bgInput) bgInput.value = existingBloodGroup;
+                if (bgHidden) bgHidden.value = existingBloodGroup;
+            }
         });
 
         // Secondary Phone Management
@@ -920,20 +960,14 @@ document.getElementById('employeeForm').addEventListener('submit', async functio
         return;
     }
     
-    // File validation check
-    if (droppedFiles.length === 0) {
-        if (!confirm('No files uploaded. Do you want to continue without files?')) {
-            console.log('User cancelled due to no files');
-            return;
-        }
-    }
+    // File validation check -- not required on edit; existing files stay as they are.
     
     console.log('Number of files:', droppedFiles.length); // Debug log
     
     // Show loading state
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Updating...';
     submitBtn.disabled = true;
     
     // Collect form data
@@ -1029,33 +1063,17 @@ document.getElementById('employeeForm').addEventListener('submit', async functio
         }
     };
     
+    data.sys_id = EXISTING_SYS_ID;
+
     console.log('Data to send:', data); // Debug log
-    
-    // Create FormData for file upload
-    const uploadFormData = new FormData();
-    
-    // Add all files
-    if (droppedFiles.length > 0) {
-        console.log('Adding files to FormData...');
-        droppedFiles.forEach((file, index) => {
-            uploadFormData.append(`files[]`, file);
-            console.log(`Added file ${index + 1}:`, file.name);
-        });
-    } else {
-        console.log('No files to add');
-    }
-    
-    // Add other data as JSON
-    uploadFormData.append('employee_data', JSON.stringify(data));
-    console.log('Employee data added to FormData');
-    
+
     try {
-        console.log('Sending request to:', API_URL_FOR_CLIENT_STORE);
-        
-        const response = await fetch(API_URL_FOR_CLIENT_STORE, {
+        console.log('Sending request to:', API_URL_FOR_UPDATE);
+
+        const response = await fetch(API_URL_FOR_UPDATE, {
             method: 'POST',
-            body: uploadFormData
-            // headers নিষ্ক্রিয় করুন, FormData নিজেই সেট করে দেয়
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
         });
 
         console.log('Response status:', response.status);
@@ -1064,15 +1082,14 @@ document.getElementById('employeeForm').addEventListener('submit', async functio
         console.log('API Response:', result);
 
         if (result.success) {
-            showMessage('Employee added successfully!', 'success');
+            showMessage('Employee updated successfully!', 'success');
 
-            // Upload the profile photo separately, now that we have a sys_id --
-            // it never went through the multipart FormData above, since that
-            // one carries the general document uploads, not the dedicated photo.
+            // Only upload a new photo if the user actually picked one --
+            // otherwise leave the existing profile_photo untouched.
             const photoFile = document.getElementById('profilePhotoInput').files[0];
-            if (photoFile && result.sys_id) {
+            if (photoFile) {
                 const photoForm = new FormData();
-                photoForm.append('sys_id', result.sys_id);
+                photoForm.append('sys_id', EXISTING_SYS_ID);
                 photoForm.append('photo', photoFile);
                 try {
                     await fetch(API_URL_FOR_PHOTO_UPLOAD, { method: 'POST', body: photoForm });
@@ -1080,13 +1097,8 @@ document.getElementById('employeeForm').addEventListener('submit', async functio
                     console.error('Profile photo upload failed:', e);
                 }
             }
-
-            // Reset form after successful submission
-            setTimeout(() => {
-                resetForm();
-            }, 2000);
         } else {
-            showMessage(result.message || 'Failed to add employee', 'error');
+            showMessage(result.message || 'Failed to update employee', 'error');
         }
     } catch (error) {
         console.error('Fetch Error:', error);

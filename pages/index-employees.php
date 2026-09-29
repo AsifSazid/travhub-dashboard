@@ -195,6 +195,9 @@ $allEmployee = $ip_port . "api/employees/all-employees.php";
                         <button onclick='viewFirstCredentials(${JSON.stringify(employee)})' title="Details">
                             <i class="fa-solid fa-key ml-3"></i>
                         </button>
+                        <a href="edit-employee.php?sys_id=${employee.sys_id}" title="Edit">
+                            <i class="fas fa-pen ml-3"></i>
+                        </a>
                     </td>
                 `;
         

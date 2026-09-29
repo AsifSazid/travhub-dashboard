@@ -1,6 +1,8 @@
 <?php
 // Allow requests from your specific frontend domain
 header("Access-Control-Allow-Origin: https://travhub.com.bd");
+header("Access-Control-Allow-Origin: https://dev.travhub.com.bd");
+header("Access-Control-Allow-Origin: https://admin.travhub.com.bd");
 
 // Allow specific methods (GET is what you're using)
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");

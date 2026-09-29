@@ -212,11 +212,23 @@ function taskRuleAllows(PDO $pdo, string $taskSysId): bool
     }
 
     // Nobody assigned => anyone in the service's department.
+    // NOTE: employees has no department_sys_id column -- only the numeric
+    // department_id (referencing departments.id). service_works stores the
+    // department as department_sys_id (referencing departments.sys_id,
+    // format THR-A26-DP-xxxx). Resolve the service's department_sys_id to
+    // its numeric id here, rather than assuming employees carries a sys_id
+    // it does not have -- that mismatch previously made this branch always
+    // deny, since the query for it referenced a column that doesn't exist.
     if (empty($svc['department_sys_id'])) return false; // no department to compare => deny
-    $emp = $pdo->prepare("SELECT department_sys_id FROM employees WHERE sys_id = ? LIMIT 1");
+    $deptRow = $pdo->prepare("SELECT id FROM departments WHERE sys_id = ? LIMIT 1");
+    $deptRow->execute([$svc['department_sys_id']]);
+    $serviceDeptId = $deptRow->fetchColumn();
+    if ($serviceDeptId === false) return false; // unknown department => deny
+
+    $emp = $pdo->prepare("SELECT department_id FROM employees WHERE sys_id = ? LIMIT 1");
     $emp->execute([$userId]);
     $myDept = $emp->fetchColumn();
-    return $myDept && $myDept === $svc['department_sys_id'];
+    return $myDept && $myDept == $serviceDeptId;
 }
 
 /**

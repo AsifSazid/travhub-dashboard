@@ -180,7 +180,16 @@ function handleFormDataRequest() {
         'status' => $employeeData['status'] ?? 'active',
         'created_at' => date('Y-m-d H:i:s'),
         'created_by' => $createdBy,
-        'created_by_id' => $createdById
+        'created_by_id' => $createdById,
+        // Fields needed for Appointment Letter / Salary Certificate generation
+        // -- optional at creation time, can be filled in later via edit.
+        'father_name'  => $employeeData['company_related_info']['father_name'] ?? null,
+        'mother_name'  => $employeeData['company_related_info']['mother_name'] ?? null,
+        'spouse_name'  => $employeeData['company_related_info']['spouse_name'] ?? null,
+        'nid_no'       => $employeeData['company_related_info']['nid_no'] ?? null,
+        'gross_salary' => $employeeData['company_related_info']['gross_salary'] ?? null,
+        'reporting_to_name'        => $employeeData['company_related_info']['reporting_to_name'] ?? null,
+        'reporting_to_designation' => $employeeData['company_related_info']['reporting_to_designation'] ?? null,
     ];
     
     // Add department to company_related_info if available
@@ -409,6 +418,13 @@ function handleJsonRequest() {
         'employment_type' => $data['type'] ?? 'permanent',
         'status' => $data['status'] ?? 'active',
         'created_at' => date('Y-m-d H:i:s'),
+        'father_name'  => $data['company_related_info']['father_name'] ?? null,
+        'mother_name'  => $data['company_related_info']['mother_name'] ?? null,
+        'spouse_name'  => $data['company_related_info']['spouse_name'] ?? null,
+        'nid_no'       => $data['company_related_info']['nid_no'] ?? null,
+        'gross_salary' => $data['company_related_info']['gross_salary'] ?? null,
+        'reporting_to_name'        => $data['company_related_info']['reporting_to_name'] ?? null,
+        'reporting_to_designation' => $data['company_related_info']['reporting_to_designation'] ?? null,
         'created_by' => $createdBy,
         'created_by_id' => $createdById
     ];
