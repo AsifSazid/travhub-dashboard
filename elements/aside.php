@@ -269,16 +269,42 @@ require_once __DIR__ . '/../server/permissions.php';
 <?php endif; ?>
 <?php if (canAccess($pdo, 'report_asset')): ?>
                     <a href="report-asset.php"
-                        class="flex items-center p-3 rounded-lg 
+                        class="flex items-center p-3 rounded-lg
                        <?= $currentPage == 'report-asset.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fa-solid fa-desktop mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Fixed Assets</span>
                     </a>
 <?php endif; ?>
+                    <div class="border-t border-slate-600 my-2"></div>
+                    <p class="px-3 text-[10px] uppercase tracking-wide text-gray-500 sidebar-text">Operational Reports</p>
+                    <a href="report-kpi.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'report-kpi.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-gauge-high mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">KPI Report</span>
+                    </a>
+                    <a href="report-work-coverage.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'report-work-coverage.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-diagram-project mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Work Coverage</span>
+                    </a>
+                    <a href="accounts-ledger.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'accounts-ledger.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-book-open mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Accounts Ledger</span>
+                    </a>
                 </div>
             </div>
             
-            <!-- HR Accordion -->
+            <!-- HR Accordion — visible only when user holds at least one HRM permission -->
+            <?php
+            $showHrEmployees = canAccess($pdo, 'hrm_employee_view');
+            $showHrPms       = canAccess($pdo, 'eps_view');
+            $showHrSection   = $showHrEmployees || $showHrPms;
+            ?>
+            <?php if ($showHrSection): ?>
             <div class="accordion-item mt-4" data-accordion="hr">
                 <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
                     <div class="flex items-center">
@@ -289,28 +315,25 @@ require_once __DIR__ . '/../server/permissions.php';
                 </button>
 
                 <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <?php if ($showHrEmployees): ?>
                     <a href="index-employees.php"
-                        class="flex items-center p-3 rounded-lg 
+                        class="flex items-center p-3 rounded-lg
                        <?= $currentPage == 'index-employees.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
                         <i class="fas fa-user-tie mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Employees</span>
                     </a>
-                    <a href="cv-maker.php"
-                        class="flex items-center p-3 rounded-lg 
-                       <?= $currentPage == 'cv-maker.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                        <i class="fas fa-user-tie mr-3"></i>
-                        <span class="sidebar-text transition-all duration-300">CV Maker</span>
+                    <?php endif; ?>
+                    <?php if ($showHrPms): ?>
+                    <a href="pms.php"
+                       class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'pms.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-wallet mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">PMS</span>
                     </a>
-                    <?php if ($_SESSION['role'] == '0') { ?>
-                        <a href="pms.php"
-                           class="flex items-center p-3 rounded-lg 
-                           <?= $currentPage == 'pms.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
-                            <i class="fa-solid fa-wallet mr-3"></i>
-                            <span class="sidebar-text transition-all duration-300">PMS</span>
-                        </a>
-                    <?php } ?>
+                    <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
             
             <!-- Quotation Accordion -->
             <div class="accordion-item mt-4" data-accordion="quotation">

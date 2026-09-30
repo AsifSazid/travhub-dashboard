@@ -6,6 +6,8 @@ declare(strict_types=1);
 session_start();
 
 require_once '../../server/db_connection.php';
+require_once '../../server/hrm_permissions.php';
+requireHrm($pdo, 'eps_manage');
 require_once '../../server/uuid_with_system_id_generator.php';
 require_once '../../server/generate_meta_data.php';
 

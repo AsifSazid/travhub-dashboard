@@ -3,8 +3,13 @@ include_once('./authenticate.php');
 
 require_once __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/../server/db_connection.php';
+require_once __DIR__ . '/../server/hrm_permissions.php';
 
 session_start();
+
+// Self-service: employees can always view their own slip.
+// HR staff with payroll_view can view anyone's.
+// We'll do the check later once slip's employee_id is known (see below).
 
 $slip_id = $_GET['slip_id'] ?? '';
 
@@ -131,6 +136,10 @@ try {
     if (!$salary) {
         die('Payment slip not found');
     }
+
+    // Permission: HR staff (payroll_view) can view any slip.
+    // An employee can view their own slip (session user_id === slip's employee_id).
+    requireHrmOrSelf($pdo, $salary['employee_id'] ?? '', 'payroll_view');
 
     $epsSalary = json_decode($salary['eps_salary'] ?? '{}', true);
     $deduction = json_decode($salary['deduction'] ?? '{}', true);

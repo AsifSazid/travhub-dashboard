@@ -58,7 +58,25 @@ function accountingPermissionCatalog(): array
         ],
         'Gateway & Payroll' => [
             'gateway_settle'   => 'Settle EPS gateway payments',
-            'payroll_disburse' => 'Disburse payroll',
+            'payroll_disburse' => 'Disburse payroll & bulk authorization',
+        ],
+        'HRM — Employees' => [
+            'hrm_employee_view'   => 'View employee list & profiles',
+            'hrm_employee_create' => 'Add new employees',
+            'hrm_employee_edit'   => 'Edit employee details',
+        ],
+        'HRM — EPS / Payroll Structures' => [
+            'eps_view'   => 'View EPS salary structures',
+            'eps_manage' => 'Create & edit EPS salary structures',
+            'eps_toggle' => 'Activate / deactivate an EPS structure',
+        ],
+        'HRM — Payroll' => [
+            'payroll_view'   => 'View salary slips & payroll history',
+            'payroll_create' => 'Generate salary slips',
+        ],
+        'HRM — HR Documents' => [
+            'hr_docs_generate' => 'Generate HR documents for any employee (appointment letter, salary certificate, NOC)',
+            'hr_id_card'       => 'Generate employee ID cards',
         ],
     ];
 }

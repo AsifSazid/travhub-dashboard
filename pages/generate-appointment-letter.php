@@ -15,8 +15,11 @@
 
 include_once('./authenticate.php');
 require_once __DIR__ . '/../server/db_connection.php';
+require_once __DIR__ . '/../server/hrm_permissions.php';
 
 $employeeId = $_GET['employee_id'] ?? '';
+requireHrmOrSelf($pdo, $employeeId, 'hr_docs_generate');
+
 $letterType = $_GET['letter_type'] ?? 'permanent'; // permanent | probationary | intern
 if (!in_array($letterType, ['permanent', 'probationary', 'intern'], true)) {
     $letterType = 'permanent';
@@ -137,6 +140,9 @@ $isPermanent = $letterType === 'permanent';
 <style>
     @page { size: A4; margin: 20mm 18mm; }
     body { font-family: 'Times New Roman', Times, serif; font-size: 12px; line-height: 1.5; color: #111; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .letterhead { text-align: center; border-bottom: 3px double #1b2540; padding-bottom: 14px; margin-bottom: 20px; }
+    .letterhead .company-name { font-size: 22px; font-weight: 800; color: #1b2540; letter-spacing: .5px; }
+    .letterhead .company-sub { font-size: 11.5px; color: #444; margin-top: 4px; }
     h1 { font-size: 16px; text-align: center; text-transform: uppercase; margin-bottom: 4px; }
     .subhead { text-align: center; font-size: 10.5px; color: #444; margin-bottom: 18px; }
     .ref-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 14px; }
@@ -156,6 +162,12 @@ $isPermanent = $letterType === 'permanent';
 
 <div class="no-print">
     <button onclick="window.print()" style="padding:10px 24px;background:#4338ca;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Print / Save as PDF</button>
+</div>
+
+<div class="letterhead">
+    <div class="company-name">TRAVHUB GLOBAL LIMITED</div>
+    <div class="company-sub">House-01, Road-6, Sector-3, Uttara, Dhaka-1230 &nbsp;|&nbsp; Mobile: 01611482773 &nbsp;|&nbsp; info@travhub.com.bd</div>
+    <div class="company-sub" style="margin-top:3px;">Reg. No: C-196691/2024</div>
 </div>
 
 <?php if ($isPermanent): ?>

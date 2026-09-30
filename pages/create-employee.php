@@ -1,6 +1,10 @@
 <?php
 
 include_once('./authenticate.php');
+require_once __DIR__ . '/../server/db_connection.php';
+require_once __DIR__ . '/../server/hrm_permissions.php';
+requireHrm($pdo, 'hrm_employee_create', false);
+
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";

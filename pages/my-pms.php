@@ -1,5 +1,8 @@
 <?php
 include_once('./authenticate.php');
+require_once __DIR__ . '/../server/db_connection.php';
+
+$myEmpId = $_SESSION['user_id'] ?? '';
 
 $ip_port = @file_get_contents('../ippath.txt');
 
@@ -38,13 +41,66 @@ function safeText($value)
 
         <!-- Header -->
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">
-                My Payment History
-            </h1>
+            <h1 class="text-2xl font-bold text-gray-800">My PMS</h1>
+            <p class="text-gray-600">Your salary history and HR documents.</p>
+        </div>
 
-            <p class="text-gray-600">
-                View your salary, bonus, overtime and allowance history.
-            </p>
+        <!-- HR Document Downloads -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mb-6">
+            <h2 class="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                <i class="fas fa-file-alt text-indigo-500"></i> My HR Documents
+            </h2>
+            <p class="text-xs text-gray-500 mb-4">এই documents গুলো শুধু তোমার নিজের — অন্য কেউ দেখতে পারবে না।</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+                <!-- Salary Certificate -->
+                <a href="generate-salary-certificate.php?employee_id=<?php echo urlencode($myEmpId); ?>"
+                   target="_blank"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 transition group text-center">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center transition">
+                        <i class="fas fa-file-invoice-dollar text-indigo-600"></i>
+                    </div>
+                    <span class="text-xs font-medium text-gray-700 group-hover:text-indigo-700">Salary Certificate</span>
+                </a>
+
+                <!-- Appointment Letter -->
+                <a href="generate-appointment-letter.php?employee_id=<?php echo urlencode($myEmpId); ?>"
+                   target="_blank"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 transition group text-center">
+                    <div class="w-10 h-10 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition">
+                        <i class="fas fa-file-signature text-green-600"></i>
+                    </div>
+                    <span class="text-xs font-medium text-gray-700 group-hover:text-green-700">Appointment Letter</span>
+                </a>
+
+                <!-- NOC -->
+                <a href="generate-noc.php?employee_id=<?php echo urlencode($myEmpId); ?>"
+                   target="_blank"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-amber-400 hover:bg-amber-50 transition group text-center">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 group-hover:bg-amber-200 flex items-center justify-center transition">
+                        <i class="fas fa-stamp text-amber-600"></i>
+                    </div>
+                    <span class="text-xs font-medium text-gray-700 group-hover:text-amber-700">NOC Letter</span>
+                </a>
+
+                <!-- ID Card -->
+                <a href="generate-id-card.php?employee_id=<?php echo urlencode($myEmpId); ?>"
+                   target="_blank"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-rose-400 hover:bg-rose-50 transition group text-center">
+                    <div class="w-10 h-10 rounded-full bg-rose-100 group-hover:bg-rose-200 flex items-center justify-center transition">
+                        <i class="fas fa-id-card text-rose-600"></i>
+                    </div>
+                    <span class="text-xs font-medium text-gray-700 group-hover:text-rose-700">ID Card</span>
+                </a>
+
+            </div>
+        </div>
+
+        <!-- Payment History Header -->
+        <div class="mb-4">
+            <h2 class="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-history text-blue-500"></i> Payment History
+            </h2>
         </div>
 
         <!-- Summary -->

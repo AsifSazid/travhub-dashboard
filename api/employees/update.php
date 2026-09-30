@@ -12,7 +12,10 @@
 // update. Fields not sent are left unchanged -- this merges into the
 // existing JSON blobs rather than requiring the whole form to be resent.
 
+session_start();
 require '../../server/db_connection.php';
+require_once '../../server/hrm_permissions.php';
+requireHrm($pdo, 'hrm_employee_edit');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');

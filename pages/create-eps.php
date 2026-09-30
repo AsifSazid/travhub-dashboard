@@ -1,6 +1,10 @@
 <?php
 
 include_once('./authenticate.php');
+require_once __DIR__ . '/../server/db_connection.php';
+require_once __DIR__ . '/../server/hrm_permissions.php';
+requireHrm($pdo, 'eps_manage', false);
+
 $ip_port = @file_get_contents('../ippath.txt');
 if (empty($ip_port)) {
     $ip_port = "http://103.104.219.3:898";
@@ -255,20 +259,36 @@ $storeEpsApi = $ip_port . "api/eps/store.php";
                     
                             <div class="form-card border-l-4 border-l-green-500">
                                 <h3 class="section-title text-green-700"><i class="fas fa-plus-circle mr-2"></i>Monthly Earnings</h3>
+
+                                <!-- Gross quick-fill -->
+                                <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                    <label class="form-label text-green-800 mb-1">
+                                        <i class="fas fa-magic mr-1"></i> Enter Gross Salary to Auto-Distribute
+                                        <span class="text-xs text-green-600 font-normal ml-1">(50% basic · 30% house rent · 10% medical · 10% conveyance)</span>
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <div class="relative flex-1">
+                                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-green-600 font-bold">৳</span>
+                                            <input type="number" id="grossInput" class="form-input pl-8 border-green-300 focus:border-green-500" placeholder="e.g. 27000" min="0" step="1" oninput="distributeFromGross()">
+                                        </div>
+                                        <button type="button" onclick="clearGrossDistribute()" class="px-3 py-2 text-xs text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50">Clear</button>
+                                    </div>
+                                </div>
+
                                 <div class="space-y-4">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label class="form-label">Basic Salary <span class="required-star">*</span></label>
                                             <div class="relative">
                                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">৳</span>
-                                                <input type="number" name="basic_salary" class="form-input pl-8" placeholder="0.00" required min="0" step="0.01" oninput="calculateSalary()">
+                                                <input type="number" name="basic_salary" class="form-input pl-8" placeholder="0.00" required min="0" step="0.01" oninput="calculateSalary(); clearGrossOnManual()">
                                             </div>
                                         </div>
                                         <div>
                                             <label class="form-label">House Rent</label>
                                             <div class="relative">
                                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">৳</span>
-                                                <input type="number" name="house_rent" class="form-input pl-8" placeholder="0.00" min="0" step="0.01" oninput="calculateSalary()">
+                                                <input type="number" name="house_rent" class="form-input pl-8" placeholder="0.00" min="0" step="0.01" oninput="calculateSalary(); clearGrossOnManual()">
                                             </div>
                                         </div>
                                     </div>
@@ -277,14 +297,14 @@ $storeEpsApi = $ip_port . "api/eps/store.php";
                                             <label class="form-label">Medical Allowance</label>
                                             <div class="relative">
                                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">৳</span>
-                                                <input type="number" name="medical_allowance" class="form-input pl-8" placeholder="0.00" min="0" step="0.01" oninput="calculateSalary()">
+                                                <input type="number" name="medical_allowance" class="form-input pl-8" placeholder="0.00" min="0" step="0.01" oninput="calculateSalary(); clearGrossOnManual()">
                                             </div>
                                         </div>
                                         <div>
                                             <label class="form-label">Conveyance</label>
                                             <div class="relative">
                                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">৳</span>
-                                                <input type="number" name="conveyance" class="form-input pl-8" placeholder="0.00" min="0" step="0.01" oninput="calculateSalary()">
+                                                <input type="number" name="conveyance" class="form-input pl-8" placeholder="0.00" min="0" step="0.01" oninput="calculateSalary(); clearGrossOnManual()">
                                             </div>
                                         </div>
                                     </div>
@@ -409,6 +429,28 @@ $storeEpsApi = $ip_port . "api/eps/store.php";
             }
         }, true);
         
+        /* ================= GROSS AUTO-DISTRIBUTE ================= */
+        function distributeFromGross() {
+            const gross = parseFloat(document.getElementById('grossInput').value) || 0;
+            if (!gross) return;
+            const set = (name, val) => { const el = document.querySelector(`[name="${name}"]`); if (el) el.value = val.toFixed(2); };
+            set('basic_salary',      Math.round(gross * 0.50 * 100) / 100);
+            set('house_rent',        Math.round(gross * 0.30 * 100) / 100);
+            set('medical_allowance', Math.round(gross * 0.10 * 100) / 100);
+            set('conveyance',        Math.round(gross * 0.10 * 100) / 100);
+            calculateSalary();
+        }
+        function clearGrossOnManual() {
+            document.getElementById('grossInput').value = '';
+        }
+        function clearGrossDistribute() {
+            document.getElementById('grossInput').value = '';
+            ['basic_salary','house_rent','medical_allowance','conveyance'].forEach(n => {
+                const el = document.querySelector(`[name="${n}"]`); if (el) el.value = '';
+            });
+            calculateSalary();
+        }
+
         /* ================= SALARY CALC ================= */
         function calculateSalary() {
             const get = n => parseFloat(document.querySelector(`[name="${n}"]`)?.value) || 0;

@@ -19,6 +19,8 @@ if (!$employeeSysId) {
 // pre-filled on first render, instead of showing a blank form and filling
 // it in with a second JS request after the page has already painted.
 require_once __DIR__ . '/../server/db_connection.php';
+require_once __DIR__ . '/../server/hrm_permissions.php';
+requireHrm($pdo, 'hrm_employee_edit', false);
 $empStmt = $pdo->prepare("SELECT * FROM employees WHERE sys_id = ? LIMIT 1");
 $empStmt->execute([$employeeSysId]);
 $existingEmployee = $empStmt->fetch(PDO::FETCH_ASSOC);

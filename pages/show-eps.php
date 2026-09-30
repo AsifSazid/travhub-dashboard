@@ -143,13 +143,19 @@ $epsNetSalary = (float)($emp['net_salary'] ?? 0);
 
             <!-- Employee Salary Information Card -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div class="mb-6 pb-4 border-b">
-                    <h2 class="text-xl font-semibold text-gray-800">
-                        Payment Information of <?php echo safeText($emp['employee_name'] ?? ''); ?>
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">
-                        EPS ID: <?php echo safeText($eps_id); ?>
-                    </p>
+                <div class="mb-6 pb-4 border-b flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">
+                            Payment Information of <?php echo safeText($emp['employee_name'] ?? ''); ?>
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">
+                            EPS ID: <?php echo safeText($eps_id); ?>
+                        </p>
+                    </div>
+                    <a href="edit-eps.php?eps_id=<?php echo urlencode($eps_id); ?>"
+                       class="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
+                        <i class="fas fa-edit"></i> Edit Structure
+                    </a>
                 </div>
 
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">

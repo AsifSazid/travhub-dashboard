@@ -2,7 +2,10 @@
 
 // api/employees/store.php
 
+session_start();
 require '../../server/db_connection.php';
+require_once '../../server/hrm_permissions.php';
+requireHrm($pdo, 'hrm_employee_create');
 require '../../server/uuid_generator.php';
 require '../../server/employee_id_generator.php';
 require '../../server/generate_meta_data.php';

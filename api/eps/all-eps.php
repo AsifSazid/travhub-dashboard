@@ -1,8 +1,11 @@
 <?php
 
+session_start();
 require '../../server/db_connection.php';
+require_once '../../server/hrm_permissions.php';
+requireHrm($pdo, 'eps_view');
 
-header('Content-Type: application/json'); // Tell the client this is JSON
+header('Content-Type: application/json');
 
 try {
     $stmt = $pdo->prepare("
