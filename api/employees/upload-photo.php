@@ -12,9 +12,16 @@
 // records its relative path in employees.profile_photo (new column -- see
 // migration checklist).
 
+session_start();
 require '../../server/db_connection.php';
 require_once '../../server/make-dir.php';
 header('Content-Type: application/json');
+
+if (!isset($_SESSION['user_email'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Not authenticated']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -32,6 +39,15 @@ try {
     if (empty($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'No photo file received']);
+        exit;
+    }
+
+    // Self-service: allow only own photo, or super-admin (role 0)
+    $myId   = $_SESSION['user_id'] ?? '';
+    $myRole = (string)($_SESSION['role'] ?? '');
+    if ($myRole !== '0' && $myId !== $sysId) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You can only upload your own profile photo']);
         exit;
     }
 

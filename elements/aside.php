@@ -322,6 +322,18 @@ require_once __DIR__ . '/../server/permissions.php';
                         <i class="fas fa-user-tie mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Employees</span>
                     </a>
+                    <a href="hrm-leave-management.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'hrm-leave-management.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-calendar-check mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Leave Management</span>
+                    </a>
+                    <a href="hrm-attendance.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'hrm-attendance.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-clock-rotate-left mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Attendance</span>
+                    </a>
                     <?php endif; ?>
                     <?php if ($showHrPms): ?>
                     <a href="pms.php"
@@ -559,17 +571,36 @@ require_once __DIR__ . '/../server/permissions.php';
     <!-- User info section at bottom -->
     <div class="border-t border-slate-700 p-4 user-info-section">
         <div class="flex items-center justify-between">
-            <div class="flex items-center min-w-0">
-                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    <?php echo $initialName ?>
-                </div>
+            <a href="my-profile.php" class="flex items-center min-w-0 flex-1 rounded-lg hover:bg-slate-700 transition-colors px-2 py-1 -mx-2 -my-1 group" title="My Profile">
+                <?php
+                // Try to show profile photo in sidebar if available
+                $sidebarPhoto = null;
+                if (!empty($_SESSION['user_id']) && isset($pdo)) {
+                    try {
+                        $sp = $pdo->prepare("SELECT profile_photo FROM employees WHERE sys_id = ? LIMIT 1");
+                        $sp->execute([$_SESSION['user_id']]);
+                        $sidebarPhoto = $sp->fetchColumn() ?: null;
+                    } catch (Throwable $ignored) {}
+                }
+                ?>
+                <?php if ($sidebarPhoto): ?>
+                    <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-slate-600 group-hover:border-blue-400 transition-colors">
+                        <img src="../uploads/<?= htmlspecialchars($sidebarPhoto) ?>" alt="Photo"
+                             class="w-full h-full object-cover"
+                             onerror="this.parentElement.innerHTML='<span class=\'w-full h-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm\'><?php echo $initialName ?></span>'">
+                    </div>
+                <?php else: ?>
+                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 group-hover:bg-blue-400 transition-colors">
+                        <?php echo $initialName ?>
+                    </div>
+                <?php endif; ?>
                 <div class="ml-3 overflow-hidden user-info-text">
-                    <p class="text-white font-medium truncate"><?php echo $_SESSION['user_name'] ?></p>
-                    <p class="text-gray-400 text-sm truncate"><?php echo $_SESSION['designation'] ?></p>
+                    <p class="text-white font-medium truncate group-hover:text-blue-200 transition-colors"><?php echo htmlspecialchars($_SESSION['user_name']) ?></p>
+                    <p class="text-gray-400 text-xs truncate group-hover:text-gray-300 transition-colors"><?php echo htmlspecialchars($_SESSION['designation'] ?? '') ?> &middot; <span class="text-blue-400">My Profile</span></p>
                 </div>
-            </div>
+            </a>
             <a href="../auth/logout.php"
-                class="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-700 transition-colors flex-shrink-0 logout-icon" title="logout">
+                class="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-700 transition-colors flex-shrink-0 logout-icon ml-2" title="Logout">
                 <i class="fa-solid fa-arrow-right-from-bracket text-white text-xl"></i>
             </a>
         </div>
