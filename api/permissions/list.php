@@ -14,10 +14,13 @@ require '../../server/db_connection.php';
 require_once '../../server/permissions.php';
 header('Content-Type: application/json');
 
-// (string) cast: role can arrive as int 0 or string '0' depending on the mysqli setup.
-if ((string)($_SESSION['role'] ?? '') !== '0') {
+// Allow: super-admin (role '0') OR holder of full_accounting_access (master switch)
+$viewerRole = (string)($_SESSION['role'] ?? '');
+$viewerId   = $_SESSION['user_id'] ?? '';
+$isSuperAdmin = $viewerRole === '0';
+if (!$isSuperAdmin && !hasPermission($pdo, $viewerId, 'full_accounting_access')) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Only a super-admin can view this list']);
+    echo json_encode(['success' => false, 'message' => 'Permission denied']);
     exit;
 }
 

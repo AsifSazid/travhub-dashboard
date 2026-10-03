@@ -486,6 +486,28 @@ switch ($action) {
         jsonOk(['data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'year' => $year]);
     }
 
+    // ── ALL EMPLOYEES' APPROVED LEAVES FOR A YEAR (admin only) ──
+    case 'annual_all': {
+        if (!$isHR) jsonErr('Permission denied.', 403);
+        $year = (int)($body['year'] ?? date('Y'));
+        $from = "$year-01-01";
+        $to   = "$year-12-31";
+        $stmt = $pdo->prepare(
+            "SELECT lr.sys_id, lr.employee_sys_id, lr.date_from, lr.date_to,
+                    lr.status, lr.leave_type_sys_id,
+                    lt.leave_name,
+                    emp.emp_name, emp.designation
+             FROM leave_requests lr
+             LEFT JOIN leave_types lt  ON lt.sys_id = lr.leave_type_sys_id
+             LEFT JOIN employees  emp ON emp.sys_id = lr.employee_sys_id
+             WHERE lr.status = 'approved'
+               AND lr.date_from <= ? AND lr.date_to >= ?
+             ORDER BY lr.date_from ASC, emp.emp_name ASC"
+        );
+        $stmt->execute([$to, $from]);
+        jsonOk(['data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'year' => $year]);
+    }
+
     default:
         jsonErr("Unknown action: $action");
 }

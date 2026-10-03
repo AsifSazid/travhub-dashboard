@@ -30,9 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-if ((string)($_SESSION['role'] ?? '') !== '0') {
+// Allow: super-admin (role '0') OR holder of full_accounting_access (master switch)
+$actorRole    = (string)($_SESSION['role'] ?? '');
+$actorId      = $_SESSION['user_id'] ?? '';
+$isSuperAdmin = $actorRole === '0';
+if (!$isSuperAdmin && !hasPermission($pdo, $actorId, 'full_accounting_access')) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Only a super-admin can grant or revoke permissions']);
+    echo json_encode(['success' => false, 'message' => 'Permission denied']);
     exit;
 }
 
@@ -61,6 +65,13 @@ try {
     if ($unknown) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Unknown permission key(s): ' . implode(', ', $unknown)]);
+        exit;
+    }
+
+    // Only super-admin may grant/revoke the master switch itself
+    if (!$isSuperAdmin && in_array('full_accounting_access', $keys, true)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only a super-admin can modify the Full Access master switch']);
         exit;
     }
 
