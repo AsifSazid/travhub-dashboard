@@ -73,8 +73,9 @@ function handleFormDataRequest() {
     $metaDataJson = buildMetaData(null, $createdBy);
     
     // Extract department info
-    $department = $employeeData['department'] ?? null;
-    $department_id = $employeeData['department_id'] ?? null;
+    $department        = $employeeData['department']        ?? null;
+    $department_id     = $employeeData['department_id']     ?? null;
+    $department_sys_id = $employeeData['department_sys_id'] ?? null;
     $dateOfJoin = $employeeData['company_related_info']['date_of_join'];
     $fullName = $employeeData['full_name'];
     $phone = $employeeData['phone']['primary_no'];
@@ -264,31 +265,33 @@ function handleFormDataRequest() {
         $stmt = $pdo->prepare("
             INSERT INTO employees (
                 uuid,
-                sys_id, 
-                type, 
+                sys_id,
+                type,
                 department_id,
+                department_sys_id,
                 department_name,
-                name, 
-                phone, 
-                email, 
+                name,
+                phone,
+                email,
                 address,
                 basic_info,
                 company_related_info,
                 emergency_contact,
                 image_name,
-                status, 
+                status,
                 meta_data
-            ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        
+
         $imageNamesJson = !empty($uploadedFiles) ? json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE) : null;
-        
+
         $stmt->execute([
             $uuid,
             $sys_id,
             $employeeData['type'] ?? 'permanent',
-            $department_id,
+            $department_id     ?: null,
+            $department_sys_id ?: null,
             $department,
             $fullName,
             json_encode($phoneData, JSON_UNESCAPED_UNICODE),
@@ -395,8 +398,9 @@ function handleJsonRequest() {
     $metaDataJson = buildMetaData(null, $createdBy);
     
     // Extract department info
-    $department = $data['department'] ?? null;
-    $department_id = $data['department_id'] ?? null;
+    $department        = $data['department']        ?? null;
+    $department_id     = $data['department_id']     ?? null;
+    $department_sys_id = $data['department_sys_id'] ?? null;
     $dateOfJoin = $data['company_related_info']['date_of_join'];
     $fullName = $data['full_name'];
     $phone = $data['phone']['primary_no'];
@@ -507,31 +511,33 @@ function handleJsonRequest() {
         $stmt = $pdo->prepare("
             INSERT INTO employees (
                 uuid,
-                sys_id, 
-                type, 
+                sys_id,
+                type,
                 department_id,
+                department_sys_id,
                 department_name,
-                name, 
-                phone, 
-                email, 
+                name,
+                phone,
+                email,
                 address,
                 basic_info,
                 company_related_info,
                 emergency_contact,
                 image_name,
-                status, 
+                status,
                 meta_data
-            ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        
+
         $imageNamesJson = !empty($uploadedFiles) ? json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE) : null;
-        
+
         $stmt->execute([
             $uuid,
             $sys_id,
             $data['type'] ?? 'permanent',
-            $department_id,
+            $department_id     ?: null,
+            $department_sys_id ?: null,
             $department,
             $fullName,
             json_encode($phoneData, JSON_UNESCAPED_UNICODE),

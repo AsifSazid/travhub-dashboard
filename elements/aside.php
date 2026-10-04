@@ -556,6 +556,32 @@ require_once __DIR__ . '/../server/permissions.php';
                 </div>
             </div>
             
+            <!-- Umrah Accordion -->
+            <div class="accordion-item mt-4" data-accordion="umrah">
+                <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 text-left rounded-lg text-gray-300 hover:bg-slate-700 transition">
+                    <div class="flex items-center">
+                        <i class="fas fa-mosque mr-3"></i>
+                        <span class="font-medium sidebar-text transition-all duration-300">Umrah</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-arrow transition-transform duration-200 sidebar-text"></i>
+                </button>
+
+                <div class="accordion-content ml-7 mt-1 space-y-1 hidden transition-all duration-300">
+                    <a href="create-umrah-group.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'create-umrah-group.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fas fa-circle-plus mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">New Group</span>
+                    </a>
+                    <a href="index-umrah-groups.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'index-umrah-groups.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-table-list mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">All Groups</span>
+                    </a>
+                </div>
+            </div>
+
             <li>
                 <a href="settings.php"
                     class="flex items-center p-3 rounded-lg 

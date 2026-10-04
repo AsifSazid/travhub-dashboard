@@ -61,8 +61,9 @@ try {
 
     /* ================= Merge: only overwrite keys that were actually sent ================= */
     $fullName      = $data['full_name'] ?? $existing['name'];
-    $department    = $data['department'] ?? ($existingCompanyInfo['department'] ?? $existing['department_name']);
-    $departmentId  = $data['department_id'] ?? ($existingCompanyInfo['department_id'] ?? $existing['department_id']);
+    $department        = $data['department']        ?? ($existingCompanyInfo['department']    ?? $existing['department_name']);
+    $departmentId      = $data['department_id']     ?? ($existingCompanyInfo['department_id'] ?? $existing['department_id']);
+    $departmentSysId   = $data['department_sys_id'] ?? ($existing['department_sys_id']        ?? null);
 
     $companyRelatedInfo = array_merge($existingCompanyInfo, array_filter([
         'designation'              => $data['company_related_info']['designation'] ?? null,
@@ -120,12 +121,12 @@ try {
     /* ================= Update ================= */
     $pdo->prepare("
         UPDATE employees SET
-            name = ?, type = ?, department_id = ?, department_name = ?,
+            name = ?, type = ?, department_id = ?, department_sys_id = ?, department_name = ?,
             phone = ?, email = ?, address = ?, basic_info = ?,
             company_related_info = ?, emergency_contact = ?, status = ?
         WHERE sys_id = ?
     ")->execute([
-        $fullName, $type, $departmentId, $department,
+        $fullName, $type, $departmentId ?: null, $departmentSysId ?: null, $department,
         json_encode($phoneData, JSON_UNESCAPED_UNICODE),
         json_encode($emailData, JSON_UNESCAPED_UNICODE),
         json_encode($addressData, JSON_UNESCAPED_UNICODE),

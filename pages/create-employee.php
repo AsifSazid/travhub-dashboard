@@ -1,1164 +1,646 @@
 <?php
-
+// FILE PATH: /pages/create-employee.php
 include_once('./authenticate.php');
 require_once __DIR__ . '/../server/db_connection.php';
 require_once __DIR__ . '/../server/hrm_permissions.php';
 requireHrm($pdo, 'hrm_employee_create', false);
 
 $ip_port = @file_get_contents('../ippath.txt');
-if (empty($ip_port)) {
-    $ip_port = "http://103.104.219.3:898";
-}
-
+if (empty($ip_port)) $ip_port = "http://103.104.219.3:898";
 $storeEmployeeApi = $ip_port . "api/employees/store.php";
 
+$_deptRows = [];
+try {
+    $s = $pdo->query("SELECT id, sys_id, name FROM departments WHERE is_active=1 ORDER BY sort_order ASC, name ASC");
+    $_deptRows = $s->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $_e) { error_log('[create-employee] ' . $_e->getMessage()); }
+$_deptJson = json_encode($_deptRows, JSON_UNESCAPED_UNICODE);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add New Employee</title>
-    <link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png" sizes="16x16">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/sortablejs@1.14.0/Sortable.min.js"></script>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <style>
-        /* Custom animations */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .animate-slide-in {
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a1a1a1;
-        }
-        
-        /* Improved form styling */
-        .form-section {
-            @apply bg-white rounded-xl border border-gray-200 shadow-sm;
-        }
-        
-        .form-label {
-            @apply block text-sm font-medium text-gray-700 mb-2;
-        }
-        
-        .required-star {
-            @apply text-red-500 ml-1;
-        }
-        
-        .form-input {
-            @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200;
-        }
-        
-        .btn-primary {
-            @apply px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200;
-        }
-        
-        .btn-secondary {
-            @apply px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200;
-        }
-        
-        .section-title {
-            @apply text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200;
-        }
-        
-        .input-group {
-            @apply space-y-4;
-        }
-        
-        .form-card {
-            @apply bg-white rounded-lg border border-gray-200 p-5;
-        }
-    </style>
-</head>
-<body class="bg-gray-50 font-sans">
-    <!-- Top Navigation -->
-    <?php include '../elements/header.php'; ?>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Employee — TravHub</title>
+<link rel="icon" type="image/png" href="../assets/images/logo/round-logo.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* ── Wizard layout ── */
+.wz-shell{display:flex;gap:0;min-height:calc(100vh - 100px)}
 
-    <!-- Sidebar -->
-    <?php include '../elements/aside.php'; ?>
-    
-    <!-- Preview Modal -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800" id="previewTitle">File Preview</h3>
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
+/* ── Sidebar ── */
+.wz-sidebar{width:220px;flex-shrink:0;background:#fff;border-right:1.5px solid #f0f0f7;border-radius:16px 0 0 16px;padding:28px 0;display:flex;flex-direction:column}
+.wz-sidebar-head{padding:0 20px 20px;border-bottom:1px solid #f0f0f7;margin-bottom:8px}
+.wz-sidebar-head h2{font-size:.95rem;font-weight:700;color:#1e1b4b}
+.wz-sidebar-head p{font-size:.72rem;color:#9ca3af;margin-top:2px}
+.wz-nav{display:flex;flex-direction:column;gap:2px;padding:0 12px;flex:1}
+.wz-nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:all .15s;position:relative}
+.wz-nav-item:not(.active):not(.done):hover{background:#f9f8ff}
+.wz-nav-item.done{cursor:pointer}
+.wz-nav-item.done .wz-step-dot{background:#6366f1;border-color:#6366f1;color:#fff}
+.wz-nav-item.active{background:#eef2ff}
+.wz-nav-item.active .wz-step-dot{background:#6366f1;border-color:#6366f1;color:#fff;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.wz-nav-item.active .wz-step-label{color:#4f46e5;font-weight:700}
+.wz-nav-item.active .wz-step-sub{color:#818cf8}
+.wz-step-dot{width:30px;height:30px;border-radius:50%;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#9ca3af;flex-shrink:0;transition:all .2s;background:#fff}
+.wz-step-label{font-size:.82rem;font-weight:600;color:#6b7280;line-height:1.2}
+.wz-step-sub{font-size:.7rem;color:#9ca3af;margin-top:1px}
+/* connector line between dots */
+.wz-connector{width:2px;height:18px;background:#e5e7eb;margin:0 0 0 26px;transition:background .3s}
+.wz-connector.done{background:#6366f1}
+
+/* ── Form panel ── */
+.wz-panel{flex:1;background:#fff;border-radius:0 16px 16px 0;padding:28px 32px;overflow:hidden}
+.wz-step{display:none}
+.wz-step.active{display:block;animation:fs .2s ease}
+@keyframes fs{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── Form fields ── */
+.fi{width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:.85rem;color:#111827;background:#fff;outline:none;transition:border .15s}
+.fi:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.fi.err{border-color:#ef4444}
+.fi-ta{resize:none}
+.lbl{display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:4px}
+.req{color:#ef4444;margin-left:2px}
+.frow{display:flex;flex-direction:column;gap:14px}
+
+/* ── 2-col grid ── */
+.fcols{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px}
+.fcols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.span2{grid-column:span 2}
+
+/* ── Photo uploader ── */
+.photo-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.photo-ring{position:relative;width:96px;height:96px;cursor:pointer}
+.photo-ring img{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid #e0e7ff}
+.photo-ring .photo-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(99,102,241,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+.photo-ring:hover .photo-overlay{opacity:1}
+.photo-ring .photo-overlay i{color:#fff;font-size:1.2rem}
+.photo-placeholder{width:96px;height:96px;border-radius:50%;background:#eef2ff;border:2.5px dashed #c7d2fe;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.photo-placeholder:hover{background:#e0e7ff;border-color:#818cf8}
+.photo-placeholder i{color:#818cf8;font-size:1.4rem}
+.photo-hint{font-size:.72rem;color:#9ca3af;text-align:center}
+
+/* ── Type pills ── */
+.tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tp input[type="radio"]{display:none}
+.tp label{display:flex;align-items:center;gap:7px;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:9px;cursor:pointer;font-size:.8rem;font-weight:600;color:#6b7280;transition:all .15s}
+.tp input:checked+label{border-color:#6366f1;background:#eef2ff;color:#4f46e5}
+
+/* ── Sec rows ── */
+.sec-row{display:flex;gap:6px;align-items:center;margin-top:6px}
+
+/* ── Summary ── */
+.sum-row{display:flex;padding:5px 0;border-bottom:1px solid #f3f4f6;font-size:.81rem}
+.sum-lbl{color:#6b7280;width:110px;flex-shrink:0;font-size:.77rem}
+.sum-val{color:#111827;font-weight:500}
+
+/* ── Nav buttons ── */
+.wz-actions{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:20px;border-top:1.5px solid #f3f4f6}
+.btn-back{padding:8px 20px;border-radius:10px;border:1.5px solid #e5e7eb;font-size:.85rem;font-weight:600;color:#6b7280;cursor:pointer;transition:all .15s;background:#fff}
+.btn-back:hover{background:#f9fafb}
+.btn-next{padding:8px 24px;border-radius:10px;background:#6366f1;color:#fff;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-next:hover{background:#4f46e5}
+.btn-submit{padding:8px 24px;border-radius:10px;background:#059669;color:#fff;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-submit:hover{background:#047857}
+
+/* ── Toast ── */
+#wz-toast{position:fixed;bottom:24px;right:24px;z-index:9999;padding:11px 17px;border-radius:11px;color:#fff;font-size:.83rem;font-weight:600;display:flex;align-items:center;gap:8px;transform:translateY(60px);opacity:0;transition:all .3s;pointer-events:none}
+#wz-toast.show{transform:translateY(0);opacity:1}
+#wz-toast.success{background:#059669}
+#wz-toast.error{background:#dc2626}
+
+/* ── Step heading ── */
+.step-head{margin-bottom:20px}
+.step-head h3{font-size:1rem;font-weight:700;color:#1e1b4b}
+.step-head p{font-size:.78rem;color:#9ca3af;margin-top:2px}
+</style>
+</head>
+<body class="bg-gray-100 font-sans">
+<?php include '../elements/header.php'; ?>
+<?php include '../elements/aside.php'; ?>
+
+<main id="mainContent" class="pt-20 pl-64 transition-all duration-300">
+<div class="p-5">
+
+<div class="mb-4 flex items-center justify-between">
+    <div>
+        <h1 class="text-lg font-bold text-gray-800"><i class="fas fa-user-plus mr-2 text-indigo-500"></i>Add New Employee</h1>
+        <p class="text-xs text-gray-400 mt-0.5">Complete each section — navigate freely with the sidebar.</p>
+    </div>
+</div>
+
+<form id="employeeForm" novalidate>
+<div class="wz-shell rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+    <!-- ── Sidebar ── -->
+    <div class="wz-sidebar">
+        <div class="wz-sidebar-head">
+            <h2>New Employee</h2>
+            <p>4 steps to complete</p>
+        </div>
+        <div class="wz-nav" id="wzNav">
+            <?php
+            $navSteps = [
+                ['fa-user',          'Personal',          'Photo, name, identity'],
+                ['fa-phone',         'Contact',           'Phone & email'],
+                ['fa-briefcase',     'Company',           'Role, dept, salary'],
+                ['fa-map-marker-alt','Address & Review',  'Location & emergency'],
+            ];
+            foreach ($navSteps as $i => [$ic, $lbl, $sub]):
+                $cls = $i === 0 ? 'active' : 'todo';
+            ?>
+            <?php if ($i > 0): ?><div class="wz-connector" id="conn<?= $i-1 ?>"></div><?php endif; ?>
+            <div class="wz-nav-item <?= $cls ?>" id="nav<?= $i ?>" onclick="goToStep(<?= $i ?>)">
+                <div class="wz-step-dot" id="dot<?= $i ?>">
+                    <?php if ($i === 0): ?><i class="fas <?= $ic ?>"></i><?php else: ?><?= $i+1 ?><?php endif; ?>
+                </div>
+                <div>
+                    <div class="wz-step-label"><?= $lbl ?></div>
+                    <div class="wz-step-sub"><?= $sub ?></div>
+                </div>
             </div>
-            <div id="modalPreviewContent" class="p-4">
-                <!-- Preview content will be loaded here -->
-            </div>
+            <?php endforeach; ?>
+        </div>
+        <!-- progress at bottom -->
+        <div class="px-5 pt-4 mt-auto border-t border-gray-100">
+            <div class="flex justify-between text-xs text-gray-400 mb-1"><span>Progress</span><span id="progressTxt">1 / 4</span></div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full transition-all duration-300" id="progressBar" style="width:25%"></div></div>
         </div>
     </div>
-    
-    <!-- Main Content -->
-    <main id="mainContent" class="pt-16 pl-0 lg:pl-64 lg:my-16 transition-all duration-300 h-full">
-        <div class="p-6">
-            <div class="bg-white rounded-lg shadow p-4">
-                <!-- Header Card -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+    <!-- ── Form panel ── -->
+    <div class="wz-panel">
+
+        <!-- STEP 0: Personal -->
+        <div class="wz-step active" id="step0">
+            <div class="step-head">
+                <h3>Personal Information</h3>
+                <p>Basic identity details and employment type</p>
+            </div>
+            <div class="fcols">
+                <!-- Left col -->
+                <div class="frow">
+                    <!-- Photo -->
+                    <div>
+                        <label class="lbl">Profile Photo</label>
+                        <div class="photo-wrap mt-1">
+                            <div id="photoRing" class="photo-placeholder" onclick="document.getElementById('profilePhotoInput').click()">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                            <div class="photo-hint">JPG · PNG · WEBP<br>Click to upload</div>
+                        </div>
+                        <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewPhoto(this)">
+                    </div>
+                    <!-- Name -->
+                    <div>
+                        <label class="lbl" for="fullName">Full Name <span class="req">*</span></label>
+                        <input class="fi" type="text" id="fullName" name="full_name" placeholder="e.g. Rahim Uddin Ahmed">
+                    </div>
+                    <!-- DOB + Blood -->
+                    <div class="fcols-3" style="grid-template-columns:1fr 1fr">
                         <div>
-                            <div class="flex items-center mb-2">
-                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h1 class="text-2xl font-bold text-gray-800">Add New Employee</h1>
-                                    <p class="text-gray-600 text-sm mt-1">Fill in the details below to add a new employee to the system</p>
+                            <label class="lbl" for="dateOfBirth">Date of Birth</label>
+                            <input class="fi" type="date" id="dateOfBirth" name="date_of_birth">
+                        </div>
+                        <div>
+                            <label class="lbl">Blood Group</label>
+                            <div class="relative">
+                                <input class="fi" type="text" id="bloodGroupInput" placeholder="B+" readonly style="cursor:pointer">
+                                <input type="hidden" id="selectedBloodGroupValue" name="blood_group">
+                                <div id="bgDropdown" class="absolute hidden z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-2 mt-1" style="display:none">
+                                    <div class="grid grid-cols-4 gap-1">
+                                        <?php foreach(['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg):?>
+                                        <button type="button" onclick="setBg('<?=$bg?>')" class="px-2 py-1.5 text-xs font-semibold rounded-lg border border-gray-100 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition"><?=$bg?></button>
+                                        <?php endforeach;?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 min-w-[200px]">
-                            <div class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Employee ID</div>
-                            <div class="text-lg font-semibold text-gray-800" id="previewId">EMP-XXXXXXX</div>
-                        </div>
+                    </div>
+                    <!-- NID -->
+                    <div>
+                        <label class="lbl" for="nidNo">NID Number</label>
+                        <input class="fi" type="text" id="nidNo" name="nid_no" placeholder="National ID">
                     </div>
                 </div>
-
-                <!-- Success/Error Messages -->
-                <div id="messageContainer" class="hidden my-6 animate-slide-in">
-                    <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                            <span id="successText"></span>
+                <!-- Right col -->
+                <div class="frow">
+                    <div>
+                        <label class="lbl">Employment Type <span class="req">*</span></label>
+                        <div class="tp-grid mt-1">
+                            <?php foreach(['permanent'=>['fa-id-badge','Permanent'],'probationary'=>['fa-clock','Probationary'],'contractual'=>['fa-file-contract','Contractual'],'intern'=>['fa-graduation-cap','Intern']] as $val=>[$ic,$lb]):?>
+                            <div class="tp"><input type="radio" id="type_<?=$val?>" name="type" value="<?=$val?>" <?=$val==='permanent'?'checked':''?>><label for="type_<?=$val?>"><i class="fas <?=$ic?> text-xs"></i><?=$lb?></label></div>
+                            <?php endforeach;?>
                         </div>
                     </div>
-                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                            </svg>
-                            <span id="errorText"></span>
-                        </div>
+                    <div>
+                        <label class="lbl" for="fatherName">Father's Name</label>
+                        <input class="fi" type="text" id="fatherName" name="father_name">
+                    </div>
+                    <div>
+                        <label class="lbl" for="motherName">Mother's Name</label>
+                        <input class="fi" type="text" id="motherName" name="mother_name">
+                    </div>
+                    <div>
+                        <label class="lbl" for="spouseName">Spouse Name</label>
+                        <input class="fi" type="text" id="spouseName" name="spouse_name">
                     </div>
                 </div>
-
-                <!-- Employee Form -->
-                <form id="employeeForm" class="space-y-6">
-                    <!-- Employee Type Selection -->
-                    <div class="form-section p-5">
-                        <h2 class="section-title">Employment Type</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4">
-                            <?php
-                            $employeeTypes = [
-                                'permanent' => ['label' => 'Permanent', 'icon' => 'fas fa-user-tie', 'color' => 'green'],
-                                'commission-agent' => ['label' => 'Commission Agent', 'icon' => 'fas fa-file-contract', 'color' => 'blue'],
-                                'part-time' => ['label' => 'Part Time', 'icon' => 'fas fa-clock', 'color' => 'purple'],
-                                'provisional' => ['label' => 'Provisional', 'icon' => 'fas fa-hourglass-half', 'color' => 'yellow'],
-                                'intern' => ['label' => 'Intern', 'icon' => 'fas fa-graduation-cap', 'color' => 'indigo']
-                            ];
-                            
-                            foreach ($employeeTypes as $value => $info):
-                            ?>
-                            <label class="cursor-pointer">
-                                <input type="radio" name="type" value="<?php echo $value; ?>" 
-                                    class="sr-only peer" <?php echo $value === 'permanent' ? 'checked' : ''; ?>>
-                                <div class="p-4 border border-gray-300 rounded-lg bg-white peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-200 hover:border-gray-400">
-                                    <div class="flex flex-col items-center text-center">
-                                        <div class="w-10 h-10 rounded-full bg-<?php echo $info['color']; ?>-100 flex items-center justify-center mb-2">
-                                            <i class="<?php echo $info['icon']; ?> text-<?php echo $info['color']; ?>-600 text-lg"></i>
-                                        </div>
-                                        <span class="font-medium text-gray-800 text-sm"><?php echo $info['label']; ?></span>
-                                    </div>
-                                </div>
-                            </label>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-
-                    <!-- Main Form Content -->
-                    <div class="grid grid-cols-1 lg:grid-cols-4">
-                    
-                        <!-- ================= Column 1: Personal & Contact ================= -->
-                        <div class="space-y-6">
-                    
-                            <!-- Personal Information -->
-                            <div class="form-card p-2 lg:p-4">
-                                <h2 class="section-title flex items-center mb-4">
-                                    <i class="fas fa-user-circle mr-2 text-blue-600"></i>
-                                    Personal Information
-                                </h2>
-                    
-                                <div class="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <label class="form-label mb-1">Profile Photo <span class="text-gray-400 font-normal">(ID Card-এ ব্যবহার হবে)</span></label>
-                                        <div class="flex items-center gap-4">
-                                            <img id="profilePhotoPreview" src="../assets/images/default-avatar.png" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23e5e7eb%22/%3E%3Ccircle cx=%2250%22 cy=%2238%22 r=%2216%22 fill=%22%239ca3af%22/%3E%3Cellipse cx=%2250%22 cy=%2280%22 rx=%2228%22 ry=%2220%22 fill=%22%239ca3af%22/%3E%3C/svg%3E'" class="w-20 h-20 rounded-full object-cover border-2 border-gray-200">
-                                            <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp"
-                                                class="text-sm text-gray-600" onchange="previewProfilePhoto(this)">
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label for="fullName" class="form-label mb-1">
-                                            Full Name <span class="required-star">*</span>
-                                        </label>
-                                        <div class="relative">
-                                            <input type="text" id="fullName" name="full_name"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="John Doe" required>
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-user text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label for="dateOfBirth" class="form-label mb-1">
-                                                Date of Birth
-                                            </label>
-                                            <div class="relative">
-                                                <input type="date" id="dateOfBirth" name="date_of_birth"
-                                                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    max="<?php echo date('Y-m-d'); ?>">
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <i class="fas fa-calendar-alt text-gray-400"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <?php include('./form-selects/blood-groups.php') ?>
-                                        </div>
-                                    </div>
-                                </div>
-                    
-                                <!-- Contact Information -->
-                                <h2 class="section-title flex items-center my-4">
-                                    <i class="fas fa-address-book mr-2 text-blue-600"></i>
-                                    Contact Information
-                                </h2>
-                    
-                                <div class="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <label class="form-label mb-1">
-                                            Primary Phone <span class="required-star">*</span>
-                                        </label>
-                                        <div class="relative">
-                                            <input type="tel" id="primaryPhone" name="primary_phone"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="+1 (555) 123-4567" required>
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-phone text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label class="form-label mb-1">
-                                            Primary Email <span class="required-star">*</span>
-                                        </label>
-                                        <div class="relative">
-                                            <input type="email" id="primaryEmail" name="primary_email"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="john.doe@company.com" required>
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-envelope text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                    
-                        </div>
-                    
-                        <!-- ================= Column 2: Company ================= -->
-                        <div class="space-y-6">
-                    
-                            <div class="form-card p-2 lg:p-4">
-                                <h2 class="section-title flex items-center mb-4">
-                                    <i class="fas fa-building mr-2 text-blue-600"></i>
-                                    Company Information
-                                </h2>
-                    
-                                <div class="grid grid-cols-1 gap-4">
-                                    <?php include('./form-selects/departments.php') ?>
-                                    
-                                    <div>
-                                        <label for="designation" class="form-label mb-1">
-                                            Designation <span class="required-star">*</span>
-                                        </label>
-                                        <div class="relative">
-                                            <input type="text" id="designation" name="designation"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Software Engineer" required>
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-briefcase text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label for="companyRole" class="form-label mb-1">
-                                            Company Role <span class="required-star">*</span>
-                                        </label>
-                                        <div class="relative">
-                                            <textarea id="companyRole" name="company_role" rows="3"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                                placeholder="Describe the employee's role..." required></textarea>
-                                            <div class="absolute top-3 left-3">
-                                                <i class="fas fa-tasks text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label for="dateOfJoin" class="form-label mb-1">
-                                            Date of Join <span class="required-star">*</span>
-                                        </label>
-                                        <div class="relative">
-                                            <input type="date" id="dateOfJoin" name="date_of_join"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-calendar-check text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- The fields below are optional here and only needed later for
-                                         generating an Appointment Letter or Salary Certificate — they
-                                         can be filled in now or added via Edit Employee at any time. -->
-                                    <div class="border-t border-gray-100 pt-4">
-                                        <p class="text-xs text-gray-400 mb-3">নিচের তথ্যগুলো ঐচ্ছিক — Appointment Letter / Salary Certificate তৈরির সময় লাগবে</p>
-                                    </div>
-
-                                    <div>
-                                        <label for="fatherName" class="form-label mb-1">Father's Name</label>
-                                        <input type="text" id="fatherName" name="father_name"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-
-                                    <div>
-                                        <label for="motherName" class="form-label mb-1">Mother's Name</label>
-                                        <input type="text" id="motherName" name="mother_name"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-
-                                    <div>
-                                        <label for="spouseName" class="form-label mb-1">Spouse's Name (if applicable)</label>
-                                        <input type="text" id="spouseName" name="spouse_name"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-
-                                    <div>
-                                        <label for="nidNo" class="form-label mb-1">National ID (NID) No.</label>
-                                        <input type="text" id="nidNo" name="nid_no"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-
-                                    <div>
-                                        <label for="grossSalary" class="form-label mb-1">Gross Monthly Salary (BDT)</label>
-                                        <input type="number" step="0.01" min="0" id="grossSalary" name="gross_salary"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            placeholder="50000">
-                                        <p class="text-xs text-gray-400 mt-1">Appointment Letter-এ Basic 50% / House Rent 30% / Medical 10% / Conveyance 10% হিসেবে ভাগ হবে</p>
-                                    </div>
-
-                                    <div>
-                                        <label for="reportingToName" class="form-label mb-1">Reporting To — Name</label>
-                                        <input type="text" id="reportingToName" name="reporting_to_name"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-
-                                    <div>
-                                        <label for="reportingToDesignation" class="form-label mb-1">Reporting To — Designation</label>
-                                        <input type="text" id="reportingToDesignation" name="reporting_to_designation"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-                                </div>
-                            </div>
-                    
-                        </div>
-                    
-                        <!-- ================= Column 3: Address & Additional ================= -->
-                        <div class="space-y-6">
-                    
-                            <!-- Address -->
-                            <div class="form-card p-2 lg:p-4">
-                                <h2 class="section-title flex items-center mb-4">
-                                    <i class="fas fa-map-marker-alt mr-2 text-blue-600"></i>
-                                    Address Information
-                                </h2>
-                    
-                                <div class="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <label class="form-label mb-1">Address Line 1</label>
-                                        <div class="relative">
-                                            <input type="text" name="address_line_1"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Street address">
-                                            <i class="fas fa-road absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label class="form-label mb-1">Address Line 2</label>
-                                        <div class="relative">
-                                            <input type="text" name="address_line_2"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Apartment, suite">
-                                            <i class="fas fa-home absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div class="grid grid-cols-2 gap-3 mt-4">
-                                        <div>
-                                            <label class="form-label mb-1">City</label>
-                                            <div class="relative">
-                                                <input type="text" name="city" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                <i class="fa-solid fa-city absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                            </div>
-                                        <div class="mt-4">
-                                            <label class="form-label mb-1">State</label>
-                                            <div class="relative">
-                                                <input type="text" name="state" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                <i class="fa-solid fa-globe absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label class="form-label mb-1">ZIP Code</label>
-                                        <div class="relative">
-                                            <input type="text" name="zip_code" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <i class="fa-solid fa-signs-post absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Additional Contacts -->
-                                <h3 class="text-md font-semibold text-gray-700 mt-4 mb-3">
-                                    Additional Contacts
-                                </h3>
-                    
-                                <div class="space-y-4">
-                                    <div>
-                                        <div class="flex items-center justify-between mb-2">
-                                            <label class="form-label text-sm block mb-0">
-                                                Secondary Phones
-                                            </label>
-                                            <button type="button" onclick="addSecondaryPhone()"
-                                                class="text-sm text-blue-600 hover:text-blue-800 font-medium inline-flex items-center">
-                                                <i class="fas fa-plus-circle mr-1"></i> Add Phone
-                                            </button>
-                                        </div>
-                                        
-                                        <div id="secondaryPhoneContainer" class="space-y-2"></div>
-                                    </div>
-                    
-                                    <div>
-                                        <div class="flex items-center justify-between mb-2">
-                                            <label class="form-label text-sm mb-2 block">
-                                                Secondary Emails
-                                            </label>
-                                            <button type="button" onclick="addSecondaryEmail()"
-                                                class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium inline-flex items-center">
-                                                <i class="fas fa-plus-circle mr-1"></i> Add Email
-                                            </button>
-                                        </div>
-                                        <div id="secondaryEmailContainer" class="space-y-2"></div>
-                                    </div>
-                                </div>
-                            </div>
-                    
-                        </div>
-                        
-                        <!-- ================= Column 4: Emergency Contact ================= -->
-                        <div class="space-y-6">
-                    
-                            <!-- Address -->
-                            <div class="form-card p-2 lg:p-4">
-                                <h2 class="section-title flex items-center mb-4">
-                                    <i class="fa-solid fa-circle-exclamation mr-2 text-blue-600"></i>
-                                    Emergency Contact
-                                </h2>
-                    
-                                <div class="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <label class="form-label mb-1">Emergency Contact Person</label>
-                                        <div class="relative">
-                                            <input type="text" name="emergency_contact_person"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Emergency Contact Person">
-                                            <i class="fas fa-user absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label class="form-label mb-1">Relationship</label>
-                                            <div class="relative">
-                                                <input type="text" name="relation" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                <i class="fa-solid fa-users absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label mb-1">Phone No</label>
-                                            <div class="relative">
-                                                <input type="text" name="emergency_phone" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                <i class="fa-solid fa-phone absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="form-label mb-1">Address Line 1</label>
-                                        <div class="relative">
-                                            <input type="text" name="emergency_address_line_1"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Street address">
-                                            <i class="fas fa-road absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label class="form-label mb-1">Address Line 2</label>
-                                        <div class="relative">
-                                            <input type="text" name="emergency_address_line_2"
-                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Apartment, suite">
-                                            <i class="fas fa-home absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label class="form-label mb-1">City</label>
-                                            <div class="relative">
-                                                <input type="text" name="emergency_city" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                <i class="fa-solid fa-city absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label mb-1">State</label>
-                                            <div class="relative">
-                                                <input type="text" name="emergency_state" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                <i class="fa-solid fa-globe absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                    
-                                    <div>
-                                        <label class="form-label mb-1">ZIP Code</label>
-                                        <div class="relative">
-                                            <input type="text" name="emergency_zip_code" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <i class="fa-solid fa-signs-post absolute inset-y-0 left-3 flex items-center text-gray-400"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-span-2 space-y-6">
-                            <label class="block text-sm font-medium text-gray-700 my-2">Upload or Paste Your Photo/s</label>
-                            <?php include('./form-elements/file-uploader.php') ?>
-                        </div>
-                    
-                    </div>
-
-                    <!-- Hidden fields for department and blood group -->
-                    <input type="hidden" id="selectedDepartmentId" name="department_id">
-                    <input type="hidden" id="selectedBloodGroupValue" name="blood_group">
-
-                    <!-- Form Actions -->
-                    <div class="space-x-3 pt-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="text-sm text-gray-500">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Fields marked with <span class="required-star">*</span> are required
-                        </div>
-                        <div class="flex space-x-3">
-                            <button type="button" onclick="resetForm()"
-                                class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                <i class="fas fa-redo mr-2"></i>
-                                Reset
-                            </button>
-                            <button type="submit"
-                                class="px-6 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                <i class="fas fa-user-plus mr-2"></i>
-                                Add Employee
-                            </button>
-                        </div>
-                    </div>
-                </form>
             </div>
         </div>
-    </main>
-    
-    <script src="../assets/js/script.js?time=<?php echo time(); ?>"></script>
 
-    <script>
-        const API_URL_FOR_CLIENT_STORE = "<?php echo $storeEmployeeApi; ?>";
-        const API_URL_FOR_PHOTO_UPLOAD = "<?php echo $ip_port; ?>api/employees/upload-photo.php";
-
-        function previewProfilePhoto(input) {
-            if (!input.files || !input.files[0]) return;
-            const reader = new FileReader();
-            reader.onload = e => { document.getElementById('profilePhotoPreview').src = e.target.result; };
-            reader.readAsDataURL(input.files[0]);
-        }
-
-        console.log(droppedFiles);
-
-        // Initialize date inputs
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set max date for date of join to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('dateOfJoin').max = today;
-        });
-
-        // Secondary Phone Management
-        function addSecondaryPhone() {
-            const container = document.getElementById('secondaryPhoneContainer');
-            const div = document.createElement('div');
-            div.className = 'flex items-center gap-2 animate-slide-in';
-            div.innerHTML = `
-                <select name="secondary_phone_type[]" 
-                    class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                    <option value="mobile">Mobile</option>
-                    <option value="home">Home</option>
-                    <option value="work">Work</option>
-                    <option value="other">Other</option>
-                </select>
-                <div class="flex-grow relative">
-                    <input type="tel" name="secondary_phone_number[]"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Phone number">
+        <!-- STEP 1: Contact -->
+        <div class="wz-step" id="step1">
+            <div class="step-head">
+                <h3>Contact Information</h3>
+                <p>Primary and additional contact details</p>
+            </div>
+            <div class="fcols">
+                <div class="frow">
+                    <div>
+                        <label class="lbl" for="primaryPhone">Primary Phone <span class="req">*</span></label>
+                        <input class="fi" type="tel" id="primaryPhone" name="primary_phone" placeholder="+880 1X XX XXX XXX">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="lbl mb-0">Additional Phones</label>
+                            <button type="button" onclick="addSecPhone()" class="text-xs text-indigo-600 font-semibold hover:underline"><i class="fas fa-plus mr-1"></i>Add</button>
+                        </div>
+                        <div id="secPhones"></div>
+                    </div>
                 </div>
-                <button type="button" onclick="removeSecondaryPhone(this)" 
-                    class="p-2 text-red-500 hover:text-red-700 rounded-lg">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            container.appendChild(div);
-        }
-
-        function removeSecondaryPhone(button) {
-            button.closest('.flex.items-center').remove();
-        }
-
-        // Secondary Email Management
-        function addSecondaryEmail() {
-            const container = document.getElementById('secondaryEmailContainer');
-            const div = document.createElement('div');
-            div.className = 'flex items-center gap-2 animate-slide-in';
-            div.innerHTML = `
-                <select name="secondary_email_type[]" 
-                    class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                    <option value="work">Work</option>
-                    <option value="personal">Personal</option>
-                    <option value="other">Other</option>
-                </select>
-                <div class="flex-grow relative">
-                    <input type="email" name="secondary_email_address[]"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Email address">
+                <div class="frow">
+                    <div>
+                        <label class="lbl" for="primaryEmail">Primary Email <span class="req">*</span></label>
+                        <input class="fi" type="email" id="primaryEmail" name="primary_email" placeholder="name@company.com">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="lbl mb-0">Additional Emails</label>
+                            <button type="button" onclick="addSecEmail()" class="text-xs text-indigo-600 font-semibold hover:underline"><i class="fas fa-plus mr-1"></i>Add</button>
+                        </div>
+                        <div id="secEmails"></div>
+                    </div>
                 </div>
-                <button type="button" onclick="removeSecondaryEmail(this)" 
-                    class="p-2 text-red-500 hover:text-red-700 rounded-lg">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            container.appendChild(div);
+            </div>
+        </div>
+
+        <!-- STEP 2: Company -->
+        <div class="wz-step" id="step2">
+            <div class="step-head">
+                <h3>Company Information</h3>
+                <p>Role, department and reporting structure</p>
+            </div>
+            <div class="fcols">
+                <div class="frow">
+                    <div>
+                        <label class="lbl" for="designation">Designation <span class="req">*</span></label>
+                        <input class="fi" type="text" id="designation" name="designation" placeholder="e.g. Senior Executive">
+                    </div>
+                    <div>
+                        <label class="lbl" for="dateOfJoin">Date of Join <span class="req">*</span></label>
+                        <input class="fi" type="date" id="dateOfJoin" name="date_of_join">
+                    </div>
+                    <div>
+                        <label class="lbl">Department <span class="req">*</span></label>
+                        <div id="departmentSearchContainer" class="relative">
+                            <input type="text" id="departmentInput" placeholder="Search department…" class="fi" autocomplete="off">
+                            <ul id="departmentDropdown" class="absolute w-full bg-white border border-gray-200 rounded-xl mt-1 max-h-48 overflow-auto shadow-lg hidden z-50"></ul>
+                        </div>
+                        <input type="hidden" id="selectedDepartmentId"    name="department_id">
+                        <input type="hidden" id="selectedDepartmentSysId" name="department_sys_id">
+                    </div>
+                    <div>
+                        <label class="lbl" for="grossSalary">Gross Salary (BDT)</label>
+                        <input class="fi" type="number" step="0.01" min="0" id="grossSalary" name="gross_salary" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="frow">
+                    <div style="display:flex;flex-direction:column;flex:1">
+                        <label class="lbl" for="companyRole">Role / Responsibilities <span class="req">*</span></label>
+                        <textarea class="fi fi-ta" id="companyRole" name="company_role" placeholder="Key responsibilities…" style="flex:1;min-height:110px"></textarea>
+                    </div>
+                    <div>
+                        <label class="lbl" for="reportingToName">Reporting To</label>
+                        <input class="fi" type="text" id="reportingToName" name="reporting_to_name" placeholder="Manager's name">
+                    </div>
+                    <div>
+                        <label class="lbl" for="reportingToDesignation">Their Designation</label>
+                        <input class="fi" type="text" id="reportingToDesignation" name="reporting_to_designation" placeholder="e.g. General Manager">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Address + Emergency + Summary -->
+        <div class="wz-step" id="step3">
+            <div class="step-head">
+                <h3>Address & Emergency Contact</h3>
+                <p>Home address, emergency contact and final review</p>
+            </div>
+            <div class="fcols">
+                <!-- Left: Address + Emergency stacked -->
+                <div class="frow">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider -mb-2">Home Address</p>
+                    <div>
+                        <label class="lbl">Address Line 1</label>
+                        <input class="fi" type="text" name="address_line_1" placeholder="House / Road / Block">
+                    </div>
+                    <div>
+                        <label class="lbl">Address Line 2</label>
+                        <input class="fi" type="text" name="address_line_2" placeholder="Area / Thana">
+                    </div>
+                    <div class="fcols-3">
+                        <div><label class="lbl">City</label><input class="fi" type="text" name="city" placeholder="Dhaka"></div>
+                        <div><label class="lbl">Division</label><input class="fi" type="text" name="state"></div>
+                        <div><label class="lbl">Post Code</label><input class="fi" type="text" name="zip_code"></div>
+                    </div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider -mb-2 mt-2">Emergency Contact</p>
+                    <div class="fcols-3" style="grid-template-columns:1fr 1fr">
+                        <div><label class="lbl">Person</label><input class="fi" type="text" id="emPerson" name="emergency_contact_person"></div>
+                        <div><label class="lbl">Phone</label><input class="fi" type="tel" id="emPhone" name="emergency_phone"></div>
+                    </div>
+                    <div class="fcols-3" style="grid-template-columns:1fr 1fr">
+                        <div>
+                            <label class="lbl">Relation</label>
+                            <select class="fi" name="relation">
+                                <option value="">— Select —</option>
+                                <?php foreach(['Father','Mother','Spouse','Brother','Sister','Friend','Other'] as $r):?><option><?=$r?></option><?php endforeach;?>
+                            </select>
+                        </div>
+                        <div><label class="lbl">City</label><input class="fi" type="text" name="emergency_city"></div>
+                    </div>
+                </div>
+
+                <!-- Right: Summary -->
+                <div class="frow">
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 flex-1">
+                        <p class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i class="fas fa-clipboard-check"></i>Summary
+                        </p>
+                        <div id="reviewBody"></div>
+                    </div>
+                    <div class="rounded-xl border border-amber-100 bg-amber-50 p-3 flex gap-2 items-start text-xs text-amber-700">
+                        <i class="fas fa-shield-alt mt-0.5 flex-shrink-0"></i>
+                        <span>Default login password = <strong>System ID</strong>. Employee must change it on first login.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="wz-actions">
+            <button type="button" id="btnBack" onclick="wizPrev()" class="btn-back hidden"><i class="fas fa-arrow-left mr-2"></i>Back</button>
+            <div></div>
+            <button type="button" id="btnNext" onclick="wizNext()" class="btn-next">Next <i class="fas fa-arrow-right ml-1"></i></button>
+            <button type="submit" id="btnSubmit" class="btn-submit hidden"><i class="fas fa-check mr-1"></i>Add Employee</button>
+        </div>
+
+    </div><!-- /panel -->
+</div><!-- /shell -->
+</form>
+</div>
+</main>
+
+<div id="wz-toast"><i id="wz-ti" class="fas fa-check-circle"></i><span id="wz-tm"></span></div>
+
+<script>
+const TOTAL=4;
+const API_STORE="<?= $storeEmployeeApi ?>";
+const API_PHOTO="<?= $ip_port ?>api/employees/upload-photo.php";
+let cur=0, photoFile=null;
+
+// ── Navigation ──────────────────────────────────────────────
+function goToStep(n, validate=false) {
+    if (validate && n > cur) {
+        for (let i = cur; i < n; i++) { if (!validateStep(i)) return; }
+    }
+    // Update sidebar
+    document.getElementById('step' + cur).classList.remove('active');
+    for (let i = 0; i < TOTAL; i++) {
+        const nav = document.getElementById('nav' + i);
+        const dot = document.getElementById('dot' + i);
+        const icons = ['fa-user','fa-phone','fa-briefcase','fa-map-marker-alt'];
+        nav.className = 'wz-nav-item ' + (i < n ? 'done' : i === n ? 'active' : 'todo');
+        dot.innerHTML = i < n
+            ? '<i class="fas fa-check" style="font-size:.65rem"></i>'
+            : i === n
+                ? `<i class="fas ${icons[i]}" style="font-size:.65rem"></i>`
+                : (i + 1);
+        if (i < TOTAL - 1) {
+            const conn = document.getElementById('conn' + i);
+            if (conn) conn.className = 'wz-connector ' + (i < n ? 'done' : '');
         }
+    }
+    cur = n;
+    document.getElementById('step' + cur).classList.add('active');
+    document.getElementById('btnBack').classList.toggle('hidden', cur === 0);
+    document.getElementById('btnNext').classList.toggle('hidden', cur === TOTAL - 1);
+    document.getElementById('btnSubmit').classList.toggle('hidden', cur !== TOTAL - 1);
+    // Progress
+    document.getElementById('progressBar').style.width = ((cur + 1) / TOTAL * 100) + '%';
+    document.getElementById('progressTxt').textContent = (cur + 1) + ' / ' + TOTAL;
+    if (n === TOTAL - 1) buildReview();
+}
+function wizNext() { goToStep(Math.min(cur + 1, TOTAL - 1), true); }
+function wizPrev() { goToStep(Math.max(cur - 1, 0)); }
 
-        function removeSecondaryEmail(button) {
-            button.closest('.flex.items-center').remove();
+// ── Validation ───────────────────────────────────────────────
+function validateStep(n) {
+    if (n === 0 && !vf('fullName', 'Full name is required')) return false;
+    if (n === 1) {
+        if (!vf('primaryPhone', 'Primary phone is required')) return false;
+        if (!vf('primaryEmail', 'Primary email is required')) return false;
+    }
+    if (n === 2) {
+        if (!vf('designation', 'Designation is required')) return false;
+        if (!vf('companyRole', 'Role / responsibilities is required')) return false;
+        if (!vf('dateOfJoin', 'Date of join is required')) return false;
+        if (!document.getElementById('departmentInput').value.trim()) {
+            toast('error', 'Please select a department');
+            document.getElementById('departmentInput').classList.add('err');
+            return false;
         }
+    }
+    return true;
+}
+function vf(id, msg) {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) { toast('error', msg); el.classList.add('err'); el.focus(); return false; }
+    el.classList.remove('err'); return true;
+}
 
-        // Form Validation
-        function validateForm() {
-            const fullName = document.getElementById('fullName').value.trim();
-            const primaryPhone = document.getElementById('primaryPhone').value.trim();
-            const primaryEmail = document.getElementById('primaryEmail').value.trim();
-            const designation = document.getElementById('designation').value.trim();
-            const companyRole = document.getElementById('companyRole').value.trim();
-            const dateOfJoin = document.getElementById('dateOfJoin').value;
-            const department = document.getElementById('departmentInput').value.trim();
-            const bloodGroup = document.getElementById('bloodGroupInput').value.trim();
+// ── Photo ────────────────────────────────────────────────────
+function previewPhoto(inp) {
+    const f = inp.files[0]; if (!f) return;
+    photoFile = f;
+    const r = new FileReader();
+    r.onload = e => {
+        document.getElementById('photoRing').outerHTML =
+            `<div id="photoRing" class="photo-ring" onclick="document.getElementById('profilePhotoInput').click()">
+                <img src="${e.target.result}" alt="">
+                <div class="photo-overlay"><i class="fas fa-camera"></i></div>
+            </div>`;
+    };
+    r.readAsDataURL(f);
+}
 
-            if (!fullName) {
-                showMessage('Full name is required', 'error');
-                document.getElementById('fullName').focus();
-                return false;
-            }
-            if (!primaryPhone) {
-                showMessage('Primary phone is required', 'error');
-                document.getElementById('primaryPhone').focus();
-                return false;
-            }
-            if (!primaryEmail) {
-                showMessage('Primary email is required', 'error');
-                document.getElementById('primaryEmail').focus();
-                return false;
-            }
-            if (!department) {
-                showMessage('Department is required', 'error');
-                document.getElementById('departmentInput').focus();
-                return false;
-            }
-            if (!designation) {
-                showMessage('Designation is required', 'error');
-                document.getElementById('designation').focus();
-                return false;
-            }
-            if (!companyRole) {
-                showMessage('Company role is required', 'error');
-                document.getElementById('companyRole').focus();
-                return false;
-            }
-            if (!dateOfJoin) {
-                showMessage('Date of join is required', 'error');
-                document.getElementById('dateOfJoin').focus();
-                return false;
-            }
-            if (!bloodGroup) {
-                showMessage('Blood group is required', 'error');
-                document.getElementById('bloodGroupInput').focus();
-                return false;
-            }
+// ── Blood group ──────────────────────────────────────────────
+document.getElementById('bloodGroupInput').addEventListener('click', () => {
+    const dd = document.getElementById('bgDropdown');
+    dd.style.display = dd.style.display === 'none' || !dd.style.display ? 'block' : 'none';
+});
+function setBg(v) {
+    document.getElementById('bloodGroupInput').value = v;
+    document.getElementById('selectedBloodGroupValue').value = v;
+    document.getElementById('bgDropdown').style.display = 'none';
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('#bloodGroupInput') && !e.target.closest('#bgDropdown'))
+        document.getElementById('bgDropdown').style.display = 'none';
+});
 
-            return true;
-        }
+// ── Department ───────────────────────────────────────────────
+(function () {
+    const data = <?= $_deptJson ?>;
+    const inp = document.getElementById('departmentInput');
+    const list = document.getElementById('departmentDropdown');
+    const cont = document.getElementById('departmentSearchContainer');
+    function render(arr) {
+        list.innerHTML = arr.length
+            ? arr.map(d => `<li class="px-4 py-2.5 cursor-pointer hover:bg-indigo-50 border-b last:border-b-0 text-sm" onclick="pickDept(${d.id},'${(d.sys_id??'').replace(/'/g,"\\'")}','${d.name.replace(/'/g,"\\'")}')">
+                <span class="font-medium">${d.name}</span>
+                <span class="text-xs text-gray-400 ml-2">${d.sys_id??''}</span></li>`).join('')
+            : '<li class="px-4 py-3 text-sm text-gray-400">No department found</li>';
+    }
+    inp.addEventListener('focus', () => { render(data); list.classList.remove('hidden'); });
+    inp.addEventListener('input', () => {
+        const q = inp.value.toLowerCase();
+        render(q ? data.filter(d => d.name.toLowerCase().includes(q) || (d.sys_id||'').toLowerCase().includes(q)) : data);
+        list.classList.remove('hidden');
+    });
+    document.addEventListener('click', e => { if (!cont.contains(e.target)) list.classList.add('hidden'); });
+})();
+function pickDept(id, sysId, name) {
+    document.getElementById('departmentInput').value = name;
+    document.getElementById('selectedDepartmentId').value = id;
+    document.getElementById('selectedDepartmentSysId').value = sysId;
+    document.getElementById('departmentInput').classList.remove('err');
+    document.getElementById('departmentDropdown').classList.add('hidden');
+}
 
-        // Form Submission
-        // document.getElementById('employeeForm').addEventListener('submit', async function(e) {
-        //     e.preventDefault();
-        
-        //     if (!validateForm()) {
-        //         return;
-        //     }
-            
-        //     // File validation check
-        //     if (droppedFiles.length === 0) {
-        //         if (!confirm('No files uploaded. Do you want to continue without files?')) {
-        //             return;
-        //         }
-        //     }
-        
-        //     // Show loading state
-        //     const submitBtn = this.querySelector('button[type="submit"]');
-        //     const originalText = submitBtn.innerHTML;
-        //     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
-        //     submitBtn.disabled = true;
-        
-        //     // Collect form data
-        //     const formData = new FormData(this);
-            
-        //     // Debug: Log all form data
-        //     console.log('Form Data:', Object.fromEntries(formData));
-            
-        //     // Prepare data for API
-        //     const data = {
-        //         type: formData.get('type') || 'permanent',
-        //         full_name: formData.get('full_name'),
-        //         status: 'active',
-        //         date_of_birth: formData.get('date_of_birth'),
-        //         created_by: 'current_user', // Replace with actual user from session
-        //         blood_group: formData.get('blood_group') // Add blood group
-        //         files_count: droppedFiles.length // Send file count
-        //     };
-        
-        //     // Get department values from hidden fields
-        //     const departmentId = document.getElementById('selectedDepartmentId').value;
-        //     const departmentName = document.getElementById('departmentInput').value;
-            
-        //     if (departmentName) {
-        //         data.department = departmentName;
-        //         if (departmentId) {
-        //             data.department_id = departmentId;
-        //         }
-        //     }
-        
-        //     // Prepare company_related_info JSON
-        //     data.company_related_info = {
-        //         designation: formData.get('designation'),
-        //         company_role: formData.get('company_role'),
-        //         date_of_join: formData.get('date_of_join')
-        //     };
-        
-        //     // Prepare phone information
-        //     data.phone = {
-        //         primary_no: formData.get('primary_phone')
-        //     };
-        
-        //     const secondaryPhoneTypes = formData.getAll('secondary_phone_type[]');
-        //     const secondaryPhoneNumbers = formData.getAll('secondary_phone_number[]');
-            
-        //     if (secondaryPhoneTypes.length > 0) {
-        //         data.phone.secondary_no = secondaryPhoneTypes.map((type, index) => ({
-        //             type: type,
-        //             number: secondaryPhoneNumbers[index] || ''
-        //         }));
-        //     }
-        
-        //     // Prepare email information
-        //     data.email = {
-        //         primary: formData.get('primary_email')
-        //     };
-        
-        //     const secondaryEmailTypes = formData.getAll('secondary_email_type[]');
-        //     const secondaryEmailAddresses = formData.getAll('secondary_email_address[]');
-            
-        //     if (secondaryEmailTypes.length > 0) {
-        //         data.email.secondary = secondaryEmailTypes.map((type, index) => ({
-        //             type: type,
-        //             address: secondaryEmailAddresses[index] || ''
-        //         }));
-        //     }
-        
-        //     // Prepare address information
-        //     data.address = {
-        //         address_line_1: formData.get('address_line_1') || '',
-        //         address_line_2: formData.get('address_line_2') || '',
-        //         city: formData.get('city') || '',
-        //         state: formData.get('state') || '',
-        //         zip_code: formData.get('zip_code') || '',
-        //         country: formData.get('country') || ''
-        //     };
-        
-        //     // Prepare emergency contact information
-        //     data.emergency_contact = {
-        //         person: formData.get('emergency_contact_person') || '',
-        //         relation: formData.get('relation') || '',
-        //         phone: formData.get('emergency_phone') || '',
-        //         address: {
-        //             address_line_1: formData.get('emergency_address_line_1') || '',
-        //             address_line_2: formData.get('emergency_address_line_2') || '',
-        //             city: formData.get('emergency_city') || '',
-        //             state: formData.get('emergency_state') || '',
-        //             zip_code: formData.get('emergency_zip_code') || ''
-        //         }
-        //     };
-        
-        //     console.log('Data to send:', data); // For debugging
-        
-        //     // Send to server
-        //     try {
-        //         const uploadFormData = new FormData();
-                
-        //         // Add all files
-        //         if (droppedFiles.length > 0) {
-        //             droppedFiles.forEach((file, index) => {
-        //                 uploadFormData.append(`files[]`, file);
-        //             });
-        //         }
-                
-        //         // Add other data as JSON
-        //         uploadFormData.append('employee_data', JSON.stringify(data));
-                
-        //         const response = await fetch(API_URL_FOR_CLIENT_STORE, {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json',
-        //             },
-        //             body: uploadFormData
-        //         });
-        
-        //         const result = await response.json();
-        //         console.log('API Response:', result); // For debugging
-        
-        //         if (result.success) {
-        //             showMessage('Employee added successfully!', 'success');
-        //             // Reset form after successful submission
-        //             setTimeout(() => {
-        //                 resetForm();
-        //             }, 2000);
-        //         } else {
-        //             showMessage(result.message || 'Failed to add employee', 'error');
-        //         }
-        //     } catch (error) {
-        //         console.error('Error:', error);
-        //         showMessage('Network error: ' + error.message, 'error');
-        //     } finally {
-        //         // Reset button state
-        //         submitBtn.innerHTML = originalText;
-        //         submitBtn.disabled = false;
-        //     }
-        // });
-        // create.php এর নিচের অংশে (লাইন ~501) এই ফাংশনটি আপডেট করুন:
+// ── Sec contacts ─────────────────────────────────────────────
+function addSecPhone() {
+    const r = document.createElement('div'); r.className = 'sec-row';
+    r.innerHTML = `<select name="secondary_phone_type[]" class="fi" style="width:95px;flex-shrink:0"><option value="mobile">Mobile</option><option value="home">Home</option><option value="work">Work</option></select><input type="tel" name="secondary_phone_number[]" class="fi flex-1" placeholder="Number"><button type="button" onclick="this.parentElement.remove()" class="text-red-400 px-1.5 flex-shrink-0"><i class="fas fa-times text-xs"></i></button>`;
+    document.getElementById('secPhones').appendChild(r);
+}
+function addSecEmail() {
+    const r = document.createElement('div'); r.className = 'sec-row';
+    r.innerHTML = `<select name="secondary_email_type[]" class="fi" style="width:95px;flex-shrink:0"><option value="work">Work</option><option value="personal">Personal</option><option value="other">Other</option></select><input type="email" name="secondary_email_address[]" class="fi flex-1" placeholder="Email"><button type="button" onclick="this.parentElement.remove()" class="text-red-400 px-1.5 flex-shrink-0"><i class="fas fa-times text-xs"></i></button>`;
+    document.getElementById('secEmails').appendChild(r);
+}
 
-// Form Submission
+// ── Review ───────────────────────────────────────────────────
+function g(id) { return document.getElementById(id)?.value?.trim() ?? ''; }
+function buildReview() {
+    const rows = [
+        ['Full Name',   g('fullName')],
+        ['Type',        document.querySelector('input[name="type"]:checked')?.value ?? '—'],
+        ['Phone',       g('primaryPhone')],
+        ['Email',       g('primaryEmail')],
+        ['Designation', g('designation')],
+        ['Department',  g('departmentInput') || '—'],
+        ['Join Date',   g('dateOfJoin')],
+        ['Salary',      g('grossSalary') ? 'BDT ' + g('grossSalary') : '—'],
+        ['Reporting',   g('reportingToName') || '—'],
+        ['City',        g('city') || '—'],
+    ];
+    document.getElementById('reviewBody').innerHTML = rows.map(([l, v]) =>
+        `<div class="sum-row"><span class="sum-lbl">${l}</span><span class="sum-val">${v||'—'}</span></div>`
+    ).join('');
+}
+
+// ── Toast ────────────────────────────────────────────────────
+let _tt;
+function toast(type, msg) {
+    const el = document.getElementById('wz-toast');
+    document.getElementById('wz-ti').className = 'fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle');
+    document.getElementById('wz-tm').textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(_tt); _tt = setTimeout(() => { el.className = type; }, 3200);
+}
+
+// ── Submit ───────────────────────────────────────────────────
 document.getElementById('employeeForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    e.stopPropagation(); // এই লাইনটি যোগ করুন
-    
-    console.log('Form submission started...'); // Debug log
-    
-    if (!validateForm()) {
-        console.log('Form validation failed');
-        return;
-    }
-    
-    // File validation check
-    if (droppedFiles.length === 0) {
-        if (!confirm('No files uploaded. Do you want to continue without files?')) {
-            console.log('User cancelled due to no files');
-            return;
-        }
-    }
-    
-    console.log('Number of files:', droppedFiles.length); // Debug log
-    
-    // Show loading state
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
-    submitBtn.disabled = true;
-    
-    // Collect form data
-    const formData = new FormData(this);
-    
-    // Prepare data for API
+    if (!validateStep(0) || !validateStep(1) || !validateStep(2)) return;
+    const btn = document.getElementById('btnSubmit');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Adding…'; btn.disabled = true;
+    const fd = new FormData(this);
     const data = {
-        type: formData.get('type') || 'permanent',
-        full_name: formData.get('full_name'),
-        status: 'active',
-        date_of_birth: formData.get('date_of_birth'),
-        created_by: 'current_user',
-        blood_group: formData.get('blood_group'),
-        files_count: droppedFiles.length
+        type: fd.get('type') || 'permanent', full_name: fd.get('full_name'),
+        status: 'active', date_of_birth: fd.get('date_of_birth'), blood_group: fd.get('blood_group')
     };
-    
-    // Get department values
-    const departmentId = document.getElementById('selectedDepartmentId').value;
-    const departmentName = document.getElementById('departmentInput').value;
-    
-    if (departmentName) {
-        data.department = departmentName;
-        if (departmentId) {
-            data.department_id = departmentId;
-        }
-    }
-    
-    // Prepare company_related_info JSON
+    const dId = document.getElementById('selectedDepartmentId').value;
+    const dSid = document.getElementById('selectedDepartmentSysId').value;
+    const dName = document.getElementById('departmentInput').value;
+    if (dName) { data.department = dName; if (dId) data.department_id = dId; if (dSid) data.department_sys_id = dSid; }
     data.company_related_info = {
-        designation: formData.get('designation'),
-        company_role: formData.get('company_role'),
-        date_of_join: formData.get('date_of_join'),
-        father_name: formData.get('father_name') || null,
-        mother_name: formData.get('mother_name') || null,
-        spouse_name: formData.get('spouse_name') || null,
-        nid_no: formData.get('nid_no') || null,
-        gross_salary: formData.get('gross_salary') || null,
-        reporting_to_name: formData.get('reporting_to_name') || null,
-        reporting_to_designation: formData.get('reporting_to_designation') || null
+        designation: fd.get('designation'), company_role: fd.get('company_role'),
+        date_of_join: fd.get('date_of_join'), father_name: fd.get('father_name')||null,
+        mother_name: fd.get('mother_name')||null, spouse_name: fd.get('spouse_name')||null,
+        nid_no: fd.get('nid_no')||null, gross_salary: fd.get('gross_salary')||null,
+        reporting_to_name: fd.get('reporting_to_name')||null,
+        reporting_to_designation: fd.get('reporting_to_designation')||null
     };
-    
-    // Prepare phone information
-    data.phone = {
-        primary_no: formData.get('primary_phone')
-    };
-    
-    const secondaryPhoneTypes = formData.getAll('secondary_phone_type[]');
-    const secondaryPhoneNumbers = formData.getAll('secondary_phone_number[]');
-    
-    if (secondaryPhoneTypes.length > 0) {
-        data.phone.secondary_no = secondaryPhoneTypes.map((type, index) => ({
-            type: type,
-            number: secondaryPhoneNumbers[index] || ''
-        }));
-    }
-    
-    // Prepare email information
-    data.email = {
-        primary: formData.get('primary_email')
-    };
-    
-    const secondaryEmailTypes = formData.getAll('secondary_email_type[]');
-    const secondaryEmailAddresses = formData.getAll('secondary_email_address[]');
-    
-    if (secondaryEmailTypes.length > 0) {
-        data.email.secondary = secondaryEmailTypes.map((type, index) => ({
-            type: type,
-            address: secondaryEmailAddresses[index] || ''
-        }));
-    }
-    
-    // Prepare address information
+    data.phone = { primary_no: fd.get('primary_phone') };
+    const spt = fd.getAll('secondary_phone_type[]'), spn = fd.getAll('secondary_phone_number[]');
+    if (spt.length) data.phone.secondary_no = spt.map((t,i) => ({ type:t, number:spn[i]||'' }));
+    data.email = { primary: fd.get('primary_email') };
+    const set = fd.getAll('secondary_email_type[]'), sea = fd.getAll('secondary_email_address[]');
+    if (set.length) data.email.secondary = set.map((t,i) => ({ type:t, address:sea[i]||'' }));
     data.address = {
-        address_line_1: formData.get('address_line_1') || '',
-        address_line_2: formData.get('address_line_2') || '',
-        city: formData.get('city') || '',
-        state: formData.get('state') || '',
-        zip_code: formData.get('zip_code') || '',
-        country: formData.get('country') || ''
+        address_line_1: fd.get('address_line_1')||'', address_line_2: fd.get('address_line_2')||'',
+        city: fd.get('city')||'', state: fd.get('state')||'', zip_code: fd.get('zip_code')||'',
+        country: fd.get('country')||'Bangladesh'
     };
-    
-    // Prepare emergency contact information
     data.emergency_contact = {
-        person: formData.get('emergency_contact_person') || '',
-        relation: formData.get('relation') || '',
-        phone: formData.get('emergency_phone') || '',
-        address: {
-            address_line_1: formData.get('emergency_address_line_1') || '',
-            address_line_2: formData.get('emergency_address_line_2') || '',
-            city: formData.get('emergency_city') || '',
-            state: formData.get('emergency_state') || '',
-            zip_code: formData.get('emergency_zip_code') || ''
-        }
+        person: fd.get('emergency_contact_person')||'', relation: fd.get('relation')||'',
+        phone: fd.get('emergency_phone')||'',
+        address: { address_line_1: fd.get('emergency_address_line_1')||'', city: fd.get('emergency_city')||'' }
     };
-    
-    console.log('Data to send:', data); // Debug log
-    
-    // Create FormData for file upload
-    const uploadFormData = new FormData();
-    
-    // Add all files
-    if (droppedFiles.length > 0) {
-        console.log('Adding files to FormData...');
-        droppedFiles.forEach((file, index) => {
-            uploadFormData.append(`files[]`, file);
-            console.log(`Added file ${index + 1}:`, file.name);
-        });
-    } else {
-        console.log('No files to add');
-    }
-    
-    // Add other data as JSON
-    uploadFormData.append('employee_data', JSON.stringify(data));
-    console.log('Employee data added to FormData');
-    
+    const upload = new FormData();
+    if (photoFile) upload.append('files[]', photoFile);
+    upload.append('employee_data', JSON.stringify(data));
     try {
-        console.log('Sending request to:', API_URL_FOR_CLIENT_STORE);
-        
-        const response = await fetch(API_URL_FOR_CLIENT_STORE, {
-            method: 'POST',
-            body: uploadFormData
-            // headers নিষ্ক্রিয় করুন, FormData নিজেই সেট করে দেয়
-        });
-
-        console.log('Response status:', response.status);
-        
-        const result = await response.json();
-        console.log('API Response:', result);
-
+        const res = await fetch(API_STORE, { method:'POST', body: upload });
+        const result = await res.json();
         if (result.success) {
-            showMessage('Employee added successfully!', 'success');
-
-            // Upload the profile photo separately, now that we have a sys_id --
-            // it never went through the multipart FormData above, since that
-            // one carries the general document uploads, not the dedicated photo.
-            const photoFile = document.getElementById('profilePhotoInput').files[0];
+            toast('success', 'Employee added! ID: ' + result.sys_id);
             if (photoFile && result.sys_id) {
-                const photoForm = new FormData();
-                photoForm.append('sys_id', result.sys_id);
-                photoForm.append('photo', photoFile);
-                try {
-                    await fetch(API_URL_FOR_PHOTO_UPLOAD, { method: 'POST', body: photoForm });
-                } catch (e) {
-                    console.error('Profile photo upload failed:', e);
-                }
+                const pf = new FormData(); pf.append('sys_id', result.sys_id); pf.append('photo', photoFile);
+                try { await fetch(API_PHOTO, { method:'POST', body:pf }); } catch {}
             }
-
-            // Reset form after successful submission
             setTimeout(() => {
-                resetForm();
-            }, 2000);
-        } else {
-            showMessage(result.message || 'Failed to add employee', 'error');
-        }
-    } catch (error) {
-        console.error('Fetch Error:', error);
-        showMessage('Network error: ' + error.message, 'error');
-    } finally {
-        // Reset button state
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        console.log('Form submission process completed');
-    }
-});
-        
-        // Show Messages
-        function showMessage(message, type) {
-            const container = document.getElementById('messageContainer');
-            const successDiv = document.getElementById('successMessage');
-            const errorDiv = document.getElementById('errorMessage');
-
-            container.classList.remove('hidden');
-
-            if (type === 'success') {
-                successDiv.classList.remove('hidden');
-                errorDiv.classList.add('hidden');
-                document.getElementById('successText').textContent = message;
-                
-                // Auto-hide success after 5 seconds
-                setTimeout(() => {
-                    container.classList.add('hidden');
-                }, 5000);
-            } else {
-                errorDiv.classList.remove('hidden');
-                successDiv.classList.add('hidden');
-                document.getElementById('errorText').textContent = message;
-                
-                // Auto-hide error after 8 seconds
-                setTimeout(() => {
-                    container.classList.add('hidden');
-                }, 8000);
-            }
-        }
-
-        // Form Reset
-        function resetForm() {
-            if (confirm('Are you sure you want to reset the form? All entered data will be lost.')) {
-                document.getElementById('employeeForm').reset();
-                
-                // Reset secondary phone and email inputs
-                document.getElementById('secondaryPhoneContainer').innerHTML = '';
-                document.getElementById('secondaryEmailContainer').innerHTML = '';
-                
-                // Reset department input
-                document.getElementById('departmentInput').value = '';
+                this.reset(); photoFile = null;
                 document.getElementById('selectedDepartmentId').value = '';
-                
-                // Reset blood group input
-                document.getElementById('bloodGroupInput').value = '';
+                document.getElementById('selectedDepartmentSysId').value = '';
                 document.getElementById('selectedBloodGroupValue').value = '';
-                
-                // Set default employee type to permanent
-                document.querySelector('input[name="type"][value="permanent"]').checked = true;
-                
-                // Set date inputs to empty
-                document.getElementById('dateOfJoin').value = '';
-                document.getElementById('dateOfBirth').value = '';
-                
-                showMessage('Form has been reset', 'success');
-            }
-        }
-    </script>
+                document.getElementById('bloodGroupInput').value = '';
+                document.getElementById('secPhones').innerHTML = '';
+                document.getElementById('secEmails').innerHTML = '';
+                document.getElementById('photoRing').outerHTML = `<div id="photoRing" class="photo-placeholder" onclick="document.getElementById('profilePhotoInput').click()"><i class="fas fa-camera"></i></div>`;
+                goToStep(0);
+            }, 2000);
+        } else { toast('error', result.message || 'Failed'); }
+    } catch (err) { toast('error', 'Network error: ' + err.message); }
+    finally { btn.innerHTML = '<i class="fas fa-check mr-1"></i>Add Employee'; btn.disabled = false; }
+});
+document.getElementById('dateOfJoin').max = new Date().toISOString().split('T')[0];
+</script>
 </body>
 </html>

@@ -116,17 +116,17 @@ $smpostApi = $ip_port . 'api/social/endpoints.php';
 </main>
 
 <!-- ═══════════ PREVIEW MODAL ═══════════ -->
-<div id="previewModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+<div id="smPostPreviewModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl modal-box">
         <!-- Header -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
-            <div class="flex items-center gap-2" id="modalPlatHeader"></div>
+            <div class="flex items-center gap-2" id="smPostModalPlatHeader"></div>
             <button onclick="closePreview()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-lg transition">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <!-- Body -->
-        <div class="modal-body p-6 space-y-4" id="previewContent"></div>
+        <div class="modal-body p-6 space-y-4" id="smPostPreviewContent"></div>
         <!-- Footer -->
         <div class="flex flex-wrap items-center gap-2 px-6 py-4 border-t border-gray-100 flex-shrink-0" id="previewActions"></div>
     </div>
@@ -344,25 +344,33 @@ function renderPagination() {
 /* ══════════════════════════════════════
    PREVIEW MODAL
 ══════════════════════════════════════ */
-function openPreview(sysId) {
+async function openPreview(sysId) {
     if (!sysId) { console.error('[openPreview] no sysId passed'); return; }
-    const p = allPosts.find(x => x.sys_id === sysId);
+    let p = allPosts.find(x => x.sys_id === sysId);
+
+    // Fallback: post not in local cache (e.g. beyond page limit) — fetch from API
     if (!p) {
-        console.error('[openPreview] post not found for sysId:', sysId, 'allPosts.length=', allPosts.length);
-        showToast('error', 'Post not found');
-        return;
+        try {
+            const res  = await fetch(SMPOST_API + '?action=get&sys_id=' + encodeURIComponent(sysId));
+            const json = await res.json();
+            if (json.status === 'success' && json.data) {
+                // API already decodes hashtags/keywords/tips arrays
+                p = json.data;
+            }
+        } catch(e) { console.error('[openPreview] fallback fetch failed', e); }
+        if (!p) { showToast('error', 'Post not found'); return; }
     }
     _previewPost = p;
 
-    const modal = document.getElementById('previewModal');
-    if (!modal) { console.error('[openPreview] #previewModal element missing from DOM'); return; }
+    const modal = document.getElementById('smPostPreviewModal');
+    if (!modal) { console.error('[openPreview] #smPostPreviewModal element missing from DOM'); return; }
 
     const pi = PLAT_INFO[p.platform] ?? { icon:'fa-circle', cls:'', name: p.platform };
     const hashtags = Array.isArray(p.hashtags) ? p.hashtags : (sp(p.hashtags) ?? []);
     const keywords = Array.isArray(p.keywords) ? p.keywords : (sp(p.keywords) ?? []);
 
     // Platform header
-    document.getElementById('modalPlatHeader').innerHTML =
+    document.getElementById('smPostModalPlatHeader').innerHTML =
         '<div class="plat-icon ' + pi.cls + '"><i class="' + pi.icon + '"></i></div>'
         + '<span class="font-bold text-gray-700">' + esc(pi.name) + '</span>'
         + '<span class="badge badge-' + esc(p.status) + ' ml-2">' + esc(p.status) + '</span>';
@@ -410,7 +418,7 @@ function openPreview(sysId) {
             + '</div></div>';
     }
 
-    document.getElementById('previewContent').innerHTML = bodyHtml;
+    document.getElementById('smPostPreviewContent').innerHTML = bodyHtml;
 
     // Footer actions — use data-status to avoid single-quote in onclick
     const statusBtns = {
@@ -430,7 +438,7 @@ function openPreview(sysId) {
 }
 
 function closePreview() {
-    const modal = document.getElementById('previewModal');
+    const modal = document.getElementById('smPostPreviewModal');
     modal.classList.add('hidden');
     modal.style.display = '';
     _previewPost = null;
@@ -438,7 +446,7 @@ function closePreview() {
 
 // Close on backdrop click
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('previewModal').addEventListener('click', function(e) {
+    document.getElementById('smPostPreviewModal').addEventListener('click', function(e) {
         if (e.target === this) closePreview();
     });
 

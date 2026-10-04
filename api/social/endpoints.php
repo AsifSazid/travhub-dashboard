@@ -37,7 +37,7 @@ try {
         case 'list':
             $platform = $_GET['platform'] ?? '';
             $status   = $_GET['status']   ?? '';
-            $limit    = min((int)($_GET['limit']  ?? 20), 100);
+            $limit    = min((int)($_GET['limit']  ?? 20), 500);
             $offset   = (int)($_GET['offset'] ?? 0);
 
             $where  = [];
