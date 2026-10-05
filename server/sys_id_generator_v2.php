@@ -66,6 +66,11 @@ function _v2Registry(): array
         'loan_installments' => ['table' => 'loan_installments', 'short' => 'LI'],
         'loan_repayments' => ['table' => 'loan_repayments', 'short' => 'LR'],
         'employee_permissions' => ['table' => 'employee_permissions', 'short' => 'PM'],
+        'package_services'     => ['table' => 'package_services',     'short' => 'PK'],
+        'visa_types'           => ['table' => 'visa_types',           'short' => 'VT'],
+        'visa_categories'      => ['table' => 'visa_categories',      'short' => 'VC'],
+        'master_visa_services' => ['table' => 'master_visa_services', 'short' => 'VS'],
+        'visa_services'        => ['table' => 'visa_services',        'short' => 'VI'],
     ];
 }
 
