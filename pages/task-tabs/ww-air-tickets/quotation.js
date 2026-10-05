@@ -12,8 +12,39 @@
 
 // ── GDS HTML shell ────────────────────────────────────────────
 window._gdsHtml = function _gdsHtml(data, pfx) {
-    return `
-    <!-- Raw GDS + Extract -->
+    const rawGds    = data?.raw_input ?? data?.raw_gds ?? '';
+    const hasRawGds = rawGds.trim().length > 0;
+    // যদি raw GDS আগে থেকেই থাকে (mindboard/existing) — read-only terminal দেখাবে
+    // যদি নতুন entry (raw নেই) — editable textarea + Process button দেখাবে
+    // Booking stage-এ raw GDS এবং currency section দরকার নেই
+    const isBooking = pfx === 'b';
+
+    const rawGdsSection = isBooking ? '' : (hasRawGds ? `
+    <!-- Raw GDS — read-only (generated/existing) -->
+    <div class="mb-4">
+        <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">Raw GDS Text</label>
+            <div class="flex gap-2">
+                <button onclick="navigator.clipboard.writeText(this.dataset.gds);atT('success','Copied!')" data-gds="${_e(rawGds)}"
+                    class="flex items-center gap-1 px-2.5 py-1 bg-slate-700 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-copy text-xs"></i>Copy
+                </button>
+                <button onclick="atToggleGdsEdit('${pfx}')"
+                    class="flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">
+                    <i class="fas fa-pen text-xs"></i>Edit
+                </button>
+            </div>
+        </div>
+        <pre id="at-${pfx}-raw-display"
+            style="background:#0f172a;color:#e2e8f0;border-radius:8px;padding:10px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:160px;overflow-y:auto;margin:0;">${_e(rawGds)}</pre>
+        <textarea id="at-${pfx}-raw" class="hidden w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono resize-none focus:outline-none focus:border-indigo-400" rows="5">${_e(rawGds)}</textarea>
+        <button id="at-${pfx}-extract-btn" onclick="atExtractGds('${pfx}')"
+            class="hidden mt-2 flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition">
+            <i class="fas fa-wand-magic-sparkles text-xs"></i>Process GDS
+        </button>
+        <div id="at-${pfx}-extract-err" class="hidden mt-1 text-xs text-red-500"></div>
+    </div>` : `
+    <!-- Raw GDS — editable (new quotation entry only) -->
     <div class="mb-4">
         <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-gray-500 uppercase">Raw GDS Text</label>
@@ -22,14 +53,46 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
                 <i class="fas fa-wand-magic-sparkles text-xs"></i>Process GDS
             </button>
         </div>
-        <textarea id="at-${pfx}-raw" rows="4" placeholder="Paste Amadeus/Sabre/Galileo GDS text here…"
-            class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono resize-none focus:outline-none focus:border-indigo-400"
-        >${_e(data?.raw_input??'')}</textarea>
+        <textarea id="at-${pfx}-raw" rows="5" placeholder="Paste Amadeus/Sabre/Galileo GDS text here…"
+            class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono resize-none focus:outline-none focus:border-indigo-400"></textarea>
         <div id="at-${pfx}-extract-err" class="hidden mt-1 text-xs text-red-500"></div>
-    </div>
+    </div>`);
+
+    return `
+    ${rawGdsSection}
+
+    <!-- Currency + Conversion Rate — Quotation only -->
+    ${isBooking
+        ? `<input type="hidden" id="at-${pfx}-currency" value="BDT">
+           <input type="hidden" id="at-${pfx}-conv-rate" value="1">`
+        : `<div class="border border-amber-100 rounded-xl p-3 bg-amber-50 mb-3">
+        <label class="text-xs font-bold text-amber-700 uppercase block mb-2">Currency</label>
+        <div class="grid grid-cols-3 gap-3 items-end">
+            <div>
+                <label class="text-[10px] text-gray-500 uppercase block mb-1">Fare Currency</label>
+                <input id="at-${pfx}-currency" value="${_e(data?.currency??'BDT')}" placeholder="BDT, USD, AED…"
+                    oninput="atGdsCalcAll('${pfx}', true)"
+                    class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 bg-white">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-500 uppercase block mb-1">Rate to BDT</label>
+                <input type="number" id="at-${pfx}-conv-rate"
+                    value="${(() => { const c=(data?.currency??'BDT').toUpperCase(); const r=+(data?.conversion_rate??0); return (c==='BDT')?1:(r>1?r:''); })()}"
+                    min="0" step="0.01"
+                    placeholder="${(data?.currency??'BDT').toUpperCase()==='BDT'?'1':'e.g. 120'}"
+                    oninput="atGdsCalcAll('${pfx}', true)"
+                    class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 bg-white">
+            </div>
+            <div>
+                <p class="text-[10px] text-amber-600">
+                    ${(() => { const c=(data?.currency??'BDT').toUpperCase(); return c!=='BDT'?`⚠️ ${c} currency — BDT rate দিন, তারপর calculation হবে।`:'BDT হলে rate=1 রাখুন। অন্য currency হলে rate দিন।'; })()}
+                </p>
+            </div>
+        </div>
+    </div>`}
 
     <!-- Airline + Calculation rates -->
-    <div class="grid grid-cols-4 gap-2 mb-4">
+    <div class="grid grid-cols-5 gap-2 mb-4">
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Airline</label>
             <input id="at-${pfx}-airline" value="${_e(data?.airline??'')}" placeholder="Turkish Airlines"
@@ -38,13 +101,13 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
         </div>
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Commission %</label>
-            <input type="number" id="at-${pfx}-comm" value="7" step="0.01" min="0"
+            <input type="number" id="at-${pfx}-comm" value="${+(data?.commission_pct??7)}" step="0.01" min="0"
                 oninput="atGdsCalcAll('${pfx}', true)"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
         </div>
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Govt Tax %</label>
-            <input type="number" id="at-${pfx}-govt" value="0.3" step="0.01" min="0"
+            <input type="number" id="at-${pfx}-govt" value="${+(data?.govt_pct??0.3)}" step="0.01" min="0"
                 oninput="atGdsCalcAll('${pfx}', true)"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
         </div>
@@ -53,6 +116,13 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
             <input type="number" id="at-${pfx}-iata" value="0" min="0"
                 oninput="atGdsApplyIata('${pfx}')"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400">
+        </div>
+        <div>
+            <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Markup % <span class="text-gray-300 font-normal normal-case">(client)</span></label>
+            <input type="number" id="at-${pfx}-markup" value="${+(data?.markup_pct??0)}" step="0.01" min="0"
+                oninput="atGdsCalcAll('${pfx}', false)"
+                placeholder="0"
+                class="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400 bg-emerald-50">
         </div>
     </div>
 
@@ -109,7 +179,13 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
             class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
             <i class="fas fa-save mr-1.5"></i>${pfx==='q'&&window._at.activeQSysId ? 'Update' : pfx==='b'&&window._at.activeBSysId ? 'Update Booking' : pfx==='q' ? 'Save Quotation' : 'Save Booking'}
         </button>
-        ${pfx==='q'&&window._at.activeQSysId ? `<button onclick="atDeleteQ()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>` : ''}
+        ${pfx==='q'&&window._at.activeQSysId ? `
+            <button onclick="atMoveToBooking()" title="Send to Booking"
+                class="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition whitespace-nowrap">
+                <i class="fas fa-arrow-right mr-1.5"></i>Send to Booking
+            </button>
+            <button onclick="atDeleteQ()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm"><i class="fas fa-trash-alt"></i></button>
+        ` : ''}
         ${pfx==='b'&&window._at.activeBSysId ? (() => {
             const alreadyConf = (window._at.data?.at_confirmations??[]).some(c => c.booking_sys_id === window._at.activeBSysId);
             return alreadyConf
@@ -219,15 +295,37 @@ function _gdsFaresArea(pfx) { return window._at.gdsFaresArea(pfx); }
 
 // ── Fare calculation ──────────────────────────────────────────
 function _gdsCalcFare(pfx, idx, forceReset) {
-    const f    = window._at.gdsFares[idx]; if (!f) return;
-    const comm = +(document.getElementById(`at-${pfx}-comm`)?.value ?? 7) / 100;
-    const govt = +(document.getElementById(`at-${pfx}-govt`)?.value ?? 0.3) / 100;
-    const base  = +(f.base_fare  || 0);
-    const gross = +(f.gross_fare || 0);
-    const iata  = +(f.iata_charge || 0);
-    f.commission_a = Math.round(base  * comm);
-    f.govt_tax_b   = Math.round(gross * govt);
-    f.net_fare     = Math.max(0, Math.round(gross - f.commission_a + f.govt_tax_b + iata));
+    const f        = window._at.gdsFares[idx]; if (!f) return;
+    const comm     = +(document.getElementById(`at-${pfx}-comm`)?.value     ?? 7)   / 100;
+    const govt     = +(document.getElementById(`at-${pfx}-govt`)?.value     ?? 0.3) / 100;
+    const currency    = (document.getElementById(`at-${pfx}-currency`)?.value  ?? 'BDT').trim().toUpperCase();
+    const convRateRaw =  document.getElementById(`at-${pfx}-conv-rate`)?.value ?? '';
+    const convRate    = convRateRaw !== '' ? (+(convRateRaw) || 1) : (currency === 'BDT' ? 1 : 0);
+
+    // যদি non-BDT currency কিন্তু rate এখনো দেওয়া হয়নি — calculate করব না
+    if (currency !== 'BDT' && convRate === 0) {
+        f.commission_a = 0; f.govt_tax_b = 0; f.net_fare = 0;
+        f.payable = 0; f.total_payable = 0;
+        return;
+    }
+
+    // Fare input values are in the chosen currency; convert to BDT for calculation
+    const toBdt = (v) => currency === 'BDT' ? +(v||0) : Math.round(+(v||0) * convRate);
+
+    const base  = toBdt(f.base_fare);
+    const gross = toBdt(f.gross_fare);
+    const iata  = +(f.iata_charge || 0); // IATA charge always in BDT
+
+    // BDT-converted values store করছি — preview/copy_text এগুলো ব্যবহার করবে
+    f.base_fare_bdt  = base;
+    f.gross_fare_bdt = gross;
+
+    f.commission_a  = Math.round(base  * comm);
+    f.govt_tax_b    = Math.round(gross * govt);
+    f.net_fare      = Math.max(0, Math.round(gross - f.commission_a + f.govt_tax_b + iata));
+    f.currency      = currency;
+    f.conv_rate     = convRate;
+
     if (forceReset || !f.payable_edited || +(f.payable||0) === 0) {
         f.payable        = Math.max(0, Math.round((gross + f.net_fare) / 2));
         f.payable_edited = false;
@@ -241,7 +339,8 @@ function _gdsUpdateRo(pfx, idx) {
     const ca=sel('commission_a'); if(ca) ca.value=f.commission_a;
     const gt=sel('govt_tax_b');   if(gt) gt.value=f.govt_tax_b;
     const nf=sel('net_fare');     if(nf) nf.value=f.net_fare;
-    const tp=sel('total_payable'); if(tp) tp.value=`BDT ${_fmtN(f.total_payable)}/-`;
+    const currNote = (f.currency && f.currency !== 'BDT') ? ` (orig. ${f.currency}, ×${f.conv_rate})` : '';
+    const tp=sel('total_payable'); if(tp) tp.value=`BDT ${_fmtN(f.total_payable)}/-${currNote}`;
 }
 
 window.atGdsCalcAll = function(pfx, forceReset) {
@@ -298,6 +397,19 @@ function _gdsNormalizeRoute(v) {
 }
 
 // ── GDS Extract ───────────────────────────────────────────────
+// Read-only terminal → editable textarea toggle (Edit button)
+window.atToggleGdsEdit = function(pfx) {
+    const display = document.getElementById(`at-${pfx}-raw-display`);
+    const textarea= document.getElementById(`at-${pfx}-raw`);
+    const btn     = document.getElementById(`at-${pfx}-extract-btn`);
+    if (!display || !textarea) return;
+    const isHidden = textarea.classList.contains('hidden');
+    display.classList.toggle('hidden', isHidden);
+    textarea.classList.toggle('hidden', !isHidden);
+    if (btn) btn.classList.toggle('hidden', !isHidden);
+    if (isHidden) textarea.focus();
+};
+
 window.atExtractGds = async function(pfx) {
     const raw   = document.getElementById(`at-${pfx}-raw`)?.value.trim();
     const errEl = document.getElementById(`at-${pfx}-extract-err`);
@@ -398,10 +510,13 @@ function _gdsGenerateCopy(pfx) {
     out+='\n*Price:*\n';
     let grand=0;
     window._at.gdsFares.forEach(f=>{
-        const gross=+(f.gross_fare||0), payable=+(f.payable||0), pax=+(f.pax||1);
-        grand+=payable*pax;
+        // gross_fare_bdt: set by _gdsCalcFare after conversion. Fallback to gross_fare if calc not run yet.
+        const grossBdt = +(f.gross_fare_bdt ?? f.gross_fare ?? 0);
+        const payable  = +(f.payable||0); // already BDT from _gdsCalcFare
+        const pax      = +(f.pax||1);
+        grand += payable * pax;
         const tl=f.type==='ADT'?'Adult':f.type==='CHD'||f.type==='CNN'?'Child':f.type==='INF'?'Infant':f.type;
-        out+=`- ${tl}: Gross BDT ${_fmtN(gross)} per person\n- *Payable: BDT ${_fmtN(payable)}/- per person.*\n`;
+        out+=`- ${tl}: Gross BDT ${_fmtN(grossBdt)} per person\n- *Payable: BDT ${_fmtN(payable)}/- per person.*\n`;
     });
     out+=`*Total payable: ${_fmtN(grand)}/-*`;
     return out;
@@ -460,15 +575,16 @@ window._sotoHtml = function _sotoHtml(q, pfx) {
         ];
     }
     return `
-    <!-- Screenshot / Text Extract -->
-    <div class="mb-4 border border-gray-100 rounded-xl p-4 bg-gray-50">
-        <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Extract from Screenshot or Text</label>
-            <button onclick="atSotoExtract()"
+    <!-- Screenshot / Text Extract — collapsed by default when coming from booking (data already exists) -->
+    <div class="mb-4 border border-gray-100 rounded-xl bg-gray-50">
+        <div class="flex items-center justify-between px-4 py-2.5 cursor-pointer" onclick="(function(el){const b=el.closest('div').querySelector('#at-soto-extract-body');if(b){b.style.display=b.style.display==='none'?'block':'none';}})(this)">
+            <label class="text-xs font-bold text-gray-500 uppercase cursor-pointer">Extract from Screenshot or Text <span class="text-[10px] text-gray-400 font-normal normal-case">(click to expand)</span></label>
+            <button onclick="atSotoExtract();event.stopPropagation()"
                 class="flex items-center gap-1 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white rounded-lg text-xs font-semibold transition">
                 <i class="fas fa-magic text-xs"></i>Extract & Fill
             </button>
         </div>
+        <div id="at-soto-extract-body" style="display:${q ? 'none' : 'block'};padding:0 16px 16px;">
         <div id="at-soto-img-zone"
             class="border-2 border-dashed border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-indigo-400 transition mb-2"
             onclick="document.getElementById('at-soto-file-inp').click()"
@@ -488,6 +604,7 @@ window._sotoHtml = function _sotoHtml(q, pfx) {
         <textarea id="at-soto-text" rows="3" placeholder="Paste quotation text here…"
             class="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs resize-none focus:outline-none focus:border-indigo-400"></textarea>
         <div id="at-soto-extract-prog" class="hidden mt-2 text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Extracting…</div>
+        </div><!-- /at-soto-extract-body -->
     </div>
 
     <!-- Trip type, Route & Airline -->
@@ -888,15 +1005,37 @@ window.atSaveQ = async function(pfx) {
     // এখন qType-ই একমাত্র নির্ধারক, pfx শুধু কোন field-id ব্যবহার হবে
     // (at-b-* vs at-q-*) সেটা ঠিক করে, কোন branch চলবে সেটা না।
     if (qType === 'gds') {
-        atGenCopy(pfx === 'b' ? 'b' : 'q');
-        body.airline       = document.getElementById(`at-${pfx==='b'?'b':'q'}-airline`)?.value ?? '';
-        body.segments_json = window._at.gdsSegments;
-        body.pricing_json  = window._at.gdsFares;
-        body.raw_input     = document.getElementById(`at-${pfx==='b'?'b':'q'}-raw`)?.value ?? '';
-        body.copy_text     = document.getElementById(`at-${pfx==='b'?'b':'q'}-copy`)?.value ?? '';
+        const _gPfx = pfx === 'b' ? 'b' : 'q';
+        // Save করার আগে fares BDT-তে recalculate করো (currency/rate দেওয়া থাকলে)
+        atGdsCalcAll(_gPfx, true); // fares BDT-তে recalculate + gross_fare_bdt set
+        body.airline        = document.getElementById(`at-${_gPfx}-airline`)?.value ?? '';
+        body.segments_json  = window._at.gdsSegments;
+        body.pricing_json   = window._at.gdsFares;
+        body.raw_input      = document.getElementById(`at-${_gPfx}-raw`)?.value ?? document.getElementById(`at-${_gPfx}-raw-display`)?.textContent ?? '';
+        // gross_fare_bdt এখন set আছে (atGdsCalcAll করার পরে) — directly generate করি
+        body.copy_text      = _gdsGenerateCopy(_gPfx);
+        atGdsPreview(_gPfx); // DOM-ও update করি
+        body.commission_pct  = +(document.getElementById(`at-${_gPfx}-comm`)?.value      ?? 7);
+        body.govt_pct        = +(document.getElementById(`at-${_gPfx}-govt`)?.value      ?? 0.3);
+        body.markup_pct      = +(document.getElementById(`at-${_gPfx}-markup`)?.value    ?? 0);
+        const _savedCurr = (document.getElementById(`at-${_gPfx}-currency`)?.value ?? 'BDT').trim().toUpperCase() || 'BDT';
+        const _savedRate = +(document.getElementById(`at-${_gPfx}-conv-rate`)?.value ?? 1) || 1;
+
+        // যদি non-BDT currency এবং rate দেওয়া আছে → fare amounts BDT-তে
+        // already converted (কারণ _gdsCalcFare toBdt() দিয়ে calculate করেছে)
+        // সেক্ষেত্রে currency=BDT, conversion_rate=1 save করো।
+        // Booking-এ গেলে আর currency confusion থাকবে না।
+        const _farsAlreadyBdt = _savedCurr !== 'BDT' && _savedRate > 1;
+        body.currency        = _farsAlreadyBdt ? 'BDT' : _savedCurr;
+        body.conversion_rate = _farsAlreadyBdt ? 1 : _savedRate;
+
+        // pricing_json-এর amounts already BDT (toBdt() via _gdsCalcFare)
         body.gross_fare    = window._at.gdsFares.reduce((s,f) => s+(f.gross_fare??0)*(f.pax??1), 0);
         body.net_fare      = window._at.gdsFares.reduce((s,f) => s+(f.net_fare??0)*(f.pax??1), 0);
         body.total_payable = window._at.gdsFares.reduce((s,f) => s+(f.total_payable??0), 0);
+        // Client selling price = payable × (1 + markup%)
+        const markupPct = body.markup_pct / 100;
+        body.client_total = Math.round(body.total_payable * (1 + markupPct));
     } else {
         atSotoGenCopy();
         const trip   = document.getElementById('at-soto-trip')?.value ?? '';
@@ -1141,20 +1280,30 @@ window.atSelectQuotation = function(sysId) {
 window._renderQBuilder = function _renderQBuilder(q) {
     const builder = document.getElementById('at-q-builder');
     if (!builder) return;
-    const type = q?.type ?? 'gds';
+    const type       = q?.type ?? 'gds';
+    const isNew      = !q; // New button — no existing quotation
+    const fromMB     = window._at.fromMindboard; // came from mindboard save
+
+    // Type selector: শুধু New-এ দেখাবে; existing select বা mindboard save-এ নেই
+    const typeSelectorHtml = isNew ? `
+    <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+        <span class="text-xs font-bold text-gray-500 uppercase">Quotation Type:</span>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="at-q-type" value="gds" checked onchange="atQTypeChange('gds')">
+            <span class="text-sm font-semibold text-blue-700"><i class="fas fa-terminal mr-1 text-xs"></i>GDS</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="at-q-type" value="soto" onchange="atQTypeChange('soto')">
+            <span class="text-sm font-semibold text-indigo-700"><i class="fas fa-file-invoice mr-1 text-xs"></i>SOTO</span>
+        </label>
+    </div>` : `<input type="hidden" name="at-q-type" value="${type}">`;
+
     builder.innerHTML = `
-    <div class="flex items-center gap-3 mb-4">
-        <span class="text-xs font-bold text-gray-400 uppercase">Type:</span>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="radio" name="at-q-type" value="gds" ${type==='gds'?'checked':''} onchange="atQTypeChange('gds')">
-            <span class="text-sm">GDS</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="radio" name="at-q-type" value="soto" ${type==='soto'?'checked':''} onchange="atQTypeChange('soto')">
-            <span class="text-sm">SOTO</span>
-        </label>
-    </div>
-    <div id="at-q-body">${type === 'gds' ? _gdsHtml(q, 'q') : _sotoHtml(q, 'q')}</div>`;
+    ${typeSelectorHtml}
+    <div id="at-q-body">${isNew ? _gdsHtml(null, 'q') : (type === 'gds' ? _gdsHtml(q, 'q') : _sotoHtml(q, 'q'))}</div>`;
+
+    // Reset fromMindboard flag after render
+    if (fromMB) window._at.fromMindboard = false;
 }
 
 window.atQTypeChange = function(type) {

@@ -731,6 +731,26 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <script src="../pages/task-tabs/ww-air-tickets/booking.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/confirmation.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/index.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/_state.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/mindboard.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/quotation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/booking.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/confirmation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-hotel/index.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-transport/_state.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-transport/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-transport/mindboard.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-transport/quotation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-transport/confirmation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-transport/index.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/_state.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/travelers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/documents.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/summary.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/idcard.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/index.js?t=<?php echo time(); ?>"></script>
 <script>
 const WORK_SYS_ID  = "<?php echo htmlspecialchars($workSysId); ?>";
 const DEEP_LINK_SW = "<?php echo htmlspecialchars($deepLinkSw); ?>";
@@ -750,6 +770,10 @@ const API = {
     workTravelers: "<?php echo $workTravelersApi; ?>",
     travelers:     "<?php echo $allTravelersApi; ?>",
     airTickets:    "<?php echo $airTicketsApi; ?>",
+    hotelServices:      "<?php echo $ip_port; ?>api/hotel-services/endpoints.php",
+    transportServices:  "<?php echo $ip_port; ?>api/transport-services/endpoints.php",
+    umrahWork:          "<?php echo $ip_port; ?>api/umrah-work/endpoints.php",
+    umrahGroups:        "<?php echo $ip_port; ?>api/umrah-groups/endpoints.php",
     notes:         "<?php echo $notesApi; ?>",
     extractDocument:  "<?php echo $ip_port; ?>api/travelers/extract-document.php",
     storeNewTraveler: "<?php echo $ip_port; ?>api/travelers/store.php",
@@ -1120,6 +1144,7 @@ function loadServiceModule(slug, swSysId) {
         initWorkAirTicketTab({
             workSysId:    WORK_SYS_ID,
             leadSysId:    workData.lead_sys_id ?? '',
+            clientSysId:  ci.sys_id ?? '',
             clientName:   ci.name ?? '',
             serviceSlug:  slug,
             currentUser:  CURRENT_USER,
@@ -1128,6 +1153,61 @@ function loadServiceModule(slug, swSysId) {
             paxChild:     common.pax_child  ?? 0,
             paxInfant:    common.pax_infant ?? 0,
             api: { airTickets:API.airTickets, notes:API.notes, workTravelers:API.workTravelers, saveFinancial:API.saveFinancial, taskFinEntries:API.taskFinEntries, allVendors:API.allVendors, allAccounts:API.allAccounts },
+        });
+    } else if (slug === 'umrah') {
+        const ci = sp(workData.client_info) ?? {};
+        mount.innerHTML = `<div id="ww-umrah-mount" style="height:100%;"></div>`;
+        initWorkUmrahTab({
+            workSysId:   WORK_SYS_ID,
+            clientSysId: ci.sys_id ?? '',
+            clientName:  ci.name   ?? '',
+            serviceSlug: slug,
+            currentUser: CURRENT_USER,
+            api: {
+                umrahWork:       API.umrahWork,
+                umrahGroups:     API.umrahGroups,
+                notes:           API.notes,
+                allTravelers:    API.travelers,
+                extractDocument: API.extractDocument,
+            },
+        });
+    } else if (slug === 'transport') {
+        const ci = sp(workData.client_info) ?? {};
+        mount.innerHTML = `<div id="ww-transport-mount" style="height:100%;"></div>`;
+        initWorkTransportTab({
+            workSysId:   WORK_SYS_ID,
+            clientSysId: ci.sys_id ?? '',
+            clientName:  ci.name   ?? '',
+            serviceSlug: slug,
+            currentUser: CURRENT_USER,
+            tsData:      null,
+            api: {
+                transportServices: API.transportServices,
+                notes:             API.notes,
+                workTravelers:     API.workTravelers,
+                saveFinancial:     API.saveFinancial,
+                allVendors:        API.allVendors,
+                allAccounts:       API.allAccounts,
+            },
+        });
+    } else if (slug === 'hotel') {
+        const ci = sp(workData.client_info) ?? {};
+        mount.innerHTML = `<div id="ww-hotel-mount" style="height:100%;"></div>`;
+        initWorkHotelTab({
+            workSysId:   WORK_SYS_ID,
+            clientSysId: ci.sys_id ?? '',
+            clientName:  ci.name   ?? '',
+            serviceSlug: slug,
+            currentUser: CURRENT_USER,
+            htData:      null,
+            api: {
+                hotelServices: API.hotelServices,
+                notes:         API.notes,
+                workTravelers: API.workTravelers,
+                saveFinancial: API.saveFinancial,
+                allVendors:    API.allVendors,
+                allAccounts:   API.allAccounts,
+            },
         });
     } else {
         const info = SVC_INFO[slug] ?? { icon:'fa-circle', label:slug };
@@ -1217,6 +1297,7 @@ function renderSvcInfoStrip(slug) {
             if (seg.type)  chips.push(`<span class="capitalize">${esc(seg.type)}</span>`);
             if (route)     chips.push(`<span><i class="fas fa-van-shuttle text-teal-400 mr-1 text-[9px]"></i>${esc(route)}</span>`);
         });
+        // Mount transport module (handled below in service tab switch)
     }
 
     if (!chips.length) {

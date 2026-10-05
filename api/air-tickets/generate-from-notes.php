@@ -132,14 +132,24 @@ try {
         if (!$summaryResult['success']) {
             jsonOut(['success' => false, 'message' => 'Summary generate ব্যর্থ: ' . $summaryResult['error']]);
         }
-        $result['summary_text'] = $summaryResult['text'];
+        $result['summary_text']       = $summaryResult['text'];
+        $result['summary_structured'] = $summaryResult['structured'] ?? null;
     }
 
     // ── Quotation generate ────────────────────────────────────────────
     if ($action === 'quotation' || $action === 'both') {
-        $quotResult = _genQuotation($combinedText, $imageParts, $workContext, $typeHint);
+        // typeHint='gds' → dedicated GDS prompt (always returns GDS, never SOTO)
+        // typeHint='soto' → dedicated SOTO prompt (always returns SOTO, never GDS)
+        // no hint → legacy auto-detect
+        if ($typeHint === 'gds') {
+            $quotResult = _genGdsQuotation($combinedText, $imageParts, $workContext);
+        } elseif ($typeHint === 'soto') {
+            $quotResult = _genSotoQuotation($combinedText, $imageParts, $workContext);
+        } else {
+            $quotResult = _genQuotation($combinedText, $imageParts, $workContext, '');
+        }
         if (!$quotResult['success']) {
-            jsonOut(['success' => false, 'message' => 'Quotation generate ব্যর্থ: ' . $quotResult['error']]);
+            jsonOut(['success' => false, 'message' => 'Quotation generate ব্যর্থ: ' . ($quotResult['error'] ?? 'Unknown error')]);
         }
         $result['quotation'] = $quotResult['data'];
     }
@@ -255,18 +265,51 @@ function _genMultimodalCall(string $systemPrompt, string $userText, array $image
 function _genSummary(string $combinedText, array $imageParts): array
 {
     $system = <<<SYS
-You are an Air Ticket Quotation Parser for a Bangladeshi travel agency. Your task is to extract and summarize flight requests from unstructured text, GDS terminal outputs (Amadeus/Sabre/Galileo), portal screenshots, or chat excerpts.
-Requirements:
-Extract: Origin/destination routes (IATA code or city name as visible), travel dates, flight timing (departure/arrival time, duration, layover/transit details if shown), passenger count/type, budget, specific airline/time preferences, transit details, and deadlines.
-1. Write ONE short paragraph (2-4 sentences) covering the flight/route facts only: route, dates, airline, flight numbers, departure/arrival times, duration, and any transit/layover.
-2. If multiple fare or baggage options exist, do NOT fold them into that paragraph. Instead, after the paragraph, list each option on its own line starting with "• ", in this shape: "• Option N (PRICE, Recommended if applicable): baggage allowance, refundability, change fee, meals, and any other flexibility detail for that option." Never merge two options' prices or terms into one line.
-3. If only a single fare is mentioned, skip the bullet list and fold that one price into the paragraph instead.
-4. Separate the paragraph and the bullet list with a single newline character (\n) between them, and a newline between each bullet.
-5. Ensure currency codes or local airline terms (e.g., Biman, US-Bangla, Novoair) are handled accurately if present.
-6. Output strictly as a valid, raw JSON object with no markdown formatting around it. The newlines inside "summary" must be actual \n escape sequences within the JSON string:
+You are an air ticket expert for a Bangladeshi travel agency. Extract all flight information from the notes or screenshots and produce a structured summary that can later be used to generate EITHER a GDS-style quotation OR a SOTO (OTA) quotation.
+
+Output strictly as a valid raw JSON object (no markdown) with this shape:
 {
-"summary": "..."
+  "summary": "...",
+  "structured": {
+    "route": "",
+    "trip_type": "One Way | Return | Multi-city",
+    "airline": "",
+    "pax": { "adult": 0, "child": 0, "infant": 0 },
+    "currency": "BDT",
+    "flights": [
+      {
+        "flight_no": "",
+        "airline": "",
+        "dep_iata": "",
+        "arr_iata": "",
+        "dep_time": "",
+        "arr_time": "",
+        "date": "",
+        "class": ""
+      }
+    ],
+    "fares": [
+      {
+        "label": "",
+        "adult": 0,
+        "child": 0,
+        "infant": 0,
+        "baggage": "",
+        "refundable": "",
+        "change_fee": ""
+      }
+    ]
+  }
 }
+
+Rules:
+- summary: 2-4 sentences covering route, dates, airline, flights, timings, pax. If multiple fare options exist, list each as "• Option N (PRICE): details" on separate lines after the paragraph.
+- structured.route: IATA codes joined by "-" (e.g. "DAC-DXB" or "DAC-SIN-LGK-KUL-DAC")
+- flights[].dep_time / arr_time: HH:MM format
+- flights[].date: DD Mon YYYY
+- fares[].label: short label (e.g. "Carry-on only", "30kg checked baggage")
+- Use 0 for unknown prices. Leave currency as shown (BDT default).
+- Use only data visible in source. Do not invent.
 SYS;
 
     $userText = $combinedText !== '' ? "Notes:\n{$combinedText}" : "No text notes — see attached image(s) only.";
@@ -291,10 +334,11 @@ SYS;
         if (is_array($inner) && isset($inner['summary'])) $summary = $inner['summary'];
     }
 
-    $summary = trim((string)$summary);
+    $summary    = trim((string)$summary);
+    $structured = is_array($parsed) ? ($parsed['structured'] ?? null) : null;
     if ($summary === '') return ['success' => false, 'error' => 'Summary extract করা যায়নি Gemini output থেকে'];
 
-    return ['success' => true, 'text' => $summary];
+    return ['success' => true, 'text' => $summary, 'structured' => $structured];
 }
 
 /**
@@ -303,29 +347,120 @@ SYS;
  * করবে কোন ফর্ম (GDS/SOTO) prefill করতে হবে সেটা বুঝতে। $typeHint দেওয়া
  * থাকলে (Regenerate button থেকে) সেই type-ই জোর করে বলা হয়।
  */
-function _genQuotation(string $combinedText, array $imageParts, string $workContext, string $typeHint): array
+/**
+ * GDS Quotation — user explicitly chose GDS button.
+ * Always returns GDS schema. If input is a screenshot (no raw GDS text),
+ * AI reconstructs Amadeus/Sabre style raw GDS AND parses it into segments+fares.
+ */
+function _genGdsQuotation(string $combinedText, array $imageParts, string $workContext): array
 {
-    $typeInstruction = $typeHint
-        ? "The user has explicitly told you this is a **{$typeHint}** style quotation — use that schema regardless of what the notes look like."
-        : "Decide whether this looks like structured GDS/airline-system data (flight codes, fare basis, PNR-style text) or a screenshot/casual price quote from an OTA/agent (a 'SOTO' style quotation). Set detected_type accordingly.";
-
-    // ⚠️ একটা source (screenshot/text) এ একাধিক fare/baggage option থাকতে
-    // পারে (যেমন booking-site এর "US$308 / US$309 / US$319" এর মতো ৩টা
-    // card) — এগুলো আলাদা quotation না, একটাই quotation-এর soto.prices[]
-    // array-তে একাধিক entry হিসেবে যাবে, প্রতিটার সাথে facility/flexibility
-    // details (non-refundable, change fee, meals ইত্যাদি) আলাদা রাখা হয়।
     $system = <<<SYS
-You are helping a Bangladeshi travel agency build an air ticket quotation from client conversation notes and/or screenshots.
-{$typeInstruction}
+You are a GDS (Global Distribution System) expert helping a Bangladeshi travel agency.
+The user wants a GDS-style air ticket quotation from a screenshot or text notes.
 
-Return ONLY a JSON object with this exact top-level shape:
+Your EXACT steps:
+STEP 1 — Read the source carefully. Extract every flight: airline code, flight number, booking class, date, departure IATA, arrival IATA, departure time, arrival time.
+STEP 2 — Build raw_gds: reconstruct the standard GDS display text (Amadeus/Sabre style).
+STEP 3 — Fill segments[]: one entry PER FLIGHT from step 1. NEVER leave segments empty if flights are visible.
+STEP 4 — Fill fares[]: extract ADT/CHD/INF prices. If exact fare not shown, estimate from total or put 0. NEVER leave fares empty if a price is visible.
+STEP 5 — Detect currency from source. Put fare amounts in ORIGINAL currency (do not convert).
+
+Raw GDS format (for raw_gds field):
+- Flight lines: " {N}  {AL}  {FLT}  {CLS} {DDMON} {D}  {DEP}  {ARR}  {HHMM}  {HHMM}"
+  Example: " 1  BS          309  Y 19OCT M  DAC  SIN  0815  1425"
+- Fare line: "BR1-9     1ADT    {AMOUNT}"
+- Total: "TOTAL FARE - {CCY}    {AMOUNT}"
+
+Return ONLY a JSON object (no markdown) with this exact shape:
 {
-  "detected_type": "gds" | "soto",
+  "detected_type": "gds",
   "gds": {
     "airline": "",
-    "segments": [ { "flight":"", "class":"", "date":"", "route":"", "departure":"", "arrival":"", "tag":"D1" } ],
-    "fares": [ { "type":"ADT", "pax":1, "base_fare":0, "taxes":0, "gross_fare":0 } ]
+    "raw_gds": "",
+    "currency": "BDT",
+    "conversion_rate": 1,
+    "segments": [
+      { "flight": "", "class": "", "date": "", "route": "", "departure": "", "arrival": "", "tag": "D1" }
+    ],
+    "fares": [
+      { "type": "ADT", "pax": 1, "base_fare": 0, "taxes": 0, "gross_fare": 0 }
+    ]
   },
+  "soto": { "trip_option":"", "route":"", "airline":"", "class":"", "pax_adult":0, "pax_child":0, "pax_infant":0, "currency":"BDT", "segments":[], "prices":[], "refundable_status":"", "changeable_status":"" }
+}
+
+Field rules:
+- raw_gds: full GDS text, newlines as \n
+- segments[].flight: airline code + number e.g. "BS309"
+- segments[].route: "DAC-SIN"
+- segments[].departure / arrival: "HH:MM", use "----" if unknown
+- segments[].date: "19OCT" or "19 Oct 2026"
+- segments[].tag: "D1","D2"... outbound; "R1","R2"... return
+- airline: if single airline, use its name (e.g. "Biman Bangladesh"). If multi-airline route, use the first airline or write e.g. "BS / TR / AK / BG"
+- fares[].type: "ADT" | "CNN" | "INF"
+- fares[].pax: number of passengers of that type (default 1 for ADT if not stated)
+- fares[].base_fare: the amount on the BR line (e.g. "BR1-4  1ADT  545.00" → base_fare=545). If no separate base shown, use gross as base.
+- fares[].taxes: tax/YQ/surcharge amount if shown separately. If not shown, set 0.
+- fares[].gross_fare: base_fare + taxes. If only a total is shown (e.g. TOTAL FARE 1090 for 2 pax), divide by pax count to get per-pax gross.
+- currency: detect from source ("USD","AED","BDT" etc). Do NOT default to BDT if source shows another currency.
+- conversion_rate: always 1 (user sets this manually)
+- CRITICAL — NEVER return empty segments[] or empty fares[] if ANY flight or price info is visible in source.
+- CRITICAL — fare amounts must be in the ORIGINAL source currency. Never convert.
+- Do NOT invent flight numbers or prices not visible in source. Use 0 for unknown amounts.{$workContext}
+SYS;
+
+    $userText = $combinedText !== '' ? "Notes/GDS text:\n{$combinedText}" : "No text — extract from attached screenshot(s).";
+    $res = _genMultimodalCall($system, $userText, $imageParts, 4096);
+    if (!$res['success']) return $res;
+
+    $rawText = $res['text'];
+    // Strip markdown fences if Gemini wrapped in ```json ... ```
+    $rawText = preg_replace('/^```(?:json)?\s*/i', '', trim($rawText));
+    $rawText = preg_replace('/\s*```$/', '', $rawText);
+
+    $parsed = json_decode(_genSanitizeJsonText($rawText), true);
+
+    // Gemini sometimes returns just the gds object directly (not nested)
+    if (!is_array($parsed)) {
+        error_log('[genGds] json_decode failed. raw: ' . substr($rawText, 0, 500));
+        return ['success' => false, 'error' => 'GDS quotation structure পাওয়া যায়নি — AI invalid JSON দিয়েছে'];
+    }
+
+    // If AI returned the gds object directly (not wrapped in outer shape)
+    if (isset($parsed['segments']) && !isset($parsed['gds'])) {
+        $parsed = ['gds' => $parsed, 'soto' => []];
+    }
+
+    if (empty($parsed['gds'])) {
+        error_log('[genGds] gds key missing or empty. keys: ' . implode(',', array_keys($parsed)));
+        // Try to salvage — build minimal gds from whatever AI returned
+        $parsed['gds'] = [
+            'airline'  => $parsed['airline']  ?? '',
+            'raw_gds'  => $parsed['raw_gds']  ?? '',
+            'segments' => $parsed['segments'] ?? [],
+            'fares'    => $parsed['fares']    ?? [],
+        ];
+    }
+
+    $parsed['detected_type'] = 'gds';
+    return ['success' => true, 'data' => $parsed];
+}
+
+/**
+ * SOTO Quotation — user explicitly chose SOTO button.
+ * Always returns SOTO schema from OTA screenshots / casual price quotes.
+ */
+function _genSotoQuotation(string $combinedText, array $imageParts, string $workContext): array
+{
+    // ⚠️ একটা source (screenshot/text) এ একাধিক fare/baggage option থাকতে
+    // পারে — এগুলো soto.prices[] array-তে একাধিক entry হিসেবে যাবে।
+    $system = <<<SYS
+You are helping a Bangladeshi travel agency build an air ticket quotation from an OTA screenshot or casual price quote (called "SOTO" internally).
+
+Return ONLY a JSON object (no markdown) with this exact shape:
+{
+  "detected_type": "soto",
+  "gds": { "airline":"", "raw_gds":"", "segments":[], "fares":[] },
   "soto": {
     "trip_option": "One Way",
     "route": "",
@@ -333,29 +468,68 @@ Return ONLY a JSON object with this exact top-level shape:
     "class": "Economy",
     "pax_adult": 0, "pax_child": 0, "pax_infant": 0,
     "currency": "BDT",
-    "segments": [ { "segment_title":"", "date":"", "airline":"", "flight_no":"", "dep_airport":"", "dep_time":"", "arr_airport":"", "arr_time":"" } ],
+    "segments": [
+      { "segment_title":"", "date":"", "airline":"", "flight_no":"", "dep_airport":"", "dep_time":"", "arr_airport":"", "arr_time":"" }
+    ],
     "prices": [
       { "desc": "e.g. Checked 30kg baggage", "facility": "e.g. Non-refundable, Change fee 100 USD", "adult": 0, "child": 0, "infant": 0 }
     ],
-    "refundable_status": "Refundable", "changeable_status": "Changeable"
+    "refundable_status": "Refundable",
+    "changeable_status": "Changeable"
   }
 }
-For "soto.prices": if the source shows multiple fare/baggage options (e.g. several price cards for the same route), create ONE entry per option in this array — do not merge them into a single price. Put the baggage allowance in "desc" and refundability/change-fee/meals/other flexibility details in "facility" for that same option. If only one price is shown, still return it as a single-item array.
-For "soto.currency": use the 3-letter currency code as shown (e.g. "USD", "BDT", "AED"); default to "BDT" if not stated. Leave the "adult"/"child"/"infant" price numbers in that same original currency — do not convert them yourself.
-Only fill the object matching detected_type with real data; leave the other one as its default empty shape.
-Use only information stated in the notes/images. Do not invent flight numbers, prices, or dates that are not present.{$workContext}
+
+Rules:
+- trip_option: "One Way" | "Return" | "Multi-city"
+- route: IATA codes joined by "-" (e.g. "DAC-DXB" or "DAC-SIN-LGK-KUL-DAC")
+- prices: ONE entry per distinct fare/baggage option shown. Put baggage allowance in "desc", flexibility details (refund/change fee/meals) in "facility".
+- currency: 3-letter code as shown; default BDT.
+- Leave adult/child/infant prices in the original currency — do not convert.
+- Use only information visible in the source. Do not invent data.{$workContext}
 SYS;
 
-    $userText = $combinedText !== '' ? "Notes:\n{$combinedText}" : "No text notes — see attached image(s) only.";
-
+    $userText = $combinedText !== '' ? "Notes:\n{$combinedText}" : "No text — extract from attached screenshot(s).";
     $res = _genMultimodalCall($system, $userText, $imageParts, 4096);
     if (!$res['success']) return $res;
 
-    $parsed = json_decode($res['text'], true);
-    if (!is_array($parsed) || empty($parsed['detected_type'])) {
-        return ['success' => false, 'error' => 'Gemini output থেকে valid quotation structure পাওয়া যায়নি'];
+    $parsed = json_decode(_genSanitizeJsonText($res['text']), true);
+    if (!is_array($parsed) || empty($parsed['soto'])) {
+        return ['success' => false, 'error' => 'SOTO quotation structure পাওয়া যায়নি'];
     }
+    $parsed['detected_type'] = 'soto'; // force
+    return ['success' => true, 'data' => $parsed];
+}
 
+/**
+ * Legacy wrapper — called when no type hint (auto-detect).
+ * Routes to GDS or SOTO based on typeHint, or tries to auto-detect.
+ */
+function _genQuotation(string $combinedText, array $imageParts, string $workContext, string $typeHint): array
+{
+    if ($typeHint === 'gds')  return _genGdsQuotation($combinedText, $imageParts, $workContext);
+    if ($typeHint === 'soto') return _genSotoQuotation($combinedText, $imageParts, $workContext);
+
+    // Auto-detect fallback (no button clicked — legacy path)
+    $system = <<<SYS
+You are helping a Bangladeshi travel agency. Look at the notes/screenshots and decide:
+- If it looks like Amadeus/Sabre/Galileo GDS system output (flight codes, fare basis codes, PNR lines) → use GDS schema
+- If it looks like an OTA/website screenshot or casual agent price quote → use SOTO schema
+
+Return ONLY a JSON object with this exact shape:
+{
+  "detected_type": "gds" | "soto",
+  "gds": { "airline":"", "raw_gds":"", "segments":[], "fares":[] },
+  "soto": { "trip_option":"", "route":"", "airline":"", "class":"Economy", "pax_adult":0, "pax_child":0, "pax_infant":0, "currency":"BDT", "segments":[], "prices":[], "refundable_status":"", "changeable_status":"" }
+}
+Fill only the matching schema. Use only data present in the source.{$workContext}
+SYS;
+    $userText = $combinedText !== '' ? "Notes:\n{$combinedText}" : "No text — see attached image(s).";
+    $res = _genMultimodalCall($system, $userText, $imageParts, 4096);
+    if (!$res['success']) return $res;
+    $parsed = json_decode(_genSanitizeJsonText($res['text']), true);
+    if (!is_array($parsed) || empty($parsed['detected_type'])) {
+        return ['success' => false, 'error' => 'Quotation structure পাওয়া যায়নি'];
+    }
     return ['success' => true, 'data' => $parsed];
 }
 
@@ -368,32 +542,79 @@ SYS;
  * ভেতরেরগুলোই সমস্যা করে, তাই quote-tracking state machine দিয়ে শুধু
  * ভেতরেরগুলোই টার্গেট করা হচ্ছে, বাইরেরগুলো অক্ষত থাকে।
  */
+/**
+ * Robustly extract and clean JSON from Gemini output.
+ * Handles: ```json fences, text before/after JSON,
+ * unescaped newlines in strings, and truncated JSON.
+ */
 function _genSanitizeJsonText(string $text): string
 {
     $text = trim($text);
+
+    // 1. Strip ```json...``` or ```...``` fences
+    if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/i', $text, $m)) {
+        $text = trim($m[1]);
+    }
+
+    // 2. Extract first JSON object/array if there is surrounding text
+    if (strlen($text) > 0 && $text[0] !== '{' && $text[0] !== '[') {
+        $posObj = strpos($text, '{');
+        $posArr = strpos($text, '[');
+        if ($posObj === false) $start = $posArr;
+        elseif ($posArr === false) $start = $posObj;
+        else $start = min($posObj, $posArr);
+        if ($start !== false) $text = substr($text, $start);
+    }
+
+    // 3. Escape unescaped control chars inside string values
+    $out = ''; $inStr = false; $esc = false;
     $len = strlen($text);
-    $out = '';
-    $inString = false;
-    $escaped = false;
     for ($i = 0; $i < $len; $i++) {
         $ch = $text[$i];
-        if ($inString) {
-            if ($escaped) {
-                $out .= $ch;
-                $escaped = false;
-                continue;
-            }
-            if ($ch === '\\') { $out .= $ch; $escaped = true; continue; }
-            if ($ch === '"') { $out .= $ch; $inString = false; continue; }
+        if ($inStr) {
+            if ($esc)          { $out .= $ch; $esc = false; continue; }
+            if ($ch === '\\') { $out .= $ch; $esc = true;  continue; }
+            if ($ch === '"')   { $out .= $ch; $inStr = false; continue; }
             if ($ch === "\n") { $out .= '\\n'; continue; }
             if ($ch === "\r") { $out .= '\\r'; continue; }
             if ($ch === "\t") { $out .= '\\t'; continue; }
             $out .= $ch;
         } else {
-            if ($ch === '"') { $inString = true; }
+            if ($ch === '"') $inStr = true;
             $out .= $ch;
         }
     }
+
+    // 4. If still invalid JSON, try to close open structures (truncation fix)
+    if (json_decode($out, true) === null) {
+        $fixed = rtrim($out, ", \t\r\n");
+        // Close unclosed string
+        $inS = false; $es = false;
+        $fl = strlen($fixed);
+        for ($i = 0; $i < $fl; $i++) {
+            $c = $fixed[$i];
+            if ($es)               { $es = false; continue; }
+            if ($inS && $c==='\\') { $es = true; continue; }
+            if ($c === '"')         { $inS = !$inS; }
+        }
+        if ($inS) $fixed .= '"';
+        // Close open brackets/braces
+        $stack = []; $inS2 = false; $es2 = false;
+        $fl2 = strlen($fixed);
+        for ($i = 0; $i < $fl2; $i++) {
+            $c = $fixed[$i];
+            if ($es2)                { $es2 = false; continue; }
+            if ($inS2 && $c === '\\') { $es2 = true; continue; }
+            if ($c === '"')           { $inS2 = !$inS2; continue; }
+            if ($inS2) continue;
+            if ($c === '{')      $stack[] = '}';
+            elseif ($c === '[')  $stack[] = ']';
+            elseif ($c==='}' || $c===']') array_pop($stack);
+        }
+        while ($stack) $fixed .= array_pop($stack);
+        if (json_decode($fixed, true) !== null) return $fixed;
+    }
+
     return $out;
 }
 

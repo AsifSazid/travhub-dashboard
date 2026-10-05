@@ -559,6 +559,77 @@ function _openConfirmTaskModal(confId, booking) {
         : 'Air Ticket Payment';
     const suggestedAmount = booking?.total_payable ?? '';
 
+    // ── Client pricing rows (vendor payable + markup = client sale price)
+    // Accounting: Sale entry → type='debit', client_id (store.php handles Sales + AR)
+    // No transaction_mode needed for client — it's a receivable, not a cash movement
+    const bookingType = booking?.type ?? 'gds';
+    const markupPct   = +(booking?.markup_pct ?? 0);
+    const applyMarkup = (v) => markupPct > 0 ? Math.round(+(v||0) * (1 + markupPct / 100)) : +(v||0);
+
+    let clientRows = [];
+    if (bookingType === 'gds' && booking?.pricing_json?.length) {
+        booking.pricing_json.forEach(f => {
+            const typeLabel = f.type === 'ADT' ? 'Adult' : f.type === 'CHD' ? 'Child' : f.type === 'INF' ? 'Infant' : (f.type ?? '');
+            const pax       = +(f.pax ?? 1);
+            const payable   = +(f.payable ?? 0);
+            const clientAmt = applyMarkup(payable);
+            if (pax > 0 && clientAmt > 0) clientRows.push({ label: typeLabel, pax, perPax: clientAmt, total: clientAmt * pax });
+        });
+    } else if (bookingType === 'soto' && booking?.form_data) {
+        const fd = booking.form_data;
+        const firstP    = (fd.prices ?? [])[0] ?? {};
+        const convRate  = +(fd.conversion_rate ?? 1) || 1;
+        const toBdt     = (v) => fd.currency === 'BDT' ? +(v||0) : Math.round(+(v||0) * convRate);
+        const paxAdult  = +(fd.pax_adult  ?? 0);
+        const paxChild  = +(fd.pax_child  ?? 0);
+        const paxInfant = +(fd.pax_infant ?? 0);
+        const pa = applyMarkup(toBdt(firstP.adult));
+        const pc = applyMarkup(toBdt(firstP.child));
+        const pi = applyMarkup(toBdt(firstP.infant));
+        if (paxAdult  > 0 && pa > 0) clientRows.push({ label: 'Adult',  pax: paxAdult,  perPax: pa, total: pa * paxAdult  });
+        if (paxChild  > 0 && pc > 0) clientRows.push({ label: 'Child',  pax: paxChild,  perPax: pc, total: pc * paxChild  });
+        if (paxInfant > 0 && pi > 0) clientRows.push({ label: 'Infant', pax: paxInfant, perPax: pi, total: pi * paxInfant });
+    }
+    const clientTotal = clientRows.reduce((s, r) => s + r.total, 0);
+
+    const clientRowsHtml = clientRows.length ? `
+    <div class="border border-emerald-100 rounded-xl p-3 bg-emerald-50">
+        <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-bold text-emerald-700 uppercase">Client Pricing (Sale Entry)</label>
+            ${markupPct > 0
+                ? `<span class="text-[10px] text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full font-semibold">+${markupPct}% markup</span>`
+                : `<span class="text-[10px] text-gray-400">Markup not set — same as vendor payable</span>`}
+        </div>
+        <table class="w-full text-xs mb-2">
+            <thead><tr class="text-[10px] text-emerald-600 uppercase">
+                <th class="text-left pb-1">Type</th>
+                <th class="text-center pb-1">Pax</th>
+                <th class="text-right pb-1">Per Pax</th>
+                <th class="text-right pb-1">Total</th>
+            </tr></thead>
+            <tbody>
+                ${clientRows.map(r => `<tr class="border-t border-emerald-100">
+                    <td class="py-1 font-medium text-gray-700">${_e(r.label)}</td>
+                    <td class="py-1 text-center text-gray-500">${r.pax}</td>
+                    <td class="py-1 text-right text-gray-600">৳ ${_fmtN(r.perPax)}</td>
+                    <td class="py-1 text-right font-bold text-emerald-700">৳ ${_fmtN(r.total)}</td>
+                </tr>`).join('')}
+            </tbody>
+            <tfoot><tr class="border-t-2 border-emerald-200">
+                <td colspan="3" class="pt-1 text-right font-bold text-emerald-700 text-xs">Client Total:</td>
+                <td class="pt-1 text-right font-bold text-emerald-700">৳ ${_fmtN(clientTotal)}</td>
+            </tr></tfoot>
+        </table>
+        <p class="text-[10px] text-emerald-600 mb-1.5">Task create হলে এই amounts Sale entry হিসেবে client-এর Accounts Receivable-এ যাবে।</p>
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="atctIncludeClientEntry" checked class="w-3.5 h-3.5 accent-emerald-600">
+            <span class="text-xs font-semibold text-emerald-700">Include Client Sale Entry (৳ ${_fmtN(clientTotal)})</span>
+        </label>
+    </div>` : '';
+
+    window._atctClientRows  = clientRows;
+    window._atctClientTotal = clientTotal;
+
     const modal = document.createElement('div');
     modal.id = 'atConfirmTaskModal';
     modal.className = 'fixed inset-0 z-[80] flex items-center justify-center p-4';
@@ -570,7 +641,9 @@ function _openConfirmTaskModal(confId, booking) {
             <button onclick="document.getElementById('atConfirmTaskModal').remove()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
         <div class="p-4 space-y-3">
-            <p class="text-xs text-gray-400">Task তৈরির সাথে সাথে vendor payment-ও রেকর্ড হয়ে যাবে। চাইলে স্কিপ করতে পারেন — পরে Task-এর Financial ট্যাব থেকেও যোগ করা যাবে।</p>
+            <p class="text-xs text-gray-400">Task তৈরির সাথে সাথে vendor payment ও client sale entry রেকর্ড হয়ে যাবে। চাইলে স্কিপ করতে পারেন।</p>
+
+            ${clientRowsHtml}
 
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Vendor</label>
@@ -689,7 +762,7 @@ document.addEventListener('click', e => {
 
 async function _atctSkipAndCreate(confId) {
     document.getElementById('atConfirmTaskModal')?.remove();
-    await _atctDoConfirm(confId, null);
+    await _atctDoConfirm(confId, null, false);
 }
 
 async function _atctConfirmWithPayment(confId) {
@@ -708,13 +781,14 @@ async function _atctConfirmWithPayment(confId) {
     }
 
     // Read all values BEFORE removing the modal — the elements won't exist after remove()
+    const includeClient = document.getElementById('atctIncludeClientEntry')?.checked ?? true;
     const payment = (amount && amount > 0) ? {
         amount, qtyRate, purpose, note, txnMode, vendorId,
         accountId: txnMode === 'realtime' ? accountId : null,
     } : null;
 
     document.getElementById('atConfirmTaskModal')?.remove();
-    await _atctDoConfirm(confId, payment);
+    await _atctDoConfirm(confId, payment, includeClient);
 }
 
 // Matches show-tasks.php's _finBuildQtyRate helper exactly, so the JSON
@@ -743,7 +817,7 @@ function _atctSetupQtyRateCalc() {
     a.addEventListener('input', () => { lastEdited='amount'; calc(); });
 }
 
-async function _atctDoConfirm(confId, payment) {
+async function _atctDoConfirm(confId, payment, includeClient = false) {
     if (!confirm('Confirm this booking and create a task?')) return;
     try {
         const json = await window._atApi({ action:'confirm_and_create_task', conf_sys_id: confId });
@@ -773,6 +847,38 @@ async function _atctDoConfirm(confId, payment) {
                     if (!feJson.success) atT('error', 'Task created, but vendor payment failed: ' + (feJson.message??''));
                 } catch(e) { atT('error', 'Task created, but vendor payment request failed'); }
             }
+
+            // ── Client sale entries (Adult / Child / Infant আলাদা rows)
+            // Accounting: type='debit' + client_id → store.php এটাকে
+            // Sales (revenue credit) + Accounts Receivable (debit) হিসেবে book করে।
+            // transaction_mode লাগে না — cash move হচ্ছে না, শুধু AR বাড়ছে।
+            const clientRows  = window._atctClientRows ?? [];
+            const clientSysId = window._at.cfg.clientSysId ?? null;
+            if (includeClient && json.task_created && json.auto_task_id && clientRows.length) {
+                if (!clientSysId) {
+                    console.warn('[atct] clientSysId not in cfg — client sale entries skipped. Pass ci.sys_id in initWorkAirTicketTab cfg.');
+                } else {
+                    for (const row of clientRows) {
+                        try {
+                            await fetch(window._at.cfg.api.saveFinancial, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    type:      'debit',      // Sale entry (AR বাড়বে)
+                                    client_id: clientSysId,
+                                    amount:    row.total,
+                                    qty_rate:  JSON.stringify({ qty: row.pax, rate: row.perPax }),
+                                    purpose:   `Air Ticket — ${row.label} × ${row.pax}`,
+                                    work_id:   json.work_sys_id,
+                                    task_id:   json.auto_task_id,
+                                    date:      new Date().toISOString().slice(0, 10),
+                                }),
+                            });
+                        } catch(e) { console.error('[Client sale entry failed]', row.label, e); }
+                    }
+                }
+            }
+            window._atctClientRows  = [];
+            window._atctClientTotal = 0;
 
             await window._atReload();
             _renderConfirmation();

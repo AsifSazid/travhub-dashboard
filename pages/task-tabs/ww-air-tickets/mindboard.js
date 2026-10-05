@@ -18,11 +18,11 @@ window._renderMindboard = function _renderMindboard() {
         <button onclick="window._genGenerate('summary')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#fff;color:#4338CA;border:1px solid #C7D2FE;border-radius:8px;cursor:pointer;">
             <i class="fas fa-align-left mr-1"></i>Generate Summary
         </button>
-        <button onclick="window._genGenerate('quotation')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#fff;color:#4338CA;border:1px solid #C7D2FE;border-radius:8px;cursor:pointer;">
-            <i class="fas fa-file-invoice mr-1"></i>Generate Quotation
+        <button onclick="window._genGenerate('gds_quotation')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#fff;color:#1e40af;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-terminal mr-1"></i>Generate GDS Quotation
         </button>
-        <button onclick="window._genGenerate('both')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
-            <i class="fas fa-layer-group mr-1"></i>Generate Both
+        <button onclick="window._genGenerate('quotation')" style="padding:5px 10px;font-size:11px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+            <i class="fas fa-file-invoice mr-1"></i>Generate SOTO Quotation
         </button>
         <button onclick="window._genClearSelection()" title="Clear selection" style="padding:5px 8px;font-size:11px;background:transparent;color:#6B7280;border:none;cursor:pointer;">
             <i class="fas fa-times"></i>
@@ -953,6 +953,13 @@ window._genGenerate = async function(mode) {
 
     _genShowLoadingModal(mode);
 
+    // Map UI modes to API action + type hint
+    // gds_quotation → action='quotation', hint='gds'  (dedicated GDS prompt)
+    // quotation     → action='quotation', hint='soto' (dedicated SOTO prompt)
+    // summary       → action='summary',  no hint
+    const apiAction = (mode === 'gds_quotation' || mode === 'quotation') ? 'quotation' : mode;
+    const typeHint  = mode === 'gds_quotation' ? 'gds' : mode === 'quotation' ? 'soto' : undefined;
+
     try {
         const res = await fetch('/api/air-tickets/generate-from-notes.php', {
             method: 'POST',
@@ -960,7 +967,8 @@ window._genGenerate = async function(mode) {
             body: JSON.stringify({
                 work_sys_id: window._at.cfg.workSysId,
                 note_sys_ids: noteIds,
-                action: mode,
+                action: apiAction,
+                ...(typeHint ? { quotation_type_hint: typeHint } : {}),
             }),
         });
         const json = await res.json();
@@ -985,10 +993,11 @@ function _genShowLoadingModal(mode) {
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
         document.body.appendChild(overlay);
     }
+    const modeLabel = mode === 'gds_quotation' ? 'GDS Quotation' : mode === 'summary' ? 'Summary' : 'SOTO Quotation';
     overlay.innerHTML = `
         <div style="background:#fff;border-radius:16px;padding:32px;text-align:center;min-width:280px;">
             <i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4338CA;"></i>
-            <p style="margin-top:12px;font-size:13px;color:#4B5563;">Generating ${mode === 'both' ? 'Summary & Quotation' : mode === 'summary' ? 'Summary' : 'Quotation'}…</p>
+            <p style="margin-top:12px;font-size:13px;color:#4B5563;">Generating ${modeLabel}…</p>
         </div>`;
     overlay.style.display = 'flex';
 }
@@ -1006,45 +1015,64 @@ function _genRenderResultModal(mode, data) {
     const overlay = document.getElementById('at-gen-modal-overlay');
     if (!overlay) return;
 
-    const showSummary   = mode === 'summary' || mode === 'both';
-    const showQuotation = mode === 'quotation' || mode === 'both';
+    const showSummary   = mode === 'summary';
+    const showQuotation = mode === 'quotation' || mode === 'gds_quotation';
+    const resultLabel   = mode === 'gds_quotation' ? 'GDS Quotation' : mode === 'summary' ? 'Summary' : 'SOTO Quotation';
 
     overlay.innerHTML = `
         <div style="background:#fff;border-radius:16px;width:100%;max-width:760px;max-height:90vh;overflow-y-auto;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F1F5F9;flex-shrink:0;">
                 <h3 style="font-size:15px;font-weight:700;color:#1F2937;margin:0;">
-                    <i class="fas fa-wand-magic-sparkles mr-2" style="color:#4338CA;"></i>Generated ${mode === 'both' ? 'Summary & Quotation' : mode === 'summary' ? 'Summary' : 'Quotation'}
+                    <i class="fas fa-wand-magic-sparkles mr-2" style="color:#4338CA;"></i>Generated ${resultLabel}
                 </h3>
                 <button onclick="_genCloseModal()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button>
             </div>
             <div style="padding:20px;overflow-y:auto;flex:1;">
-                ${showSummary ? _genSummarySectionHtml(data.summary_text) : ''}
+                ${showSummary ? _genSummarySectionHtml(data.summary_text, data.summary_structured) : ''}
                 ${showSummary && showQuotation ? '<div style="height:1px;background:#F1F5F9;margin:20px 0;"></div>' : ''}
                 ${showQuotation ? _genQuotationSectionHtml(data.quotation) : ''}
             </div>
-            ${mode === 'both' ? `
-            <div style="padding:14px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="_genSaveBoth()" style="padding:8px 16px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
-                    <i class="fas fa-save mr-1"></i>Save Both
-                </button>
-            </div>` : ''}
+
         </div>`;
 }
 
-function _genSummarySectionHtml(summaryText) {
+function _genSummarySectionHtml(summaryText, structured) {
     // ⚠️ Gemini paragraph + "• Option N…" bullet list \n দিয়ে আলাদা করে
     // পাঠায় — কিন্তু plain HTML-এ \n নিজে থেকে line-break হয় না (browser
     // whitespace collapse করে দেয়)। white-space:pre-wrap দিয়ে raw \n-কেই
     // visual line-break বানানো হচ্ছে, _e() এর escape এখনো bypass হয় না
     // (XSS-নিরাপদ থাকে, শুধু whitespace-টা preserve হয়)।
+    // Structured info chips
+    const chips = [];
+    if (structured?.route)    chips.push(`<span style="background:#EEF2FF;color:#4338CA;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">${_e(structured.route)}</span>`);
+    if (structured?.trip_type)chips.push(`<span style="background:#F0FDF4;color:#15803D;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">${_e(structured.trip_type)}</span>`);
+    if (structured?.airline)  chips.push(`<span style="background:#FFF7ED;color:#C2410C;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">${_e(structured.airline)}</span>`);
+    if (structured?.pax) {
+        const p = structured.pax;
+        const paxStr = [p.adult&&`${p.adult}A`, p.child&&`${p.child}C`, p.infant&&`${p.infant}I`].filter(Boolean).join('+');
+        if (paxStr) chips.push(`<span style="background:#F9FAFB;color:#6B7280;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">${paxStr}</span>`);
+    }
+
+    // Store structured for GDS/SOTO generation
+    window._genCurrentSummaryStructured = structured || null;
+
     return `
     <div id="at-gen-summary-section">
         <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">Summary</label>
+        ${chips.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${chips.join('')}</div>` : ''}
         <div id="at-gen-summary-text" contenteditable="true"
             style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;font-size:13px;color:#374151;line-height:1.7;min-height:80px;white-space:pre-wrap;">${_e(summaryText || '')}</div>
-        <button onclick="_genSaveSummary()" style="margin-top:10px;padding:7px 14px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
-            <i class="fas fa-save mr-1"></i>Save Summary in Mindboard
-        </button>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button onclick="_genSaveSummary()" style="padding:7px 14px;font-size:12px;font-weight:600;background:#fff;color:#4338CA;border:1px solid #C7D2FE;border-radius:8px;cursor:pointer;">
+                <i class="fas fa-save mr-1"></i>Save in Mindboard
+            </button>
+            <button onclick="_genGenerateFromSummary('gds')" style="padding:7px 14px;font-size:12px;font-weight:600;background:#fff;color:#1e40af;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;">
+                <i class="fas fa-terminal mr-1"></i>Generate GDS Quotation
+            </button>
+            <button onclick="_genGenerateFromSummary('soto')" style="padding:7px 14px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+                <i class="fas fa-file-invoice mr-1"></i>Generate SOTO Quotation
+            </button>
+        </div>
     </div>`;
 }
 
@@ -1054,23 +1082,21 @@ function _genQuotationSectionHtml(quotation) {
 
     return `
     <div id="at-gen-quotation-section">
-        <div style="display:flex;align-items:center;justify-content:between;gap:10px;margin-bottom:10px;">
-            <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;flex:1;">Quotation</label>
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:11px;color:#6B7280;">Type:</span>
-                <select id="at-gen-quot-type" onchange="_genRegenerateQuotation()" style="font-size:11px;padding:3px 8px;border:1px solid #E5E7EB;border-radius:6px;">
-                    <option value="gds" ${type==='gds'?'selected':''}>GDS</option>
-                    <option value="soto" ${type==='soto'?'selected':''}>SOTO</option>
-                </select>
-                <button onclick="_genRegenerateQuotation()" title="Regenerate with selected type"
-                    style="font-size:11px;padding:4px 8px;background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;border-radius:6px;cursor:pointer;">
-                    <i class="fas fa-sync-alt"></i> Regenerate
-                </button>
-            </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+            <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">
+                ${type === 'gds'
+                    ? '<i class="fas fa-terminal" style="color:#1e40af;margin-right:5px;"></i>GDS Quotation'
+                    : '<i class="fas fa-file-invoice" style="color:#4338CA;margin-right:5px;"></i>SOTO Quotation'}
+            </label>
+            <button onclick="_genRegenerateQuotation()"
+                style="font-size:11px;padding:4px 10px;background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                <i class="fas fa-sync-alt" style="font-size:10px;"></i> Regenerate
+            </button>
         </div>
         <div id="at-gen-quot-body">${_genQuotFormHtml(quotation)}</div>
-        <button onclick="_genSaveQuotation()" style="margin-top:10px;padding:7px 14px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:8px;cursor:pointer;">
-            <i class="fas fa-save mr-1"></i>Save as Quotation
+        <button onclick="_genSaveQuotation()"
+            style="margin-top:12px;width:100%;padding:9px;font-size:12px;font-weight:600;background:#4338CA;color:#fff;border:none;border-radius:10px;cursor:pointer;">
+            <i class="fas fa-save" style="margin-right:6px;"></i>Save as Quotation
         </button>
     </div>`;
 }
@@ -1083,11 +1109,23 @@ function _genQuotationSectionHtml(quotation) {
 function _genQuotFormHtml(quotation) {
     const type = quotation.detected_type === 'soto' ? 'soto' : 'gds';
     if (type === 'gds') {
-        const g = quotation.gds || {};
-        const segs  = g.segments || [];
-        const fares = g.fares    || [];
+        const g        = quotation.gds || {};
+        const segs     = g.segments || [];
+        const fares    = g.fares    || [];
+        const rawGds   = g.raw_gds || g.raw_text || '';
+        const gdsCurr  = (g.currency || 'BDT').toUpperCase();
         return `
         <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;font-size:12px;">
+            ${rawGds ? `<div style="margin-bottom:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <label style="font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Raw GDS</label>
+                    <button onclick="navigator.clipboard.writeText(this.dataset.gds);atT('success','Copied!')" data-gds="${_e(rawGds)}"
+                        style="font-size:10px;padding:2px 8px;background:#1e293b;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+                        <i class="fas fa-copy mr-1"></i>Copy
+                    </button>
+                </div>
+                <pre style="background:#0f172a;color:#e2e8f0;border-radius:8px;padding:10px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;margin:0;">${_e(rawGds)}</pre>
+            </div>` : ''}
             <div style="margin-bottom:8px;"><b>Airline:</b> ${_e(g.airline || '—')}</div>
             <table style="width:100%;font-size:11px;border-collapse:collapse;margin-bottom:10px;">
                 <thead><tr style="color:#6B7280;text-align:left;">
@@ -1100,7 +1138,7 @@ function _genQuotFormHtml(quotation) {
                     </tr>`).join('') || '<tr><td colspan="5" style="padding:6px;color:#9CA3AF;">No segments detected</td></tr>'}
                 </tbody>
             </table>
-            <div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;">Fares (all amounts in BDT)</div>
+            <div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;">Fares (all amounts in ${gdsCurr})</div>
             <table style="width:100%;font-size:11px;border-collapse:collapse;">
                 <thead><tr style="color:#6B7280;text-align:left;">
                     <th style="padding:4px;">Type</th><th>Pax</th><th>Base</th><th>Gross</th><th>Net</th><th>Payable</th><th>Total</th>
@@ -1146,7 +1184,8 @@ function _genQuotFormHtml(quotation) {
 
 // Regenerate — dropdown-এ বেছে নেওয়া type জোর করে আবার generate করে
 window._genRegenerateQuotation = async function() {
-    const type = document.getElementById('at-gen-quot-type')?.value || 'gds';
+    // type selector removed — use same type as current result
+    const type = _genCurrentResult?.quotation?.detected_type || (_genCurrentResult?.mode === 'gds_quotation' ? 'gds' : 'soto');
     const noteIds = [...window._at.selectedNoteIds];
     if (!noteIds.length) return;
 
@@ -1174,6 +1213,49 @@ window._genRegenerateQuotation = async function() {
 };
 
 // ── Save Summary (নতুন text-note হিসেবে Mind Board-এ) ────────────
+// Summary থেকে GDS বা SOTO quotation generate করে result section-এ দেখায়
+window._genGenerateFromSummary = async function(type) {
+    const noteIds = [...window._at.selectedNoteIds];
+    if (!noteIds.length) { atT('error','Notes select করুন'); return; }
+
+    // Summary section-এ quotation area inject করি
+    const summarySection = document.getElementById('at-gen-summary-section');
+    if (summarySection) {
+        const existing = document.getElementById('at-gen-quotation-section');
+        if (!existing) {
+            const div = document.createElement('div');
+            div.style.cssText = 'margin-top:16px;border-top:1px solid #F1F5F9;padding-top:16px;';
+            div.innerHTML = `<div style="text-align:center;padding:16px;"><i class="fas fa-spinner fa-spin" style="color:#4338CA;"></i> Generating ${type.toUpperCase()} Quotation…</div>`;
+            summarySection.after(div);
+        }
+    }
+
+    try {
+        const res = await fetch('/api/air-tickets/generate-from-notes.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                work_sys_id:         window._at.cfg.workSysId,
+                note_sys_ids:        noteIds,
+                action:              'quotation',
+                quotation_type_hint: type,
+            }),
+        });
+        const json = await res.json();
+        if (!json.success) { atT('error', json.message || 'Generate ব্যর্থ'); return; }
+
+        _genCurrentResult = { ..._genCurrentResult, quotation: json.quotation };
+
+        // Replace the loading div with quotation section
+        const loadingDiv = document.getElementById('at-gen-summary-section')?.nextSibling;
+        if (loadingDiv) {
+            loadingDiv.innerHTML = _genQuotationSectionHtml(json.quotation);
+        } else {
+            // fallback: render full result modal
+            _genRenderResultModal(type === 'gds' ? 'gds_quotation' : 'quotation', json);
+        }
+    } catch(e) { atT('error', 'Network error'); console.error(e); }
+};
+
 window._genSaveSummary = async function() {
     const el = document.getElementById('at-gen-summary-text');
     const text = el?.innerText.trim();
@@ -1208,7 +1290,7 @@ window._genSaveQuotation = async function() {
     const q = _genCurrentResult?.quotation;
     if (!q) { atT('error', 'Quotation data নেই'); return; }
 
-    const type = document.getElementById('at-gen-quot-type')?.value || q.detected_type || 'gds';
+    const type = q.detected_type || (_genCurrentResult?.mode === 'gds_quotation' ? 'gds' : 'soto');
     const payload = _genBuildQuotationSavePayload(q, type);
     // যেই note গুলো থেকে এই quotation তৈরি হয়েছে, সেগুলোর sys_id পাঠানো হচ্ছে —
     // backend এগুলোর meta_data-তে "used_in_quotations" মার্ক করবে (Mind Board-এ
@@ -1225,12 +1307,15 @@ window._genSaveQuotation = async function() {
             atT('success', 'Quotation saved!');
             window._genClearSelection();
             _genCloseModal();
-            // ⚠️ আগে এখানে reload হতো না — Quotation tab-এ গিয়ে ডেটা দেখতে
-            // page refresh লাগত। এখন save হওয়ার সাথে সাথেই window._at.data
-            // ফ্রেশ করে দিচ্ছি, আর Mind Board-এর note গুলোও নতুন badge সহ
-            // reload করছি যাতে "Used in Q-00X" সাথে সাথে দেখা যায়।
             if (typeof window._atReload === 'function') await window._atReload();
             await atLoadNotes();
+            // Switch to Quotation tab — extract section skip করবে (mindboard থেকে এসেছে)
+            const savedQSysId = json.quotation_sys_id;
+            if (savedQSysId && typeof window._atSwitchTab === 'function') {
+                window._at.activeQSysId   = savedQSysId;
+                window._at.fromMindboard  = true; // quotation.js এই flag দেখে extract section hide করবে
+                window._atSwitchTab('quotation');
+            }
         } else {
             atT('error', json.message || 'Save ব্যর্থ');
         }
@@ -1286,14 +1371,19 @@ function _genBuildQuotationSavePayload(q, type) {
         const grossFare    = fares.reduce((s,f) => s + f.gross_fare * f.pax, 0);
         const netFare      = fares.reduce((s,f) => s + f.net_fare   * f.pax, 0);
         const totalPayable = fares.reduce((s,f) => s + f.total_payable, 0);
+        // AI-generated fares may carry currency — use first fare's currency, default BDT
+        const gdsCurrency = (g.currency || (g.fares?.[0]?.currency) || 'BDT').toUpperCase();
+        const gdsConvRate = +(g.conversion_rate ?? 1) || 1;
         return {
             type: 'gds',
             title: g.airline || 'AI Generated Quotation',
             airline: g.airline || '',
             segments_json: g.segments || [],
             pricing_json: fares,
-            raw_input: '',
+            raw_input: g.raw_gds || g.raw_text || '',
             copy_text: '',
+            currency:        gdsCurrency,
+            conversion_rate: gdsConvRate,
             gross_fare: grossFare,
             net_fare: netFare,
             total_payable: totalPayable,

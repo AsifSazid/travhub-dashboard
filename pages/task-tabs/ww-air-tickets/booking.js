@@ -119,7 +119,10 @@ window.atSelectBooking = function(sysId) {
     window._at.gdsFares    = b.pricing_json  ?? [];
     window._at.sotoPrices  = null; // পরের booking-এর নিজস্ব form_data.prices দিয়ে fresh init হোক
     _renderBBuilder(b);
-    if (b.type === 'gds' || !b.type) setTimeout(() => _recalcAllFares('b'), 50);
+    if (b.type === 'gds' || !b.type) setTimeout(() => {
+        _recalcAllFares('b');
+        atGdsPreview('b'); // force preview after recalc with BDT currency
+    }, 150);
     _loadBookingTravelers();
 };
 
