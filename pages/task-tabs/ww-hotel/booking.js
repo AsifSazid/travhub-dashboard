@@ -68,6 +68,9 @@ window.htSelectBooking = function(sysId) {
     const b = (window._ht.data?.ht_bookings ?? []).find(x => x.sys_id === sysId);
     if (!b) return;
     document.querySelectorAll('.ht-b-card').forEach(c => c.classList.remove('border-green-400','bg-green-50'));
+    // Highlight matching card — works both from click and programmatic call
+    const activeCard = document.querySelector(`.ht-b-card[onclick*="${sysId}"]`);
+    activeCard?.classList.add('border-green-400','bg-green-50');
     event?.currentTarget?.classList.add('border-green-400','bg-green-50');
     _htRenderBBuilder(b);
     _htLoadBTravelers();
@@ -191,7 +194,7 @@ window.htSaveBooking = async function() {
     const b = (window._ht.data?.ht_bookings ?? []).find(x => x.sys_id === window._ht.activeBSysId) || {};
     try {
         const json = await window._htApi({
-            action:          window._ht.activeBSysId ? 'save_booking' : 'save_booking',
+            action:          'save_booking',
             booking_sys_id:  window._ht.activeBSysId || '',
             // Carry over quotation fields
             hotel_sys_id:    b.hotel_sys_id  || '',
@@ -221,9 +224,11 @@ window.htSaveBooking = async function() {
         });
         if (json.status === 'success') {
             htT('success', window._ht.activeBSysId ? 'Updated!' : 'Booking saved!');
-            if (!window._ht.activeBSysId) window._ht.activeBSysId = json.booking_sys_id;
+            if (!window._ht.activeBSysId && json.booking_sys_id) window._ht.activeBSysId = json.booking_sys_id;
             await window._htReload();
             _renderHtBooking();
+            // Re-select booking so builder stays visible after reload
+            if (window._ht.activeBSysId) htSelectBooking(window._ht.activeBSysId);
         } else { htT('error', json.message); }
     } catch(e) { htT('error','Network error'); }
 };

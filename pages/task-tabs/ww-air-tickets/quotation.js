@@ -510,8 +510,13 @@ function _gdsGenerateCopy(pfx) {
     out+='\n*Price:*\n';
     let grand=0;
     window._at.gdsFares.forEach(f=>{
-        // gross_fare_bdt: set by _gdsCalcFare after conversion. Fallback to gross_fare if calc not run yet.
-        const grossBdt = +(f.gross_fare_bdt ?? f.gross_fare ?? 0);
+        // gross_fare_bdt: set by _gdsCalcFare after conversion and saved in pricing_json.
+        // Fallback chain:
+        //   1) gross_fare_bdt (set by _gdsCalcFare, always BDT)
+        //   2) gross_fare — only BDT if f.currency === 'BDT' or no currency stored
+        //      (old quotations before gross_fare_bdt was introduced may land here)
+        const fareCurrency = (f.currency ?? 'BDT').toUpperCase();
+        const grossBdt = +(f.gross_fare_bdt ?? (fareCurrency === 'BDT' ? f.gross_fare : 0) ?? 0);
         const payable  = +(f.payable||0); // already BDT from _gdsCalcFare
         const pax      = +(f.pax||1);
         grand += payable * pax;
@@ -1033,6 +1038,17 @@ window.atSaveQ = async function(pfx) {
         body.gross_fare    = window._at.gdsFares.reduce((s,f) => s+(f.gross_fare??0)*(f.pax??1), 0);
         body.net_fare      = window._at.gdsFares.reduce((s,f) => s+(f.net_fare??0)*(f.pax??1), 0);
         body.total_payable = window._at.gdsFares.reduce((s,f) => s+(f.total_payable??0), 0);
+
+        // যদি fares BDT-তে convert হয়ে save হচ্ছে, fare-level currency/conv_rate
+        // clean করো — পরে reload এ _gdsCalcFare আবার ভুল conversion না করুক।
+        // gross_fare_bdt থাকলে সেটাই preview/calc এর source হবে।
+        if (_farsAlreadyBdt) {
+            window._at.gdsFares.forEach(f => {
+                f.currency  = 'BDT';
+                f.conv_rate = 1;
+            });
+            body.pricing_json = window._at.gdsFares; // updated version re-assign
+        }
         // Client selling price = payable × (1 + markup%)
         const markupPct = body.markup_pct / 100;
         body.client_total = Math.round(body.total_payable * (1 + markupPct));
@@ -1274,7 +1290,33 @@ window.atSelectQuotation = function(sysId) {
     window._at.gdsFares    = q.pricing_json  ?? [];
     window._at.sotoPrices  = null; // পরের quotation-এর নিজস্ব form_data.prices দিয়ে fresh init হোক
     _renderQBuilder(q);
-    if (q.type === 'gds' || !q.type) setTimeout(() => _recalcAllFares('q'), 50);
+    if (q.type === 'gds' || !q.type) {
+        setTimeout(() => {
+            // যদি quotation ইতিমধ্যে BDT-তে save হয়েছে (converted), তাহলে
+            // _gdsCalcFare আবার চালালে BDT × convRate হয়ে ভুল value দেখাবে।
+            // সেক্ষেত্রে শুধু RO fields update + preview regenerate করলেই যথেষ্ট।
+            const savedCurrency = (q.currency ?? 'BDT').toUpperCase();
+            const savedRate     = +(q.conversion_rate ?? 1);
+            const alreadyBdt   = savedCurrency === 'BDT' || savedRate === 1;
+
+            if (alreadyBdt) {
+                // gross_fare_bdt ও payable already BDT — recalc করব না,
+                // শুধু _gdsUpdateRo ও preview চালাই
+                window._at.gdsFares.forEach((_, i) => _gdsUpdateRo('q', i));
+                // payable input fields update করি
+                window._at.gdsFares.forEach((f, i) => {
+                    const payEl = document.querySelector(`.at-fare-payable[data-pfx="q"][data-idx="${i}"]`);
+                    if (payEl) payEl.value = f.payable;
+                });
+                // Preview: _gdsGenerateCopy uses f.gross_fare_bdt ?? f.gross_fare
+                // gross_fare_bdt already set in saved pricing_json, so preview is correct
+                atGdsPreview('q');
+            } else {
+                // Non-BDT currency, rate দেওয়া আছে — normal recalc চালাই
+                _recalcAllFares('q');
+            }
+        }, 50);
+    }
 };
 
 window._renderQBuilder = function _renderQBuilder(q) {

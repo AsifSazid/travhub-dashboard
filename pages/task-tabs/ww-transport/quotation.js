@@ -279,41 +279,7 @@ window.tsUpdateTotals = function() {
 };
 
 // ── Save / Delete / Send ──────────────────────────────────────
-window.tsSaveQuotation = async function() {
-    // Sync legs from DOM before saving
-    document.querySelectorAll('.ts-leg-field').forEach(el => {
-        const idx = +el.dataset.idx, key = el.dataset.key;
-        if (window._ts.legs[idx] !== undefined && key)
-            window._ts.legs[idx][key] = el.dataset.numeric==='1' ? +(el.value||0) : el.value;
-    });
-    document.querySelectorAll('.ts-leg-sell').forEach(el => {
-        const idx = +el.dataset.idx;
-        if (window._ts.legs[idx]) window._ts.legs[idx].sell_rate = +(el.value||0);
-    });
-    const markup = +(document.getElementById('ts-q-markup')?.value||0);
-    window._ts.legs.forEach(l => l.markup_pct = markup);
-    const currency = document.getElementById('ts-q-currency')?.value || 'BDT';
-    const note     = document.getElementById('ts-q-note')?.value || '';
-
-    if (!window._ts.legs.length) { tsT('error','কমপক্ষে একটা leg দিন'); return; }
-
-    try {
-        const json = await window._tsApi({
-            action:          'save_quotation',
-            quotation_sys_id:window._ts.activeQSysId || '',
-            currency, markup_pct: markup, note,
-            legs: window._ts.legs,
-        });
-        if (json.status === 'success') {
-            htSaved: tsT('success', window._ts.activeQSysId ? 'Updated!' : 'Quotation saved!');
-            if (!window._ts.activeQSysId) window._ts.activeQSysId = json.quotation_sys_id;
-            await window._tsReload();
-            _renderTsQuotation();
-            window._ts.activeQSysId && tsSelectQuotation(window._ts.activeQSysId);
-        } else { tsT('error', json.message||'Save ব্যর্থ'); }
-    } catch(e) { tsT('error','Network error'); }
-};
-// small label fix — avoids JS parse issue with label
+// (single definition below)
 window.tsSaveQuotation = async function() {
     document.querySelectorAll('.ts-leg-field').forEach(el => {
         const idx = +el.dataset.idx, key = el.dataset.key;

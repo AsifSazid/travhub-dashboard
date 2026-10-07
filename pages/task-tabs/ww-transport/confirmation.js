@@ -432,7 +432,10 @@ async function _tsDoConfirm(confId, payment, includeClient=false) {
 
             // Client sale entries per leg
             const clientRows  = window._tsClientRows ?? [];
-            const clientSysId = window._ts.cfg.clientSysId ?? null;
+            const clientSysId = window._ts.cfg.clientSysId ?? window._ts.cfg.workClientSysId ?? null;
+            if (!clientSysId && includeClient && clientRows.length) {
+                tsT('error', 'Client ID missing — client entry skipped. Check config.');
+            }
             if (includeClient && json.task_created && json.auto_task_id && clientRows.length && clientSysId) {
                 for (const row of clientRows) {
                     try {

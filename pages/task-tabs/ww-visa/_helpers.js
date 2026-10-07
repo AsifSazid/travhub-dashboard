@@ -6,12 +6,18 @@
 // ── API call shorthand ────────────────────────────────────
 window._vsApi = async function(payload) {
     const url = window._vs.cfg.api.visaServices;
-    const qs  = payload.action?.startsWith('get') || payload.action === 'search_master'
-                ? `?action=${payload.action}` + (payload.work_sys_id ? `&work_sys_id=${payload.work_sys_id}` : '')
-                              + (payload.sys_id ? `&sys_id=${payload.sys_id}` : '')
-                : '';
-    if (qs) {
-        const res = await fetch(url + qs);
+    const isGet = payload.action?.startsWith('get') || payload.action === 'search_master';
+    if (isGet) {
+        // Build query string — include all non-function, non-action keys as params
+        const params = new URLSearchParams({ action: payload.action });
+        if (payload.work_sys_id) params.set('work_sys_id', payload.work_sys_id);
+        else params.set('work_sys_id', window._vs.cfg.workSysId ?? '');
+        if (payload.sys_id)          params.set('sys_id', payload.sys_id);
+        if (payload.country_sys_id)  params.set('country_sys_id', payload.country_sys_id);
+        if (payload.visa_type_sys_id) params.set('visa_type_sys_id', payload.visa_type_sys_id);
+        if (payload.visa_category_sys_id) params.set('visa_category_sys_id', payload.visa_category_sys_id);
+        if (payload.q)               params.set('q', payload.q);
+        const res = await fetch(`${url}?${params.toString()}`);
         return res.json();
     }
     const res = await fetch(url, {

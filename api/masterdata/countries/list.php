@@ -41,7 +41,7 @@ try {
 
     $stmt = $pdo->prepare("
         SELECT id, uuid, sys_id, name, code, currency, currency_code,
-               default_rate, region, cities, for_package, status
+               default_rate, region, cities, for_package, for_work, status
         FROM countries $w
         ORDER BY name ASC
         LIMIT :lim OFFSET :off
@@ -68,6 +68,7 @@ try {
             'cities'        => $cities,
             'city_count'    => count($cities),
             'for_package'   => (int)$r['for_package'],
+            'for_work'   => (int)$r['for_work'],
             'status'        => $r['status'],
         ];
     }

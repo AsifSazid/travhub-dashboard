@@ -6,8 +6,31 @@
 window._renderHtQuotation = function() {
     const panel      = document.getElementById('ht-panel-quotation');
     const quotations = window._ht.data?.ht_quotations ?? [];
+    const segs       = window._ht.leadSegments ?? [];
+    const activeSeg  = window._ht.activeSegFilter;
+
+    // Filter quotations by active segment
+    const filteredQ  = activeSeg
+        ? quotations.filter(q => q.city_seg_id === activeSeg || !q.city_seg_id)
+        : quotations;
+
+    // Segment filter bar — only show if lead has segments with city data
+    const segBarHtml = segs.length > 0 ? `
+    <div style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;">City:</span>
+        <button onclick="htSetSegFilter(null)"
+            style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid ${!activeSeg ? '#EA580C' : '#E5E7EB'};background:${!activeSeg ? '#FFF7ED' : '#fff'};color:${!activeSeg ? '#EA580C' : '#6B7280'};">
+            All
+        </button>
+        ${segs.map(s => `
+        <button onclick="htSetSegFilter('${_hte(s.city_sys_id || s.city_name)}')"
+            style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid ${activeSeg === (s.city_sys_id || s.city_name) ? '#EA580C' : '#E5E7EB'};background:${activeSeg === (s.city_sys_id || s.city_name) ? '#FFF7ED' : '#fff'};color:${activeSeg === (s.city_sys_id || s.city_name) ? '#EA580C' : '#6B7280'};">
+            <i class="fas fa-hotel" style="font-size:9px;margin-right:3px;"></i>${_hte(s.city_name || s.hotel_name || 'Unknown')}
+        </button>`).join('')}
+    </div>` : '';
 
     panel.innerHTML = `
+    ${segBarHtml}
     <div class="flex gap-4">
         <!-- LEFT: list -->
         <div style="width:220px;flex-shrink:0;">
@@ -19,7 +42,7 @@ window._renderHtQuotation = function() {
                 </button>
             </div>
             <div id="ht-q-list" class="space-y-1.5">
-                ${quotations.length ? quotations.map(_htQCard).join('') : '<p class="text-xs text-gray-300 text-center py-6">No quotations yet.</p>'}
+                ${filteredQ.length ? filteredQ.map(_htQCard).join('') : '<p class="text-xs text-gray-300 text-center py-6">No quotations yet.</p>'}
             </div>
             <div id="ht-q-move-multi" class="hidden mt-3">
                 <div class="text-xs text-gray-500 mb-1.5 text-center" id="ht-q-sel-count">0 selected</div>
@@ -58,6 +81,7 @@ function _htQCard(q) {
         </div>
         <div class="text-xs font-semibold text-gray-700 truncate">${_hte(q.hotel_name||'—')} ${q.star_rating?'<span style="color:#F59E0B;">'+('★'.repeat(q.star_rating))+'</span>':''}</div>
         <div class="text-[11px] text-gray-400">${_hte(q.city||'')}${q.city&&q.check_in?' · ':' '}${_hte(q.check_in||'')} ${q.nights?'('+q.nights+'N)':''}</div>
+        ${q.city_seg_id ? `<div class="text-[10px] text-orange-400 mt-0.5"><i class="fas fa-map-marker-alt" style="font-size:8px;"></i> ${_hte(q.city_seg_id)}</div>` : ''}
         <div class="flex items-center justify-between mt-1">
             <span class="text-[11px] font-bold text-orange-600">${_hte(q.currency||'BDT')} ${_htFmtN(q.total_sell||q.total_net||0)}</span>
             <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${sMap[st]??'bg-gray-100 text-gray-500'}">${st}</span>
@@ -77,6 +101,27 @@ window.htToggleQSel = function(sysId, cb) {
     } else {
         btn?.classList.add('hidden');
     }
+};
+
+// ── Segment filter ───────────────────────────────────────────
+window.htSetSegFilter = function(segId) {
+    window._ht.activeSegFilter = segId || null;
+    _renderHtQuotation();
+};
+
+// ── Auto-fill city/hotel/dates from selected segment ─────────
+window.htAutoFillFromSeg = function(sel) {
+    const opt = sel?.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    const cityInp    = document.getElementById('ht-q-city');
+    const hotelInp   = document.getElementById('ht-q-hotel-name');
+    const checkinInp = document.getElementById('ht-q-checkin');
+    const checkoutInp= document.getElementById('ht-q-checkout');
+    if (cityInp    && !cityInp.value    && opt.dataset.city)     cityInp.value    = opt.dataset.city;
+    if (hotelInp   && !hotelInp.value   && opt.dataset.hotel)    hotelInp.value   = opt.dataset.hotel;
+    if (checkinInp && !checkinInp.value && opt.dataset.checkin)  checkinInp.value = opt.dataset.checkin;
+    if (checkoutInp&& !checkoutInp.value&& opt.dataset.checkout) checkoutInp.value= opt.dataset.checkout;
+    if (checkinInp?.value && checkoutInp?.value) htCalcNightsAuto();
 };
 
 window.htNewQuotation = function() {
@@ -120,6 +165,27 @@ function _htRenderQBuilder(q) {
             </div>
         </div>
     </div>
+
+    <!-- City segment tag — links quotation to a lead segment -->
+    ${(() => {
+        const segs = window._ht.leadSegments ?? [];
+        if (!segs.length) return '';
+        const cur = q?.city_seg_id ?? '';
+        return `<div class="mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Link to City <span class="text-gray-300 font-normal normal-case">(from lead)</span></label>
+            <select id="ht-q-seg-id" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
+                onchange="htAutoFillFromSeg(this)">
+                <option value="">— No segment link —</option>
+                ${segs.map(s => {
+                    const segId = s.city_sys_id || s.city_name;
+                    const label = [s.city_name, s.hotel_name].filter(Boolean).join(' / ');
+                    return \`<option value="\${_hte(segId)}" \${cur===segId?'selected':''}
+                        data-city="\${_hte(s.city_name)}" data-hotel="\${_hte(s.hotel_name)}"
+                        data-checkin="\${_hte(s.check_in)}" data-checkout="\${_hte(s.check_out)}">\${_hte(label)}</option>\`;
+                }).join('')}
+            </select>
+        </div>`;
+    })()}
 
     <div class="grid grid-cols-3 gap-3 mb-3">
         <div>
@@ -305,9 +371,18 @@ window.htSaveQuotation = async function() {
     const sellRate = +(document.getElementById('ht-q-sell-rate')?.value || _htCalcSell(netRate, markup));
     const currency = document.getElementById('ht-q-currency')?.value || 'BDT';
 
+    const segEl  = document.getElementById('ht-q-seg-id');
+    const citySegId = segEl?.value || '';
+    // Auto-fill city from segment if city field is empty
+    if (citySegId && segEl) {
+        const opt = segEl.options[segEl.selectedIndex];
+        const cityInp = document.getElementById('ht-q-city');
+        if (cityInp && !cityInp.value && opt?.dataset.city) cityInp.value = opt.dataset.city;
+    }
     const body = {
         action:           window._ht.activeQSysId ? 'save_quotation' : 'save_quotation',
         quotation_sys_id: window._ht.activeQSysId || '',
+        city_seg_id:      citySegId,
         hotel_name:       document.getElementById('ht-q-hotel-name')?.value || '',
         city:             document.getElementById('ht-q-city')?.value       || '',
         country:          document.getElementById('ht-q-country')?.value    || '',

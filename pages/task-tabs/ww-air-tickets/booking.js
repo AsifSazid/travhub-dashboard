@@ -120,8 +120,25 @@ window.atSelectBooking = function(sysId) {
     window._at.sotoPrices  = null; // পরের booking-এর নিজস্ব form_data.prices দিয়ে fresh init হোক
     _renderBBuilder(b);
     if (b.type === 'gds' || !b.type) setTimeout(() => {
-        _recalcAllFares('b');
-        atGdsPreview('b'); // force preview after recalc with BDT currency
+        // Quotation save এর সময় currency=BDT, conversion_rate=1 store হয়।
+        // তাই pricing_json এর amounts already BDT।
+        // _recalcAllFares চালালে fare-level f.gross_fare (original USD) × 1 = USD value
+        // preview তে চলে আসে। তাই BDT already হলে শুধু RO + preview।
+        const savedCurrency = (b.currency ?? 'BDT').toUpperCase();
+        const savedRate     = +(b.conversion_rate ?? 1);
+        const alreadyBdt    = savedCurrency === 'BDT' || savedRate === 1;
+
+        if (alreadyBdt) {
+            window._at.gdsFares.forEach((_, i) => _gdsUpdateRo('b', i));
+            window._at.gdsFares.forEach((f, i) => {
+                const payEl = document.querySelector(`.at-fare-payable[data-pfx="b"][data-idx="${i}"]`);
+                if (payEl) payEl.value = f.payable;
+            });
+            atGdsPreview('b');
+        } else {
+            _recalcAllFares('b');
+            atGdsPreview('b');
+        }
     }, 150);
     _loadBookingTravelers();
 };

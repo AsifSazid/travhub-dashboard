@@ -4,8 +4,10 @@
  */
 
 window.initWorkHotelTab = async function(config) {
-    window._ht.cfg    = config;
-    window._ht.data   = config.htData ?? null;
+    window._ht.cfg          = config;
+    window._ht.data         = config.htData ?? null;
+    window._ht.leadSegments = config.leadSegments ?? [];
+    window._ht.activeSegFilter = null;
 
     const mount = document.getElementById('ww-hotel-mount');
     if (!mount) { console.error('[hotel] mount #ww-hotel-mount not found'); return; }
@@ -63,7 +65,8 @@ window._htSwitchTab = function(tab, btn) {
         b.style.borderColor = active ? '#6366f1' : 'transparent';
     });
     document.querySelectorAll('.ht-panel').forEach(p => {
-        p.classList.toggle('hidden', !p.id.endsWith(tab));
+        // Use style.display to override any inline styles set by render functions
+        p.style.display = p.id.endsWith(tab) ? '' : 'none';
     });
     // Render tab
     const renders = {

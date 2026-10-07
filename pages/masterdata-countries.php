@@ -1,7 +1,9 @@
 <?php
+// path: pages/masterdata-countries.php
 include_once('./authenticate.php');
 $ip = rtrim(@file_get_contents('../ippath.txt') ?: 'http://localhost/', '/') . '/';
-?><!DOCTYPE html>
+?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">

@@ -21,4 +21,7 @@ window._ht = {
     sttFinal:     '',
     sttActive:    false,
     sttPaused:    false,
+    // Lead segments — city/hotel info from lead creation
+    leadSegments:    [],   // [{ city_sys_id, city_name, hotel_name, hotel_sys_id, check_in, check_out }]
+    activeSegFilter: null, // city_sys_id to filter quotations by, null = show all
 };

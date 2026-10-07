@@ -438,7 +438,10 @@ async function _htDoConfirm(confId, payment, includeClient = false) {
 
             // Client sale entries
             const clientRows  = window._htClientRows ?? [];
-            const clientSysId = window._ht.cfg.clientSysId ?? null;
+            const clientSysId = window._ht.cfg.clientSysId ?? window._ht.cfg.workClientSysId ?? null;
+            if (!clientSysId && includeClient && clientRows.length) {
+                htT('error', 'Client ID missing — client entry skipped. Check config.');
+            }
             if (includeClient && json.task_created && json.auto_task_id && clientRows.length && clientSysId) {
                 for (const row of clientRows) {
                     try {

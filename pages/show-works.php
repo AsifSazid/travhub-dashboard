@@ -751,6 +751,20 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <script src="../pages/task-tabs/ww-umrah/summary.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/idcard.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/index.js?t=<?php echo time(); ?>"></script>
+<!-- Package Module -->
+<script src="../pages/task-tabs/ww-package/_state.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-package/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-package/mindboard.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-package/quotation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-package/confirmation.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-package/index.js?t=<?php echo time(); ?>"></script>
+<!-- Visa Module -->
+<script src="../pages/task-tabs/ww-visa/_state.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-visa/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-visa/visa-info.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-visa/travelers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-visa/status.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-visa/index.js?t=<?php echo time(); ?>"></script>
 <script>
 const WORK_SYS_ID  = "<?php echo htmlspecialchars($workSysId); ?>";
 const DEEP_LINK_SW = "<?php echo htmlspecialchars($deepLinkSw); ?>";
@@ -772,6 +786,11 @@ const API = {
     airTickets:    "<?php echo $airTicketsApi; ?>",
     hotelServices:      "<?php echo $ip_port; ?>api/hotel-services/endpoints.php",
     transportServices:  "<?php echo $ip_port; ?>api/transport-services/endpoints.php",
+    packageServices:    "<?php echo $ip_port; ?>api/package-services/endpoints.php",
+    visaServices:       "<?php echo $ip_port; ?>api/visa-services/endpoints.php",
+    genCoverLetter:     "<?php echo $ip_port; ?>api/visa-services/gen-cover-letter.php",
+    genDocPackage:      "<?php echo $ip_port; ?>api/visa-services/generate-document-package.php",
+    listDocuments:      "<?php echo $ip_port; ?>api/travelers/list-documents.php",
     umrahWork:          "<?php echo $ip_port; ?>api/umrah-work/endpoints.php",
     umrahGroups:        "<?php echo $ip_port; ?>api/umrah-groups/endpoints.php",
     notes:         "<?php echo $notesApi; ?>",
@@ -1193,13 +1212,16 @@ function loadServiceModule(slug, swSysId) {
     } else if (slug === 'hotel') {
         const ci = sp(workData.client_info) ?? {};
         mount.innerHTML = `<div id="ww-hotel-mount" style="height:100%;"></div>`;
+        const htSegData = sp(workData.segment_data) ?? {};
+        const htSegs    = (htSegData.hotel?.segments ?? []).filter(s => s.city_name || s.hotel_name);
         initWorkHotelTab({
-            workSysId:   WORK_SYS_ID,
-            clientSysId: ci.sys_id ?? '',
-            clientName:  ci.name   ?? '',
-            serviceSlug: slug,
-            currentUser: CURRENT_USER,
-            htData:      null,
+            workSysId:        WORK_SYS_ID,
+            clientSysId:      ci.sys_id ?? '',
+            clientName:       ci.name   ?? '',
+            serviceSlug:      slug,
+            currentUser:      CURRENT_USER,
+            htData:           null,
+            leadSegments:     htSegs,   // city/hotel segments from lead
             api: {
                 hotelServices: API.hotelServices,
                 notes:         API.notes,
@@ -1207,6 +1229,49 @@ function loadServiceModule(slug, swSysId) {
                 saveFinancial: API.saveFinancial,
                 allVendors:    API.allVendors,
                 allAccounts:   API.allAccounts,
+            },
+        });
+    } else if (slug === 'visa') {
+        const ci = sp(workData.client_info) ?? {};
+        mount.innerHTML = `<div id="ww-visa-mount" style="height:100%;"></div>`;
+        initWorkVisaTab({
+            containerId:         'ww-visa-mount',
+            workSysId:           WORK_SYS_ID,
+            clientSysId:         ci.sys_id ?? '',
+            clientName:          ci.name   ?? '',
+            clientCountrySysId:  ci.country_sys_id ?? '',
+            serviceSlug:         slug,
+            currentUser:         CURRENT_USER,
+            api: {
+                visaServices:    API.visaServices,
+                genCoverLetter:  API.genCoverLetter,
+                genDocPackage:   API.genDocPackage,
+                listDocuments:   API.listDocuments,
+                notes:           API.notes,
+                workTravelers:   API.workTravelers,
+                saveFinancial:   API.saveFinancial,
+                allVendors:      API.allVendors,
+                allAccounts:     API.allAccounts,
+                travelerDocViewer: API.travelers,
+            },
+        });
+    } else if (slug === 'tour_package') {
+        const ci = sp(workData.client_info) ?? {};
+        mount.innerHTML = `<div id="ww-package-mount" style="height:100%;"></div>`;
+        initWorkPackageTab({
+            containerId:   'ww-package-mount',
+            workSysId:     WORK_SYS_ID,
+            clientSysId:   ci.sys_id ?? '',
+            clientName:    ci.name   ?? '',
+            serviceSlug:   slug,
+            currentUser:   CURRENT_USER,
+            api: {
+                packageServices: API.packageServices,
+                notes:           API.notes,
+                workTravelers:   API.workTravelers,
+                saveFinancial:   API.saveFinancial,
+                allVendors:      API.allVendors,
+                allAccounts:     API.allAccounts,
             },
         });
     } else {
@@ -1260,6 +1325,8 @@ function renderSvcInfoStrip(slug) {
     } else if (slug === 'hotel') {
         const segs = svcData.segments ?? [];
         segs.forEach(seg => {
+            // Only show if city is actually selected (not a placeholder)
+            if (!seg.city_name && !seg.hotel_name) return;
             const loc    = [seg.hotel_name, seg.city_name].filter(Boolean).join(', ');
             const nights = seg.nights || seg.total_nights || '';
             const rooms  = seg.rooms  || '';
