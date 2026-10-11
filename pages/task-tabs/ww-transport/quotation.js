@@ -5,6 +5,43 @@
 // ── Leg state ─────────────────────────────────────────────────
 window._ts.legs = [];
 
+// ── Generate transport client copy text ───────────────────────
+function _tsGenerateCopy() {
+    const currency = document.getElementById('ts-q-currency')?.value || 'BDT';
+    const markup   = +(document.getElementById('ts-q-markup')?.value  || 0);
+    const legs     = window._ts.legs ?? [];
+    const fmt      = n => (+n||0).toLocaleString('en-BD');
+
+    let lines = ['*Transport Quotation*', ''];
+    legs.forEach((leg, i) => {
+        const from  = leg.from || '';
+        const to    = leg.to   || '';
+        const date  = leg.date || '';
+        const time  = leg.time || '';
+        const type  = leg.transfer_type || '';
+        const veh   = leg.vehicle_class || '';
+        const pax   = leg.pax   || '';
+        const qty   = leg.qty   || 1;
+        const sell  = +(leg.sell_rate || 0);
+        const total = Math.round(sell * qty);
+        lines.push(`*Leg ${i+1}:* ${from}${from&&to?' → ':''}${to}`);
+        if (date)  lines.push(`  📅 ${date}${time?' at '+time:''}`);
+        if (type)  lines.push(`  🚗 ${type}${veh?' — '+veh:''}`);
+        if (pax)   lines.push(`  👥 Pax: ${pax}  |  Qty: ${qty}`);
+        lines.push(`  💰 ${currency} ${fmt(sell)} × ${qty} = *${currency} ${fmt(total)}*`);
+        lines.push('');
+    });
+
+    const totalSell = legs.reduce((s, l) => s + Math.round((l.sell_rate||0) * (l.qty||1)), 0);
+    lines.push(`*Total Payable: ${currency} ${fmt(totalSell)}*`);
+    return lines.join('\n');
+}
+
+window.tsUpdateCopyPreview = function() {
+    const pre = document.getElementById('ts-copy-preview');
+    if (pre) pre.textContent = _tsGenerateCopy();
+};
+
 window._renderTsQuotation = function() {
     const panel      = document.getElementById('ts-panel-quotation');
     const quotations = window._ts.data?.ts_quotations ?? [];
@@ -115,6 +152,19 @@ function _tsRenderQBuilder(q) {
     <div class="grid grid-cols-2 gap-3 mb-4 rounded-xl border border-gray-100 p-3 bg-gray-50">
         <div><div class="text-[10px] text-gray-400 uppercase">Total Net</div><div class="font-bold text-gray-700 text-sm" id="ts-total-net">${curr} 0</div></div>
         <div><div class="text-[10px] text-gray-400 uppercase">Total Sell (Client)</div><div class="font-bold text-emerald-600 text-sm" id="ts-total-sell">${curr} 0</div></div>
+    </div>
+
+    <!-- Client Copy Preview -->
+    <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+            <label style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;">Client Copy Preview</label>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('ts-copy-preview')?.textContent||'').then(()=>tsT('success','Copied!')).catch(()=>tsT('error','Copy failed'))"
+                style="font-size:11px;padding:3px 10px;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;color:#374151;">
+                <i class="fas fa-copy mr-1"></i>Copy
+            </button>
+        </div>
+        <pre id="ts-copy-preview"
+            style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:11px;line-height:1.7;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;min-height:50px;">${_tsGenerateCopy()}</pre>
     </div>
 
     <!-- Actions -->

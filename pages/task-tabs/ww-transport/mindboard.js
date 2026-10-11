@@ -4,7 +4,9 @@
 
 window._renderTsMindboard = function() {
     const panel = document.getElementById('ts-panel-mindboard');
-    panel.style.cssText = 'display:flex;flex-direction:column;padding:0;';
+    if (!panel) return;
+    panel.style.display = '';
+    panel.style.cssText = 'display:flex;flex-direction:column;padding:0;overflow:hidden;';
 
     panel.innerHTML = `
     <!-- Action bar -->
@@ -53,6 +55,39 @@ window._renderTsMindboard = function() {
     </div>`;
 
     tsLoadNotes();
+
+    // ── Portal Panel ──
+    if (!panel.querySelector('#ts-portal-panel')) {
+        const saved   = localStorage.getItem('ts_portal_width');
+        const portalW = saved ? saved + 'px' : '300px';
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;height:100%;flex:1;min-height:0;';
+        const leftDiv = document.createElement('div');
+        leftDiv.id = 'ts-mindboard-left';
+        leftDiv.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;';
+        while (panel.firstChild) leftDiv.appendChild(panel.firstChild);
+        const divider = document.createElement('div');
+        divider.style.cssText = 'width:4px;background:#f1f5f9;cursor:col-resize;flex-shrink:0;';
+        divider.onmouseover = () => divider.style.background = '#0EA5E9';
+        divider.onmouseout  = () => divider.style.background = '#f1f5f9';
+        const portalDiv = document.createElement('div');
+        portalDiv.id = 'ts-portal-panel';
+        portalDiv.style.cssText = `width:${portalW};flex-shrink:0;background:#12172B;display:flex;flex-direction:column;overflow:hidden;`;
+        portalDiv.innerHTML = `
+            <div style="background:#1C2340;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;">
+                <div style="color:#fff;font-size:12px;font-weight:700;">Transport Portals</div>
+                <div style="color:#0EA5E9;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">PORTAL LINKS</div>
+            </div>
+            <div id="ts-portal-body" style="overflow-y:auto;flex:1;padding:8px;">
+                <div style="padding:8px;color:#8A93A8;font-size:12px;"><i class="fas fa-spinner fa-spin mr-1"></i> Loading…</div>
+            </div>`;
+        wrapper.appendChild(leftDiv);
+        wrapper.appendChild(divider);
+        wrapper.appendChild(portalDiv);
+        panel.appendChild(wrapper);
+        _tsLoadPortals();
+        _tsInitPortalDivider(divider, portalDiv);
+    }
 };
 
 // ── Note selection ────────────────────────────────────────────
@@ -226,8 +261,24 @@ function _tsNoteBubble(n) {
     const content = n.content ?? '';
     const fileUrl = n.serve_url ?? n.file_url ?? '';
     const dateStr = n.meta_data?.created_by_date?.date ?? '';
+    const creator = n.meta_data?.created_by_date?.user ?? n.created_by ?? '';
     const isSel   = window._ts.selectedNoteIds.has(n.sys_id);
-    const delBtn  = `<button onclick="tsDeleteNote('${sysId}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:.7rem;padding:2px 6px;"><i class="fas fa-trash"></i></button>`;
+    const iStyle = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;';
+    const dStyle = iStyle.replace('#374151','#dc2626');
+    const canDel = !creator || creator === (window.CURRENT_USER ?? '');
+    function _tsMenuHtml() {
+        let items = '';
+        if (n.note_type === 'text') {
+            const enc = encodeURIComponent(content);
+            items += `<button onclick="navigator.clipboard.writeText(decodeURIComponent('${enc}'))" style="${iStyle}"><i class="fas fa-copy" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Copy</button>`;
+            if (canDel) items += `<button onclick="tsEditNoteStart('${sysId}')" style="${iStyle}"><i class="fas fa-pen" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Edit</button>`;
+        } else if (fileUrl) {
+            items += `<button onclick="tsShareFile('${fileUrl}','${_tse(n.file_name||'')}','${n.note_type||''}')" style="${iStyle}"><i class="fas fa-share-alt" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Share</button>`;
+        }
+        if (canDel) items += `<button onclick="tsDeleteNote('${sysId}')" style="${dStyle}"><i class="fas fa-trash" style="width:16px;font-size:.75rem;color:#f87171;"></i>Delete</button>`;
+        return `<div class="ts-menu-dd" id="ts-menu-${sysId}" style="display:none;position:absolute;right:0;top:100%;z-index:200;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:160px;overflow:hidden;">${items}</div>`;
+    }
+    const menuBtn = `<div style="position:relative;"><button onclick="window._tsToggleMenu('${sysId}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:2px 6px;border-radius:4px;"><i class="fas fa-ellipsis-v"></i></button>${_tsMenuHtml()}</div>`;
 
     if (n.note_type === 'text') {
         const len = content.length;
@@ -238,7 +289,7 @@ function _tsNoteBubble(n) {
             <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;">
                 <div style="font-size:.83rem;color:#374151;white-space:pre-line;word-wrap:break-word;">${_tse(content)}</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
-                    <span style="font-size:10px;color:#d1d5db;">${_tse(dateStr)}</span>${delBtn}
+                    <span style="font-size:10px;color:#d1d5db;">${_tse(dateStr)}</span>${menuBtn}
                 </div>
             </div>
         </div>`;
@@ -250,7 +301,7 @@ function _tsNoteBubble(n) {
             <img src="${fileUrl}" loading="lazy" onclick="tsViewImg('${fileUrl}')"
                 style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;cursor:zoom-in;display:block;background:#f9fafb;">
             <div style="display:flex;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:10px;color:#d1d5db;">${_tse(dateStr)}</span>${delBtn}
+                <span style="font-size:10px;color:#d1d5db;">${_tse(dateStr)}</span>${menuBtn}
             </div>
         </div>`;
     }
@@ -258,14 +309,14 @@ function _tsNoteBubble(n) {
         return `<div style="align-self:flex-start;min-width:300px;max-width:500px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;">
             <audio controls style="width:100%;height:32px;" src="${fileUrl}"></audio>
             <div style="display:flex;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:10px;color:#d1d5db;">${_tse(dateStr)}</span>${delBtn}
+                <span style="font-size:10px;color:#d1d5db;">${_tse(dateStr)}</span>${menuBtn}
             </div>
         </div>`;
     }
     return `<div style="align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;min-width:200px;max-width:400px;display:flex;align-items:center;gap:8px;">
         <i class="fas fa-paperclip text-sky-500 flex-shrink-0"></i>
         <a href="${fileUrl}" target="_blank" style="font-size:.8rem;color:#0284C7;flex:1;overflow:hidden;text-overflow:ellipsis;">${_tse(n.file_name||'File')}</a>
-        ${delBtn}
+        ${menuBtn}
     </div>`;
 }
 
@@ -346,4 +397,156 @@ window.tsRecToggle = async function() {
         const btn = document.getElementById('ts-rec-btn');
         if (btn) { btn.style.background='#fee2e2'; btn.innerHTML='<i class="fas fa-stop" style="color:#dc2626;font-size:.75rem;"></i>'; }
     } catch(e) { tsT('error','Microphone access denied'); }
+};
+
+// ══════════════════════════════════════════════════════
+// TRANSPORT PORTAL PANEL
+// ══════════════════════════════════════════════════════
+window._tsPassVisible = {};
+window._tsPortalsCache = [];
+window._tsExpandedPortal = null;
+
+async function _tsLoadPortals() {
+    const body = document.getElementById('ts-portal-body');
+    if (!body) return;
+    try {
+        const res  = await fetch('/api/masterdata/portal-links.php?portal_type=transport', { credentials: 'include' });
+        const json = await res.json();
+        if (!json.success) { body.innerHTML = `<div style="padding:12px;color:#E8817A;font-size:12px;">Error</div>`; return; }
+        const portals = json.portals ?? [];
+        window._tsPortalsCache = portals;
+        if (!portals.length) {
+            body.innerHTML = `<div style="padding:12px;color:#8A93A8;font-size:12px;">No Transport portals yet.<br><a href="../pages/portal-links.php" target="_blank" style="color:#0EA5E9;">Add one →</a></div>`;
+            return;
+        }
+        _tsRenderPortalGrid(body);
+    } catch(e) { const b=document.getElementById('ts-portal-body'); if(b) b.innerHTML='<div style="padding:12px;color:#E8817A;font-size:12px;">Network error</div>'; }
+}
+
+function _tsRenderPortalGrid(container) {
+    const portals = window._tsPortalsCache;
+    container.innerHTML = `<div style="padding:8px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+        ${portals.map(p => window._tsExpandedPortal === p.sys_id
+            ? `<div style="grid-column:1/-1;">${_tsPortalCardExpanded(p)}</div>`
+            : _tsPortalCardCollapsed(p)
+        ).join('')}
+    </div>`;
+}
+
+function _tsPortalCardCollapsed(p) {
+    const creds = p.credentials ?? [];
+    const mine  = creds.find(c => c.is_mine) || creds[0];
+    const url   = p.portal_url ? _tse(p.portal_url) : '';
+    return `<div style="background:#1C2340;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:10px 12px;cursor:pointer;"
+                onclick="_tsExpandPortal('${_tse(p.sys_id)}')"
+                onmouseover="this.style.borderColor='rgba(14,165,233,.4)'"
+                onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:${mine?'6px':'0'};">
+            <span style="color:#fff;font-size:12px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_tse(p.portal_name)}</span>
+            ${url ? `<a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color:#0EA5E9;font-size:10px;flex-shrink:0;"><i class="fas fa-external-link-alt"></i></a>` : ''}
+        </div>
+        ${mine ? `<div style="color:#5E6883;font-size:10px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_tse(mine.user_name||'')}</div>` : ''}
+    </div>`;
+}
+
+function _tsPortalCardExpanded(p) {
+    const creds = p.credentials ?? [];
+    const url   = p.portal_url ? _tse(p.portal_url) : '';
+    const rows  = (creds.filter(c => c.can_view !== false)).map(c => {
+        const key   = p.sys_id + '_' + (c.cred_id || c.user_name);
+        const shown = !!window._tsPassVisible[key];
+        return `<div style="display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">User ID</span>
+                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;"
+                    onclick="event.stopPropagation();navigator.clipboard?.writeText('${_tse(c.user_name||'')}');this.style.color='#0EA5E9';setTimeout(()=>this.style.color='#E8ECF5',800);">${_tse(c.user_name||'—')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Password</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;"
+                        onclick="event.stopPropagation();navigator.clipboard?.writeText('${_tse(c.password||'')}');this.style.color='#0EA5E9';setTimeout(()=>this.style.color='#E8ECF5',800);">${shown?_tse(c.password||'—'):'••••••••'}</span>
+                    <button onclick="event.stopPropagation();_tsTogglePass('${_tse(p.sys_id)}','${_tse(c.cred_id||c.user_name)}')"
+                        style="background:none;border:none;color:#5E6883;cursor:pointer;padding:2px 4px;font-size:11px;">
+                        <i class="fas ${shown?'fa-eye-slash':'fa-eye'}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('') || `<div style="padding:8px 0;color:#5E6883;font-size:11px;">No credentials</div>`;
+    return `<div style="background:#1C2340;border:1px solid rgba(14,165,233,.4);border-radius:6px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="color:#fff;font-size:13px;font-weight:700;flex:1;">${_tse(p.portal_name)}</span>
+            ${url ? `<a href="${url}" target="_blank" style="color:#0EA5E9;font-size:11px;"><i class="fas fa-external-link-alt"></i></a>` : ''}
+            <button onclick="event.stopPropagation();_tsCollapsePortal()" style="background:none;border:none;color:#5E6883;cursor:pointer;font-size:11px;padding:2px 6px;"><i class="fas fa-compress-alt"></i></button>
+        </div>${rows}</div>`;
+}
+
+window._tsExpandPortal   = s => { window._tsExpandedPortal = s; const b = document.getElementById('ts-portal-body'); if(b) _tsRenderPortalGrid(b); };
+window._tsCollapsePortal = () => { window._tsExpandedPortal = null; const b = document.getElementById('ts-portal-body'); if(b) _tsRenderPortalGrid(b); };
+window._tsTogglePass     = (pid, cid) => { const k=pid+'_'+cid; window._tsPassVisible[k]=!window._tsPassVisible[k]; const b=document.getElementById('ts-portal-body'); if(b) _tsRenderPortalGrid(b); };
+
+function _tsInitPortalDivider(divider, panel) {
+    let drag=false, sx=0, sw=0;
+    divider.addEventListener('mousedown', e => { drag=true; sx=e.clientX; sw=panel.offsetWidth; document.body.style.cursor='col-resize'; document.body.style.userSelect='none'; });
+    document.addEventListener('mousemove', e => { if(!drag) return; const nw=Math.max(200,Math.min(500,sw-(e.clientX-sx))); panel.style.width=nw+'px'; localStorage.setItem('ts_portal_width',nw); });
+    document.addEventListener('mouseup', () => { if(!drag) return; drag=false; document.body.style.cursor=''; document.body.style.userSelect=''; });
+}
+
+// ══════════════════════════════════════════════════════
+// TRANSPORT NOTE MENU HELPERS
+// ══════════════════════════════════════════════════════
+let _tsActiveMenuId = null;
+window._tsToggleMenu = function(sysId) {
+    const menu = document.getElementById('ts-menu-' + sysId);
+    if (!menu) return;
+    const isOpen = menu.style.display !== 'none';
+    if (_tsActiveMenuId && _tsActiveMenuId !== sysId) {
+        const prev = document.getElementById('ts-menu-' + _tsActiveMenuId);
+        if (prev) prev.style.display = 'none';
+    }
+    menu.style.display = isOpen ? 'none' : 'block';
+    _tsActiveMenuId = isOpen ? null : sysId;
+};
+document.addEventListener('click', e => {
+    if (_tsActiveMenuId && !e.target.closest('[onclick*="_tsToggleMenu"]') && !e.target.closest('.ts-menu-dd')) {
+        const m = document.getElementById('ts-menu-' + _tsActiveMenuId);
+        if (m) m.style.display = 'none';
+        _tsActiveMenuId = null;
+    }
+});
+window.tsEditNoteStart = function(sysId) {
+    const note = window._ts.currentNotes?.find(n => n.sys_id === sysId);
+    if (!note) return;
+    const el = document.getElementById('ts-note-view-' + sysId);
+    if (!el) return;
+    el.innerHTML = `<textarea id="ts-edit-ta-${sysId}" style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:8px;font-size:.83rem;resize:vertical;min-height:60px;">${_tse(note.content||'')}</textarea>
+        <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end;">
+            <button onclick="tsLoadNotes()" style="padding:4px 10px;font-size:.75rem;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#f9fafb;">Cancel</button>
+            <button onclick="tsEditNoteSave('${sysId}')" style="padding:4px 10px;font-size:.75rem;background:#0EA5E9;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Save</button>
+        </div>`;
+};
+window.tsEditNoteSave = async function(sysId) {
+    const ta = document.getElementById('ts-edit-ta-' + sysId);
+    if (!ta?.value.trim()) return;
+    try {
+        const fd = new FormData(); fd.append('action','edit'); fd.append('note_sys_id',sysId); fd.append('content',ta.value.trim()); fd.append('work_sys_id',window._ts.cfg.workSysId);
+        await fetch(window._ts.cfg.api.notes, { method:'POST', body:fd });
+        await tsLoadNotes();
+    } catch(e) { tsT('error','Edit failed'); }
+};
+window.tsShareFile = async function(url, name, type) {
+    try {
+        if (navigator.share) { await navigator.share({ title:name, url }); return; }
+        await navigator.clipboard.writeText(url);
+        tsT('success','Link copied!');
+    } catch(e) { tsT('error','Share failed'); }
+};
+window.tsViewImg = function(url) {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+    ov.onclick = () => ov.remove();
+    const img = document.createElement('img');
+    img.src = url; img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain;';
+    ov.appendChild(img); document.body.appendChild(ov);
 };

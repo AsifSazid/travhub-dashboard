@@ -43,7 +43,7 @@ window._umSwitchTab = function(tab, btn) {
         b.style.borderColor = active ? '#7c3aed' : 'transparent';
     });
     document.querySelectorAll('.um-panel').forEach(p => {
-        p.classList.toggle('hidden', !p.id.endsWith(tab));
+        p.style.display = p.id.endsWith(tab) ? '' : 'none';
     });
     const renders = {
         travelers: window._renderUmTravelers,

@@ -3,6 +3,55 @@
  * Tab: Quotation
  */
 
+// ── Meal plan labels ──────────────────────────────────────────
+const HT_MEAL_LABELS = { ro:'Room Only', bb:'Bed & Breakfast', hb:'Half Board', fb:'Full Board', ai:'All Inclusive' };
+
+// ── Generate client copy text ──────────────────────────────────
+function _htGenerateCopy() {
+    const hotel    = document.getElementById('ht-q-hotel-name')?.value || '';
+    const city     = document.getElementById('ht-q-city')?.value       || '';
+    const country  = document.getElementById('ht-q-country')?.value    || '';
+    const checkIn  = document.getElementById('ht-q-checkin')?.value    || '';
+    const checkOut = document.getElementById('ht-q-checkout')?.value   || '';
+    const nights   = +(document.getElementById('ht-q-nights')?.value   || 0);
+    const rooms    = +(document.getElementById('ht-q-rooms')?.value    || 1);
+    const roomType = document.getElementById('ht-q-room-type')?.value  || '';
+    const mealPlan = document.getElementById('ht-q-meal-plan')?.value  || '';
+    const sellRate = +(document.getElementById('ht-q-sell-rate')?.value|| 0);
+    const currency = document.getElementById('ht-q-currency')?.value   || 'BDT';
+    const total    = Math.round(sellRate * nights * rooms);
+    const starEl   = document.querySelector('input[name="ht-q-star"]:checked');
+    const stars    = starEl ? '★'.repeat(+starEl.value) : '';
+    const meal     = HT_MEAL_LABELS[mealPlan] || mealPlan || '';
+    const loc      = [city, country].filter(Boolean).join(', ');
+    const fmt      = n => n.toLocaleString('en-BD');
+
+    let lines = [];
+    lines.push(`*Hotel Quotation*`);
+    if (hotel)   lines.push(`🏨 *${hotel}*${stars ? ' ' + stars : ''}`);
+    if (loc)     lines.push(`📍 ${loc}`);
+    if (checkIn) lines.push(`📅 Check-in: *${checkIn}*${checkOut ? '  →  Check-out: *'+checkOut+'*' : ''}`);
+    if (nights)  lines.push(`🌙 Duration: *${nights} Night${nights>1?'s':''}*`);
+    if (rooms)   lines.push(`🛏 Rooms: *${rooms}*${roomType ? ' — '+roomType : ''}`);
+    if (meal)    lines.push(`🍽 Meal Plan: *${meal}*`);
+    const convRate  = +(document.getElementById('ht-q-conv-rate')?.value || 1);
+    const isBdt     = currency.toUpperCase() === 'BDT';
+    const totalBdt  = isBdt ? total : Math.round(total * (convRate > 0 ? convRate : 1));
+    const dispCurr  = isBdt ? 'BDT' : currency;
+
+    lines.push('');
+    lines.push(`*Price:*`);
+    if (rooms > 1) lines.push(`- Per Room/Night: ${dispCurr} ${fmt(sellRate)}`);
+    lines.push(`- Total: *BDT ${fmt(totalBdt)}*${!isBdt?' ('+dispCurr+' '+fmt(total)+')':''}`);
+
+    return lines.join('\n');
+}
+
+window.htUpdateCopyPreview = function() {
+    const pre = document.getElementById('ht-copy-preview');
+    if (pre) pre.textContent = _htGenerateCopy();
+};
+
 window._renderHtQuotation = function() {
     const panel      = document.getElementById('ht-panel-quotation');
     const quotations = window._ht.data?.ht_quotations ?? [];
@@ -83,8 +132,17 @@ function _htQCard(q) {
         <div class="text-[11px] text-gray-400">${_hte(q.city||'')}${q.city&&q.check_in?' · ':' '}${_hte(q.check_in||'')} ${q.nights?'('+q.nights+'N)':''}</div>
         ${q.city_seg_id ? `<div class="text-[10px] text-orange-400 mt-0.5"><i class="fas fa-map-marker-alt" style="font-size:8px;"></i> ${_hte(q.city_seg_id)}</div>` : ''}
         <div class="flex items-center justify-between mt-1">
-            <span class="text-[11px] font-bold text-orange-600">${_hte(q.currency||'BDT')} ${_htFmtN(q.total_sell||q.total_net||0)}</span>
-            <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${sMap[st]??'bg-gray-100 text-gray-500'}">${st}</span>
+            <span class="text-[11px] font-bold text-orange-600">${(() => {
+                const curr = (q.currency||'BDT').toUpperCase();
+                const rate = +(q.conversion_rate||1);
+                const amt  = +(q.total_sell||q.total_net||0);
+                if (curr === 'BDT' || rate <= 1) return curr + ' ' + _htFmtN(amt);
+                return 'BDT ' + _htFmtN(Math.round(amt * rate)) + ' <span style="font-size:9px;color:#9ca3af;">(' + curr + ' ' + _htFmtN(amt) + ')</span>';
+            })()}</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+                ${st==='moved_to_booking'?'<i class="fas fa-lock" style="font-size:9px;color:#6b7280;" title="Moved to Booking — locked"></i>':''}
+                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${sMap[st]??'bg-gray-100 text-gray-500'}">${st.replace('_',' ')}</span>
+            </div>
         </div>
     </div>`;
 }
@@ -179,9 +237,8 @@ function _htRenderQBuilder(q) {
                 ${segs.map(s => {
                     const segId = s.city_sys_id || s.city_name;
                     const label = [s.city_name, s.hotel_name].filter(Boolean).join(' / ');
-                    return \`<option value="\${_hte(segId)}" \${cur===segId?'selected':''}
-                        data-city="\${_hte(s.city_name)}" data-hotel="\${_hte(s.hotel_name)}"
-                        data-checkin="\${_hte(s.check_in)}" data-checkout="\${_hte(s.check_out)}">\${_hte(label)}</option>\`;
+                                        const sel = cur === segId ? ' selected' : '';
+                    return '<option value="'+_hte(segId)+'"'+sel+' data-city="'+_hte(s.city_name)+'" data-hotel="'+_hte(s.hotel_name)+'" data-checkin="'+_hte(s.check_in)+'" data-checkout="'+_hte(s.check_out)+'">'+_hte(label)+'</option>';
                 }).join('')}
             </select>
         </div>`;
@@ -201,7 +258,19 @@ function _htRenderQBuilder(q) {
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Currency</label>
             <input id="ht-q-currency" value="${_hte(q?.currency||'BDT')}" placeholder="BDT"
-                class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400">
+                class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
+                oninput="htOnCurrencyChange()">
+        </div>
+        <div id="ht-conv-rate-wrap" style="display:${(q?.currency||'BDT').toUpperCase()!=='BDT'?'block':'none'};">
+            <label class="text-xs font-bold text-gray-500 uppercase block mb-1">
+                Rate to BDT
+                ${(q?.currency||'BDT').toUpperCase()!=='BDT'?'<span style="color:#EA580C;font-size:9px;">(required for BDT conversion)</span>':''}
+            </label>
+            <input type="number" id="ht-q-conv-rate"
+                value="${q?.conversion_rate||''}"
+                placeholder="e.g. 120"
+                class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
+                oninput="htCalcTotals()">
         </div>
     </div>
 
@@ -306,8 +375,31 @@ function _htRenderQBuilder(q) {
             class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:border-orange-400">${_hte(q?.note||'')}</textarea>
     </div>
 
+    <!-- Client Copy Preview -->
+    <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+            <label style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;">Client Copy Preview</label>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('ht-copy-preview')?.textContent||'').then(()=>htT('success','Copied!')).catch(()=>htT('error','Copy failed'))"
+                style="font-size:11px;padding:3px 10px;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;color:#374151;">
+                <i class="fas fa-copy mr-1"></i>Copy
+            </button>
+        </div>
+        <pre id="ht-copy-preview"
+            style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:11px;line-height:1.7;font-family:monospace;white-space:pre-wrap;max-height:180px;overflow-y:auto;min-height:50px;">${_htGenerateCopy()}</pre>
+    </div>
+
     <!-- Actions -->
-    <div class="flex gap-2">
+    ${(() => {
+        const q = window._ht.activeQSysId
+            ? (window._ht.data?.ht_quotations??[]).find(x=>x.sys_id===window._ht.activeQSysId)
+            : null;
+        const isLocked = q?.status === 'moved_to_booking';
+        if (isLocked) return `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f3f4f6;border-radius:10px;font-size:12px;color:#6b7280;">
+            <i class="fas fa-lock" style="color:#9ca3af;"></i>
+            This quotation is locked — already moved to Booking.
+        </div>`;
+        return `<div class="flex gap-2">
         <button onclick="htSaveQuotation()"
             class="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-semibold transition">
             <i class="fas fa-save mr-1.5"></i>${window._ht.activeQSysId ? 'Update' : 'Save Quotation'}
@@ -320,10 +412,14 @@ function _htRenderQBuilder(q) {
             <button onclick="htDeleteQuotation()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm">
                 <i class="fas fa-trash-alt"></i>
             </button>` : ''}
-    </div>`;
+        </div>`;
+    })()}`;
 }
 
 // ── Calc helpers ──────────────────────────────────────────────
+// ── Auto-calculate totals after builder renders ──────────────
+setTimeout(() => htCalcTotals(), 0);
+
 window.htStarClick = function(n) {
     document.querySelector(`input[name="ht-q-star"][value="${n}"]`).checked = true;
     document.querySelectorAll('span[onclick^="htStarClick"]').forEach((s, i) => {
@@ -339,26 +435,50 @@ window.htCalcNightsAuto = function() {
     htCalcTotals();
 };
 
+window.htOnCurrencyChange = function() {
+    const curr = document.getElementById('ht-q-currency')?.value || 'BDT';
+    const wrap = document.getElementById('ht-conv-rate-wrap');
+    if (wrap) wrap.style.display = curr.toUpperCase() !== 'BDT' ? 'block' : 'none';
+    htCalcTotals();
+};
+
 window.htCalcTotals = function() {
     const net    = +(document.getElementById('ht-q-net-rate')?.value  || 0);
     const markup = +(document.getElementById('ht-q-markup')?.value    || 0);
     const nights = +(document.getElementById('ht-q-nights')?.value    || 1);
     const rooms  = +(document.getElementById('ht-q-rooms')?.value     || 1);
     const curr   = document.getElementById('ht-q-currency')?.value || 'BDT';
+    const convRate = +(document.getElementById('ht-q-conv-rate')?.value || 1);
 
-    // If sell_rate manually edited, use it; otherwise derive from net + markup
-    const sellEl   = document.getElementById('ht-q-sell-rate');
-    const sellManual = sellEl ? +(sellEl.value || 0) : 0;
-    const sell     = sellManual > 0 ? sellManual : _htCalcSell(net, markup);
-    if (sellEl && sellManual === 0 && markup > 0) sellEl.value = sell;
+    // sell_rate = net_rate × (1 + markup/100)
+    // If markup > 0, always recalculate sell from net + markup
+    const sellEl = document.getElementById('ht-q-sell-rate');
+    let sell;
+    if (markup > 0 && net > 0) {
+        sell = _htCalcSell(net, markup);
+        if (sellEl) sellEl.value = sell.toFixed(2);
+    } else {
+        const sellManual = sellEl ? +(sellEl.value || 0) : 0;
+        sell = sellManual > 0 ? sellManual : _htCalcSell(net, markup);
+    }
 
     const totalNet  = Math.round(net  * nights * rooms);
     const totalSell = Math.round(sell * nights * rooms);
 
+    // BDT conversion
+    const isBdt   = curr.toUpperCase() === 'BDT';
+    const rate     = isBdt ? 1 : (convRate > 0 ? convRate : 1);
+    const dispNet  = isBdt ? totalNet  : Math.round(totalNet  * rate);
+    const dispSell = isBdt ? totalSell : Math.round(totalSell * rate);
+    const dispCurr = isBdt ? 'BDT' : `BDT (${curr} × ${rate})`;
+
     const tn = document.getElementById('ht-q-total-net');
     const ts = document.getElementById('ht-q-total-sell');
-    if (tn) tn.textContent = `${curr} ${_htFmtN(totalNet)}`;
-    if (ts) ts.textContent = `${curr} ${_htFmtN(totalSell)}`;
+    if (tn) tn.textContent = isBdt ? `BDT ${_htFmtN(totalNet)}` : `${curr} ${_htFmtN(totalNet)} = BDT ${_htFmtN(dispNet)}`;
+    if (ts) ts.textContent = isBdt ? `BDT ${_htFmtN(totalSell)}` : `${curr} ${_htFmtN(totalSell)} = BDT ${_htFmtN(dispSell)}`;
+
+    // Update copy preview
+    htUpdateCopyPreview();
 };
 
 // ── Save / Delete / Move ──────────────────────────────────────
@@ -397,12 +517,14 @@ window.htSaveQuotation = async function() {
         meal_plan:        document.getElementById('ht-q-meal-plan')?.value  || 'bb',
         rooms,
         currency,
+        conversion_rate:  +(document.getElementById('ht-q-conv-rate')?.value || 1),
         net_rate:         netRate,
         markup_pct:       markup,
         sell_rate:        sellRate,
         total_net:        Math.round(netRate  * nights * rooms),
         total_sell:       Math.round(sellRate * nights * rooms),
         note:             document.getElementById('ht-q-note')?.value || '',
+        copy_text:        _htGenerateCopy(),
     };
 
     try {

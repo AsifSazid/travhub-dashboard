@@ -89,6 +89,10 @@ window._renderVsStatus = function() {
         ${locked
             ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                    <div style="font-size:.85rem;font-weight:600;color:#15803D;">✓ Application submitted. Financial entries have been recorded.</div>
+                   <button onclick="_vsDownloadDocPackage()"
+                           style="padding:7px 14px;border-radius:7px;background:#0F172A;color:#fff;border:none;font-size:.78rem;font-weight:600;cursor:pointer;">
+                       <i class="fas fa-file-archive mr-1"></i>Download Doc Package
+                   </button>
                    ${data.status !== 'completed'
                        ? `<button onclick="_vsReopen()"
                                   style="padding:7px 14px;border-radius:7px;border:1.5px solid #E2E8F0;
@@ -261,4 +265,47 @@ window._vsReopen = async function() {
     window._renderVsStatus();
     const badge = document.getElementById('vs-submitted-badge');
     if (badge) badge.style.display = 'none';
+};
+
+// ══════════════════════════════════════════════════════
+// VISA: Download Document Package (ZIP)
+// ══════════════════════════════════════════════════════
+window._vsDownloadDocPackage = async function() {
+    const cfg  = window._vs.cfg;
+    const data = window._vs.data;
+    if (!data?.work_sys_id && !cfg.workSysId) { alert('Work ID missing'); return; }
+
+    const btn = document.querySelector('[onclick="_vsDownloadDocPackage()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generating…'; }
+
+    try {
+        const res = await fetch(cfg.api.genDocPackage, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ work_sys_id: cfg.workSysId }),
+        });
+
+        if (!res.ok) throw new Error('Server error ' + res.status);
+
+        const contentType = res.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+            const j = await res.json();
+            alert(j.message || 'Failed to generate package');
+            return;
+        }
+
+        // ZIP blob — trigger download
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `visa-docs-${cfg.workSysId}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    } catch(e) {
+        alert('Download failed: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-archive mr-1"></i>Download Doc Package'; }
+    }
 };

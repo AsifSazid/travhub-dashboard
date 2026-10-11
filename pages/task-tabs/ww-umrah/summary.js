@@ -106,5 +106,100 @@ window._renderUmSummary = function() {
             <p class="text-xs mt-1">Confirm Air Ticket, Hotel, or Package tasks to see data here.</p>
         </div>` : ''}
 
+        <!-- Financial Entry -->
+        <div style="margin-top:16px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-size:13px;font-weight:700;color:#374151;">Financial Entry</div>
+                <button onclick="umOpenFinancialModal()"
+                    style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                    <i class="fas fa-coins mr-1"></i>Add Entry
+                </button>
+            </div>
+        </div>
+
     </div>`;
+};
+
+// ══════════════════════════════════════════════════════
+// UMRAH FINANCIAL ENTRY MODAL
+// ══════════════════════════════════════════════════════
+window.umOpenFinancialModal = function() {
+    const cfg = window._um.cfg;
+    const clientSysId = cfg.clientSysId || '';
+    const ov = document.createElement('div');
+    ov.id = 'um-fin-modal';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div style="font-size:16px;font-weight:700;color:#0f172a;">Umrah Financial Entry</div>
+            <button onclick="document.getElementById('um-fin-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">✕</button>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;">Vendor Payment</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                <div>
+                    <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Vendor</label>
+                    <select id="um-fin-vendor" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                        <option value="">Select vendor…</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Amount (BDT)</label>
+                    <input id="um-fin-vendor-amt" type="number" placeholder="0" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                </div>
+            </div>
+            <div>
+                <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Account</label>
+                <select id="um-fin-vendor-acc" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                    <option value="">Select account…</option>
+                </select>
+            </div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;">Client Sale</div>
+            <input id="um-fin-client-amt" type="number" placeholder="Client amount (BDT)" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+        </div>
+        <button onclick="umSubmitFinancial()"
+            style="width:100%;padding:12px;background:#10b981;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+            <i class="fas fa-save mr-2"></i>Save Financial Entry
+        </button>
+    </div>`;
+    document.body.appendChild(ov);
+
+    // Load dropdowns
+    Promise.all([fetch(cfg.api.allVendors||''), fetch(cfg.api.allAccounts||'')]).then(([vr,ar]) =>
+        Promise.all([vr.json(), ar.json()])
+    ).then(([vj,aj]) => {
+        const vSel = document.getElementById('um-fin-vendor');
+        const aSel = document.getElementById('um-fin-vendor-acc');
+        (vj.vendors??[]).forEach(v => { const o=document.createElement('option'); o.value=v.sys_id; o.textContent=v.name; vSel?.appendChild(o); });
+        (aj.accounts??[]).forEach(a => { const o=document.createElement('option'); o.value=a.sys_id; o.textContent=a.acc_name; aSel?.appendChild(o); });
+    }).catch(e => console.error('Umrah fin dropdowns', e));
+};
+
+window.umSubmitFinancial = async function() {
+    const cfg       = window._um.cfg;
+    const vendorId  = document.getElementById('um-fin-vendor')?.value;
+    const vendorAmt = +(document.getElementById('um-fin-vendor-amt')?.value || 0);
+    const accId     = document.getElementById('um-fin-vendor-acc')?.value;
+    const clientAmt = +(document.getElementById('um-fin-client-amt')?.value || 0);
+    const clientSysId = cfg.clientSysId || '';
+
+    const entries = [];
+    if (vendorId && vendorAmt > 0 && accId)
+        entries.push({ type:'vendor_payment', vendor_id:vendorId, account_id:accId, amount:vendorAmt, currency:'BDT', work_sys_id:cfg.workSysId, service_slug:'umrah' });
+    if (clientAmt > 0 && clientSysId)
+        entries.push({ type:'client_sale', client_id:clientSysId, amount:clientAmt, currency:'BDT', work_sys_id:cfg.workSysId, service_slug:'umrah' });
+    if (!entries.length) { alert('কমপক্ষে একটা entry দিন'); return; }
+
+    try {
+        for (const entry of entries) {
+            const res = await fetch(cfg.api.saveFinancial, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(entry) });
+            const j = await res.json();
+            if (!j.success) { alert(j.message||'Entry failed'); return; }
+        }
+        alert('Financial entries saved!');
+        document.getElementById('um-fin-modal')?.remove();
+    } catch(e) { alert('Network error'); }
 };

@@ -39,7 +39,8 @@ $action = $_GET['action'] ?? 'summary';
 try {
     switch ($action) {
         case 'breakdown': handleBreakdown($pdo); break;
-        case 'detail':    handleDetail($pdo);    break;
+        case 'detail':         handleDetail($pdo);        break;
+        case 'detail_grouped': handleDetailGrouped($pdo); break;
         case 'filters':   handleFilters($pdo);   break;
         case 'export':    handleSummary($pdo, true); break;
         case 'summary':
@@ -326,5 +327,64 @@ function handleFilters(PDO $pdo): void
         'vendors' => $vendors,
         'works'   => $works,
         'tasks'   => $tasks,
+    ]);
+}
+
+function handleDetailGrouped(PDO $pdo): void
+{
+    [$whereSql, $params] = buildProfitFilters();
+
+    $section  = $_GET['section'] ?? 'sales';
+    $page     = max(1, (int)($_GET['page'] ?? 1));
+    $perPage  = min(500, max(1, (int)($_GET['per_page'] ?? 50)));
+    $offset   = ($page - 1) * $perPage;
+
+    // Map section to account_heads
+    $headsMap = [
+        'sales'    => ["'sales'", "'refund_charge'"],
+        'purchase' => ["'purchase'"],
+        'expense'  => ["'expense'", "'payroll_expense'"],
+    ];
+    $heads = $headsMap[$section] ?? ["'expense'"];
+    $headsIn = implode(',', $heads);
+
+    // For sales: only credit entries (net sales)
+    // For purchase: only debit entries (actual cost)
+    // For expense: all debit entries
+    $typeFilter = '';
+    if ($section === 'sales')    $typeFilter = "AND fe.type = 'credit'";
+    if ($section === 'purchase') $typeFilter = "AND fe.type = 'debit'";
+
+    $cntStmt = $pdo->prepare("
+        SELECT COUNT(*) FROM financial_entries fe
+        WHERE fe.account_head IN ({$headsIn}) {$typeFilter} {$whereSql}
+    ");
+    $cntStmt->execute($params);
+    $total = (int)$cntStmt->fetchColumn();
+
+    $params[':limit']  = $perPage;
+    $params[':offset'] = $offset;
+
+    $stmt = $pdo->prepare("
+        SELECT
+            fe.sys_id, fe.date, fe.user_type, fe.user_sys_id, fe.user_name,
+            fe.purpose, fe.type, fe.amount, fe.account_head,
+            fe.work_sys_id, fe.work_title, fe.task_sys_id, fe.task_title
+        FROM financial_entries fe
+        WHERE fe.account_head IN ({$headsIn}) {$typeFilter} {$whereSql}
+        ORDER BY fe.date DESC, fe.id DESC
+        LIMIT :limit OFFSET :offset
+    ");
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'success'  => true,
+        'section'  => $section,
+        'rows'     => $rows,
+        'total'    => $total,
+        'page'     => $page,
+        'per_page' => $perPage,
+        'pages'    => (int)ceil($total / $perPage),
     ]);
 }

@@ -160,7 +160,81 @@ function _htAutoCreateTask(PDO $pdo, array $conf, string $workSysId, string $use
         ]);
 
         return $ids['sys_id'];
-    } catch (Throwable $e) {
+        // ── File upload: booking voucher ─────────────────────────────
+    case 'upload_booking_file': {
+        $bSysId = trim($_POST['booking_sys_id'] ?? '');
+        if (!$bSysId || empty($_FILES['file'])) { echo json_encode(['status'=>'error','message'=>'Missing data']); exit; }
+        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
+        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { echo json_encode(['status'=>'error','message'=>'Record not found']); exit; }
+        $bookings = $r['ht_bookings'] ?? [];
+        $uploadDir = rtrim(defined('UPLOAD_PATH') ? UPLOAD_PATH : ($_SERVER['DOCUMENT_ROOT'].'/uploads'), '/');
+        $uploadDir .= '/hotel-vouchers/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $ext  = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        $fname = 'booking_'.$bSysId.'_'.time().'.'.$ext;
+        move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir.$fname);
+        $voucherUrl  = '/uploads/hotel-vouchers/'.$fname;
+        $voucherName = $_FILES['file']['name'];
+        foreach ($bookings as &$b) {
+            if ($b['sys_id'] === $bSysId) { $b['voucher_url']=$voucherUrl; $b['voucher_name']=$voucherName; break; }
+        } unset($b);
+        _htSave($pdo, $workSysId, $bookings, $r['ht_confirmations'] ?? [], null, $r['meta_data'] ?? null, $userName);
+        echo json_encode(['status'=>'success','voucher_url'=>$voucherUrl]); exit;
+    }
+
+    case 'remove_booking_file': {
+        $bSysId = trim($body['booking_sys_id'] ?? '');
+        if (!$bSysId) { echo json_encode(['status'=>'error','message'=>'Missing booking_sys_id']); exit; }
+        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
+        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
+        $bookings = $r['ht_bookings'] ?? [];
+        foreach ($bookings as &$b) {
+            if ($b['sys_id'] === $bSysId) { unset($b['voucher_url'], $b['voucher_name']); break; }
+        } unset($b);
+        _htSave($pdo, $workSysId, $bookings, $r['ht_confirmations'] ?? [], null, $r['meta_data'] ?? null, $userName);
+        echo json_encode(['status'=>'success']); exit;
+    }
+
+    // ── File upload: confirmation voucher ─────────────────────
+    case 'upload_conf_file': {
+        $cSysId = trim($_POST['conf_sys_id'] ?? '');
+        if (!$cSysId || empty($_FILES['file'])) { echo json_encode(['status'=>'error','message'=>'Missing data']); exit; }
+        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
+        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
+        $confs = $r['ht_confirmations'] ?? [];
+        $uploadDir = rtrim(defined('UPLOAD_PATH') ? UPLOAD_PATH : ($_SERVER['DOCUMENT_ROOT'].'/uploads'), '/');
+        $uploadDir .= '/hotel-vouchers/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $ext  = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        $fname = 'conf_'.$cSysId.'_'.time().'.'.$ext;
+        move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir.$fname);
+        $voucherUrl  = '/uploads/hotel-vouchers/'.$fname;
+        $voucherName = $_FILES['file']['name'];
+        foreach ($confs as &$c) {
+            if ($c['sys_id'] === $cSysId) { $c['voucher_url']=$voucherUrl; $c['voucher_name']=$voucherName; break; }
+        } unset($c);
+        _htSave($pdo, $workSysId, $r['ht_bookings'] ?? [], $confs, null, $r['meta_data'] ?? null, $userName);
+        echo json_encode(['status'=>'success','voucher_url'=>$voucherUrl]); exit;
+    }
+
+    case 'remove_conf_file': {
+        $cSysId = trim($body['conf_sys_id'] ?? '');
+        if (!$cSysId) { echo json_encode(['status'=>'error','message'=>'Missing conf_sys_id']); exit; }
+        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
+        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
+        $confs = $r['ht_confirmations'] ?? [];
+        foreach ($confs as &$c) {
+            if ($c['sys_id'] === $cSysId) { unset($c['voucher_url'], $c['voucher_name']); break; }
+        } unset($c);
+        _htSave($pdo, $workSysId, $r['ht_bookings'] ?? [], $confs, null, $r['meta_data'] ?? null, $userName);
+        echo json_encode(['status'=>'success']); exit;
+    }
+
+} catch (Throwable $e) {
         return 'ERR:' . $e->getMessage();
     }
 }
@@ -232,7 +306,7 @@ try {
                 'room_type'       => trim($body['room_type']        ?? ''),
                 'room_type_sys_id'=> trim($body['room_type_sys_id'] ?? ''),
                 'bed_config'      => trim($body['bed_config']       ?? ''),
-                'size_sqm'        => $body['size_sqm'] !== '' ? (int)($body['size_sqm'] ?? 0) : null,
+                'size_sqm'        => isset($body['size_sqm']) && $body['size_sqm'] !== '' && $body['size_sqm'] !== null ? (int)$body['size_sqm'] : null,
                 'max_occupancy'   => (int)($body['max_occupancy']   ?? 2),
                 'meal_plan'       => trim($body['meal_plan']        ?? 'bb'),
                 'rooms'           => (int)($body['rooms']           ?? 1),
@@ -240,6 +314,7 @@ try {
                 'net_rate'        => (float)($body['net_rate']      ?? 0),
                 'markup_pct'      => (float)($body['markup_pct']    ?? 0),
                 'sell_rate'       => (float)($body['sell_rate']     ?? 0),
+                'conversion_rate' => (float)($body['conversion_rate'] ?? 1),
                 'total_net'       => (float)($body['total_net']     ?? 0),
                 'total_sell'      => (float)($body['total_sell']    ?? 0),
                 'note'            => trim($body['note']             ?? ''),
@@ -344,6 +419,7 @@ try {
                 'net_rate'       => (float)($body['net_rate']      ?? 0),
                 'markup_pct'     => (float)($body['markup_pct']    ?? 0),
                 'sell_rate'      => (float)($body['sell_rate']     ?? 0),
+                'conversion_rate'=> (float)($body['conversion_rate'] ?? 1),
                 'total_net'      => (float)($body['total_net']     ?? 0),
                 'total_sell'     => (float)($body['total_sell']    ?? 0),
                 'booking_ref'    => trim($body['booking_ref']      ?? ''),

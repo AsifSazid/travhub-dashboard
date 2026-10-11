@@ -68,9 +68,6 @@ window.htSelectBooking = function(sysId) {
     const b = (window._ht.data?.ht_bookings ?? []).find(x => x.sys_id === sysId);
     if (!b) return;
     document.querySelectorAll('.ht-b-card').forEach(c => c.classList.remove('border-green-400','bg-green-50'));
-    // Highlight matching card — works both from click and programmatic call
-    const activeCard = document.querySelector(`.ht-b-card[onclick*="${sysId}"]`);
-    activeCard?.classList.add('border-green-400','bg-green-50');
     event?.currentTarget?.classList.add('border-green-400','bg-green-50');
     _htRenderBBuilder(b);
     _htLoadBTravelers();
@@ -133,8 +130,34 @@ function _htRenderBBuilder(b) {
             class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:border-green-400">${_hte(b?.note||'')}</textarea>
     </div>
 
+    <!-- File Upload: Hotel Voucher -->
+    <div class="mb-3">
+        <label class="text-xs font-bold text-gray-500 uppercase block mb-1">
+            <i class="fas fa-paperclip mr-1 text-green-400"></i>Hotel Voucher / Doc
+        </label>
+        <div id="ht-b-file-preview" style="display:${b?.voucher_url?'flex':'none'};align-items:center;gap:8px;padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:6px;font-size:11px;color:#15803d;">
+            <i class="fas fa-file-alt flex-shrink-0"></i>
+            <a id="ht-b-file-link" href="${b?.voucher_url||'#'}" target="_blank" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#15803d;">${_hte(b?.voucher_name||'Voucher uploaded')}</a>
+            <button onclick="htBookingRemoveFile('${_hte(b?.sys_id||'')}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:11px;"><i class="fas fa-times"></i></button>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#f8fafc;border:1px dashed #d1fae5;border-radius:8px;cursor:pointer;font-size:12px;color:#6b7280;">
+            <i class="fas fa-upload" style="color:#16a34a;"></i>
+            <span id="ht-b-file-label">Choose file (PDF, image)</span>
+            <input type="file" id="ht-b-file-input" accept=".pdf,image/*" style="display:none;" onchange="htBookingFileSelected(this)">
+        </label>
+        <div id="ht-b-upload-prog" style="display:none;margin-top:6px;font-size:11px;color:#16a34a;">
+            <i class="fas fa-spinner fa-spin mr-1"></i>Uploading…
+        </div>
+    </div>
+
+    ${alreadyConf ? `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;font-size:12px;color:#4338ca;margin-bottom:12px;">
+        <i class="fas fa-lock" style="color:#6366f1;"></i>
+        This booking is in Confirmation — editing is restricted.
+    </div>` : ''}
+
     <div class="flex gap-2">
-        <button onclick="htSaveBooking()"
+        <button onclick="htSaveBooking()" ${alreadyConf?'disabled style="opacity:.5;cursor:not-allowed;"':''}
             class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition">
             <i class="fas fa-save mr-1.5"></i>${window._ht.activeBSysId ? 'Update Booking' : 'Save Booking'}
         </button>
@@ -145,7 +168,7 @@ function _htRenderBBuilder(b) {
                     class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition whitespace-nowrap">
                     <i class="fas fa-check mr-1.5"></i>Send to Confirmation
                 </button>`}
-            <button onclick="htDeleteBooking()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm">
+            <button onclick="htDeleteBooking()" ${alreadyConf?'disabled style="opacity:.5;cursor:not-allowed;"':''} class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm">
                 <i class="fas fa-trash-alt"></i>
             </button>` : ''}
     </div>`;
@@ -194,7 +217,7 @@ window.htSaveBooking = async function() {
     const b = (window._ht.data?.ht_bookings ?? []).find(x => x.sys_id === window._ht.activeBSysId) || {};
     try {
         const json = await window._htApi({
-            action:          'save_booking',
+            action:          window._ht.activeBSysId ? 'save_booking' : 'save_booking',
             booking_sys_id:  window._ht.activeBSysId || '',
             // Carry over quotation fields
             hotel_sys_id:    b.hotel_sys_id  || '',
@@ -224,11 +247,9 @@ window.htSaveBooking = async function() {
         });
         if (json.status === 'success') {
             htT('success', window._ht.activeBSysId ? 'Updated!' : 'Booking saved!');
-            if (!window._ht.activeBSysId && json.booking_sys_id) window._ht.activeBSysId = json.booking_sys_id;
+            if (!window._ht.activeBSysId) window._ht.activeBSysId = json.booking_sys_id;
             await window._htReload();
             _renderHtBooking();
-            // Re-select booking so builder stays visible after reload
-            if (window._ht.activeBSysId) htSelectBooking(window._ht.activeBSysId);
         } else { htT('error', json.message); }
     } catch(e) { htT('error','Network error'); }
 };
@@ -253,4 +274,48 @@ window.htSendToConfirmation = async function(bSysId) {
             if (btn) window._htSwitchTab('confirmation', btn);
         } else { htT('error', json.message); }
     } catch(e) { htT('error','Network error'); }
+};
+
+// ── Booking File Upload ───────────────────────────────────────
+window.htBookingFileSelected = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const label = document.getElementById('ht-b-file-label');
+    if (label) label.textContent = file.name.length > 30 ? file.name.slice(0,28)+'…' : file.name;
+    if (!window._ht.activeBSysId) { htT('error','Save booking first'); input.value=''; return; }
+    htBookingUploadFile(file);
+};
+
+window.htBookingUploadFile = async function(file) {
+    const prog = document.getElementById('ht-b-upload-prog');
+    if (prog) prog.style.display = 'block';
+    const fd = new FormData();
+    fd.append('action',        'upload_booking_file');
+    fd.append('booking_sys_id', window._ht.activeBSysId);
+    fd.append('work_sys_id',   window._ht.cfg.workSysId);
+    fd.append('file',          file);
+    try {
+        const res  = await fetch(window._ht.cfg.api.hotelServices, { method:'POST', body:fd });
+        const json = await res.json();
+        if (json.status === 'success') {
+            htT('success','Uploaded!');
+            await window._htReload();
+            _renderHtBooking();
+            htSelectBooking(window._ht.activeBSysId);
+        } else { htT('error', json.message||'Upload failed'); }
+    } catch(e) { htT('error','Upload failed'); }
+    finally { if (prog) prog.style.display = 'none'; }
+};
+
+window.htBookingRemoveFile = async function(bSysId) {
+    if (!bSysId || !confirm('Remove voucher?')) return;
+    try {
+        const json = await window._htApi({ action:'remove_booking_file', booking_sys_id:bSysId });
+        if (json.status === 'success') {
+            htT('success','Removed');
+            await window._htReload();
+            _renderHtBooking();
+            htSelectBooking(bSysId);
+        } else { htT('error', json.message); }
+    } catch(e) { htT('error','Error'); }
 };

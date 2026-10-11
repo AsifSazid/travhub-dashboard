@@ -568,6 +568,13 @@ function createPendingInstrumentV2(PDO $pdo, array $p): string
 
     return $ids['sys_id'];
 }
+
+/**
+ * Resolves which account_head a given ac_banking.category string maps to.
+ * Used by store-expense.php and store-asset.php to determine the correct
+ * account_head for the payment leg of a transaction.
+ */
+function resolveAccountHeadFromCategory(string $category): string
 {
     $bankLike = ['Bank Account', 'Cash in Hand', 'MFS - Mobile Financial Services',
                  'Current Assets', 'Accounts Receivable/Debtors', 'Non-current Assets'];
@@ -584,4 +591,38 @@ function createPendingInstrumentV2(PDO $pdo, array $p): string
     // existed) -- default to bank_account, the original assumption every
     // ac_banking row made before this mapping was introduced.
     return 'bank_account';
+}
+
+
+// ── Service slug → Revenue account ───────────────────────────
+function getRevenueAccountSysId(string $serviceSlug): array {
+    $map = [
+        'air_ticket'   => ['sys_id'=>'THR-AC-26-R0001','code'=>'4001','name'=>'Air Ticketing Revenue'],
+        'hotel'        => ['sys_id'=>'THR-AC-26-R0002','code'=>'4002','name'=>'Hotel Booking Revenue'],
+        'tour_package' => ['sys_id'=>'THR-AC-26-R0003','code'=>'4003','name'=>'Tour Package Revenue'],
+        'package'      => ['sys_id'=>'THR-AC-26-R0003','code'=>'4003','name'=>'Tour Package Revenue'],
+        'visa'         => ['sys_id'=>'THR-AC-26-R0004','code'=>'4004','name'=>'Visa Service Revenue'],
+        'transport'    => ['sys_id'=>'THR-AC-26-R0005','code'=>'4005','name'=>'Transport Revenue'],
+        'umrah'        => ['sys_id'=>'THR-AC-26-R0006','code'=>'4006','name'=>'Umrah Service Revenue'],
+    ];
+    return $map[$serviceSlug] ?? $map['air_ticket'];
+}
+ 
+// ── Service slug → COGS account ──────────────────────────────
+function getCOGSAccountSysId(string $serviceSlug): array {
+    $map = [
+        'air_ticket'   => ['sys_id'=>'THR-AC-26-C0001','code'=>'5001','name'=>'Airline Ticket Cost'],
+        'hotel'        => ['sys_id'=>'THR-AC-26-C0002','code'=>'5002','name'=>'Hotel Accommodation Cost'],
+        'tour_package' => ['sys_id'=>'THR-AC-26-C0003','code'=>'5003','name'=>'Tour Operator Cost'],
+        'package'      => ['sys_id'=>'THR-AC-26-C0003','code'=>'5003','name'=>'Tour Operator Cost'],
+        'visa'         => ['sys_id'=>'THR-AC-26-C0004','code'=>'5004','name'=>'Visa Processing Cost'],
+        'transport'    => ['sys_id'=>'THR-AC-26-C0005','code'=>'5005','name'=>'Transport Cost'],
+        'umrah'        => ['sys_id'=>'THR-AC-26-C0006','code'=>'5006','name'=>'Umrah Service Cost'],
+    ];
+    return $map[$serviceSlug] ?? $map['air_ticket'];
+}
+ 
+// ── AIT calculation ───────────────────────────────────────────
+function calculateAIT(float $baseFare, float $aitPct = 0.3): float {
+    return round($baseFare * ($aitPct / 100), 2);
 }

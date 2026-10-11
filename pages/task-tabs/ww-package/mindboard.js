@@ -97,6 +97,34 @@ function _pkMbClick(e) {
     if (act === 'gen-clear')     _pkMbClearSelection();
     if (act === 'mb-send')       _pkMbSend();
     if (act === 'mb-delete')     _pkMbDeleteNote(btn.dataset.id);
+    if (act === 'mb-menu-toggle') {
+        const menu = document.getElementById('pk-menu-' + btn.dataset.id);
+        if (menu) {
+            document.querySelectorAll('.pk-note-menu').forEach(m => { if (m !== menu) m.style.display='none'; });
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        return;
+    }
+    if (act === 'mb-edit') {
+        const note = (window._pk.data?.pk_mindboard_notes ?? []).find(n => n.sys_id === btn.dataset.id);
+        if (!note) return;
+        const view = document.getElementById('pk-note-view-' + btn.dataset.id);
+        if (!view) return;
+        view.innerHTML = `<textarea id="pk-edit-ta-${btn.dataset.id}" style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:8px;font-size:.83rem;resize:vertical;min-height:60px;">${_pke(note.content||'')}</textarea>
+            <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end;">
+                <button data-action="mb-edit-cancel" style="padding:4px 10px;font-size:.75rem;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#f9fafb;">Cancel</button>
+                <button data-action="mb-edit-save" data-id="${btn.dataset.id}" style="padding:4px 10px;font-size:.75rem;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Save</button>
+            </div>`;
+        return;
+    }
+    if (act === 'mb-edit-cancel') { _pkMbLoadNotes(); return; }
+    if (act === 'mb-edit-save') {
+        const ta = document.getElementById('pk-edit-ta-' + btn.dataset.id);
+        if (!ta?.value.trim()) return;
+        const fd = new FormData(); fd.append('action','edit'); fd.append('note_sys_id',btn.dataset.id); fd.append('content',ta.value.trim()); fd.append('work_sys_id',window._pk.cfg.workSysId);
+        fetch(window._pk.cfg.api.notes, { method:'POST', body:fd }).then(() => _pkMbLoadNotes());
+        return;
+    }
     if (act === 'mb-toggle-cb')  _pkMbToggleNote(btn.dataset.id, btn.checked !== false);
     if (act === 'pk-stt-btn' || btn.id === 'pk-stt-btn') _pkMbToggleSTT();
     if (act === 'pk-rec-btn' || btn.id === 'pk-rec-btn') _pkMbRecToggle();
@@ -109,7 +137,7 @@ function _pkMbChange(e) {
     if (el.dataset.action === 'mb-cb')    _pkMbToggleNote(el.dataset.id, el.checked);
 }
 
-panel.addEventListener = panel.addEventListener; // no-op to satisfy linter, fn is already set above
+
 
 // but we need to access "panel" later from event — let's make delegation work on document level for STT btn
 document.addEventListener('click', function(e) {
@@ -370,7 +398,21 @@ function _pkNoteBubble(n) {
     const fileUrl = n.serve_url ?? n.file_url ?? '';
     const isSel   = window._pk.selectedNoteIds.has(n.sys_id);
 
-    const delBtn = `<button data-action="mb-delete" data-id="${sysId}" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:.7rem;padding:2px 6px;"><i class="fas fa-trash"></i></button>`;
+    const creator = n.meta_data?.created_by_date?.user ?? n.created_by ?? '';
+    const canDel  = !creator || creator === (window.CURRENT_USER ?? '');
+    function _pkMenuItems() {
+        let items = '';
+        const iS = 'display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.78rem;font-weight:500;cursor:pointer;border:none;background:none;width:100%;text-align:left;color:#374151;';
+        const dS = iS.replace('#374151','#dc2626');
+        if (n.note_type === 'text') {
+            const enc = encodeURIComponent(content);
+            items += `<button onclick="navigator.clipboard.writeText(decodeURIComponent('${enc}'))" style="${iS}"><i class="fas fa-copy" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Copy</button>`;
+            if (canDel) items += `<button data-action="mb-edit" data-id="${sysId}" style="${iS}"><i class="fas fa-pen" style="width:16px;font-size:.75rem;color:#94a3b8;"></i>Edit</button>`;
+        }
+        if (canDel) items += `<button data-action="mb-delete" data-id="${sysId}" style="${dS}"><i class="fas fa-trash" style="width:16px;font-size:.75rem;color:#f87171;"></i>Delete</button>`;
+        return `<div class="pk-note-menu" id="pk-menu-${sysId}" style="display:none;position:absolute;right:0;top:100%;z-index:200;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:160px;overflow:hidden;">${items}</div>`;
+    }
+    const menuBtn = `<div style="position:relative;"><button data-action="mb-menu-toggle" data-id="${sysId}" style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:2px 6px;border-radius:4px;"><i class="fas fa-ellipsis-v"></i></button>${_pkMenuItems()}</div>`;
 
     if (n.note_type === 'text') {
         const len  = content.length;
@@ -378,11 +420,11 @@ function _pkNoteBubble(n) {
         return `<div style="align-self:flex-start;min-width:${minW};max-width:85%;position:relative;">
             <input type="checkbox" class="pk-gen-cb" data-action="mb-cb" data-id="${sysId}"
                 ${isSel?'checked':''} style="position:absolute;top:6px;left:-22px;width:16px;height:16px;cursor:pointer;accent-color:#16a34a;">
-            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;">
+            <div id="pk-note-view-${sysId}" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;">
                 <div style="font-size:.83rem;color:#374151;white-space:pre-line;word-wrap:break-word;">${_pke(content)}</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
                     <span style="font-size:10px;color:#d1d5db;">${_pke(dateStr)}</span>
-                    ${delBtn}
+                    ${menuBtn}
                 </div>
             </div>
         </div>`;
@@ -396,7 +438,7 @@ function _pkNoteBubble(n) {
                 style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;cursor:zoom-in;display:block;background:#f9fafb;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
                 <span style="font-size:10px;color:#d1d5db;">${_pke(dateStr)}</span>
-                ${delBtn}
+                ${menuBtn}
             </div>
         </div>`;
     }
@@ -406,7 +448,7 @@ function _pkNoteBubble(n) {
             <audio controls class="w-full mt-1" style="height:32px;" src="${fileUrl}"></audio>
             <div style="display:flex;justify-content:space-between;margin-top:4px;">
                 <span style="font-size:10px;color:#d1d5db;">${_pke(dateStr)}</span>
-                ${delBtn}
+                ${menuBtn}
             </div>
         </div>`;
     }
@@ -414,7 +456,7 @@ function _pkNoteBubble(n) {
     return `<div style="align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;min-width:200px;max-width:400px;display:flex;align-items:center;gap:8px;">
         <i class="fas fa-paperclip text-green-500 flex-shrink-0"></i>
         <a href="${fileUrl}" target="_blank" style="font-size:.8rem;color:#059669;flex:1;overflow:hidden;text-overflow:ellipsis;">${_pke(n.file_name||'File')}</a>
-        ${delBtn}
+        ${menuBtn}
     </div>`;
 }
 
@@ -521,3 +563,8 @@ function _pkMbToggleSTT() {
     if (btn) { btn.style.background='#dcfce7'; btn.innerHTML='<i class="fas fa-microphone-lines" style="color:#15803d;font-size:.75rem;"></i>'; }
     if (bar) { bar.style.display = 'flex'; }
 }
+document.addEventListener('click', e => {
+    if (!e.target.closest('[data-action="mb-menu-toggle"]') && !e.target.closest('.pk-note-menu')) {
+        document.querySelectorAll('.pk-note-menu').forEach(m => m.style.display = 'none');
+    }
+});

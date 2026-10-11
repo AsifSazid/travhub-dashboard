@@ -54,7 +54,7 @@ window._tsSwitchTab = function(tab, btn) {
         b.style.borderColor = active ? '#0284c7' : 'transparent';
     });
     document.querySelectorAll('.ts-panel').forEach(p => {
-        p.classList.toggle('hidden', !p.id.endsWith(tab));
+        p.style.display = p.id.endsWith(tab) ? '' : 'none';
     });
     const renders = {
         mindboard:    window._renderTsMindboard,

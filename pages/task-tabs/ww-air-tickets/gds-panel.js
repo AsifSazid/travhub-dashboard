@@ -110,22 +110,41 @@ function _gdsPortalCardCollapsed(p) {
     </div>`;
 }
 
+// Track which cred passwords are visible: key = sys_id + cred_id
+window._gdsPassVisible = window._gdsPassVisible || {};
+
 function _gdsPortalCardExpanded(p) {
     const creds = p.credentials ?? [];
     const url   = p.portal_url ? _gdsEsc(p.portal_url) : '';
     const visibleCreds = creds.filter(c => c.can_view);
-    const credRows = visibleCreds.length ? visibleCreds.map(c => `
+    const credRows = visibleCreds.length ? visibleCreds.map(c => {
+        const passKey  = p.sys_id + '_' + (c.cred_id || c.user_name);
+        const isShown  = !!window._gdsPassVisible[passKey];
+        const passDisp = isShown ? _gdsEsc(c.password || '—') : '••••••••';
+        const eyeIcon  = isShown ? 'fa-eye-slash' : 'fa-eye';
+        return `
         <div style="display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;">User ID</span>
-                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;" onclick="event.stopPropagation();_gdsCopyText('${_gdsEsc(c.user_name||'')}')" title="Click to copy">${_gdsEsc(c.user_name || '—')}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">User ID</span>
+                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;text-align:right;"
+                    onclick="event.stopPropagation();_gdsCopyText('${_gdsEsc(c.user_name||'')}');this.style.color='#50BC81';setTimeout(()=>this.style.color='#E8ECF5',800);"
+                    title="Click to copy">${_gdsEsc(c.user_name || '—')}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;">Password</span>
-                <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;" onclick="event.stopPropagation();_gdsCopyText('${_gdsEsc(c.password||'')}')" title="Click to copy">${_gdsEsc(c.password || '—')}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="color:#8A93A8;font-size:10px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Password</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="color:#E8ECF5;font-size:12px;font-family:monospace;cursor:pointer;"
+                        onclick="event.stopPropagation();_gdsCopyText('${_gdsEsc(c.password||'')}');this.style.color='#50BC81';setTimeout(()=>this.style.color='#E8ECF5',800);"
+                        title="Click to copy">${passDisp}</span>
+                    <button onclick="event.stopPropagation();_gdsTogglePass('${_gdsEsc(p.sys_id)}','${_gdsEsc(c.cred_id||c.user_name)}')"
+                        style="background:none;border:none;color:#5E6883;cursor:pointer;padding:2px 4px;font-size:11px;" title="${isShown?'Hide':'Show'} password">
+                        <i class="fas ${eyeIcon}"></i>
+                    </button>
+                </div>
             </div>
-        </div>
-    `).join('') : `<div style="padding:8px 0;color:#5E6883;font-size:11px;">No accessible credentials</div>`;
+        </div>`;
+    }).join('') : `<div style="padding:8px 0;color:#5E6883;font-size:11px;">No accessible credentials</div>`;
+
     return `<div style="background:#1C2340;border:1px solid rgba(80,188,129,.4);border-radius:6px;padding:12px 14px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <span style="color:#fff;font-size:13px;font-weight:700;flex:1;">${_gdsEsc(p.portal_name)}</span>
@@ -137,6 +156,14 @@ function _gdsPortalCardExpanded(p) {
         ${credRows}
     </div>`;
 }
+
+window._gdsTogglePass = function(portalSysId, credId) {
+    const key = portalSysId + '_' + credId;
+    window._gdsPassVisible[key] = !window._gdsPassVisible[key];
+    const activeBody = [...document.querySelectorAll('[id^="at-gds-body-"]')]
+        .find(el => el.querySelector('[style*="grid-template-columns"]'));
+    if (activeBody) _gdsRenderPortalGrid(activeBody);
+};
 
 window._gdsExpandPortal = function(sysId) {
     window._gdsExpandedPortal = sysId;

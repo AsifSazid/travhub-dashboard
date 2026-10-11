@@ -3,11 +3,14 @@
  * Entry point — called from show-works.php for hotel slug
  */
 
+
+
 window.initWorkHotelTab = async function(config) {
     window._ht.cfg          = config;
     window._ht.data         = config.htData ?? null;
     window._ht.leadSegments = config.leadSegments ?? [];
     window._ht.activeSegFilter = null;
+    window.CURRENT_USER = config.currentUser ?? window.CURRENT_USER ?? '';
 
     const mount = document.getElementById('ww-hotel-mount');
     if (!mount) { console.error('[hotel] mount #ww-hotel-mount not found'); return; }
@@ -30,10 +33,10 @@ window.initWorkHotelTab = async function(config) {
         </div>
         <!-- Panels -->
         <div id="ht-panels" style="flex:1;min-height:0;overflow-y:auto;padding:16px;">
-            <div id="ht-panel-mindboard"    class="ht-panel"></div>
-            <div id="ht-panel-quotation"    class="ht-panel hidden"></div>
-            <div id="ht-panel-booking"      class="ht-panel hidden"></div>
-            <div id="ht-panel-confirmation" class="ht-panel hidden"></div>
+            <div id="ht-panel-mindboard"    class="ht-panel" style="display:block;"></div>
+            <div id="ht-panel-quotation"    class="ht-panel" style="display:none;"></div>
+            <div id="ht-panel-booking"      class="ht-panel" style="display:none;"></div>
+            <div id="ht-panel-confirmation" class="ht-panel" style="display:none;"></div>
         </div>
     </div>`;
 

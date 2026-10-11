@@ -120,7 +120,7 @@ window._gdsHtml = function _gdsHtml(data, pfx) {
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Markup % <span class="text-gray-300 font-normal normal-case">(client)</span></label>
             <input type="number" id="at-${pfx}-markup" value="${+(data?.markup_pct??0)}" step="0.01" min="0"
-                oninput="atGdsCalcAll('${pfx}', false)"
+                oninput="atGdsCalcAll('${pfx}', true)"
                 placeholder="0"
                 class="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400 bg-emerald-50">
         </div>
@@ -247,7 +247,15 @@ function _gdsFaresArea(pfx) { return window._at.gdsFaresArea(pfx); }
 
 // ── Event delegation ──────────────────────────────────────────
 (function _attachGdsDelegation() {
-    document.addEventListener('input', function(e) {
+    // Mark fare fields during user editing so _gdsUpdateRo doesn't overwrite
+document.addEventListener('focus', function(e) {
+    if (e.target?.classList?.contains('at-fare-field')) e.target._userEditing = true;
+}, true);
+document.addEventListener('blur', function(e) {
+    if (e.target?.classList?.contains('at-fare-field')) e.target._userEditing = false;
+}, true);
+
+document.addEventListener('input', function(e) {
         if (e.target.classList.contains('at-seg-field')) {
             const idx = +e.target.dataset.idx, key = e.target.dataset.key, pfx = e.target.dataset.pfx;
             window._at.gdsSegments[idx][key] = key==='route' ? _gdsNormalizeRoute(e.target.value) : e.target.value;
@@ -263,14 +271,13 @@ function _gdsFaresArea(pfx) { return window._at.gdsFaresArea(pfx); }
         if (e.target.classList.contains('at-fare-field') && e.target.dataset.key) {
             const idx = +e.target.dataset.idx, key = e.target.dataset.key, pfx = e.target.dataset.pfx;
             window._at.gdsFares[idx][key] = e.target.dataset.numeric==='1' ? +(e.target.value||0) : e.target.value;
-            if (['base_fare','gross_fare','iata_charge'].includes(key)) {
-                if (key!=='pax') window._at.gdsFares[idx].payable_edited = false;
+            if (['base_fare','gross_fare','iata_charge','pax'].includes(key)) {
+                // pax change এ payable_edited reset — total_payable recalculate হবে
+                window._at.gdsFares[idx].payable_edited = false;
                 _gdsCalcFare(pfx, idx, false);
                 _gdsUpdateRo(pfx, idx);
-                if (!window._at.gdsFares[idx].payable_edited) {
-                    const payEl = document.querySelector(`.at-fare-payable[data-pfx="${pfx}"][data-idx="${idx}"]`);
-                    if (payEl && document.activeElement !== payEl) payEl.value = window._at.gdsFares[idx].payable;
-                }
+                const payEl = document.querySelector(`.at-fare-payable[data-pfx="${pfx}"][data-idx="${idx}"]`);
+                if (payEl && document.activeElement !== payEl) payEl.value = window._at.gdsFares[idx].payable;
             }
             atGdsPreview(pfx); return;
         }
@@ -298,6 +305,7 @@ function _gdsCalcFare(pfx, idx, forceReset) {
     const f        = window._at.gdsFares[idx]; if (!f) return;
     const comm     = +(document.getElementById(`at-${pfx}-comm`)?.value     ?? 7)   / 100;
     const govt     = +(document.getElementById(`at-${pfx}-govt`)?.value     ?? 0.3) / 100;
+    const markup   = +(document.getElementById(`at-${pfx}-markup`)?.value   ?? 0)   / 100;
     const currency    = (document.getElementById(`at-${pfx}-currency`)?.value  ?? 'BDT').trim().toUpperCase();
     const convRateRaw =  document.getElementById(`at-${pfx}-conv-rate`)?.value ?? '';
     const convRate    = convRateRaw !== '' ? (+(convRateRaw) || 1) : (currency === 'BDT' ? 1 : 0);
@@ -327,19 +335,27 @@ function _gdsCalcFare(pfx, idx, forceReset) {
     f.conv_rate     = convRate;
 
     if (forceReset || !f.payable_edited || +(f.payable||0) === 0) {
-        f.payable        = Math.max(0, Math.round((gross + f.net_fare) / 2));
+        // PAYABLE = ((GROSS + NET) / 2) × (1 + markup%)
+        f.payable        = Math.max(0, Math.round(((gross + f.net_fare) / 2) * (1 + markup)));
         f.payable_edited = false;
     }
+    // TOTAL = PAYABLE × pax
     f.total_payable = +(f.payable||0) * +(f.pax||1);
 }
 
 function _gdsUpdateRo(pfx, idx) {
     const f = window._at.gdsFares[idx]; if (!f) return;
-    const sel = (ro) => document.querySelector(`[data-fare-ro="${ro}"][data-pfx="${pfx}"][data-idx="${idx}"]`);
+    const sel   = (ro)  => document.querySelector(`[data-fare-ro="${ro}"][data-pfx="${pfx}"][data-idx="${idx}"]`);
+    const selFe = (key) => document.querySelector(`.at-fare-field[data-pfx="${pfx}"][data-idx="${idx}"][data-key="${key}"]`);
+
+    // BASE/TAXES/GROSS: এই fields user input — আমরা কখনো overwrite করব না
+    // User USD type করবে, rate দিলে A/B/NET/TOTAL এ BDT দেখাবে
+    // BASE/TAXES/GROSS সবসময় user যা type করেছে তাই থাকবে
+
     const ca=sel('commission_a'); if(ca) ca.value=f.commission_a;
     const gt=sel('govt_tax_b');   if(gt) gt.value=f.govt_tax_b;
     const nf=sel('net_fare');     if(nf) nf.value=f.net_fare;
-    const currNote = (f.currency && f.currency !== 'BDT') ? ` (orig. ${f.currency}, ×${f.conv_rate})` : '';
+    const currNote = (f.currency && f.currency !== 'BDT') ? ` (${f.currency}→BDT ×${f.conv_rate})` : '';
     const tp=sel('total_payable'); if(tp) tp.value=`BDT ${_fmtN(f.total_payable)}/-${currNote}`;
 }
 
@@ -510,13 +526,8 @@ function _gdsGenerateCopy(pfx) {
     out+='\n*Price:*\n';
     let grand=0;
     window._at.gdsFares.forEach(f=>{
-        // gross_fare_bdt: set by _gdsCalcFare after conversion and saved in pricing_json.
-        // Fallback chain:
-        //   1) gross_fare_bdt (set by _gdsCalcFare, always BDT)
-        //   2) gross_fare — only BDT if f.currency === 'BDT' or no currency stored
-        //      (old quotations before gross_fare_bdt was introduced may land here)
-        const fareCurrency = (f.currency ?? 'BDT').toUpperCase();
-        const grossBdt = +(f.gross_fare_bdt ?? (fareCurrency === 'BDT' ? f.gross_fare : 0) ?? 0);
+        // gross_fare_bdt: set by _gdsCalcFare after conversion. Fallback to gross_fare if calc not run yet.
+        const grossBdt = +(f.gross_fare_bdt ?? f.gross_fare ?? 0);
         const payable  = +(f.payable||0); // already BDT from _gdsCalcFare
         const pax      = +(f.pax||1);
         grand += payable * pax;
@@ -1032,23 +1043,19 @@ window.atSaveQ = async function(pfx) {
         // Booking-এ গেলে আর currency confusion থাকবে না।
         const _farsAlreadyBdt = _savedCurr !== 'BDT' && _savedRate > 1;
         body.currency        = _farsAlreadyBdt ? 'BDT' : _savedCurr;
-        body.conversion_rate = _farsAlreadyBdt ? 1 : _savedRate;
+        body.conversion_rate = _farsAlreadyBdt ? 1     : _savedRate;
 
-        // pricing_json-এর amounts already BDT (toBdt() via _gdsCalcFare)
-        body.gross_fare    = window._at.gdsFares.reduce((s,f) => s+(f.gross_fare??0)*(f.pax??1), 0);
+        // pricing_json: base_fare/gross_fare/taxes BDT-তে replace করো (f.base_fare_bdt থেকে)
+        // বাকি সব (commission_a, govt_tax_b, net_fare, payable) already BDT তে আছে
+        body.pricing_json = window._at.gdsFares.map(f => ({
+            ...f,
+            base_fare:  _farsAlreadyBdt ? (f.base_fare_bdt  ?? f.base_fare)  : f.base_fare,
+            gross_fare: _farsAlreadyBdt ? (f.gross_fare_bdt ?? f.gross_fare) : f.gross_fare,
+            taxes:      _farsAlreadyBdt ? Math.round(+(f.taxes||0) * _savedRate) : f.taxes,
+        }));
+        body.gross_fare    = body.pricing_json.reduce((s,f) => s+(f.gross_fare??0)*(f.pax??1), 0);
         body.net_fare      = window._at.gdsFares.reduce((s,f) => s+(f.net_fare??0)*(f.pax??1), 0);
         body.total_payable = window._at.gdsFares.reduce((s,f) => s+(f.total_payable??0), 0);
-
-        // যদি fares BDT-তে convert হয়ে save হচ্ছে, fare-level currency/conv_rate
-        // clean করো — পরে reload এ _gdsCalcFare আবার ভুল conversion না করুক।
-        // gross_fare_bdt থাকলে সেটাই preview/calc এর source হবে।
-        if (_farsAlreadyBdt) {
-            window._at.gdsFares.forEach(f => {
-                f.currency  = 'BDT';
-                f.conv_rate = 1;
-            });
-            body.pricing_json = window._at.gdsFares; // updated version re-assign
-        }
         // Client selling price = payable × (1 + markup%)
         const markupPct = body.markup_pct / 100;
         body.client_total = Math.round(body.total_payable * (1 + markupPct));
@@ -1290,33 +1297,7 @@ window.atSelectQuotation = function(sysId) {
     window._at.gdsFares    = q.pricing_json  ?? [];
     window._at.sotoPrices  = null; // পরের quotation-এর নিজস্ব form_data.prices দিয়ে fresh init হোক
     _renderQBuilder(q);
-    if (q.type === 'gds' || !q.type) {
-        setTimeout(() => {
-            // যদি quotation ইতিমধ্যে BDT-তে save হয়েছে (converted), তাহলে
-            // _gdsCalcFare আবার চালালে BDT × convRate হয়ে ভুল value দেখাবে।
-            // সেক্ষেত্রে শুধু RO fields update + preview regenerate করলেই যথেষ্ট।
-            const savedCurrency = (q.currency ?? 'BDT').toUpperCase();
-            const savedRate     = +(q.conversion_rate ?? 1);
-            const alreadyBdt   = savedCurrency === 'BDT' || savedRate === 1;
-
-            if (alreadyBdt) {
-                // gross_fare_bdt ও payable already BDT — recalc করব না,
-                // শুধু _gdsUpdateRo ও preview চালাই
-                window._at.gdsFares.forEach((_, i) => _gdsUpdateRo('q', i));
-                // payable input fields update করি
-                window._at.gdsFares.forEach((f, i) => {
-                    const payEl = document.querySelector(`.at-fare-payable[data-pfx="q"][data-idx="${i}"]`);
-                    if (payEl) payEl.value = f.payable;
-                });
-                // Preview: _gdsGenerateCopy uses f.gross_fare_bdt ?? f.gross_fare
-                // gross_fare_bdt already set in saved pricing_json, so preview is correct
-                atGdsPreview('q');
-            } else {
-                // Non-BDT currency, rate দেওয়া আছে — normal recalc চালাই
-                _recalcAllFares('q');
-            }
-        }, 50);
-    }
+    if (q.type === 'gds' || !q.type) setTimeout(() => _recalcAllFares('q'), 50);
 };
 
 window._renderQBuilder = function _renderQBuilder(q) {

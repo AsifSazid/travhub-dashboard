@@ -39,7 +39,7 @@ function handleRequest() {
     
     try {
         // Check if files are uploaded (FormData approach)
-        if (!empty($_FILES['files'])) {
+        if (!empty($_FILES['files']) || isset($_POST['employee_data'])) {
             handleFormDataRequest();
         } else {
             handleJsonRequest();
@@ -107,7 +107,7 @@ function handleFormDataRequest() {
 
     // Handle file uploads
     $uploadedFiles = [];
-    $files = $_FILES['files'];
+    $files = $_FILES['files'] ?? [];
 
     if (isset($files['name'][0]) && !empty($files['name'][0])) {
 

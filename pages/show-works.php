@@ -723,6 +723,110 @@ $deepLinkSw = $_GET['sw'] ?? '';
 
 <?php include '../elements/floating-menus.php'; ?>
 <script src="../assets/js/script.js?t=<?php echo time(); ?>"></script>
+
+<!-- ══ Common Note Menu System (used by all service modules) ══ -->
+<style id="tmss-menu-styles">
+.tmss-menu-btn {
+    color:#9ca3af; padding:4px 8px; border-radius:6px; cursor:pointer;
+    background:transparent; border:none; font-size:14px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    width:28px; height:28px; transition:all .15s;
+}
+.tmss-menu-btn:hover { background:#f3f4f6; color:#4f46e5; }
+.tmss-menu-dropdown { display:none; }
+.tmss-note-bubble {
+    border-radius:14px; padding:10px 14px; position:relative;
+    box-shadow:0 1px 3px rgba(0,0,0,.04); transition:all .15s;
+}
+.tmss-note-bubble:hover { box-shadow:0 2px 8px rgba(0,0,0,.06); }
+#tmss-floating-menu {
+    position:fixed; z-index:99999; background:#fff;
+    border-radius:12px;
+    box-shadow:0 10px 40px rgba(0,0,0,.15),0 2px 8px rgba(0,0,0,.05);
+    border:1px solid #f1f5f9; min-width:160px; padding:6px 0;
+    visibility:hidden; top:0; left:0;
+    animation:tmssMenuPop .12s ease;
+}
+.tmss-menu-item {
+    display:flex; align-items:center; gap:10px; padding:8px 16px;
+    font-size:.78rem; font-weight:500; color:#374151; cursor:pointer;
+    border:none; background:none; width:100%; text-align:left; transition:background .1s;
+}
+.tmss-menu-item:hover { background:#f8fafc; }
+.tmss-menu-item.danger { color:#dc2626; }
+.tmss-menu-item.danger:hover { background:#fef2f2; }
+@keyframes tmssMenuPop {
+    from { opacity:0; transform:scale(0.92) translateY(6px); }
+    to   { opacity:1; transform:scale(1)    translateY(0); }
+}
+</style>
+
+<script>
+// ══ Common floating menu delegation — works for ALL service modules ══
+(function() {
+    if (window._tmssMenuAttached) return;
+    window._tmssMenuAttached = true;
+
+    let _activeMenuId = null;
+
+    function _closeMenu() {
+        const el = document.getElementById('tmss-floating-menu');
+        if (el) el.remove();
+        _activeMenuId = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        // Click inside floating menu — close after action fires
+        if (e.target.closest('#tmss-floating-menu')) {
+            setTimeout(_closeMenu, 120);
+            return;
+        }
+
+        const btn = e.target.closest('[data-menu-toggle]');
+        if (btn) {
+            e.stopPropagation();
+            const sysId = btn.getAttribute('data-menu-toggle');
+
+            if (_activeMenuId === sysId) { _closeMenu(); return; }
+            _closeMenu();
+
+            // Find the hidden dropdown for this note
+            const sourceMenu = (
+                document.getElementById('tmss-menu-' + sysId) ||
+                btn.parentElement?.querySelector('.tmss-menu-dropdown')
+            );
+            if (!sourceMenu) return;
+
+            // Create floating clone at body level
+            const floating = document.createElement('div');
+            floating.id = 'tmss-floating-menu';
+            floating.innerHTML = sourceMenu.innerHTML;
+            document.body.appendChild(floating);
+            _activeMenuId = sysId;
+
+            // Position near click
+            setTimeout(() => {
+                const h = floating.offsetHeight || 100;
+                const w = floating.offsetWidth  || 160;
+                const top  = (e.clientY - h - 8 > 4) ? (e.clientY - h - 8) : (e.clientY + 8);
+                let   left = e.clientX - w;
+                if (left < 4) left = 4;
+                if (left + w > window.innerWidth - 4) left = window.innerWidth - w - 4;
+                floating.style.top        = top  + 'px';
+                floating.style.left       = left + 'px';
+                floating.style.visibility = 'visible';
+            }, 50);
+            return;
+        }
+
+        if (_activeMenuId) _closeMenu();
+    });
+
+    window.addEventListener('scroll', _closeMenu, true);
+})();
+</script>
+<!-- ══ End Common Note Menu System ══ -->
+
 <script src="../pages/task-tabs/ww-air-tickets/_state.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/_helpers.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/gds-panel.js?t=<?php echo time(); ?>"></script>
@@ -745,7 +849,7 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <script src="../pages/task-tabs/ww-transport/confirmation.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-transport/index.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/_state.js?t=<?php echo time(); ?>"></script>
-<script src="../pages/task-tabs/ww-umrah/_helpers.js?t=<?php echo time(); ?>"></script>
+<script src="../pages/task-tabs/ww-umrah/_helper.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/travelers.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/documents.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/summary.js?t=<?php echo time(); ?>"></script>

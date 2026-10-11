@@ -58,6 +58,22 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
             <div><label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
                 <input type="text" id="f-search" placeholder="Name / Purpose..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"></div>
         </div>
+        <!-- Quick period shortcuts -->
+        <div class="flex flex-wrap gap-1.5 mt-3">
+            <span class="text-xs text-gray-400 self-center mr-1">Quick:</span>
+            <button onclick="setQuickPeriod('current_month')"   class="px-2.5 py-1 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium border border-purple-200 transition">Current Month</button>
+            <button onclick="setQuickPeriod('last_month')"      class="px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-200 transition">Last Month</button>
+            <button onclick="setQuickPeriod('last_2_months')"   class="px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-200 transition">Last 2 Months</button>
+            <button onclick="setQuickPeriod('last_3_months')"   class="px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-200 transition">Last 3 Months</button>
+            <button onclick="setQuickPeriod('last_6_months')"   class="px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-200 transition">Last 6 Months</button>
+            <div class="relative flex items-center gap-1">
+                <button onclick="toggleYearPicker()" class="px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-200 transition">Last 1 Year <i class="fas fa-chevron-down ml-0.5 text-[10px]"></i></button>
+                <div id="yearPickerDrop" class="hidden absolute top-8 left-0 z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-2 min-w-[120px]">
+                    <div id="yearPickerList"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="flex gap-2 mt-3">
             <button onclick="applyFilters()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium"><i class="fas fa-search mr-1"></i> Apply</button>
             <button onclick="clearFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium"><i class="fas fa-redo mr-1"></i> Clear</button>
@@ -131,19 +147,63 @@ $ip_port = trim(@file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898
         </table>
     </div>
 
-    <!-- Detail view -->
-    <div id="view-detail" class="hidden bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50"><tr>
-                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Date</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Entry Type</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Party</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase text-xs">Purpose</th>
-                <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase text-xs">Amount</th>
-            </tr></thead>
-            <tbody id="detail-tbody"></tbody>
-        </table>
-        <div id="detail-pagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500"></div>
+    <!-- Detail view: Sale group → Purchase group → Expense group -->
+    <div id="view-detail" class="hidden space-y-4">
+        <!-- Sales section -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                <span class="font-semibold text-indigo-700 text-sm"><i class="fas fa-arrow-up mr-1.5"></i>Sales</span>
+                <span class="text-sm font-bold text-indigo-700" id="d-sales-total">—</span>
+            </div>
+            <table class="min-w-full divide-y divide-gray-100 text-sm">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Date</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Client</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Work</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Purpose</th>
+                    <th class="px-4 py-2 text-right font-medium text-gray-400 uppercase text-xs">Amount</th>
+                </tr></thead>
+                <tbody id="d-sales-tbody"></tbody>
+            </table>
+            <div id="d-sales-pag" class="flex items-center justify-between px-4 py-2 border-t border-gray-100 text-xs text-gray-400"></div>
+        </div>
+
+        <!-- Purchase section -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+                <span class="font-semibold text-amber-700 text-sm"><i class="fas fa-arrow-down mr-1.5"></i>Purchases</span>
+                <span class="text-sm font-bold text-amber-700" id="d-purchase-total">—</span>
+            </div>
+            <table class="min-w-full divide-y divide-gray-100 text-sm">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Date</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Vendor</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Work</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Purpose</th>
+                    <th class="px-4 py-2 text-right font-medium text-gray-400 uppercase text-xs">Amount</th>
+                </tr></thead>
+                <tbody id="d-purchase-tbody"></tbody>
+            </table>
+            <div id="d-purchase-pag" class="flex items-center justify-between px-4 py-2 border-t border-gray-100 text-xs text-gray-400"></div>
+        </div>
+
+        <!-- Expense section -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
+                <span class="font-semibold text-rose-700 text-sm"><i class="fas fa-receipt mr-1.5"></i>Office Expenses</span>
+                <span class="text-sm font-bold text-rose-700" id="d-expense-total">—</span>
+            </div>
+            <table class="min-w-full divide-y divide-gray-100 text-sm">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Date</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Account</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-400 uppercase text-xs">Purpose</th>
+                    <th class="px-4 py-2 text-right font-medium text-gray-400 uppercase text-xs">Amount</th>
+                </tr></thead>
+                <tbody id="d-expense-tbody"></tbody>
+            </table>
+            <div id="d-expense-pag" class="flex items-center justify-between px-4 py-2 border-t border-gray-100 text-xs text-gray-400"></div>
+        </div>
     </div>
 
 </div>
@@ -280,6 +340,133 @@ async function loadDetail() {
             </div>`;
     } finally { setLoading(false); }
 }
+// ── Quick Period ─────────────────────────────────────────────
+function setQuickPeriod(type) {
+    const now   = new Date();
+    const pad   = n => String(n).padStart(2,'0');
+    const ymd   = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    let from, to;
+    to = ymd(now);
+
+    if (type === 'current_month') {
+        from = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
+    } else if (type === 'last_month') {
+        const f = new Date(now.getFullYear(), now.getMonth()-1, 1);
+        const t = new Date(now.getFullYear(), now.getMonth(),   0);
+        from = ymd(f); to = ymd(t);
+    } else if (type === 'last_2_months') {
+        from = ymd(new Date(now.getFullYear(), now.getMonth()-2, 1));
+    } else if (type === 'last_3_months') {
+        from = ymd(new Date(now.getFullYear(), now.getMonth()-3, 1));
+    } else if (type === 'last_6_months') {
+        from = ymd(new Date(now.getFullYear(), now.getMonth()-6, 1));
+    }
+    document.getElementById('f-date-from').value = from || '';
+    document.getElementById('f-date-to').value   = to;
+    applyFilters();
+}
+
+function toggleYearPicker() {
+    const drop = document.getElementById('yearPickerDrop');
+    drop.classList.toggle('hidden');
+    if (!document.getElementById('yearPickerList').children.length) _buildYearList();
+}
+
+function _buildYearList() {
+    const year = new Date().getFullYear();
+    const list = document.getElementById('yearPickerList');
+    list.innerHTML = '';
+    for (let y = year; y >= year - 4; y--) {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left px-3 py-1.5 text-sm hover:bg-purple-50 text-gray-700 rounded-lg';
+        btn.textContent = y;
+        btn.onclick = () => { setYearFilter(y); document.getElementById('yearPickerDrop').classList.add('hidden'); };
+        list.appendChild(btn);
+    }
+}
+
+function setYearFilter(year) {
+    document.getElementById('f-date-from').value = `${year}-01-01`;
+    document.getElementById('f-date-to').value   = `${year}-12-31`;
+    applyFilters();
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('[onclick*="toggleYearPicker"]') && !e.target.closest('#yearPickerDrop'))
+        document.getElementById('yearPickerDrop')?.classList.add('hidden');
+});
+
+// ── Grouped Detail view ───────────────────────────────────────
+let detailPages = { sales:1, purchase:1, expense:1 };
+
+async function loadDetail() {
+    setLoading(true);
+    try {
+        await Promise.all([
+            _loadDetailSection('sales',    ['sales','refund_charge']),
+            _loadDetailSection('purchase', ['purchase']),
+            _loadDetailSection('expense',  ['expense','payroll_expense']),
+        ]);
+    } finally { setLoading(false); }
+}
+
+async function _loadDetailSection(section, heads) {
+    const page    = detailPages[section] || 1;
+    const headsQ  = heads.map(h => `heads[]=${h}`).join('&');
+    const r = await fetch(`${API}?action=detail_grouped&section=${section}&page=${page}&per_page=50&${buildParams()}&${headsQ}`);
+    const d = await r.json();
+    if (!d.success) return;
+
+    const total = (d.rows||[]).reduce((s,row) => s + parseFloat(row.amount||0), 0);
+    const totalEl = document.getElementById(`d-${section}-total`);
+    if (totalEl) totalEl.textContent = fmt(total);
+
+    const tbody = document.getElementById(`d-${section}-tbody`);
+    if (!tbody) return;
+
+    if (section === 'sales') {
+        tbody.innerHTML = (d.rows||[]).map(row => `
+            <tr class="hover:bg-gray-50 border-t border-gray-50">
+                <td class="px-4 py-2 text-gray-500 whitespace-nowrap text-xs">${(row.date||'').substring(0,10)}</td>
+                <td class="px-4 py-2 text-gray-700 font-medium">${row.user_name||'—'}</td>
+                <td class="px-4 py-2 text-gray-500 text-xs">${row.work_title||'—'}</td>
+                <td class="px-4 py-2 text-gray-500 text-xs max-w-xs truncate">${row.purpose||'—'}</td>
+                <td class="px-4 py-2 text-right font-semibold text-indigo-700">${fmt(row.amount)}</td>
+            </tr>`).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-300 text-xs">No data</td></tr>';
+    } else if (section === 'purchase') {
+        tbody.innerHTML = (d.rows||[]).map(row => `
+            <tr class="hover:bg-gray-50 border-t border-gray-50">
+                <td class="px-4 py-2 text-gray-500 whitespace-nowrap text-xs">${(row.date||'').substring(0,10)}</td>
+                <td class="px-4 py-2 text-gray-700 font-medium">${row.user_name||'—'}</td>
+                <td class="px-4 py-2 text-gray-500 text-xs">${row.work_title||'—'}</td>
+                <td class="px-4 py-2 text-gray-500 text-xs max-w-xs truncate">${row.purpose||'—'}</td>
+                <td class="px-4 py-2 text-right font-semibold text-amber-700">${fmt(row.amount)}</td>
+            </tr>`).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-300 text-xs">No data</td></tr>';
+    } else {
+        tbody.innerHTML = (d.rows||[]).map(row => `
+            <tr class="hover:bg-gray-50 border-t border-gray-50">
+                <td class="px-4 py-2 text-gray-500 whitespace-nowrap text-xs">${(row.date||'').substring(0,10)}</td>
+                <td class="px-4 py-2 text-gray-700 font-medium">${row.user_name||row.purpose?.split('—')[0]||'—'}</td>
+                <td class="px-4 py-2 text-gray-500 text-xs max-w-xs truncate">${row.purpose||'—'}</td>
+                <td class="px-4 py-2 text-right font-semibold text-rose-700">${fmt(row.amount)}</td>
+            </tr>`).join('') || '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-300 text-xs">No data</td></tr>';
+    }
+
+    // Pagination
+    const pag = document.getElementById(`d-${section}-pag`);
+    if (pag) {
+        pag.innerHTML = d.total > d.per_page ? `
+            <span class="text-gray-400">Page ${d.page} of ${d.pages} (${d.total})</span>
+            <div class="flex gap-2">
+                ${d.page > 1 ? `<button onclick="goDetailPage('${section}',${d.page-1})" class="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200">Prev</button>` : ''}
+                ${d.page < d.pages ? `<button onclick="goDetailPage('${section}',${d.page+1})" class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">Next</button>` : ''}
+            </div>` : '';
+    }
+}
+
+function goDetailPage(section, p) { detailPages[section] = p; loadDetail(); }
+
+// Keep old goPage for backward compat
 function goPage(p) { currentPage = p; loadDetail(); }
 
 function toggleExportMenu() { document.getElementById('exportMenu').classList.toggle('hidden'); }

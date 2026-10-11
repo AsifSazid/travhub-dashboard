@@ -554,8 +554,26 @@ function _openConfirmTaskModal(confId, booking) {
     const old = document.getElementById('atConfirmTaskModal');
     if (old) old.remove();
 
-    const suggestedPurpose = booking
-        ? `Air Ticket Payment — ${booking.airline??''} ${booking.pnr?('PNR '+booking.pnr):''}`.trim()
+    // Rich purpose: Client | Airline | Route | PNR | Ticket nos | File summary
+    const _clientName  = window._at.cfg?.clientName ?? '';
+    const _airline     = booking?.airline ?? '';
+    const _pnr         = booking?.pnr     ?? '';
+    const _ticketNos   = (booking?.ticket_nos ?? []).filter(Boolean).join(', ');
+    const _route       = (booking?.segments_json ?? []).map(s => s.route).filter(Boolean).join(' / ');
+    const _filesSummary= (booking?.files_json ?? []).length
+        ? `[${booking.files_json.length} file(s)]` : '';
+
+    const purposeParts = [
+        _airline                    && `Airline: ${_airline}`,
+        _clientName                 && `Client: ${_clientName}`,
+        _route                      && `Route: ${_route}`,
+        _pnr                        && `PNR: ${_pnr}`,
+        _ticketNos                  && `Ticket: ${_ticketNos}`,
+        _filesSummary,
+    ].filter(Boolean);
+
+    const suggestedPurpose = purposeParts.length
+        ? `Air Ticket — ${purposeParts.join(' | ')}`
         : 'Air Ticket Payment';
     const suggestedAmount = booking?.total_payable ?? '';
 
@@ -687,6 +705,37 @@ function _openConfirmTaskModal(confId, booking) {
                 <div><label class="block text-[10px] text-gray-500 mb-0.5">Amount ৳</label><input type="number" step="0.01" min="0" id="atctAmount" value="${_e(String(suggestedAmount))}" class="w-full px-2 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-400 atct-calc"></div>
             </div>
 
+            <!-- AIT Section — only for realtime payment -->
+            <div id="atctAitSection" class="border border-amber-100 rounded-xl p-3 bg-amber-50">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-bold text-amber-700 uppercase"><i class="fas fa-receipt mr-1"></i>AIT (Advance Income Tax)</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" id="atctAitEnabled" class="w-3.5 h-3.5 accent-amber-600" onchange="_atctToggleAit()">
+                        <span class="text-xs font-semibold text-amber-700">Include AIT</span>
+                    </label>
+                </div>
+                <div id="atctAitFields" class="hidden">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-gray-500 mb-0.5">AIT % (Govt Rate)</label>
+                            <input type="number" step="0.01" min="0" id="atctAitPct" value="0.3"
+                                class="w-full px-2 py-2 border border-amber-200 rounded-lg text-xs focus:outline-none focus:border-amber-400"
+                                oninput="_atctCalcAit()">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-500 mb-0.5">AIT Amount ৳</label>
+                            <input type="number" step="0.01" min="0" id="atctAitAmount"
+                                class="w-full px-2 py-2 border border-amber-200 rounded-lg text-xs focus:outline-none focus:border-amber-400 bg-amber-50 font-semibold"
+                                readonly>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-amber-600 mt-1.5">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        AIT = Gross Fare × AIT% — AIT Recoverable account এ আলাদা entry হবে (vendor tagged)
+                    </p>
+                </div>
+            </div>
+
             <div class="flex gap-2 pt-1">
                 <button onclick="_atctSkipAndCreate('${_e(confId)}')" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold transition">Skip Payment</button>
                 <button onclick="_atctConfirmWithPayment('${_e(confId)}')" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
@@ -705,6 +754,13 @@ function _atctToggleMode() {
     document.getElementById('atctAccountSection').classList.toggle('hidden', !isRealtime);
     document.getElementById('atctModeRealtimeLbl').className    = 'flex items-center justify-center gap-1.5 p-2 border-2 rounded-lg cursor-pointer text-xs font-semibold ' + (isRealtime ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500');
     document.getElementById('atctModeNonRealtimeLbl').className = 'flex items-center justify-center gap-1.5 p-2 border-2 rounded-lg cursor-pointer text-xs font-semibold ' + (!isRealtime ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500');
+    // AIT শুধু realtime payment এ
+    const aitSection = document.getElementById('atctAitSection');
+    if (aitSection) aitSection.classList.toggle('hidden', !isRealtime);
+    if (!isRealtime) {
+        const aitCb = document.getElementById('atctAitEnabled');
+        if (aitCb) { aitCb.checked = false; _atctToggleAit(); }
+    }
 }
 
 let _atctVendors = [], _atctAccounts = [];
@@ -760,6 +816,28 @@ document.addEventListener('click', e => {
     });
 });
 
+window._atctToggleAit = function() {
+    const enabled = document.getElementById('atctAitEnabled')?.checked;
+    document.getElementById('atctAitFields').classList.toggle('hidden', !enabled);
+    if (enabled) _atctCalcAit();
+};
+
+window._atctCalcAit = function() {
+    const amount = parseFloat(document.getElementById('atctAmount')?.value) || 0;
+    const pct    = parseFloat(document.getElementById('atctAitPct')?.value)  || 0.3;
+    // AIT calculated on base fare — approximation: amount × pct%
+    const ait = Math.round(amount * (pct / 100) * 100) / 100;
+    const el  = document.getElementById('atctAitAmount');
+    if (el) el.value = ait;
+};
+
+// Auto-recalc AIT when amount changes
+document.addEventListener('input', function(e) {
+    if (e.target?.id === 'atctAmount') {
+        if (document.getElementById('atctAitEnabled')?.checked) _atctCalcAit();
+    }
+});
+
 async function _atctSkipAndCreate(confId) {
     document.getElementById('atConfirmTaskModal')?.remove();
     await _atctDoConfirm(confId, null, false);
@@ -781,10 +859,14 @@ async function _atctConfirmWithPayment(confId) {
     }
 
     // Read all values BEFORE removing the modal — the elements won't exist after remove()
+    const aitEnabled = document.getElementById('atctAitEnabled')?.checked ?? false;
+    const aitAmount  = aitEnabled ? (parseFloat(document.getElementById('atctAitAmount')?.value) || 0) : 0;
+    const aitPct     = aitEnabled ? (parseFloat(document.getElementById('atctAitPct')?.value)    || 0.3) : 0;
     const includeClient = document.getElementById('atctIncludeClientEntry')?.checked ?? true;
     const payment = (amount && amount > 0) ? {
         amount, qtyRate, purpose, note, txnMode, vendorId,
         accountId: txnMode === 'realtime' ? accountId : null,
+        aitAmount, aitPct,
     } : null;
 
     document.getElementById('atConfirmTaskModal')?.remove();
@@ -827,24 +909,60 @@ async function _atctDoConfirm(confId, payment, includeClient = false) {
             // Auto-create the vendor payment financial entry, scoped to the new task
             if (payment && json.task_created && json.auto_task_id) {
                 try {
-                    const feRes = await fetch(window._at.cfg.api.saveFinancial, {
+                    // Use v2 store for proper double-entry
+                    const v2Api = window._at.cfg.api.saveFinancial.replace(
+                        'financial_entries/store.php',
+                        'financial_entries_v2/store.php'
+                    );
+                    const feRes = await fetch(v2Api, {
                         method: 'POST', headers: {'Content-Type':'application/json'},
                         body: JSON.stringify({
-                            type: 'credit',
-                            amount: payment.amount,
-                            qty_rate: payment.qtyRate,
-                            purpose: payment.purpose,
-                            vendor_id: payment.vendorId,
+                            type:             'credit',
+                            amount:           payment.amount,
+                            qty_rate:         payment.qtyRate,
+                            purpose:          payment.purpose,
+                            vendor_id:        payment.vendorId,
                             transaction_mode: payment.txnMode,
-                            account_id: payment.accountId,
-                            work_id: json.work_sys_id,
-                            task_id: json.auto_task_id,
-                            date: new Date().toISOString().slice(0,10),
-                            ref: payment.note || undefined,
+                            account_id:       payment.accountId,
+                            work_id:          json.work_sys_id,
+                            task_id:          json.auto_task_id,
+                            date:             new Date().toISOString().slice(0,10),
+                            ref:              payment.note || undefined,
                         }),
                     });
                     const feJson = await feRes.json();
                     if (!feJson.success) atT('error', 'Task created, but vendor payment failed: ' + (feJson.message??''));
+
+                    // ── AIT Recoverable entry ─────────────────────────────
+                    // If AIT enabled, insert a separate debit entry to AIT Recoverable
+                    // linked to the same vendor
+                    if (feJson.success && payment.aitAmount && payment.aitAmount > 0) {
+                        try {
+                            // AIT entry — v2 store with account_head override + non_realtime
+                            const aitRes = await fetch(v2Api, {
+                                method: 'POST',
+                                headers: {'Content-Type':'application/json'},
+                                body: JSON.stringify({
+                                    type:             'credit',
+                                    amount:           payment.aitAmount,
+                                    purpose:          `AIT ${payment.aitPct}% — ${payment.purpose}`,
+                                    vendor_id:        payment.vendorId,
+                                    transaction_mode: 'non_realtime',
+                                    account_head:     'ait_recoverable',
+                                    work_id:          json.work_sys_id  || window._at.cfg?.workSysId,
+                                    task_id:          json.auto_task_id || null,
+                                    date:             new Date().toISOString().slice(0,10),
+                                    ref:              feJson.sys_id     || undefined,
+                                }),
+                            });
+                            const aitJson = await aitRes.json();
+                            if (!aitJson.success) {
+                                atT('error', 'AIT entry failed: ' + (aitJson.message??''));
+                            } else {
+                                atT('info', `AIT ৳${payment.aitAmount} recorded to AIT Recoverable`);
+                            }
+                        } catch(e) { console.error('[AIT entry failed]', e); }
+                    }
                 } catch(e) { atT('error', 'Task created, but vendor payment request failed'); }
             }
 

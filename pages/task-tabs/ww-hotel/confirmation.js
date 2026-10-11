@@ -164,17 +164,37 @@ function _htRenderConfDetail(c, b) {
         <div><span class="text-gray-400 uppercase text-[10px]">Total Sell</span><div class="font-bold text-emerald-600">${_hte(b.currency||'BDT')} ${_htFmtN(b.total_sell||0)}</div></div>
     </div>` : ''}
 
+    <!-- File Upload: Final Voucher -->
+    <div class="mb-3">
+        <label class="text-xs font-bold text-gray-500 uppercase block mb-1">
+            <i class="fas fa-paperclip mr-1 text-indigo-400"></i>Final Voucher / Confirmation Doc
+        </label>
+        <div id="ht-cf-file-preview" style="display:${c?.voucher_url?'flex':'none'};align-items:center;gap:8px;padding:6px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;margin-bottom:6px;font-size:11px;color:#4338ca;">
+            <i class="fas fa-file-alt flex-shrink-0"></i>
+            <a href="${c?.voucher_url||'#'}" target="_blank" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4338ca;">${_hte(c?.voucher_name||'Voucher uploaded')}</a>
+            ${!hasTask?`<button onclick="htConfRemoveFile('${_hte(c.sys_id)}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:11px;"><i class="fas fa-times"></i></button>`:''}
+        </div>
+        ${!hasTask?`<label style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#f8fafc;border:1px dashed #c7d2fe;border-radius:8px;cursor:pointer;font-size:12px;color:#6b7280;">
+            <i class="fas fa-upload" style="color:#6366f1;"></i>
+            <span id="ht-cf-file-label">Choose file (PDF, image)</span>
+            <input type="file" id="ht-cf-file-input" accept=".pdf,image/*" style="display:none;" onchange="htConfFileSelected(this,'${_hte(c.sys_id)}')">
+        </label>
+        <div id="ht-cf-upload-prog" style="display:none;margin-top:6px;font-size:11px;color:#6366f1;">
+            <i class="fas fa-spinner fa-spin mr-1"></i>Uploading…
+        </div>`:''}
+    </div>
+
     <div class="mb-3">
         <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Note</label>
-        <textarea id="ht-conf-note-${_hte(c.sys_id)}" rows="2"
+        <textarea id="ht-conf-note-${_hte(c.sys_id)}" rows="2" ${hasTask?'readonly style="background:#f9fafb;color:#9ca3af;"':''}
             class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:border-indigo-400">${_hte(c.note||'')}</textarea>
     </div>
-    <div class="flex gap-2">
+    ${!hasTask?`<div class="flex gap-2">
         <button onclick="htSaveConfDetails('${_hte(c.sys_id)}')"
             class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
             <i class="fas fa-save mr-1"></i>Save Details
         </button>
-    </div>`;
+    </div>`:''}`;
 }
 
 window.htUpdateConfStatus = async function(confId, status) {
@@ -470,3 +490,46 @@ async function _htDoConfirm(confId, payment, includeClient = false) {
         } else { htT('error', json.message ?? 'Failed'); }
     } catch(e) { htT('error','Network error'); }
 }
+
+// ── Confirmation File Upload ──────────────────────────────────
+window.htConfFileSelected = function(input, confId) {
+    const file = input.files[0];
+    if (!file) return;
+    const label = document.getElementById('ht-cf-file-label');
+    if (label) label.textContent = file.name.length > 30 ? file.name.slice(0,28)+'…' : file.name;
+    htConfUploadFile(file, confId);
+};
+
+window.htConfUploadFile = async function(file, confId) {
+    const prog = document.getElementById('ht-cf-upload-prog');
+    if (prog) prog.style.display = 'block';
+    const fd = new FormData();
+    fd.append('action',       'upload_conf_file');
+    fd.append('conf_sys_id',  confId);
+    fd.append('work_sys_id',  window._ht.cfg.workSysId);
+    fd.append('file',         file);
+    try {
+        const res  = await fetch(window._ht.cfg.api.hotelServices, { method:'POST', body:fd });
+        const json = await res.json();
+        if (json.status === 'success') {
+            htT('success','Uploaded!');
+            await window._htReload();
+            _renderHtConfirmation();
+            htSelectConf(confId);
+        } else { htT('error', json.message||'Upload failed'); }
+    } catch(e) { htT('error','Upload failed'); }
+    finally { if (prog) prog.style.display = 'none'; }
+};
+
+window.htConfRemoveFile = async function(confId) {
+    if (!confId || !confirm('Remove voucher?')) return;
+    try {
+        const json = await window._htApi({ action:'remove_conf_file', conf_sys_id:confId });
+        if (json.status === 'success') {
+            htT('success','Removed');
+            await window._htReload();
+            _renderHtConfirmation();
+            htSelectConf(confId);
+        } else { htT('error', json.message); }
+    } catch(e) { htT('error','Error'); }
+};

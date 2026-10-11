@@ -167,17 +167,23 @@ window._renderPkConfirmation = function() {
             📝 ${_pke(bd.note)}
         </div>` : ''}
 
-        <!-- ── Task link ── -->
+        <!-- ── Task + Financial ── -->
         ${conf.task_sys_id ? `
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;
                     display:flex;align-items:center;justify-content:space-between;">
             <div>
-                <div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:2px;">
-                    ✅ Task Created
-                </div>
+                <div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:2px;">✅ Task Created</div>
                 <div style="font-size:13px;color:#166534;">Task ID: <b>${_pke(conf.task_sys_id)}</b></div>
             </div>
-        </div>` : ''}
+            <button onclick="pkOpenFinancialModal()" style="padding:7px 14px;background:#0f172a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-coins mr-1"></i>Financial Entry
+            </button>
+        </div>` : `
+        <button onclick="pkConfirmAndCreateTask()"
+            style="width:100%;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:10px;
+                   font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="fas fa-check-circle"></i>Confirm Package &amp; Create Task
+        </button>`}
 
     </div>`;
 
@@ -379,3 +385,132 @@ async function _pkConfSave(modal) {
         if (btn) { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
     }
 }
+
+// ══════════════════════════════════════════════════════
+// PACKAGE: Confirm & Create Task + Financial Entry
+// ══════════════════════════════════════════════════════
+
+window.pkConfirmAndCreateTask = async function() {
+    if (!confirm('Confirm this package and create a task?')) return;
+    const btn = document.querySelector('[onclick="pkConfirmAndCreateTask()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Creating…'; }
+    try {
+        const json = await window._pkApi({ action: 'confirm_and_create_task' });
+        if (json.status === 'success' || json.success) {
+            pkT('success', 'Package confirmed! Task created.');
+            await window._pkReload();
+            window._renderPkConfirmation();
+            if (json.auto_task_id) pkOpenFinancialModal(json.auto_task_id);
+        } else {
+            pkT('error', json.message || 'Failed');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i>Confirm Package & Create Task'; }
+        }
+    } catch(e) { pkT('error', 'Network error'); if (btn) { btn.disabled = false; } }
+};
+
+window.pkOpenFinancialModal = function(taskSysId) {
+    const conf       = window._pk.data?.pk_confirmation ?? {};
+    const p          = conf.pricing ?? {};
+    const taskId     = taskSysId || conf.task_sys_id || '';
+    const clientSysId = window._pk.cfg.clientSysId || '';
+    const currency   = p.currency || 'BDT';
+    const grossTotal = +(p.gross_total || 0);
+    const vendorCost = +(conf.booking_details?.vendor_cost || 0);
+
+    const ov = document.createElement('div');
+    ov.id = 'pk-fin-modal';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div style="font-size:16px;font-weight:700;color:#0f172a;">Financial Entry</div>
+            <button onclick="document.getElementById('pk-fin-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">✕</button>
+        </div>
+
+        <!-- Vendor payment -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;">Vendor Payment</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                <div>
+                    <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Vendor</label>
+                    <select id="pk-fin-vendor" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                        <option value="">Select vendor…</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Amount (${currency})</label>
+                    <input id="pk-fin-vendor-amt" type="number" value="${vendorCost}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                </div>
+            </div>
+            <div>
+                <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Account</label>
+                <select id="pk-fin-vendor-acc" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                    <option value="">Select account…</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Client sale -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;">Client Sale</div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Amount (${currency})</label>
+            <input id="pk-fin-client-amt" type="number" value="${grossTotal}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+        </div>
+
+        <button onclick="pkSubmitFinancial('${taskId}','${currency}')"
+            style="width:100%;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+            <i class="fas fa-save mr-2"></i>Save Financial Entry
+        </button>
+    </div>`;
+    document.body.appendChild(ov);
+
+    // Load vendors + accounts
+    _pkLoadFinDropdowns();
+};
+
+async function _pkLoadFinDropdowns() {
+    try {
+        const [vRes, aRes] = await Promise.all([
+            fetch(window._pk.cfg.api.allVendors),
+            fetch(window._pk.cfg.api.allAccounts),
+        ]);
+        const [vJson, aJson] = await Promise.all([vRes.json(), aRes.json()]);
+        const vSel = document.getElementById('pk-fin-vendor');
+        const aSel = document.getElementById('pk-fin-vendor-acc');
+        (vJson.vendors ?? []).forEach(v => {
+            const o = document.createElement('option'); o.value = v.sys_id; o.textContent = v.name; vSel?.appendChild(o);
+        });
+        (aJson.accounts ?? []).forEach(a => {
+            const o = document.createElement('option'); o.value = a.sys_id; o.textContent = a.acc_name; aSel?.appendChild(o);
+        });
+    } catch(e) { console.error('Financial dropdown load error', e); }
+}
+
+window.pkSubmitFinancial = async function(taskSysId, currency) {
+    const vendorId  = document.getElementById('pk-fin-vendor')?.value;
+    const vendorAmt = +(document.getElementById('pk-fin-vendor-amt')?.value || 0);
+    const accId     = document.getElementById('pk-fin-vendor-acc')?.value;
+    const clientAmt = +(document.getElementById('pk-fin-client-amt')?.value || 0);
+    const clientSysId = window._pk.cfg.clientSysId || '';
+
+    const entries = [];
+    if (vendorId && vendorAmt > 0 && accId) {
+        entries.push({ type:'vendor_payment', vendor_id:vendorId, account_id:accId, amount:vendorAmt, currency, task_sys_id:taskSysId, service_slug:'tour_package' });
+    }
+    if (clientAmt > 0 && clientSysId) {
+        entries.push({ type:'client_sale', client_id:clientSysId, amount:clientAmt, currency, task_sys_id:taskSysId, service_slug:'tour_package' });
+    }
+    if (!entries.length) { pkT('error','কমপক্ষে একটা entry দিন'); return; }
+
+    try {
+        for (const entry of entries) {
+            const res = await fetch(window._pk.cfg.api.saveFinancial, {
+                method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(entry)
+            });
+            const j = await res.json();
+            if (!j.success) { pkT('error', j.message||'Entry failed'); return; }
+        }
+        pkT('success','Financial entries saved!');
+        document.getElementById('pk-fin-modal')?.remove();
+    } catch(e) { pkT('error','Network error'); }
+};
