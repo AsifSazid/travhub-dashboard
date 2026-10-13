@@ -1,37 +1,13 @@
 {
     "hotels": [
         {
-            "sys_id": "THR-HTL-26-00K003",
-            "country_sys_id": "THR-26-CNT-1O",
-            "country_name": "Saudi Arabia",
-            "city_sys_id": "THR-26-CNT-1O-CTS-01",
-            "city_name": "Mecca",
-            "name": "Hotel Al Arabia",
-            "star_rating": 5,
-            "check_in_time": null,
-            "check_out_time": null,
-            "thumb": null
-        },
-        {
             "sys_id": "THR-HTL-26-00K001",
-            "country_sys_id": "THR-26-CNT-1R",
-            "country_name": "South Korea",
-            "city_sys_id": "THR-26-CNT-1R-CTS-01",
-            "city_name": "Seoul",
-            "name": "Ibis Hotel",
-            "star_rating": 3,
-            "check_in_time": "14:00:00",
-            "check_out_time": "11:00:00",
-            "thumb": null
-        },
-        {
-            "sys_id": "THR-HTL-26-00K002",
-            "country_sys_id": "THR-26-CNT-1X",
-            "country_name": "Thailand",
-            "city_sys_id": "THR-26-CNT-1X-CTS-01",
-            "city_name": "Bangkok",
-            "name": "Ibis Hotel",
-            "star_rating": 3,
+            "country_sys_id": "THR-26-CNT-15",
+            "country_name": "Malaysia",
+            "city_sys_id": "THR-26-CNT-15-CTS-01",
+            "city_name": "Kuala Lumpur",
+            "name": "Mercu Summer Suites KLCC by Veedu Hauz",
+            "star_rating": 4,
             "check_in_time": null,
             "check_out_time": null,
             "thumb": null

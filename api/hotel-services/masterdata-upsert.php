@@ -49,6 +49,38 @@ $countrySysId = trim($in['country_sys_id'] ?? '');
 $citySysId    = trim($in['city_sys_id']    ?? '');
 
 try {
+    // ── Auto-resolve country_sys_id from name if not provided ─
+    if (!$countrySysId && !empty($hotel['country'])) {
+        $cName  = trim($hotel['country']);
+        $prefix = substr($cName, 0, 3); // first 3 chars
+        $cStmt  = $pdo->prepare("SELECT sys_id FROM countries WHERE name LIKE ? LIMIT 1");
+        $cStmt->execute([$prefix . '%']);
+        $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+        if ($cRow) $countrySysId = $cRow['sys_id'];
+    }
+
+    // ── Auto-resolve city_sys_id from countries.cities JSON ───
+    if (!$citySysId && !empty($hotel['city']) && $countrySysId) {
+        $cityName = trim($hotel['city']);
+        $cPrefix  = strtolower(substr($cityName, 0, 3));
+        $ctStmt   = $pdo->prepare("SELECT cities FROM countries WHERE sys_id=? LIMIT 1");
+        $ctStmt->execute([$countrySysId]);
+        $ctRow = $ctStmt->fetch(PDO::FETCH_ASSOC);
+        if ($ctRow && !empty($ctRow['cities'])) {
+            $citiesList = json_decode($ctRow['cities'], true) ?? [];
+            foreach ($citiesList as $city) {
+                if (strtolower(substr($city['name'] ?? '', 0, 3)) === $cPrefix) {
+                    $citySysId = $city['sys_id'] ?? '';
+                    break;
+                }
+            }
+        }
+    }
+    // Country required for new hotel insert
+    if (!$matchedHotelId && !$countrySysId) {
+        echo json_encode(['success'=>false,'message'=>'Country not found in master data: ' . ($hotel['country'] ?? '')]); exit;
+    }
+
     $actions = [];
 
     // ── 1. Hotel upsert ───────────────────────────────────────

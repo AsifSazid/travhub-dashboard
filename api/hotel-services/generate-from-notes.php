@@ -124,7 +124,7 @@ Rules: star_rating 1-5 or 0; check_in/check_out YYYY-MM-DD or empty; nights: cal
 SYS;
 
     $userTxt = $combinedText ?: 'Extract hotel quotation data from the attached image.';
-    $res = _htGenCall($system, $userTxt, $imageParts, 2048);
+    $res = _htGenCall($system, $userTxt, $imageParts, 8192);
     if (!$res['success']) htGenJsonOut(['success'=>false,'message'=>$res['error']??'AI failed']);
 
     $extracted = json_decode(_htGenSanitize($res['text']), true);
@@ -210,6 +210,7 @@ SYS;
             $host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $upsertUrl = $scheme . '://' . $host . '/dev/api/hotel-services/masterdata-upsert.php';
 
+            session_write_close(); // Release session lock before internal curl call
             $ch = curl_init();
             curl_setopt_array($ch, [
                 CURLOPT_URL            => $upsertUrl,

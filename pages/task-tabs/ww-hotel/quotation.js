@@ -34,15 +34,11 @@ function _htGenerateCopy() {
     if (nights)  lines.push(`🌙 Duration: *${nights} Night${nights>1?'s':''}*`);
     if (rooms)   lines.push(`🛏 Rooms: *${rooms}*${roomType ? ' — '+roomType : ''}`);
     if (meal)    lines.push(`🍽 Meal Plan: *${meal}*`);
-    const convRate  = +(document.getElementById('ht-q-conv-rate')?.value || 1);
-    const isBdt     = currency.toUpperCase() === 'BDT';
-    const totalBdt  = isBdt ? total : Math.round(total * (convRate > 0 ? convRate : 1));
-    const dispCurr  = isBdt ? 'BDT' : currency;
-
+    // After conv rate input, field values are already in BDT — no extra multiplication
     lines.push('');
     lines.push(`*Price:*`);
-    if (rooms > 1) lines.push(`- Per Room/Night: ${dispCurr} ${fmt(sellRate)}`);
-    lines.push(`- Total: *BDT ${fmt(totalBdt)}*${!isBdt?' ('+dispCurr+' '+fmt(total)+')':''}`);
+    if (rooms > 1) lines.push(`- Per Room/Night: BDT ${fmt(sellRate)}`);
+    lines.push(`- Total: *BDT ${fmt(total)}*`);
 
     return lines.join('\n');
 }
@@ -133,11 +129,8 @@ function _htQCard(q) {
         ${q.city_seg_id ? `<div class="text-[10px] text-orange-400 mt-0.5"><i class="fas fa-map-marker-alt" style="font-size:8px;"></i> ${_hte(q.city_seg_id)}</div>` : ''}
         <div class="flex items-center justify-between mt-1">
             <span class="text-[11px] font-bold text-orange-600">${(() => {
-                const curr = (q.currency||'BDT').toUpperCase();
-                const rate = +(q.conversion_rate||1);
-                const amt  = +(q.total_sell||q.total_net||0);
-                if (curr === 'BDT' || rate <= 1) return curr + ' ' + _htFmtN(amt);
-                return 'BDT ' + _htFmtN(Math.round(amt * rate)) + ' <span style="font-size:9px;color:#9ca3af;">(' + curr + ' ' + _htFmtN(amt) + ')</span>';
+                const amt = +(q.total_sell||q.total_net||0);
+                return 'BDT ' + _htFmtN(amt);
             })()}</span>
             <div style="display:flex;align-items:center;gap:4px;">
                 ${st==='moved_to_booking'?'<i class="fas fa-lock" style="font-size:9px;color:#6b7280;" title="Moved to Booking — locked"></i>':''}
@@ -270,7 +263,7 @@ function _htRenderQBuilder(q) {
                 value="${q?.conversion_rate||''}"
                 placeholder="e.g. 120"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                oninput="htCalcTotals()">
+                oninput="htConvRateChange()">
         </div>
     </div>
 
@@ -442,16 +435,35 @@ window.htOnCurrencyChange = function() {
     htCalcTotals();
 };
 
-window.htCalcTotals = function() {
-    const net    = +(document.getElementById('ht-q-net-rate')?.value  || 0);
-    const markup = +(document.getElementById('ht-q-markup')?.value    || 0);
-    const nights = +(document.getElementById('ht-q-nights')?.value    || 1);
-    const rooms  = +(document.getElementById('ht-q-rooms')?.value     || 1);
-    const curr   = document.getElementById('ht-q-currency')?.value || 'BDT';
-    const convRate = +(document.getElementById('ht-q-conv-rate')?.value || 1);
+// Conv rate type করলে NET/SELL fields BDT তে update হবে
+window.htConvRateChange = function() {
+    const convRate = +(document.getElementById('ht-q-conv-rate')?.value || 0);
+    const curr     = (document.getElementById('ht-q-currency')?.value || 'BDT').toUpperCase();
+    if (convRate > 0 && curr !== 'BDT') {
+        const netEl  = document.getElementById('ht-q-net-rate');
+        const sellEl = document.getElementById('ht-q-sell-rate');
+        // Store original USD value in data attribute (first time only)
+        if (!netEl.dataset.origVal)  netEl.dataset.origVal  = netEl.value;
+        if (!sellEl.dataset.origVal) sellEl.dataset.origVal = sellEl.value;
+        const origNet  = +(netEl.dataset.origVal  || netEl.value  || 0);
+        const origSell = +(sellEl.dataset.origVal || sellEl.value || 0);
+        netEl.value  = Math.round(origNet  * convRate);
+        sellEl.value = Math.round(origSell * convRate);
+    }
+    htCalcTotals();
+};
 
-    // sell_rate = net_rate × (1 + markup/100)
-    // If markup > 0, always recalculate sell from net + markup
+window.htCalcTotals = function() {
+    const net      = +(document.getElementById('ht-q-net-rate')?.value  || 0);
+    const markup   = +(document.getElementById('ht-q-markup')?.value    || 0);
+    const nights   = +(document.getElementById('ht-q-nights')?.value    || 1);
+    const rooms    = +(document.getElementById('ht-q-rooms')?.value     || 1);
+    const curr     = (document.getElementById('ht-q-currency')?.value || 'BDT').trim().toUpperCase();
+    const convRaw  = document.getElementById('ht-q-conv-rate')?.value ?? '';
+    const convRate = convRaw !== '' ? (+(convRaw) || 0) : (curr === 'BDT' ? 1 : 0);
+    const isBdt    = curr === 'BDT';
+    const hasRate  = isBdt || convRate > 0;
+
     const sellEl = document.getElementById('ht-q-sell-rate');
     let sell;
     if (markup > 0 && net > 0) {
@@ -462,22 +474,23 @@ window.htCalcTotals = function() {
         sell = sellManual > 0 ? sellManual : _htCalcSell(net, markup);
     }
 
+    const tn = document.getElementById('ht-q-total-net');
+    const ts = document.getElementById('ht-q-total-sell');
+
+    if (!hasRate) {
+        if (tn) tn.textContent = `⚠️ ${curr} rate দিন`;
+        if (ts) ts.textContent = `⚠️ ${curr} rate দিন`;
+        htUpdateCopyPreview(); return;
+    }
+
+    // Field values are already in their display unit (BDT if converted, orig currency if not)
+    // For total: just multiply field values × nights × rooms — no extra conversion
     const totalNet  = Math.round(net  * nights * rooms);
     const totalSell = Math.round(sell * nights * rooms);
 
-    // BDT conversion
-    const isBdt   = curr.toUpperCase() === 'BDT';
-    const rate     = isBdt ? 1 : (convRate > 0 ? convRate : 1);
-    const dispNet  = isBdt ? totalNet  : Math.round(totalNet  * rate);
-    const dispSell = isBdt ? totalSell : Math.round(totalSell * rate);
-    const dispCurr = isBdt ? 'BDT' : `BDT (${curr} × ${rate})`;
+    if (tn) tn.innerHTML = `BDT ${_htFmtN(totalNet)}`;
+    if (ts) ts.innerHTML = `BDT ${_htFmtN(totalSell)}`;
 
-    const tn = document.getElementById('ht-q-total-net');
-    const ts = document.getElementById('ht-q-total-sell');
-    if (tn) tn.textContent = isBdt ? `BDT ${_htFmtN(totalNet)}` : `${curr} ${_htFmtN(totalNet)} = BDT ${_htFmtN(dispNet)}`;
-    if (ts) ts.textContent = isBdt ? `BDT ${_htFmtN(totalSell)}` : `${curr} ${_htFmtN(totalSell)} = BDT ${_htFmtN(dispSell)}`;
-
-    // Update copy preview
     htUpdateCopyPreview();
 };
 
@@ -488,8 +501,15 @@ window.htSaveQuotation = async function() {
     const rooms    = +(document.getElementById('ht-q-rooms')?.value     || 1);
     const netRate  = +(document.getElementById('ht-q-net-rate')?.value  || 0);
     const markup   = +(document.getElementById('ht-q-markup')?.value    || 0);
-    const sellRate = +(document.getElementById('ht-q-sell-rate')?.value || _htCalcSell(netRate, markup));
-    const currency = document.getElementById('ht-q-currency')?.value || 'BDT';
+    const sellRate   = +(document.getElementById('ht-q-sell-rate')?.value || _htCalcSell(netRate, markup));
+    const currRaw    = (document.getElementById('ht-q-currency')?.value || 'BDT').trim().toUpperCase();
+    const convRateRaw= +(document.getElementById('ht-q-conv-rate')?.value || 0);
+    // Save time: convert to BDT if non-BDT and rate given
+    // Field values already in BDT if conv rate was applied — save as BDT directly
+    const saveCurr     = convRateRaw > 0 ? 'BDT' : currRaw;
+    const saveNetRate  = netRate;
+    const saveSellRate = sellRate;
+    const currency     = saveCurr;
 
     const segEl  = document.getElementById('ht-q-seg-id');
     const citySegId = segEl?.value || '';
@@ -516,13 +536,13 @@ window.htSaveQuotation = async function() {
         max_occupancy:    +(document.getElementById('ht-q-max-adults')?.value||2),
         meal_plan:        document.getElementById('ht-q-meal-plan')?.value  || 'bb',
         rooms,
-        currency,
-        conversion_rate:  +(document.getElementById('ht-q-conv-rate')?.value || 1),
-        net_rate:         netRate,
+        currency:         saveCurr,
+        conversion_rate:  1,
+        net_rate:         saveNetRate,
         markup_pct:       markup,
-        sell_rate:        sellRate,
-        total_net:        Math.round(netRate  * nights * rooms),
-        total_sell:       Math.round(sellRate * nights * rooms),
+        sell_rate:        saveSellRate,
+        total_net:        Math.round(saveNetRate  * nights * rooms),
+        total_sell:       Math.round(saveSellRate * nights * rooms),
         note:             document.getElementById('ht-q-note')?.value || '',
         copy_text:        _htGenerateCopy(),
     };
@@ -551,6 +571,54 @@ window.htDeleteQuotation = async function() {
 window.htMoveToBooking = async function() {
     if (!window._ht.activeQSysId || !confirm('Move to Booking?')) return;
     try {
+        // ── Masterdata upsert (background, non-blocking) ──────
+        const q = (window._ht.data?.ht_quotations ?? []).find(x => x.sys_id === window._ht.activeQSysId);
+        if (q && q.hotel_name && q.room_type) {
+            const upsertUrl = window._ht.cfg.api.hotelServices.replace('endpoints.php', 'masterdata-upsert.php');
+            fetch(upsertUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    matched_hotel_sys_id:     q.hotel_sys_id     || null,
+                    matched_room_type_sys_id: q.room_type_sys_id || null,
+                    hotel: {
+                        name:        q.hotel_name,
+                        city:        q.city        || '',
+                        country:     q.country     || '',
+                        star_rating: q.star_rating || 0,
+                        address: '', phone: '', email: '',
+                    },
+                    room_type: {
+                        room_name:    q.room_type,
+                        bed_config:   q.bed_config   || '',
+                        max_adults:   q.max_occupancy || 2,
+                        max_children: 0,
+                        size_sqm:     q.size_sqm     || null,
+                    },
+                    room_rate: {
+                        meal_plan:           q.meal_plan  || 'bb',
+                        net_cost:            q.net_rate   || 0,
+                        sell_price:          q.sell_rate  || 0,
+                        currency_code:       'BDT',
+                        valid_from:          q.check_in   || '',
+                        valid_to:            q.check_out  || '',
+                        cancellation_policy: '',
+                    },
+                    city_sys_id: null, country_sys_id: null,
+                }),
+            }).then(r => r.json()).then(ud => {
+                if (ud.success && ud.hotel_sys_id) {
+                    window._htApi({
+                        action:           'save_quotation',
+                        quotation_sys_id: window._ht.activeQSysId,
+                        hotel_sys_id:     ud.hotel_sys_id,
+                        room_type_sys_id: ud.room_type_sys_id || '',
+                    }).catch(() => {});
+                }
+            }).catch(() => {});
+        }
+
+        // ── Move to booking ───────────────────────────────────
         const json = await window._htApi({ action:'move_to_booking', quotation_sys_id:window._ht.activeQSysId });
         if (json.status === 'success') {
             htT('success','Moved to Booking!');
@@ -567,8 +635,25 @@ window.htMoveSelectedToBooking = async function() {
     const ids = [...(window._ht.qSelectedIds ?? [])];
     if (!ids.length || !confirm(`Move ${ids.length} quotation(s) to Booking?`)) return;
     let ok = 0;
+    const upsertUrl = window._ht.cfg.api.hotelServices.replace('endpoints.php', 'masterdata-upsert.php');
     for (const id of ids) {
         try {
+            // Masterdata upsert (background)
+            const q = (window._ht.data?.ht_quotations ?? []).find(x => x.sys_id === id);
+            if (q && q.hotel_name && q.room_type) {
+                fetch(upsertUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        matched_hotel_sys_id:     q.hotel_sys_id     || null,
+                        matched_room_type_sys_id: q.room_type_sys_id || null,
+                        hotel: { name:q.hotel_name, city:q.city||'', country:q.country||'', star_rating:q.star_rating||0, address:'', phone:'', email:'' },
+                        room_type: { room_name:q.room_type, bed_config:q.bed_config||'', max_adults:q.max_occupancy||2, max_children:0, size_sqm:q.size_sqm||null },
+                        room_rate: { meal_plan:q.meal_plan||'bb', net_cost:q.net_rate||0, sell_price:q.sell_rate||0, currency_code:'BDT', valid_from:q.check_in||'', valid_to:q.check_out||'', cancellation_policy:'' },
+                        city_sys_id:null, country_sys_id:null,
+                    }),
+                }).catch(() => {});
+            }
             const j = await window._htApi({ action:'move_to_booking', quotation_sys_id:id });
             if (j.status === 'success') ok++;
         } catch(e) {}

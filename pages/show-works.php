@@ -973,9 +973,73 @@ function renderPage() {
     renderServiceModuleTabs(serviceWorks);
     renderConfirmedTasks();
 
-    document.getElementById('sourceLeadContent').innerHTML = workData.lead_sys_id
+    const leadLink = workData.lead_sys_id
         ? `<a href="create-leads.php?id=${esc(workData.lead_sys_id)}" class="font-mono text-xs text-indigo-500 hover:underline">${esc(workData.lead_sys_id)}</a>`
         : '<span class="text-xs text-gray-400">—</span>';
+    const _slSegData   = sp(workData.segment_data) ?? {};
+    const _slCommon    = _slSegData['common'] ?? {};
+    const _slOverviews = [];
+    services.forEach(slug => {
+        const svcData = _slSegData[slug] ?? {};
+        const segs    = svcData.segments ?? [];
+        const info    = SVC_INFO[slug] ?? { icon:'fa-circle', label:slug, color:'text-gray-400' };
+        const rows    = [];
+        if (slug === 'air_ticket') {
+            const segLabels = { one_way:'One Way', round_trip:'Round Trip', multi_city:'Multi City' };
+            if (svcData.segment_type) rows.push(`<span class="font-medium">${segLabels[svcData.segment_type] ?? svcData.segment_type}</span>`);
+            segs.forEach(seg => {
+                const from = seg.from_city || seg.from || '';
+                const to   = seg.to_city   || seg.to   || '';
+                const date = seg.departure_date || seg.travel_date || seg.date || '';
+                if (from || to) rows.push(`${esc(from)} → ${esc(to)}${date?' <span class="text-gray-400">('+fmtDateShort(date)+')</span>':''}`);
+            });
+            const pa = svcData.pax_adult ?? _slCommon.pax_adult ?? '';
+            const pc = svcData.pax_child ?? _slCommon.pax_child ?? '';
+            const pi = svcData.pax_infant ?? _slCommon.pax_infant ?? '';
+            const pp = [pa?`${pa}A`:'', pc?`${pc}C`:'', pi?`${pi}I`:''].filter(Boolean);
+            if (pp.length) rows.push(`<i class="fas fa-users text-gray-300 mr-1"></i>${pp.join(' · ')}`);
+        } else if (slug === 'hotel') {
+            segs.forEach(seg => {
+                if (!seg.city_name && !seg.hotel_name) return;
+                const loc = [seg.hotel_name, seg.city_name].filter(Boolean).join(', ');
+                const meta = [seg.nights||seg.total_nights?`${seg.nights||seg.total_nights}N`:'', seg.rooms?`${seg.rooms} Rooms`:'', seg.check_in?fmtDateShort(seg.check_in):''].filter(Boolean);
+                if (loc) rows.push(`<i class="fas fa-hotel text-pink-400 mr-1"></i>${esc(loc)}`);
+                if (meta.length) rows.push(meta.join(' · '));
+            });
+            const pa = svcData.pax_adult ?? _slCommon.pax_adult ?? '';
+            const pc = svcData.pax_child ?? _slCommon.pax_child ?? '';
+            const pp = [pa?`${pa} Adult`:'', pc?`${pc} Child`:''].filter(Boolean);
+            if (pp.length) rows.push(`<i class="fas fa-users text-gray-300 mr-1"></i>${pp.join(' · ')}`);
+        } else if (slug === 'visa') {
+            segs.forEach(seg => {
+                const country = seg.country_name || '';
+                const cat     = seg.category_name || seg.visa_type || '';
+                if (country) rows.push(`<i class="fas fa-passport text-violet-400 mr-1"></i>${esc(country)}${cat?' · '+esc(cat):''}`);
+            });
+            const pax = svcData.pax ?? _slCommon.pax_adult ?? '';
+            if (pax) rows.push(`<i class="fas fa-users text-gray-300 mr-1"></i>${esc(String(pax))} Pax`);
+        } else if (slug === 'transport') {
+            segs.forEach(seg => {
+                const from = seg.from_location || seg.from || '';
+                const to   = seg.to_location   || seg.to   || '';
+                const date = seg.travel_date   || seg.date || '';
+                if (from || to) rows.push(`<i class="fas fa-van-shuttle text-teal-400 mr-1"></i>${esc(from)} → ${esc(to)}${date?' <span class="text-gray-400">('+fmtDateShort(date)+')</span>':''}`);
+            });
+        } else if (slug === 'umrah') {
+            const dur = svcData.duration || svcData.nights || '';
+            const pax = svcData.pax || _slCommon.pax_adult || '';
+            if (dur) rows.push(`<i class="fas fa-kaaba text-amber-400 mr-1"></i>${esc(String(dur))} Nights`);
+            if (pax) rows.push(`<i class="fas fa-users text-gray-300 mr-1"></i>${esc(String(pax))} Pax`);
+        } else if (slug === 'tour_package') {
+            segs.forEach(seg => { const dest = seg.destination || seg.city_name || ''; if (dest) rows.push(`<i class="fas fa-suitcase-rolling text-green-400 mr-1"></i>${esc(dest)}`); });
+            const nights = svcData.nights || svcData.duration || '';
+            if (nights) rows.push(`${esc(String(nights))} Nights`);
+        }
+        if (rows.length) {
+            _slOverviews.push(`<div class="mt-2 first:mt-0"><div class="text-[10px] font-semibold uppercase tracking-wide ${info.color} mb-1"><i class="fas ${info.icon} mr-1"></i>${info.label}</div><div class="text-xs text-gray-600 space-y-0.5 leading-relaxed">${rows.map(r=>`<div>${r}</div>`).join('')}</div></div>`);
+        }
+    });
+    document.getElementById('sourceLeadContent').innerHTML = leadLink + (_slOverviews.length ? `<div class="mt-2 pt-2 border-t border-gray-100">${_slOverviews.join('')}</div>` : '');
 }
 
 // ════════════════════════════════════════════════════════════

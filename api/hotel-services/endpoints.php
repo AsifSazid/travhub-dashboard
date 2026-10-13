@@ -1,27 +1,6 @@
 <?php
 /**
  * FILE PATH: /api/hotel-services/endpoints.php
- *
- * Hotel Service Module — Single endpoint, action-based routing
- * Mirrors air-tickets/endpoints.php pattern exactly.
- *
- * GET  actions:
- *   ?action=get&work_sys_id=...   → full hotel_services record
- *
- * POST actions (JSON body):
- *   action=init                     → hotel_services row তৈরি করে
- *   action=save_quotation           → ht_quotations array তে add/update
- *   action=update_quotation         → existing quotation update
- *   action=delete_quotation         → ht_quotations থেকে remove
- *   action=move_to_booking          → quotation → booking copy
- *   action=save_booking             → ht_bookings array তে add/update
- *   action=update_booking           → existing booking update
- *   action=delete_booking           → ht_bookings থেকে remove
- *   action=add_to_confirmation      → booking → ht_confirmations push
- *   action=update_confirmation      → confirmation update (ticket nos, note, files)
- *   action=remove_confirmation      → confirmation remove
- *   action=update_conf_status       → pending ↔ confirmed toggle
- *   action=confirm_and_create_task  → confirmation confirm + task create
  */
 
 ob_start();
@@ -58,7 +37,6 @@ if ($method === 'POST') {
     $action = $body['action'] ?? $_POST['action'] ?? $action;
 }
 
-// ── Fetch hotel_services row ───────────────────────────────────
 function _htFetch(PDO $pdo, string $workSysId): ?array
 {
     $s = $pdo->prepare("SELECT * FROM hotel_services WHERE work_sys_id = ? LIMIT 1");
@@ -71,7 +49,6 @@ function _htFetch(PDO $pdo, string $workSysId): ?array
     return $row;
 }
 
-// ── Save row back ──────────────────────────────────────────────
 function _htSave(PDO $pdo, string $workSysId, array $quotations, array $bookings, array $confirmations, ?string $existingMeta, string $userName): void
 {
     $meta = buildMetaData($existingMeta, $userName);
@@ -88,7 +65,6 @@ function _htSave(PDO $pdo, string $workSysId, array $quotations, array $bookings
     ]);
 }
 
-// ── Local ID generator (Q-001, B-001, C-001) ──────────────────
 function _htLocalId(array $existing, string $prefix): string
 {
     $max = 0;
@@ -102,7 +78,6 @@ function _htLocalId(array $existing, string $prefix): string
     return $prefix . '-' . str_pad($max + 1, 3, '0', STR_PAD_LEFT);
 }
 
-// ── Mark mindboard notes as used in quotation ─────────────────
 function _htMarkNotesUsed(PDO $pdo, array $noteIds, string $qSysId): void
 {
     if (empty($noteIds)) return;
@@ -121,7 +96,6 @@ function _htMarkNotesUsed(PDO $pdo, array $noteIds, string $qSysId): void
     }
 }
 
-// ── Auto-create task on confirmation ──────────────────────────
 function _htAutoCreateTask(PDO $pdo, array $conf, string $workSysId, string $userName): ?string
 {
     try {
@@ -134,17 +108,17 @@ function _htAutoCreateTask(PDO $pdo, array $conf, string $workSysId, string $use
         $work = $ws->fetch(PDO::FETCH_ASSOC);
         if (!$work) return 'NO_WORK';
 
-        $ci         = json_decode($work['client_info'], true) ?? [];
-        $clientName = $ci['name']   ?? 'Unknown';
-        $clientSysId= $ci['sys_id'] ?? null;
+        $ci          = json_decode($work['client_info'], true) ?? [];
+        $clientName  = $ci['name']   ?? 'Unknown';
+        $clientSysId = $ci['sys_id'] ?? null;
 
         $sw = $pdo->prepare("SELECT sys_id FROM service_works WHERE work_sys_id=? AND service_slug='hotel' LIMIT 1");
         $sw->execute([$workSysId]);
         $swSysId = $sw->fetchColumn() ?: null;
 
-        $hotelName  = $conf['hotel_name'] ?? '';
-        $checkIn    = $conf['check_in']   ?? '';
-        $taskName   = 'Hotel' . ($hotelName ? ' — ' . $hotelName : '') . ($checkIn ? ' — ' . $checkIn : '');
+        $hotelName = $conf['hotel_name'] ?? '';
+        $checkIn   = $conf['check_in']   ?? '';
+        $taskName  = 'Hotel' . ($hotelName ? ' — ' . $hotelName : '') . ($checkIn ? ' — ' . $checkIn : '');
 
         $ids  = generateV2IDs($pdo, 'tasks');
         $meta = buildMetaData(null, $userName);
@@ -160,94 +134,16 @@ function _htAutoCreateTask(PDO $pdo, array $conf, string $workSysId, string $use
         ]);
 
         return $ids['sys_id'];
-        // ── File upload: booking voucher ─────────────────────────────
-    case 'upload_booking_file': {
-        $bSysId = trim($_POST['booking_sys_id'] ?? '');
-        if (!$bSysId || empty($_FILES['file'])) { echo json_encode(['status'=>'error','message'=>'Missing data']); exit; }
-        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
-        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
-        if (!$r) { echo json_encode(['status'=>'error','message'=>'Record not found']); exit; }
-        $bookings = $r['ht_bookings'] ?? [];
-        $uploadDir = rtrim(defined('UPLOAD_PATH') ? UPLOAD_PATH : ($_SERVER['DOCUMENT_ROOT'].'/uploads'), '/');
-        $uploadDir .= '/hotel-vouchers/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-        $ext  = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
-        $fname = 'booking_'.$bSysId.'_'.time().'.'.$ext;
-        move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir.$fname);
-        $voucherUrl  = '/uploads/hotel-vouchers/'.$fname;
-        $voucherName = $_FILES['file']['name'];
-        foreach ($bookings as &$b) {
-            if ($b['sys_id'] === $bSysId) { $b['voucher_url']=$voucherUrl; $b['voucher_name']=$voucherName; break; }
-        } unset($b);
-        _htSave($pdo, $workSysId, $bookings, $r['ht_confirmations'] ?? [], null, $r['meta_data'] ?? null, $userName);
-        echo json_encode(['status'=>'success','voucher_url'=>$voucherUrl]); exit;
-    }
-
-    case 'remove_booking_file': {
-        $bSysId = trim($body['booking_sys_id'] ?? '');
-        if (!$bSysId) { echo json_encode(['status'=>'error','message'=>'Missing booking_sys_id']); exit; }
-        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
-        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
-        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
-        $bookings = $r['ht_bookings'] ?? [];
-        foreach ($bookings as &$b) {
-            if ($b['sys_id'] === $bSysId) { unset($b['voucher_url'], $b['voucher_name']); break; }
-        } unset($b);
-        _htSave($pdo, $workSysId, $bookings, $r['ht_confirmations'] ?? [], null, $r['meta_data'] ?? null, $userName);
-        echo json_encode(['status'=>'success']); exit;
-    }
-
-    // ── File upload: confirmation voucher ─────────────────────
-    case 'upload_conf_file': {
-        $cSysId = trim($_POST['conf_sys_id'] ?? '');
-        if (!$cSysId || empty($_FILES['file'])) { echo json_encode(['status'=>'error','message'=>'Missing data']); exit; }
-        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
-        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
-        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
-        $confs = $r['ht_confirmations'] ?? [];
-        $uploadDir = rtrim(defined('UPLOAD_PATH') ? UPLOAD_PATH : ($_SERVER['DOCUMENT_ROOT'].'/uploads'), '/');
-        $uploadDir .= '/hotel-vouchers/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-        $ext  = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
-        $fname = 'conf_'.$cSysId.'_'.time().'.'.$ext;
-        move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir.$fname);
-        $voucherUrl  = '/uploads/hotel-vouchers/'.$fname;
-        $voucherName = $_FILES['file']['name'];
-        foreach ($confs as &$c) {
-            if ($c['sys_id'] === $cSysId) { $c['voucher_url']=$voucherUrl; $c['voucher_name']=$voucherName; break; }
-        } unset($c);
-        _htSave($pdo, $workSysId, $r['ht_bookings'] ?? [], $confs, null, $r['meta_data'] ?? null, $userName);
-        echo json_encode(['status'=>'success','voucher_url'=>$voucherUrl]); exit;
-    }
-
-    case 'remove_conf_file': {
-        $cSysId = trim($body['conf_sys_id'] ?? '');
-        if (!$cSysId) { echo json_encode(['status'=>'error','message'=>'Missing conf_sys_id']); exit; }
-        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
-        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
-        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
-        $confs = $r['ht_confirmations'] ?? [];
-        foreach ($confs as &$c) {
-            if ($c['sys_id'] === $cSysId) { unset($c['voucher_url'], $c['voucher_name']); break; }
-        } unset($c);
-        _htSave($pdo, $workSysId, $r['ht_bookings'] ?? [], $confs, null, $r['meta_data'] ?? null, $userName);
-        echo json_encode(['status'=>'success']); exit;
-    }
-
-} catch (Throwable $e) {
+    } catch (Throwable $e) {
         return 'ERR:' . $e->getMessage();
     }
 }
 
-// ─────────────────────────────────────────────────────────────
 // ── Routing ───────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-
 header('Content-Type: application/json; charset=utf-8');
 
 try {
 
-    // ── GET: fetch full hotel_services record ──────────────────
     if ($method === 'GET') {
         $workSysId = trim($_GET['work_sys_id'] ?? '');
         if (!$workSysId) { echo json_encode(['status'=>'error','message'=>'work_sys_id required']); exit; }
@@ -258,13 +154,59 @@ try {
         exit;
     }
 
-    // ── POST ──────────────────────────────────────────────────
+    // File upload handlers (multipart POST)
+    if ($action === 'upload_booking_file') {
+        $bSysId    = trim($_POST['booking_sys_id'] ?? '');
+        $workSysId = trim($_POST['work_sys_id']    ?? '');
+        if (!$bSysId || !$workSysId || empty($_FILES['file'])) { echo json_encode(['status'=>'error','message'=>'Missing data']); exit; }
+        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
+        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { echo json_encode(['status'=>'error','message'=>'Record not found']); exit; }
+        $bookings  = json_decode($r['ht_bookings']      ?? '[]', true) ?: [];
+        $confs     = json_decode($r['ht_confirmations'] ?? '[]', true) ?: [];
+        $uploadDir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/uploads/hotel-vouchers/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $ext   = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        $fname = 'booking_' . $bSysId . '_' . time() . '.' . $ext;
+        move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir . $fname);
+        $voucherUrl  = '/uploads/hotel-vouchers/' . $fname;
+        $voucherName = $_FILES['file']['name'];
+        foreach ($bookings as &$b) {
+            if ($b['sys_id'] === $bSysId) { $b['voucher_url'] = $voucherUrl; $b['voucher_name'] = $voucherName; break; }
+        } unset($b);
+        _htSave($pdo, $workSysId, [], $bookings, $confs, $r['meta_data'] ?? null, $userName);
+        ob_clean(); echo json_encode(['status'=>'success','voucher_url'=>$voucherUrl]); exit;
+    }
+
+    if ($action === 'upload_conf_file') {
+        $cSysId    = trim($_POST['conf_sys_id'] ?? '');
+        $workSysId = trim($_POST['work_sys_id'] ?? '');
+        if (!$cSysId || !$workSysId || empty($_FILES['file'])) { echo json_encode(['status'=>'error','message'=>'Missing data']); exit; }
+        $row = $pdo->prepare("SELECT ht_bookings, ht_confirmations, meta_data FROM hotel_services WHERE work_sys_id=? LIMIT 1");
+        $row->execute([$workSysId]); $r = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
+        $bookings  = json_decode($r['ht_bookings']      ?? '[]', true) ?: [];
+        $confs     = json_decode($r['ht_confirmations'] ?? '[]', true) ?: [];
+        $uploadDir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/uploads/hotel-vouchers/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $ext   = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        $fname = 'conf_' . $cSysId . '_' . time() . '.' . $ext;
+        move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir . $fname);
+        $voucherUrl  = '/uploads/hotel-vouchers/' . $fname;
+        $voucherName = $_FILES['file']['name'];
+        foreach ($confs as &$c) {
+            if ($c['sys_id'] === $cSysId) { $c['voucher_url'] = $voucherUrl; $c['voucher_name'] = $voucherName; break; }
+        } unset($c);
+        _htSave($pdo, $workSysId, $bookings, [], $confs, $r['meta_data'] ?? null, $userName);
+        ob_clean(); echo json_encode(['status'=>'success','voucher_url'=>$voucherUrl]); exit;
+    }
+
+    // JSON POST actions
     $workSysId = trim($body['work_sys_id'] ?? '');
     if (!$workSysId) { echo json_encode(['status'=>'error','message'=>'work_sys_id required']); exit; }
 
     switch ($action) {
 
-        // ── init ──────────────────────────────────────────────
         case 'init': {
             $existing = _htFetch($pdo, $workSysId);
             if ($existing) {
@@ -283,48 +225,43 @@ try {
             break;
         }
 
-        // ── save_quotation ────────────────────────────────────
         case 'save_quotation': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not initialized']); exit; }
-
             $quotations = $row['ht_quotations'];
             $existingId = trim($body['quotation_sys_id'] ?? '');
-
-            // Fields
             $q = [
-                'sys_id'          => $existingId ?: _htLocalId($quotations, 'Q'),
-                'status'          => $existingId ? ($body['status'] ?? 'draft') : 'draft',
-                'hotel_sys_id'    => trim($body['hotel_sys_id']    ?? ''),
-                'hotel_name'      => trim($body['hotel_name']       ?? ''),
-                'city'            => trim($body['city']             ?? ''),
-                'country'         => trim($body['country']          ?? ''),
-                'star_rating'     => (int)($body['star_rating']     ?? 0),
-                'check_in'        => trim($body['check_in']         ?? ''),
-                'check_out'       => trim($body['check_out']        ?? ''),
-                'nights'          => (int)($body['nights']          ?? 0),
-                'room_type'       => trim($body['room_type']        ?? ''),
-                'room_type_sys_id'=> trim($body['room_type_sys_id'] ?? ''),
-                'bed_config'      => trim($body['bed_config']       ?? ''),
-                'size_sqm'        => isset($body['size_sqm']) && $body['size_sqm'] !== '' && $body['size_sqm'] !== null ? (int)$body['size_sqm'] : null,
-                'max_occupancy'   => (int)($body['max_occupancy']   ?? 2),
-                'meal_plan'       => trim($body['meal_plan']        ?? 'bb'),
-                'rooms'           => (int)($body['rooms']           ?? 1),
-                'currency'        => strtoupper(trim($body['currency'] ?? 'BDT')),
-                'net_rate'        => (float)($body['net_rate']      ?? 0),
-                'markup_pct'      => (float)($body['markup_pct']    ?? 0),
-                'sell_rate'       => (float)($body['sell_rate']     ?? 0),
-                'conversion_rate' => (float)($body['conversion_rate'] ?? 1),
-                'total_net'       => (float)($body['total_net']     ?? 0),
-                'total_sell'      => (float)($body['total_sell']    ?? 0),
-                'note'            => trim($body['note']             ?? ''),
-                'source_note_ids' => $body['source_note_ids'] ?? [],
-                'created_at'      => $existingId ? null : date('Y-m-d H:i:s'),
-                'updated_at'      => date('Y-m-d H:i:s'),
-                'created_by'      => $existingId ? null : $userName,
+                'sys_id'           => $existingId ?: _htLocalId($quotations, 'Q'),
+                'status'           => $existingId ? ($body['status'] ?? 'draft') : 'draft',
+                'hotel_sys_id'     => trim($body['hotel_sys_id']     ?? ''),
+                'hotel_name'       => trim($body['hotel_name']        ?? ''),
+                'city'             => trim($body['city']              ?? ''),
+                'country'          => trim($body['country']           ?? ''),
+                'star_rating'      => (int)($body['star_rating']      ?? 0),
+                'check_in'         => trim($body['check_in']          ?? ''),
+                'check_out'        => trim($body['check_out']         ?? ''),
+                'nights'           => (int)($body['nights']           ?? 0),
+                'room_type'        => trim($body['room_type']         ?? ''),
+                'room_type_sys_id' => trim($body['room_type_sys_id']  ?? ''),
+                'bed_config'       => trim($body['bed_config']        ?? ''),
+                'size_sqm'         => isset($body['size_sqm']) && $body['size_sqm'] !== '' && $body['size_sqm'] !== null ? (int)$body['size_sqm'] : null,
+                'max_occupancy'    => (int)($body['max_occupancy']    ?? 2),
+                'meal_plan'        => trim($body['meal_plan']         ?? 'bb'),
+                'rooms'            => (int)($body['rooms']            ?? 1),
+                'currency'         => strtoupper(trim($body['currency'] ?? 'BDT')),
+                'net_rate'         => (float)($body['net_rate']       ?? 0),
+                'markup_pct'       => (float)($body['markup_pct']     ?? 0),
+                'sell_rate'        => (float)($body['sell_rate']      ?? 0),
+                'conversion_rate'  => (float)($body['conversion_rate'] ?? 1),
+                'total_net'        => (float)($body['total_net']      ?? 0),
+                'total_sell'       => (float)($body['total_sell']     ?? 0),
+                'note'             => trim($body['note']              ?? ''),
+                'source_note_ids'  => $body['source_note_ids']        ?? [],
+                'created_at'       => $existingId ? null : date('Y-m-d H:i:s'),
+                'updated_at'       => date('Y-m-d H:i:s'),
+                'created_by'       => $existingId ? null : $userName,
             ];
             if ($existingId) {
-                // update existing
                 $found = false;
                 foreach ($quotations as &$existing) {
                     if ($existing['sys_id'] === $existingId) {
@@ -338,29 +275,22 @@ try {
             } else {
                 $quotations[] = $q;
             }
-
-            // Mark notes as used
             if (!empty($q['source_note_ids'])) _htMarkNotesUsed($pdo, $q['source_note_ids'], $q['sys_id']);
-
             _htSave($pdo, $workSysId, $quotations, $row['ht_bookings'], $row['ht_confirmations'], $row['meta_data'], $userName);
             ob_clean();
             echo json_encode(['status'=>'success','quotation_sys_id'=>$q['sys_id']]);
             break;
         }
 
-        // ── delete_quotation ──────────────────────────────────
         case 'delete_quotation': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
             $qId = trim($body['quotation_sys_id'] ?? '');
             $quotations = array_values(array_filter($row['ht_quotations'], fn($q) => $q['sys_id'] !== $qId));
             _htSave($pdo, $workSysId, $quotations, $row['ht_bookings'], $row['ht_confirmations'], $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success']);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success']); break;
         }
 
-        // ── move_to_booking ───────────────────────────────────
         case 'move_to_booking': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
@@ -368,102 +298,127 @@ try {
             $q   = null;
             foreach ($row['ht_quotations'] as &$quot) {
                 if ($quot['sys_id'] === $qId) { $quot['status'] = 'moved_to_booking'; $q = $quot; break; }
-            }
-            unset($quot);
+            } unset($quot);
             if (!$q) { echo json_encode(['status'=>'error','message'=>'Quotation not found']); exit; }
-
             $bookings = $row['ht_bookings'];
             $bId      = _htLocalId($bookings, 'B');
             $booking  = array_merge($q, [
-                'sys_id'          => $bId,
-                'quotation_sys_id'=> $qId,
-                'status'          => 'tentative',
-                'booking_ref'     => '',
-                'pcn'             => '',
-                'hcn'             => '',
-                'ticket_nos'      => [],
-                'note'            => '',
-                'files_json'      => [],
-                'created_at'      => date('Y-m-d H:i:s'),
-                'created_by'      => $userName,
+                'sys_id'           => $bId,
+                'quotation_sys_id' => $qId,
+                'status'           => 'tentative',
+                'booking_ref'      => '',
+                'pcn'              => '',
+                'hcn'              => '',
+                'ticket_nos'       => [],
+                'note'             => '',
+                'files_json'       => [],
+                'created_at'       => date('Y-m-d H:i:s'),
+                'created_by'       => $userName,
             ]);
             $bookings[] = $booking;
-
             _htSave($pdo, $workSysId, $row['ht_quotations'], $bookings, $row['ht_confirmations'], $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success','booking_sys_id'=>$bId]);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success','booking_sys_id'=>$bId]); break;
         }
 
-        // ── save_booking ──────────────────────────────────────
         case 'save_booking': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
             $bookings   = $row['ht_bookings'];
             $existingId = trim($body['booking_sys_id'] ?? '');
-
             $b = [
-                'sys_id'         => $existingId ?: _htLocalId($bookings, 'B'),
-                'status'         => $body['status']       ?? 'tentative',
-                'hotel_sys_id'   => trim($body['hotel_sys_id']    ?? ''),
-                'hotel_name'     => trim($body['hotel_name']       ?? ''),
-                'city'           => trim($body['city']             ?? ''),
-                'star_rating'    => (int)($body['star_rating']     ?? 0),
-                'check_in'       => trim($body['check_in']         ?? ''),
-                'check_out'      => trim($body['check_out']        ?? ''),
-                'nights'         => (int)($body['nights']          ?? 0),
-                'room_type'      => trim($body['room_type']        ?? ''),
-                'meal_plan'      => trim($body['meal_plan']        ?? 'bb'),
-                'rooms'          => (int)($body['rooms']           ?? 1),
-                'currency'       => strtoupper(trim($body['currency'] ?? 'BDT')),
-                'net_rate'       => (float)($body['net_rate']      ?? 0),
-                'markup_pct'     => (float)($body['markup_pct']    ?? 0),
-                'sell_rate'      => (float)($body['sell_rate']     ?? 0),
-                'conversion_rate'=> (float)($body['conversion_rate'] ?? 1),
-                'total_net'      => (float)($body['total_net']     ?? 0),
-                'total_sell'     => (float)($body['total_sell']    ?? 0),
-                'booking_ref'    => trim($body['booking_ref']      ?? ''),
-                'pcn'            => trim($body['pcn']              ?? ''),
-                'hcn'            => trim($body['hcn']              ?? ''),
-                'ticket_nos'     => $body['ticket_nos']            ?? [],
-                'note'           => trim($body['note']             ?? ''),
-                'files_json'     => $body['files_json']            ?? [],
+                'sys_id'          => $existingId ?: _htLocalId($bookings, 'B'),
+                'status'          => $body['status']          ?? 'tentative',
+                'hotel_sys_id'    => trim($body['hotel_sys_id']    ?? ''),
+                'hotel_name'      => trim($body['hotel_name']       ?? ''),
+                'city'            => trim($body['city']             ?? ''),
+                'star_rating'     => (int)($body['star_rating']     ?? 0),
+                'check_in'        => trim($body['check_in']         ?? ''),
+                'check_out'       => trim($body['check_out']        ?? ''),
+                'nights'          => (int)($body['nights']          ?? 0),
+                'room_type'       => trim($body['room_type']        ?? ''),
+                'meal_plan'       => trim($body['meal_plan']        ?? 'bb'),
+                'rooms'           => (int)($body['rooms']           ?? 1),
+                'currency'        => strtoupper(trim($body['currency'] ?? 'BDT')),
+                'net_rate'        => (float)($body['net_rate']      ?? 0),
+                'markup_pct'      => (float)($body['markup_pct']    ?? 0),
+                'sell_rate'       => (float)($body['sell_rate']     ?? 0),
+                'conversion_rate' => (float)($body['conversion_rate'] ?? 1),
+                'total_net'       => (float)($body['total_net']     ?? 0),
+                'total_sell'      => (float)($body['total_sell']    ?? 0),
+                'booking_ref'     => trim($body['booking_ref']      ?? ''),
+                'pcn'             => trim($body['pcn']              ?? ''),
+                'hcn'             => trim($body['hcn']              ?? ''),
+                'ticket_nos'      => $body['ticket_nos']            ?? [],
+                'note'            => trim($body['note']             ?? ''),
+                'files_json'      => $body['files_json']            ?? [],
                 'quotation_sys_id'=> trim($body['quotation_sys_id'] ?? ''),
-                'updated_at'     => date('Y-m-d H:i:s'),
+                'updated_at'      => date('Y-m-d H:i:s'),
             ];
-
             if ($existingId) {
                 $found = false;
                 foreach ($bookings as &$bk) {
                     if ($bk['sys_id'] === $existingId) { $b['created_at'] = $bk['created_at'] ?? null; $bk = $b; $found = true; break; }
-                }
-                unset($bk);
+                } unset($bk);
                 if (!$found) { echo json_encode(['status'=>'error','message'=>'Booking not found']); exit; }
             } else {
                 $b['created_at'] = date('Y-m-d H:i:s');
                 $b['created_by'] = $userName;
                 $bookings[] = $b;
             }
-
             _htSave($pdo, $workSysId, $row['ht_quotations'], $bookings, $row['ht_confirmations'], $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success','booking_sys_id'=>$b['sys_id']]);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success','booking_sys_id'=>$b['sys_id']]); break;
         }
 
-        // ── delete_booking ────────────────────────────────────
         case 'delete_booking': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
             $bId = trim($body['booking_sys_id'] ?? '');
+            // Find the booking to get its quotation_sys_id
+            $deletedBooking = null;
+            foreach ($row['ht_bookings'] as $b) {
+                if ($b['sys_id'] === $bId) { $deletedBooking = $b; break; }
+            }
             $bookings = array_values(array_filter($row['ht_bookings'], fn($b) => $b['sys_id'] !== $bId));
-            _htSave($pdo, $workSysId, $row['ht_quotations'], $bookings, $row['ht_confirmations'], $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success']);
-            break;
+            // Unlock the source quotation
+            $quotations = $row['ht_quotations'];
+            if ($deletedBooking && !empty($deletedBooking['quotation_sys_id'])) {
+                foreach ($quotations as &$q) {
+                    if ($q['sys_id'] === $deletedBooking['quotation_sys_id'] && ($q['status'] ?? '') === 'moved_to_booking') {
+                        $q['status'] = 'draft';
+                    }
+                }
+                unset($q);
+            }
+            _htSave($pdo, $workSysId, $quotations, $bookings, $row['ht_confirmations'], $row['meta_data'], $userName);
+            ob_clean(); echo json_encode(['status'=>'success']); break;
         }
 
-        // ── add_to_confirmation ───────────────────────────────
+        case 'remove_booking_file': {
+            $bSysId = trim($body['booking_sys_id'] ?? '');
+            if (!$bSysId) { echo json_encode(['status'=>'error','message'=>'Missing booking_sys_id']); exit; }
+            $row = _htFetch($pdo, $workSysId);
+            if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
+            $bookings = $row['ht_bookings'];
+            foreach ($bookings as &$b) {
+                if ($b['sys_id'] === $bSysId) { unset($b['voucher_url'], $b['voucher_name']); break; }
+            } unset($b);
+            _htSave($pdo, $workSysId, $row['ht_quotations'], $bookings, $row['ht_confirmations'], $row['meta_data'], $userName);
+            ob_clean(); echo json_encode(['status'=>'success']); break;
+        }
+
+        case 'remove_conf_file': {
+            $cSysId = trim($body['conf_sys_id'] ?? '');
+            if (!$cSysId) { echo json_encode(['status'=>'error','message'=>'Missing conf_sys_id']); exit; }
+            $row = _htFetch($pdo, $workSysId);
+            if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
+            $confs = $row['ht_confirmations'];
+            foreach ($confs as &$c) {
+                if ($c['sys_id'] === $cSysId) { unset($c['voucher_url'], $c['voucher_name']); break; }
+            } unset($c);
+            _htSave($pdo, $workSysId, $row['ht_quotations'], $row['ht_bookings'], $confs, $row['meta_data'], $userName);
+            ob_clean(); echo json_encode(['status'=>'success']); break;
+        }
+
         case 'add_to_confirmation': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
@@ -471,9 +426,7 @@ try {
             $b   = null;
             foreach ($row['ht_bookings'] as $bk) { if ($bk['sys_id'] === $bId) { $b = $bk; break; } }
             if (!$b) { echo json_encode(['status'=>'error','message'=>'Booking not found']); exit; }
-
             $confs = $row['ht_confirmations'];
-            // Already in confirmation?
             foreach ($confs as $c) {
                 if ($c['booking_sys_id'] === $bId && !in_array($c['status'] ?? '', ['failed','cancelled'])) {
                     echo json_encode(['status'=>'error','message'=>'Already in confirmation']); exit;
@@ -494,14 +447,10 @@ try {
                 'added_by'       => $userName,
             ];
             $confs[] = $conf;
-
             _htSave($pdo, $workSysId, $row['ht_quotations'], $row['ht_bookings'], $confs, $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success','conf_sys_id'=>$cId]);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success','conf_sys_id'=>$cId]); break;
         }
 
-        // ── update_confirmation ───────────────────────────────
         case 'update_confirmation': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
@@ -509,33 +458,26 @@ try {
             $confs = $row['ht_confirmations'];
             foreach ($confs as &$c) {
                 if ($c['sys_id'] === $cId) {
-                    $c['ticket_nos']  = $body['ticket_nos']  ?? $c['ticket_nos'];
-                    $c['note']        = $body['note']        ?? $c['note'];
-                    $c['files_json']  = $body['files_json']  ?? $c['files_json'];
-                    $c['updated_at']  = date('Y-m-d H:i:s');
+                    $c['ticket_nos'] = $body['ticket_nos'] ?? $c['ticket_nos'];
+                    $c['note']       = $body['note']       ?? $c['note'];
+                    $c['files_json'] = $body['files_json'] ?? $c['files_json'];
+                    $c['updated_at'] = date('Y-m-d H:i:s');
                     break;
                 }
-            }
-            unset($c);
+            } unset($c);
             _htSave($pdo, $workSysId, $row['ht_quotations'], $row['ht_bookings'], $confs, $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success']);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success']); break;
         }
 
-        // ── remove_confirmation ───────────────────────────────
         case 'remove_confirmation': {
             $row = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
             $cId  = trim($body['conf_sys_id'] ?? '');
             $confs = array_values(array_filter($row['ht_confirmations'], fn($c) => $c['sys_id'] !== $cId));
             _htSave($pdo, $workSysId, $row['ht_quotations'], $row['ht_bookings'], $confs, $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success']);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success']); break;
         }
 
-        // ── update_conf_status ────────────────────────────────
         case 'update_conf_status': {
             $row   = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
@@ -544,15 +486,11 @@ try {
             $confs = $row['ht_confirmations'];
             foreach ($confs as &$c) {
                 if ($c['sys_id'] === $cId) { $c['status'] = $newSt; $c['updated_at'] = date('Y-m-d H:i:s'); break; }
-            }
-            unset($c);
+            } unset($c);
             _htSave($pdo, $workSysId, $row['ht_quotations'], $row['ht_bookings'], $confs, $row['meta_data'], $userName);
-            ob_clean();
-            echo json_encode(['status'=>'success']);
-            break;
+            ob_clean(); echo json_encode(['status'=>'success']); break;
         }
 
-        // ── confirm_and_create_task ───────────────────────────
         case 'confirm_and_create_task': {
             $row  = _htFetch($pdo, $workSysId);
             if (!$row) { echo json_encode(['status'=>'error','message'=>'Not found']); exit; }
@@ -561,15 +499,11 @@ try {
             $confs = $row['ht_confirmations'];
             foreach ($confs as &$c) {
                 if ($c['sys_id'] === $cId) { $c['status'] = 'confirmed'; $c['confirmed_at'] = date('Y-m-d H:i:s'); $conf = $c; break; }
-            }
-            unset($c);
+            } unset($c);
             if (!$conf) { echo json_encode(['status'=>'error','message'=>'Confirmation not found']); exit; }
-
             _htSave($pdo, $workSysId, $row['ht_quotations'], $row['ht_bookings'], $confs, $row['meta_data'], $userName);
-
             $taskSysId   = _htAutoCreateTask($pdo, $conf, $workSysId, $userName);
             $taskCreated = $taskSysId && strpos($taskSysId, 'ERR:') !== 0 && $taskSysId !== 'NO_WORK';
-
             ob_clean();
             echo json_encode([
                 'status'       => 'success',

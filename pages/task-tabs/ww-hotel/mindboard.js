@@ -614,7 +614,8 @@ window._htGenGenerate = async function(mode) {
     if (!noteIds.length) { htT('error','কমপক্ষে একটা note select করুন'); return; }
     _htShowLoadingModal(mode);
     try {
-        const res = await fetch('/api/hotel-services/generate-from-notes.php', {
+        const genUrl = window._ht.cfg.api.hotelServices.replace('endpoints.php','generate-from-notes.php');
+        const res = await fetch(genUrl, {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ work_sys_id:window._ht.cfg.workSysId, note_sys_ids:noteIds, action:mode }),
         });
@@ -649,7 +650,7 @@ function _htRenderResultModal(mode, data) {
         </div>
         <div style="padding:20px;overflow-y:auto;flex:1;">
             ${mode==='summary' ? _htSummarySectionHtml(data.summary_text) : ''}
-            ${mode==='quotation' ? _htQuotationSectionHtml(data.quotation) : ''}
+            ${mode==='quotation' ? _htQuotationSectionHtml(data.quotation, data) : ''}
         </div>
     </div>`;
 }
@@ -670,7 +671,7 @@ function _htSummarySectionHtml(summaryText) {
     </div>`;
 }
 
-function _htQuotationSectionHtml(q) {
+function _htQuotationSectionHtml(q, data) {
     if (!q) return '<p style="color:#9CA3AF;font-size:12px;">No quotation data</p>';
     return `<div>
         <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:10px;">Hotel Quotation</label>
@@ -756,7 +757,7 @@ window._htSaveGeneratedQuotation = async function() {
             note:             (q.notes || []).join('\n'),
             copy_text:        _htBuildCopyFromGenerated(q),
             source:           'ai_generated',
-            note_sys_ids:     [...(window._ht.selectedNoteIds || [])],
+            source_note_ids:  [...(window._ht.selectedNoteIds || [])],
         };
 
         const res  = await fetch(window._ht.cfg.api.hotelServices, {

@@ -275,6 +275,22 @@ require_once __DIR__ . '/../server/permissions.php';
                         <span class="sidebar-text transition-all duration-300">Fixed Assets</span>
                     </a>
 <?php endif; ?>
+<?php if (canAccess($pdo, 'report_balance_sheet')): ?>
+                    <a href="report-balance-sheet.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'report-balance-sheet.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-scale-balanced mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Balance Sheet</span>
+                    </a>
+<?php endif; ?>
+<?php if (canAccess($pdo, 'report_ait')): ?>
+                    <a href="report-ait.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'report-ait.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-percent mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">AIT</span>
+                    </a>
+<?php endif; ?>
                     <div class="border-t border-slate-600 my-2"></div>
                     <p class="px-3 text-[10px] uppercase tracking-wide text-gray-500 sidebar-text">Operational Reports</p>
                     <a href="report-kpi.php"
