@@ -30,9 +30,10 @@ const MAX_BYTES    = 100 * 1024 * 1024;
 const VALID_DOC_TYPES = [
     'passport', 'nid', 'visa', 'visa_stamp',
     'air_ticket', 'hotel_voucher', 'invitation_letter',
-    'bank_statement', 'sponsor_letter',
-    'employment_letter', 'education_certificate',
-    'medical_report', 'vaccination_card', 'marriage_certificate', 'birth_certificate',
+    'bank_statement', 'bank_solvency', 'sponsor_letter',
+    'employment_letter', 'office_id', 'visiting_card', 'noc',
+    'education_certificate', 'medical_report', 'vaccination_card',
+    'marriage_certificate', 'birth_certificate',
     'photo', 'signature', 'other',
 ];
 
@@ -378,14 +379,17 @@ function buildClassifyPrompt(array $traveler, string $passportStatusHint): strin
 Analyze this document for traveler: {$name}. {$hint}
 
 Document type guidance:
-- "employment_letter" covers ANY document proving employment/job/business role — formal employment letters, NOC letters, business cards / visiting cards showing a job title and company, company ID cards, appointment letters
+- "employment_letter" covers formal employment letters and appointment letters ONLY
+- "office_id" covers company/employee ID cards (front or back)
+- "visiting_card" covers business cards showing name, title, company
+- "noc" covers No Objection Certificate letters
 - "education_certificate" covers degrees, diplomas, transcripts, school/university certificates
 
 For employment_letter (including business cards), doc_data MUST include these exact keys when the information is visible: "designation" (job title / position, e.g. "Managing Director"), "employer_name" (company/organization name).
 
 Return ONLY a JSON object:
 {
-  "doc_type": "<passport|nid|visa|visa_stamp|air_ticket|hotel_voucher|invitation_letter|bank_statement|sponsor_letter|employment_letter|education_certificate|medical_report|vaccination_card|marriage_certificate|birth_certificate|photo|signature|other>",
+  "doc_type": "<passport|nid|visa|visa_stamp|air_ticket|hotel_voucher|invitation_letter|bank_statement|sponsor_letter|employment_letter|education_certificate|medical_report|vaccination_card|marriage_certificate|birth_certificate|photo|signature|other|bank_solvency|office_id|visiting_card|noc>",
   "doc_number": "<document number or null>",
   "previous_passport_no": "<if this is a passport and it shows a 'Previous/Old Passport No.' field or annotation, extract that number here, else null>",
   "suggested_filename_stem": "<short_snake_case_name>",

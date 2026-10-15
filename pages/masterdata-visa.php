@@ -3,6 +3,7 @@
 include_once('./authenticate.php');
 $ip_port     = @file_get_contents('../ippath.txt') ?: 'http://103.104.219.3:898';
 $visaApi     = $ip_port . 'api/masterdata/visa/endpoints.php';
+$docTypesApi = $ip_port . 'api/travelers/doc-types.php';
 $countriesApi = $ip_port . 'api/masterdata/countries/endpoints.php';
 ?>
 <!DOCTYPE html>
@@ -95,7 +96,7 @@ body{background:var(--surface);}
 <?php include '../elements/header.php'; ?>
 <?php include '../elements/aside.php'; ?>
 
-<main id="mainContent" class="pt-16 pl-16 mt-16 transition-all duration-300">
+<main id="mainContent" class="transition-all duration-300 pl-64 mt-16" style="padding-top:64px;">
 <div style="padding:24px;max-width:1200px;">
 
   <!-- Page header -->
@@ -311,12 +312,14 @@ body{background:var(--surface);}
 </div>
 
 <script>
-const VISA_API     = '<?php echo $visaApi; ?>';
-const COUNTRY_API  = '<?php echo $countriesApi; ?>';
+const VISA_API      = '<?php echo $visaApi; ?>';
+const COUNTRY_API   = '<?php echo $countriesApi; ?>';
+const DOC_TYPES_API = '<?php echo $docTypesApi; ?>';
 
 // ── shared lookup data
 let _types      = [];
 let _categories = [];
+let _docTypes   = []; // distinct doc_type values from traveler_documents
 let _countries  = [];
 
 // ── Page tab switch ───────────────────────────────────────
@@ -546,11 +549,32 @@ function _renderProfDocs(prof) {
              ondrop="_docDrop(event)">
             <span class="doc-handle"><i class="fa fa-grip-vertical"></i></span>
             <span style="font-size:.75rem;color:var(--muted);min-width:20px;">${i+1}.</span>
-            <input type="text" value="${_esc(d.doc)}"
+            <input type="text" value="${_esc(d.doc)}" class="doc-name-input"
                    style="flex:1;border:none;outline:none;font-size:.85rem;background:transparent;"
                    onchange="_profDocChange('${prof}', ${i}, 'doc', this.value)" />
-            <input type="text" value="${_esc(d.note ?? '')}" placeholder="note (optional)"
-                   style="width:180px;border:none;outline:none;font-size:.78rem;color:var(--muted);background:transparent;"
+            <!-- Required / Optional toggle -->
+            <div style="display:flex;align-items:center;border:1px solid #E2E8F0;border-radius:6px;overflow:hidden;flex-shrink:0;">
+                <button onclick="_profDocChange('${prof}',${i},'required',true);_renderProfDocs('${prof}')"
+                        style="padding:3px 9px;font-size:.72rem;font-weight:600;border:none;cursor:pointer;
+                               background:${d.required!==false?'#DC2626':'#fff'};
+                               color:${d.required!==false?'#fff':'#94A3B8'};">
+                    Required
+                </button>
+                <button onclick="_profDocChange('${prof}',${i},'required',false);_renderProfDocs('${prof}')"
+                        style="padding:3px 9px;font-size:.72rem;font-weight:600;border:none;cursor:pointer;
+                               background:${d.required===false?'#64748B':'#fff'};
+                               color:${d.required===false?'#fff':'#94A3B8'};">
+                    Optional
+                </button>
+            </div>
+            <select class="doc-typekey-input"
+                    onchange="_profDocChange('${prof}', ${i}, 'doc_type_key', this.value)"
+                    style="border:none;outline:none;font-size:.72rem;color:#6366f1;background:transparent;
+                           cursor:pointer;max-width:150px;">
+                ${_buildDocTypeOptions(d.doc_type_key??'')}
+            </select>
+            <input type="text" value="${_esc(d.note ?? '')}" placeholder="note (optional)" class="doc-note-input"
+                   style="width:110px;border:none;outline:none;font-size:.78rem;color:var(--muted);background:transparent;"
                    onchange="_profDocChange('${prof}', ${i}, 'note', this.value)" />
             <button onclick="_removeDoc('${prof}', ${i})"
                     style="background:none;border:none;cursor:pointer;color:#EF4444;font-size:.85rem;padding:2px 4px;">
@@ -566,7 +590,7 @@ function _renderProfDocs(prof) {
 }
 
 function _addDoc(prof) {
-    _profDocs[prof].push({ seq: _profDocs[prof].length + 1, doc: '', note: '' });
+    _profDocs[prof].push({ seq: _profDocs[prof].length + 1, doc: '', note: '', required: true, doc_type_key: '' });
     _renderProfDocs(prof);
 }
 
@@ -733,9 +757,13 @@ async function _saveSvc() {
     Object.keys(_profDocs).forEach(prof => {
         const panel = document.getElementById('prof-tab-' + prof);
         panel.querySelectorAll('.doc-item').forEach((el, i) => {
-            const inputs = el.querySelectorAll('input[type="text"]');
-            if (inputs[0]) _profDocs[prof][i].doc  = inputs[0].value;
-            if (inputs[1]) _profDocs[prof][i].note = inputs[1].value;
+            const docInput     = el.querySelector('input.doc-name-input');
+            const noteInput    = el.querySelector('input.doc-note-input');
+            const typeKeyInput = el.querySelector('select.doc-typekey-input');
+            if (docInput)     _profDocs[prof][i].doc          = docInput.value;
+            if (noteInput)    _profDocs[prof][i].note         = noteInput.value;
+            if (typeKeyInput) _profDocs[prof][i].doc_type_key = typeKeyInput.value.trim();
+            // required is already updated via _profDocChange on button click
         });
     });
 
@@ -818,7 +846,21 @@ async function _ensureLookups() {
     if (!_types.length)     promises.push(fetch(`${VISA_API}?action=list_types`).then(r=>r.json()).then(j=>{ _types=j.data??[]; }));
     if (!_categories.length) promises.push(fetch(`${VISA_API}?action=list_categories`).then(r=>r.json()).then(j=>{ _categories=j.data??[]; }));
     if (!_countries.length)  promises.push(fetch(`${COUNTRY_API}?action=all`).then(r=>r.json()).then(j=>{ _countries=j.data??j??[]; }));
+    if (!_docTypes.length)   promises.push(fetch(DOC_TYPES_API).then(r=>r.json()).then(j=>{ _docTypes=j.data??[]; /* [{doc_type, display_name, smb_folder}] */ }));
     await Promise.all(promises);
+}
+
+/* Build doc_type dropdown options from doc_type_registry */
+function _buildDocTypeOptions(selected) {
+    const blank = `<option value="">-- select doc type --</option>`;
+    if (!_docTypes.length) {
+        return blank + (selected ? `<option value="${selected}" selected>${selected}</option>` : '');
+    }
+    return blank + _docTypes.map(t =>
+        `<option value="${t.doc_type}" ${t.doc_type===(selected??'')?'selected':''}>
+            ${t.display_name}
+        </option>`
+    ).join('');
 }
 
 function _fillCountryDropdown(id) {

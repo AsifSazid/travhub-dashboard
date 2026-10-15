@@ -1417,10 +1417,12 @@ function loadServiceModule(slug, swSysId) {
                 listDocuments:   API.listDocuments,
                 notes:           API.notes,
                 workTravelers:   API.workTravelers,
+                allTravelers:    API.travelers,
                 saveFinancial:   API.saveFinancial,
                 allVendors:      API.allVendors,
                 allAccounts:     API.allAccounts,
                 travelerDocViewer: API.travelers,
+                allTravelers:    API.travelers,
             },
         });
     } else if (slug === 'tour_package') {
@@ -2119,8 +2121,12 @@ async function travelerSearchSelect(travelerSysId, name) {
         const r = await fetch(API.workTravelers, {method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action:'link', work_sys_id:WORK_SYS_ID, traveler_sys_id:travelerSysId})});
         const j = await r.json();
-        if (j.status === 'success') { showToast('success', `${name} linked!`); await loadLinkedTravelers(); }
-        else showToast('error', j.message ?? 'Failed');
+        if (j.status === 'success') {
+            showToast('success', `${name} linked!`);
+            await loadLinkedTravelers();
+            // Refresh visa module if active
+            if (typeof window._vsRefreshTravelers === 'function') window._vsRefreshTravelers();
+        } else showToast('error', j.message ?? 'Failed');
     } catch { showToast('error', 'Network error'); }
 }
 
