@@ -48,7 +48,7 @@ if ($method === 'POST') {
 
 // ── Fetch row ─────────────────────────────────────────────────
 function _tsFetch(PDO $pdo, string $workSysId): ?array {
-    $s = $pdo->prepare("SELECT * FROM transport_services WHERE work_sys_id=? LIMIT 1");
+    $s = $pdo->prepare("SELECT * FROM transport_work_services WHERE work_sys_id=? LIMIT 1");
     $s->execute([$workSysId]);
     $row = $s->fetch(PDO::FETCH_ASSOC);
     if (!$row) return null;
@@ -60,7 +60,7 @@ function _tsFetch(PDO $pdo, string $workSysId): ?array {
 // ── Save row ──────────────────────────────────────────────────
 function _tsSave(PDO $pdo, string $workSysId, array $quotations, array $confirmations, ?string $existingMeta, string $userName): void {
     $meta = buildMetaData($existingMeta, $userName);
-    $pdo->prepare("UPDATE transport_services SET ts_quotations=?, ts_confirmations=?, meta_data=? WHERE work_sys_id=?")
+    $pdo->prepare("UPDATE transport_work_services SET ts_quotations=?, ts_confirmations=?, meta_data=? WHERE work_sys_id=?")
         ->execute([
             json_encode($quotations,    JSON_UNESCAPED_UNICODE),
             json_encode($confirmations, JSON_UNESCAPED_UNICODE),
@@ -158,9 +158,9 @@ try {
         case 'init': {
             $existing = _tsFetch($pdo, $workSysId);
             if ($existing) { ob_clean(); echo json_encode(['status'=>'success','message'=>'Already initialized','data'=>$existing]); exit; }
-            $ids  = generateV2IDs($pdo, 'transport_services_module');
+            $ids  = generateV2IDs($pdo, 'transport_work_services_module');
             $meta = buildMetaData(null, $userName);
-            $pdo->prepare("INSERT INTO transport_services (uuid, sys_id, work_sys_id, ts_quotations, ts_confirmations, meta_data) VALUES (?,?,?,'[]','[]',?)")
+            $pdo->prepare("INSERT INTO transport_work_services (uuid, sys_id, work_sys_id, ts_quotations, ts_confirmations, meta_data) VALUES (?,?,?,'[]','[]',?)")
                 ->execute([$ids['uuid'], $ids['sys_id'], $workSysId, $meta]);
             ob_clean(); echo json_encode(['status'=>'success','sys_id'=>$ids['sys_id']]); break;
         }

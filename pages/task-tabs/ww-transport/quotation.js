@@ -7,7 +7,9 @@ window._ts.legs = [];
 
 // ── Generate transport client copy text ───────────────────────
 function _tsGenerateCopy() {
-    const currency = document.getElementById('ts-q-currency')?.value || 'BDT';
+    const currRaw  = (document.getElementById('ts-q-currency')?.value || 'BDT').toUpperCase();
+    const convRate = +(document.getElementById('ts-q-conv-rate')?.value || 0);
+    const currency = (currRaw !== 'BDT' && convRate > 0) ? 'BDT' : currRaw;
     const markup   = +(document.getElementById('ts-q-markup')?.value  || 0);
     const legs     = window._ts.legs ?? [];
     const fmt      = n => (+n||0).toLocaleString('en-BD');
@@ -29,6 +31,7 @@ function _tsGenerateCopy() {
         if (type)  lines.push(`  🚗 ${type}${veh?' — '+veh:''}`);
         if (pax)   lines.push(`  👥 Pax: ${pax}  |  Qty: ${qty}`);
         lines.push(`  💰 ${currency} ${fmt(sell)} × ${qty} = *${currency} ${fmt(total)}*`);
+        if (pax > 1) lines.push(`  👤 Per Pax: ${currency} ${fmt(Math.round(total / pax))}`);
         lines.push('');
     });
 
@@ -118,13 +121,19 @@ function _tsRenderQBuilder(q) {
     const curr = q?.currency || 'BDT';
 
     builder.innerHTML = `
-    <!-- Currency + Markup global -->
-    <div class="grid grid-cols-3 gap-3 mb-4">
+    <!-- Currency + Conv Rate + Markup global -->
+    <div class="grid grid-cols-4 gap-3 mb-4">
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Currency</label>
             <input id="ts-q-currency" value="${_tse(curr)}" placeholder="BDT"
-                oninput="tsUpdateTotals()"
+                oninput="tsOnCurrencyChange()"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-sky-400">
+        </div>
+        <div id="ts-conv-rate-wrap" style="${(curr||'BDT').toUpperCase()!=='BDT'?'':'display:none'}">
+            <label class="text-xs font-bold text-orange-500 uppercase block mb-1">Rate to BDT <span class="text-[9px] normal-case text-gray-400">(required)</span></label>
+            <input type="number" id="ts-q-conv-rate" value="${_tse(q?.conversion_rate&&q.conversion_rate!==1?q.conversion_rate:'')}" placeholder="e.g. 128"
+                oninput="tsOnConvRateInput()"
+                class="w-full px-3 py-2 border border-orange-300 bg-orange-50 rounded-lg text-sm focus:outline-none focus:border-orange-400">
         </div>
         <div>
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Global Markup %</label>
@@ -313,19 +322,68 @@ window.tsApplyGlobalMarkup = function() {
     tsUpdateTotals();
 };
 
+window.tsOnCurrencyChange = function() {
+    const curr = (document.getElementById('ts-q-currency')?.value || 'BDT').toUpperCase();
+    const wrap = document.getElementById('ts-conv-rate-wrap');
+    if (wrap) wrap.style.display = curr !== 'BDT' ? '' : 'none';
+    if (curr === 'BDT') {
+        const convEl = document.getElementById('ts-q-conv-rate');
+        if (convEl) convEl.value = '';
+    }
+    tsUpdateTotals();
+};
+
+window.tsOnConvRateInput = function() {
+    const convRate = +(document.getElementById('ts-q-conv-rate')?.value || 0);
+    const curr = (document.getElementById('ts-q-currency')?.value || 'BDT').toUpperCase();
+    if (convRate <= 0 || curr === 'BDT') { tsUpdateTotals(); return; }
+
+    window._ts.legs.forEach((l, i) => {
+        const netEl  = document.querySelector(`.ts-leg-field[data-idx="${i}"][data-key="net_rate"]`);
+        const sellEl = document.querySelector(`.ts-leg-sell[data-idx="${i}"]`);
+
+        // Store original value on first conversion
+        if (netEl && !netEl.dataset.origVal)  netEl.dataset.origVal  = netEl.value;
+        if (sellEl && !sellEl.dataset.origVal) sellEl.dataset.origVal = sellEl.value;
+
+        const origNet  = +(netEl?.dataset.origVal  || l.net_rate  || 0);
+        const origSell = +(sellEl?.dataset.origVal || l.sell_rate || 0);
+
+        const newNet  = Math.round(origNet  * convRate);
+        const newSell = origSell > 0 ? Math.round(origSell * convRate) : newNet;
+
+        l.net_rate  = newNet;
+        l.sell_rate = newSell;
+        if (netEl)  netEl.value  = newNet;
+        if (sellEl) sellEl.value = newSell;
+    });
+
+    tsUpdateTotals();
+};
+
 window.tsUpdateTotals = function() {
-    const curr = document.getElementById('ts-q-currency')?.value || 'BDT';
+    const currRaw  = (document.getElementById('ts-q-currency')?.value || 'BDT').toUpperCase();
+    const convRate = +(document.getElementById('ts-q-conv-rate')?.value || 0);
+    // If non-BDT and conv rate given → display as BDT
+    const dispCurr = (currRaw !== 'BDT' && convRate > 0) ? 'BDT' : currRaw;
+
     // Re-read sell rates from DOM
     document.querySelectorAll('.ts-leg-sell').forEach(el => {
         const idx = +el.dataset.idx;
         if (window._ts.legs[idx]) window._ts.legs[idx].sell_rate = +(el.value||0);
     });
-    const totalNet  = window._ts.legs.reduce((s,l) => s + (+(l.net_rate||0)) * (+(l.qty||1)), 0);
+    document.querySelectorAll('.ts-leg-field[data-key="net_rate"]').forEach(el => {
+        const idx = +el.dataset.idx;
+        if (window._ts.legs[idx]) window._ts.legs[idx].net_rate = +(el.value||0);
+    });
+
+    const totalNet  = window._ts.legs.reduce((s,l) => s + (+(l.net_rate||0))  * (+(l.qty||1)), 0);
     const totalSell = window._ts.legs.reduce((s,l) => s + (+(l.sell_rate||0)) * (+(l.qty||1)), 0);
     const tn = document.getElementById('ts-total-net');
     const ts = document.getElementById('ts-total-sell');
-    if (tn) tn.textContent = `${curr} ${_tsFmt(totalNet)}`;
-    if (ts) ts.textContent = `${curr} ${_tsFmt(totalSell)}`;
+    if (tn) tn.textContent = `${dispCurr} ${_tsFmt(totalNet)}`;
+    if (ts) ts.textContent = `${dispCurr} ${_tsFmt(totalSell)}`;
+    tsUpdateCopyPreview();
 };
 
 // ── Save / Delete / Send ──────────────────────────────────────
@@ -340,9 +398,11 @@ window.tsSaveQuotation = async function() {
         const idx = +el.dataset.idx;
         if (window._ts.legs[idx]) window._ts.legs[idx].sell_rate = +(el.value||0);
     });
-    const markup   = +(document.getElementById('ts-q-markup')?.value||0);
-    const currency = document.getElementById('ts-q-currency')?.value || 'BDT';
-    const note     = document.getElementById('ts-q-note')?.value || '';
+    const markup    = +(document.getElementById('ts-q-markup')?.value||0);
+    const currRaw   = (document.getElementById('ts-q-currency')?.value || 'BDT').trim().toUpperCase();
+    const convRate  = +(document.getElementById('ts-q-conv-rate')?.value || 0);
+    const currency  = (currRaw !== 'BDT' && convRate > 0) ? 'BDT' : currRaw;
+    const note      = document.getElementById('ts-q-note')?.value || '';
     window._ts.legs.forEach(l => l.markup_pct = markup);
 
     if (!window._ts.legs.length) { tsT('error','কমপক্ষে একটা leg দিন'); return; }
@@ -369,6 +429,23 @@ window.tsDeleteQuotation = async function() {
 window.tsSendToConfirmation = async function(qSysId) {
     if (!confirm('Send to Confirmation?')) return;
     try {
+        // ── Masterdata upsert per leg (background, non-blocking) ─
+        const q = (window._ts.data?.ts_quotations ?? []).find(x => x.sys_id === qSysId);
+        if (q && (q.legs ?? []).length) {
+            const upsertUrl = window._ts.cfg.api.transportServices
+                .replace('endpoints.php', 'masterdata-upsert.php');
+            fetch(upsertUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    legs:           q.legs,
+                    country_name:   q.country        || '',
+                    country_sys_id: q.country_sys_id || '',
+                }),
+            }).catch(() => {});
+        }
+
+        // ── Send to confirmation ──────────────────────────────
         const json = await window._tsApi({ action:'add_to_confirmation', quotation_sys_id:qSysId });
         if (json.status==='success') {
             tsT('success','Sent to Confirmation!');

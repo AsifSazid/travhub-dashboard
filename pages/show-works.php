@@ -151,7 +151,7 @@ $deepLinkSw = $_GET['sw'] ?? '';
                     <div class="flex border-b border-gray-100 bg-gray-50 px-2 pt-1.5 sticky top-0 z-20" id="svcModuleTabBar" style="border-radius:12px 12px 0 0;"></div>
                     <!-- Service info strip -->
                     <div id="svcInfoStrip" class="hidden items-center gap-3 px-4 py-1.5 border-b border-gray-100 bg-gray-50 text-xs text-gray-500 flex-wrap sticky z-10" style="top:42px;"></div>
-                    <div id="at-tab-mount"></div>
+                    <div id="at-tab-mount" style="min-height:420px;"></div>
                     <div id="svc-module-empty" class="hidden p-10 text-center text-gray-400 text-sm">
                         <i class="fas fa-layer-group text-2xl mb-2 block opacity-30"></i>
                         No services yet.

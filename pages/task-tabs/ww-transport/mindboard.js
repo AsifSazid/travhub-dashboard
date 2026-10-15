@@ -56,6 +56,38 @@ window._renderTsMindboard = function() {
 
     tsLoadNotes();
 
+    // ── Paste + Drag-drop image ───────────────────────────────
+    const ta = document.getElementById('ts-note-text');
+    if (ta) {
+        ta.addEventListener('paste', function(e) {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    window._ts.pendingFiles = [file];
+                    const mp = document.getElementById('ts-multi-preview');
+                    if (mp) { mp.style.display='flex'; mp.innerHTML=`<span style="display:inline-flex;align-items:center;gap:4px;background:#F0F9FF;border-radius:20px;padding:2px 8px;font-size:.72rem;color:#0284C7;">📋 pasted image</span>`; }
+                    break;
+                }
+            }
+        });
+        ta.addEventListener('dragover', function(e) { e.preventDefault(); this.style.borderColor='#0EA5E9'; });
+        ta.addEventListener('dragleave', function(e) { e.preventDefault(); this.style.borderColor=''; });
+        ta.addEventListener('drop', function(e) {
+            e.preventDefault(); this.style.borderColor='';
+            const files = [...(e.dataTransfer.files || [])];
+            if (!files.length) return;
+            window._ts.pendingFiles = files;
+            const mp = document.getElementById('ts-multi-preview');
+            if (mp) {
+                mp.style.display = 'flex';
+                mp.innerHTML = files.map(f => `<span style="display:inline-flex;align-items:center;gap:4px;background:#F0F9FF;border-radius:20px;padding:2px 8px;font-size:.72rem;color:#0284C7;">${_tse(f.name.length>20?f.name.slice(0,18)+'…':f.name)}</span>`).join('');
+            }
+        });
+    }
+
     // ── Portal Panel ──
     if (!panel.querySelector('#ts-portal-panel')) {
         const saved   = localStorage.getItem('ts_portal_width');
@@ -177,64 +209,164 @@ let _tsCurrentQuotation = null, _tsCurrentNoteIds = [];
 function _tsRenderQuotationModal(ov, quotation, noteIds) {
     _tsCurrentQuotation = quotation;
     _tsCurrentNoteIds   = noteIds;
-    const legs = quotation.legs || [];
+    const opts = quotation.legs || [];
     const curr = quotation.currency || 'BDT';
-    const totalNet = legs.reduce((s,l) => s + (+(l.net_rate||0) * +(l.qty||1)), 0);
 
     ov.innerHTML = `
-    <div style="background:#fff;border-radius:16px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F1F5F9;flex-shrink:0;">
-            <h3 style="font-size:15px;font-weight:700;color:#1F2937;margin:0;"><i class="fas fa-van-shuttle mr-2" style="color:#0284C7;"></i>Generated Transport Quotation</h3>
+            <h3 style="font-size:15px;font-weight:700;color:#1F2937;margin:0;"><i class="fas fa-van-shuttle mr-2" style="color:#0284C7;"></i>Transport Quotation Options</h3>
             <button onclick="document.getElementById('ts-gen-modal-ov')?.remove()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button>
         </div>
         <div style="padding:20px;overflow-y:auto;flex:1;">
-            <!-- Legs preview -->
-            <div style="margin-bottom:16px;">
-                <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:8px;">Legs (${legs.length})</div>
-                ${legs.map((l,i) => `
-                <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:12px;">
-                    <div style="font-weight:700;color:#0369A1;margin-bottom:4px;">Leg ${i+1}: ${_tse(l.from||'?')} → ${_tse(l.to||'?')}</div>
-                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;color:#374151;">
-                        <div><span style="color:#9CA3AF;">Date</span><br><b>${_tse(l.date||'—')}</b></div>
-                        <div><span style="color:#9CA3AF;">Time</span><br><b>${_tse(l.time||'—')}</b></div>
-                        <div><span style="color:#9CA3AF;">Vehicle</span><br><b>${_tse(TS_VEHICLE_CLASSES[l.vehicle_class]||l.vehicle_class||'—')}</b></div>
-                        <div><span style="color:#9CA3AF;">Pax</span><br><b>${l.pax||1}</b></div>
-                        <div><span style="color:#9CA3AF;">Rate</span><br><b>${curr} ${_tsFmt(l.net_rate||0)}</b></div>
-                        <div><span style="color:#9CA3AF;">Qty</span><br><b>${l.qty||1}</b></div>
-                        <div><span style="color:#9CA3AF;">Type</span><br><b>${_tse(l.transfer_type||'private')}</b></div>
-                        <div><span style="color:#9CA3AF;">Subtotal</span><br><b>${curr} ${_tsFmt((+(l.net_rate||0))*(+(l.qty||1)))}</b></div>
-                    </div>
-                    ${l.note ? `<div style="margin-top:4px;color:#6B7280;font-size:11px;">${_tse(l.note)}</div>` : ''}
-                </div>`).join('')}
-                <div style="text-align:right;font-size:13px;font-weight:700;color:#0369A1;margin-top:4px;">Total Net: ${curr} ${_tsFmt(totalNet)}</div>
+            <!-- Currency + select all -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+                <label style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;">Currency</label>
+                <input id="ts-gen-currency" value="${_tse(curr)}" maxlength="3"
+                    style="width:65px;border:1.5px solid #BAE6FD;border-radius:6px;padding:4px 8px;font-size:13px;font-weight:700;color:#0369A1;text-transform:uppercase;">
+                <button onclick="_tsGenSelectAll(true)"
+                    style="padding:4px 10px;font-size:11px;border:1px solid #BAE6FD;border-radius:6px;background:#EFF6FF;color:#0369A1;cursor:pointer;">Select All</button>
+                <button onclick="_tsGenSelectAll(false)"
+                    style="padding:4px 10px;font-size:11px;border:1px solid #e5e7eb;border-radius:6px;background:#f9fafb;color:#6B7280;cursor:pointer;">Deselect All</button>
+                <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">✏️ Edit names/prices if needed, then select options to save</span>
             </div>
 
-            <button onclick="tsSaveGeneratedQuotation()" style="width:100%;padding:10px;font-size:13px;font-weight:600;background:#0284C7;color:#fff;border:none;border-radius:10px;cursor:pointer;">
-                <i class="fas fa-save mr-1.5"></i>Save as Quotation
+            <!-- Options (same route, different vehicle/price) -->
+            <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:8px;">
+                OPTIONS (${opts.length}) — select one or more to save as separate quotations
+            </div>
+            ${opts.map((l,i) => `
+            <div style="background:#F0F9FF;border:2px solid #BAE6FD;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12px;transition:border-color .15s;" id="ts-opt-card-${i}">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <input type="checkbox" id="ts-opt-cb-${i}" checked
+                        onchange="_tsGenToggleOpt(${i},this.checked)"
+                        style="width:16px;height:16px;accent-color:#0284C7;cursor:pointer;flex-shrink:0;">
+                    <label for="ts-opt-cb-${i}" style="font-weight:700;color:#0369A1;cursor:pointer;">Option ${i+1}</label>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                    <div>
+                        <div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">FROM</div>
+                        <input data-opt="${i}" data-field="from" value="${_tse(l.from||'')}"
+                            style="width:100%;border:1.5px solid #e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;box-sizing:border-box;" placeholder="e.g. Medina Airport">
+                    </div>
+                    <div>
+                        <div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">TO</div>
+                        <input data-opt="${i}" data-field="to" value="${_tse(l.to||'')}"
+                            style="width:100%;border:1.5px solid #e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;box-sizing:border-box;" placeholder="e.g. Al Marzam Hotel">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:6px;">
+                    <div>
+                        <div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">VEHICLE</div>
+                        <input data-opt="${i}" data-field="vehicle_name" value="${_tse(l.vehicle_name||l.vehicle_class||'')}"
+                            style="width:100%;border:1.5px solid #e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;box-sizing:border-box;" placeholder="Minibus 9 Seater">
+                    </div>
+                    <div>
+                        <div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">RATE</div>
+                        <input data-opt="${i}" data-field="net_rate" value="${+(l.net_rate||0)}" type="number"
+                            style="width:100%;border:1.5px solid #e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">PAX</div>
+                        <input data-opt="${i}" data-field="pax" value="${+(l.pax||1)}" type="number"
+                            style="width:100%;border:1.5px solid #e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">DATE</div>
+                        <input data-opt="${i}" data-field="date" value="${_tse(l.date||'')}" type="date"
+                            style="width:100%;border:1.5px solid #e5e7eb;border-radius:6px;padding:4px 6px;font-size:11px;box-sizing:border-box;">
+                    </div>
+                </div>
+            </div>`).join('')}
+
+            <div style="text-align:right;font-size:12px;color:#6B7280;margin-bottom:10px;" id="ts-gen-sel-count">
+                ${opts.length} option(s) selected — each will be saved as a separate quotation
+            </div>
+
+            <button onclick="tsSaveGeneratedQuotation()"
+                style="width:100%;padding:10px;font-size:13px;font-weight:600;background:#0284C7;color:#fff;border:none;border-radius:10px;cursor:pointer;">
+                <i class="fas fa-save mr-1.5"></i>Save Selected as Quotation(s)
             </button>
         </div>
     </div>`;
 }
 
+window._tsGenToggleOpt = function(i, checked) {
+    const card = document.getElementById(`ts-opt-card-${i}`);
+    if (card) card.style.borderColor = checked ? '#BAE6FD' : '#e5e7eb';
+    _tsGenUpdateSelCount();
+};
+
+window._tsGenSelectAll = function(checked) {
+    document.querySelectorAll('[id^="ts-opt-cb-"]').forEach(cb => {
+        cb.checked = checked;
+        const idx = +(cb.id.replace('ts-opt-cb-',''));
+        _tsGenToggleOpt(idx, checked);
+    });
+};
+
+window._tsGenUpdateSelCount = function() {
+    const sel = document.querySelectorAll('[id^="ts-opt-cb-"]:checked').length;
+    const el  = document.getElementById('ts-gen-sel-count');
+    if (el) el.textContent = `${sel} option(s) selected — each will be saved as a separate quotation`;
+};
+
+window._tsGenUpdateTotals = function() {}; // no-op kept for compatibility
+
 window.tsSaveGeneratedQuotation = async function() {
     const q = _tsCurrentQuotation;
     if (!q) return;
-    try {
-        const json = await window._tsApi({
-            action:          'save_quotation',
-            currency:        q.currency || 'BDT',
-            legs:            q.legs     || [],
-            source_note_ids: _tsCurrentNoteIds,
+    const currency = document.getElementById('ts-gen-currency')?.value || q.currency || 'BDT';
+
+    // Collect selected options with edited values
+    const selectedOpts = [];
+    (q.legs || []).forEach((l, i) => {
+        const cb = document.getElementById(`ts-opt-cb-${i}`);
+        if (!cb?.checked) return;
+        const get = f => document.querySelector(`[data-opt="${i}"][data-field="${f}"]`)?.value ?? l[f];
+        selectedOpts.push({
+            ...l,
+            from:         get('from'),
+            to:           get('to'),
+            vehicle_name: get('vehicle_name'),
+            net_rate:     +(get('net_rate') || 0),
+            pax:          +(get('pax')      || 1),
+            date:         get('date'),
         });
-        if (json.status === 'success') {
-            tsT('success','Quotation saved!');
-            window._tsGenClear();
-            document.getElementById('ts-gen-modal-ov')?.remove();
-            await window._tsReload();
-            const btn = document.querySelector('.ts-tab[data-tab="quotation"]');
-            if (btn) window._tsSwitchTab('quotation', btn);
-        } else { tsT('error', json.message||'Save ব্যর্থ'); }
-    } catch(e) { tsT('error','Network error'); }
+    });
+
+    if (!selectedOpts.length) { tsT('error','কমপক্ষে একটা option select করুন'); return; }
+
+    // Save each selected option as a SEPARATE quotation (one leg each)
+    let saved = 0;
+    for (const opt of selectedOpts) {
+        try {
+            const json = await window._tsApi({
+                action:          'save_quotation',
+                currency:        currency,
+                legs:            [opt],
+                source_note_ids: _tsCurrentNoteIds,
+            });
+            if (json.status === 'success') saved++;
+        } catch(e) {}
+    }
+
+    if (saved > 0) {
+        tsT('success', `${saved} quotation(s) saved!`);
+        window._tsGenClear();
+        document.getElementById('ts-gen-modal-ov')?.remove();
+        await window._tsReload();
+        _renderTsQuotation();
+        const btn = document.querySelector('.ts-tab[data-tab="quotation"]');
+        if (btn) {
+            window._tsSwitchTab('quotation', btn);
+        } else {
+            // Fallback: call render directly
+            if (window._renderTsQuotation) window._renderTsQuotation();
+        }
+    } else {
+        tsT('error', 'Save ব্যর্থ');
+    }
 };
 
 // ── Notes CRUD ────────────────────────────────────────────────
