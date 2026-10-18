@@ -18,6 +18,7 @@ $addServiceApi    = $ip_port . 'api/works/add-service.php';
 $deptApi          = $ip_port . 'api/masterdata/departments/endpoints.php';
 $workTravelersApi = $ip_port . 'api/works/travelers.php';
 $allTravelersApi  = $ip_port . 'api/travelers/all-travelers.php';
+$updateTravelerApi = $ip_port . 'api/travelers/update-basic.php';
 $airTicketsApi    = $ip_port . 'api/air-tickets/endpoints.php';
 $notesApi         = $ip_port . 'api/works/notes.php';
 
@@ -887,6 +888,7 @@ const API = {
     depts:         "<?php echo $deptApi; ?>",
     workTravelers: "<?php echo $workTravelersApi; ?>",
     travelers:     "<?php echo $allTravelersApi; ?>",
+    updateTraveler: "<?php echo $updateTravelerApi; ?>",
     airTickets:    "<?php echo $airTicketsApi; ?>",
     hotelServices:      "<?php echo $ip_port; ?>api/hotel-services/endpoints.php",
     transportServices:  "<?php echo $ip_port; ?>api/transport-services/endpoints.php",
@@ -1402,9 +1404,12 @@ function loadServiceModule(slug, swSysId) {
     } else if (slug === 'visa') {
         const ci = sp(workData.client_info) ?? {};
         mount.innerHTML = `<div id="ww-visa-mount" style="height:100%;"></div>`;
+        const vsSegData = sp(workData.segment_data)?.visa ?? {};
+        const vsCountrySegs = (vsSegData.segments ?? []).filter(s => s.country_name);
         initWorkVisaTab({
             containerId:         'ww-visa-mount',
             workSysId:           WORK_SYS_ID,
+            countrySegments:     vsCountrySegs,  // [{country_name, category_name, master_visa_sys_id, ...}]
             clientSysId:         ci.sys_id ?? '',
             clientName:          ci.name   ?? '',
             clientCountrySysId:  ci.country_sys_id ?? '',
@@ -1423,6 +1428,7 @@ function loadServiceModule(slug, swSysId) {
                 allAccounts:     API.allAccounts,
                 travelerDocViewer: API.travelers,
                 allTravelers:    API.travelers,
+                updateTraveler:  API.updateTraveler,
             },
         });
     } else if (slug === 'tour_package') {

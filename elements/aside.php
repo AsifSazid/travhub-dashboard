@@ -544,6 +544,12 @@ require_once __DIR__ . '/../server/permissions.php';
                         <i class="fa-solid fa-route mr-3"></i>
                         <span class="sidebar-text transition-all duration-300">Transports</span>
                     </a>
+                    <a href="masterdata-doc-types.php"
+                        class="flex items-center p-3 rounded-lg
+                       <?= $currentPage == 'masterdata-doc-types.php' ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700' ?>">
+                        <i class="fa-solid fa-file-circle-check mr-3"></i>
+                        <span class="sidebar-text transition-all duration-300">Doc Types</span>
+                    </a>
                 </div>
             </div>
 

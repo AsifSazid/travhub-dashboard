@@ -1,18 +1,6 @@
 <?php
 /**
  * FILE PATH: api/travelers/classify-document.php
- *
- * Two modes:
- *
- * Mode 1: action=split (POST, multipart)
- *   PDF → PNG pages → save to tmp → return page tokens[]
- *   No Gemini call here.
- *
- * Mode 2: action=classify (POST, JSON)
- *   Single page token → Gemini classify → save result → return doc data
- *
- * Mode 3: action=classify (POST, multipart, image file)
- *   Single image → Gemini classify → save result → return doc data
  */
 
 require_once '../../server/api_bootstrap.php';
@@ -27,19 +15,26 @@ $GEMINI_MODEL   = trim(@file_get_contents('../../gemini-model.txt')) ?: 'gemini-
 
 const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
 const MAX_BYTES    = 100 * 1024 * 1024;
-const VALID_DOC_TYPES = [
-    'passport', 'nid', 'visa', 'visa_stamp',
-    'air_ticket', 'hotel_voucher', 'invitation_letter',
-    'bank_statement', 'bank_solvency', 'sponsor_letter',
-    'employment_letter', 'office_id', 'visiting_card', 'noc',
-    'education_certificate', 'medical_report', 'vaccination_card',
-    'marriage_certificate', 'birth_certificate',
-    'photo', 'signature', 'other',
-];
+
+// Dynamic from doc_type_registry — always in sync with UI
+function loadValidDocTypes(PDO $pdo): array {
+    try {
+        $stmt = $pdo->query("SELECT doc_type FROM doc_type_registry WHERE is_active = 1 ORDER BY display_order ASC");
+        $types = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if ($types) return $types;
+    } catch (Throwable $e) {}
+    // Fallback if DB fails
+    return ['passport','nid','visa','visa_stamp','air_ticket','hotel_voucher',
+            'invitation_letter','bank_statement','bank_solvency','sponsor_letter',
+            'employment_letter','office_id','visiting_card','noc',
+            'education_certificate','medical_report','vaccination_card',
+            'marriage_certificate','birth_certificate','photo','signature','other'];
+}
+
+$VALID_DOC_TYPES = loadValidDocTypes($pdo);
 
 if (!$GEMINI_API_KEY) jsonError('Gemini API key not configured');
 
-// ── Route by action ───────────────────────────────────────────────────────────
 $action = $_POST['action'] ?? $_GET['action'] ?? 'classify';
 
 if ($action === 'split') {
@@ -49,7 +44,7 @@ if ($action === 'split') {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// handleSplit — PDF → PNG pages → return page_tokens[]
+// handleSplit
 // ════════════════════════════════════════════════════════════════════════════
 function handleSplit(): never
 {
@@ -66,7 +61,6 @@ function handleSplit(): never
     if (!in_array($ext, ALLOWED_EXTS, true)) jsonError('Unsupported file type');
     if ($fileSize > MAX_BYTES) jsonError('File too large');
 
-    // Image হলে split দরকার নেই — directly classify এ পাঠাও
     if ($ext !== 'pdf') {
         $pageToken = stageSingleImage($tmpSrc, $ext, $origName, $fileSize);
         echo json_encode([
@@ -78,13 +72,11 @@ function handleSplit(): never
         exit;
     }
 
-    // PDF → pages
     if (!extension_loaded('imagick')) jsonError('Imagick not available');
 
     $batchDir = rtrim(sys_get_temp_dir(), '/') . '/travhub_classify/' . bin2hex(random_bytes(8)) . '/';
     mkdir($batchDir, 0775, true);
 
-    // Stage original PDF
     $pdfPath = $batchDir . 'original.pdf';
     move_uploaded_file($tmpSrc, $pdfPath);
 
@@ -103,8 +95,7 @@ function handleSplit(): never
         $pagePath = $batchDir . 'page_' . ($i + 1) . '.png';
         file_put_contents($pagePath, $imagick->getImageBlob());
 
-        // প্রতিটা page এর জন্য একটা tmp token (Gemini call নেই এখনো)
-        $pageToken  = bin2hex(random_bytes(16));
+        $pageToken    = bin2hex(random_bytes(16));
         $pageTokens[] = [$pageToken, $pagePath, $i + 1];
     }
     $imagick->clear();
@@ -120,7 +111,7 @@ function handleSplit(): never
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// handleClassify — single image/page → Gemini → token save → return
+// handleClassify
 // ════════════════════════════════════════════════════════════════════════════
 function handleClassify(): never
 {
@@ -136,7 +127,6 @@ function handleClassify(): never
     $traveler = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$traveler) jsonError('Traveler not found');
 
-    // Image source — either uploaded file or staged page path
     $stagedPath = trim($_POST['page_path'] ?? '');
     $origName   = trim($_POST['original_filename'] ?? 'document');
     $fileSize   = (int)($_POST['file_size'] ?? 0);
@@ -144,10 +134,8 @@ function handleClassify(): never
     $mime       = 'image/png';
 
     if ($stagedPath && file_exists($stagedPath)) {
-        // Staged PNG from split
         $b64 = base64_encode(file_get_contents($stagedPath));
     } elseif (!empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
-        // Direct image upload
         $file     = $_FILES['file'];
         $origName = $file['name'];
         $fileSize = $file['size'];
@@ -159,11 +147,6 @@ function handleClassify(): never
         $mime    = $mimeMap[$ext] ?? 'image/jpeg';
         $b64     = base64_encode(file_get_contents($file['tmp_name']));
 
-        // ⚠️ $file['tmp_name'] হলো PHP-এর নিজস্ব upload tmp file — request শেষ হলেই
-        // এটা auto-delete হয়ে যায়। কিন্তু commit-documents.php পরে (user Review পেজ থেকে
-        // Confirm চাপার পরে) এই path থেকেই ফাইল পড়ে NAS এ পাঠায়। তাই এখানেই এটাকে
-        // persistent staging folder এ কপি করে রাখতে হবে, নাহলে commit সবসময় "Staged
-        // file not found (expired?)" দিয়ে fail করবে।
         $persistDir = rtrim(sys_get_temp_dir(), '/') . '/travhub_classify/' . bin2hex(random_bytes(8)) . '/';
         if (!is_dir($persistDir)) mkdir($persistDir, 0775, true);
         $persistPath = $persistDir . 'page_' . $pageNo . '.' . $ext;
@@ -175,7 +158,6 @@ function handleClassify(): never
         jsonError('No image provided');
     }
 
-    // Gemini classify
     $prompt = buildClassifyPrompt($traveler, $passportStatus);
     $result = callGemini($GEMINI_API_KEY, $GEMINI_MODEL, $b64, $mime, $prompt);
 
@@ -186,14 +168,13 @@ function handleClassify(): never
     $data    = $result['data'];
     $docType = sanitizeDocType($data['doc_type'] ?? 'other');
 
-    // Token save
     $token     = bin2hex(random_bytes(24));
     $expiresAt = date('Y-m-d H:i:s', strtotime('+2 hours'));
 
     $passportAnalysis = null;
     if ($docType === 'passport') {
-        $docNumber = $data['doc_number'] ?? $data['doc_data']['passport_number'] ?? '';
-        $expiry    = formatDateForDb($data['expiry_date'] ?? '');
+        $docNumber      = $data['doc_number'] ?? $data['doc_data']['passport_number'] ?? '';
+        $expiry         = formatDateForDb($data['expiry_date'] ?? '');
         $prevPassportNo = trim($data['previous_passport_no'] ?? '');
         $passportAnalysis = analyzePassport($pdo, $travelerSysId, $traveler, $docNumber, $expiry, $passportStatus, $data['doc_data'] ?? [], $prevPassportNo);
     }
@@ -249,7 +230,7 @@ function handleClassify(): never
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// stageSingleImage — image file tmp তে stage করো
+// stageSingleImage
 // ════════════════════════════════════════════════════════════════════════════
 function stageSingleImage(string $tmpSrc, string $ext, string $origName, int $fileSize): array
 {
@@ -273,17 +254,10 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
         'generationConfig' => [
             'temperature'      => 0.1,
             'maxOutputTokens'  => 8192,
-            // JSON mode — Gemini কে structured JSON রিটার্ন করতে বাধ্য করে,
-            // markdown fence / আগে-পরে prose থাকার সম্ভাবনা অনেক কমে যায়
             'responseMimeType' => 'application/json',
         ],
     ], JSON_UNESCAPED_UNICODE);
 
-    // Gemini API মাঝেমধ্যে transient/momentary ধীর হয়ে যায় (network glitch,
-    // API busy) — একবার fail করলেই ইউজারকে পুরো ফাইল আবার আপলোড করতে হয়।
-    // তাই সর্বোচ্চ ২ বার (১টা মূল + ১টা retry) চেষ্টা করা হচ্ছে, প্রতিটার
-    // timeout ছোট রেখে (২৫s) যাতে দুইবার মিলিয়েও Cloudflare-এর নিজস্ব
-    // gateway timeout-এর নিচেই থাকে।
     $maxAttempts = 3;
     $lastError   = '';
 
@@ -294,7 +268,7 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_TIMEOUT        => 20, // ৩ attempt মিলিয়ে max ~৫০-৬০s, Cloudflare-এর নিচে
+            CURLOPT_TIMEOUT        => 20,
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
         ]);
         $raw  = curl_exec($ch);
@@ -303,9 +277,6 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
         curl_close($ch);
 
         if (!$err && $code === 200) {
-            // HTTP সফল — এবার JSON parse চেষ্টা করো। বড় page-এ Gemini
-            // মাঝেমধ্যে ভাঙা/অসম্পূর্ণ JSON দেয় (Session 1 এ "2 of 10 pages
-            // fail with JSON parse error") — সেটাকেও retryable ধরা হচ্ছে
             $body         = json_decode($raw, true);
             $text         = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
             $finishReason = $body['candidates'][0]['finishReason'] ?? '';
@@ -321,21 +292,19 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
             error_log("[classify-document] attempt {$attempt}: {$lastError}");
 
             if ($attempt === $maxAttempts) {
-                return ['success' => false, 'error' => $lastError . ' — ' . $attempt . ' বার চেষ্টার পরও পড়া যায়নি, পাতাটা আলাদা করে আবার upload করুন'];
+                return ['success' => false, 'error' => $lastError . ' — ' . $attempt . ' বার চেষ্টার পরও পড়া যায়নি'];
             }
-            continue; // আবার চেষ্টা
+            continue;
         }
 
         $b = json_decode($raw, true);
         $lastError = $err ?: ($b['error']['message'] ?? "HTTP {$code}");
 
-        // 4xx (bad request, invalid key ইত্যাদি) retry করে লাভ নেই — সাথে
-        // সাথেই fail করো। শুধু timeout/5xx/network error-এই retry করবো।
         $isRetryable = $err || $code >= 500 || $code === 0;
         if (!$isRetryable || $attempt === $maxAttempts) {
             $errMsg = $lastError;
             if (str_contains(strtolower($errMsg), 'timed out') || str_contains(strtolower($errMsg), 'timeout')) {
-                $errMsg = 'Gemini API সময়মতো সাড়া দেয়নি (network slow বা API busy, ' . $attempt . ' বার চেষ্টা করা হয়েছে) — আবার চেষ্টা করুন';
+                $errMsg = 'Gemini API সময়মতো সাড়া দেয়নি (' . $attempt . ' বার চেষ্টা করা হয়েছে) — আবার চেষ্টা করুন';
             }
             return ['success' => false, 'error' => $errMsg];
         }
@@ -343,7 +312,6 @@ function callGemini(string $apiKey, string $model, string $b64, string $mime, st
         error_log("[classify-document] Gemini attempt {$attempt} failed ({$lastError}), retrying...");
     }
 
-    // এখানে পৌঁছানোর কথা না (loop ভেতরেই return হয়) — defensive fallback
     return ['success' => false, 'error' => $lastError ?: 'Unknown Gemini error'];
 }
 
@@ -367,31 +335,40 @@ function parseGeminiJson(string $text): ?array
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// buildClassifyPrompt
+// buildClassifyPrompt — dynamic enum from DB
 // ════════════════════════════════════════════════════════════════════════════
 function buildClassifyPrompt(array $traveler, string $passportStatusHint): string
 {
-    $hint = $passportStatusHint === 'current' ? 'User says this is CURRENT passport.' :
-            ($passportStatusHint === 'previous' ? 'User says this is PREVIOUS passport.' : '');
+    global $VALID_DOC_TYPES;
 
-    $name = $traveler['name'];
+    $hint = $passportStatusHint === 'current'  ? 'User says this is CURRENT passport.'  :
+           ($passportStatusHint === 'previous' ? 'User says this is PREVIOUS passport.' : '');
+
+    $name     = $traveler['name'];
+    $typeEnum = implode('|', $VALID_DOC_TYPES);
+
     return <<<PROMPT
 Analyze this document for traveler: {$name}. {$hint}
 
 Document type guidance:
-- "employment_letter" covers formal employment letters and appointment letters ONLY
-- "office_id" covers company/employee ID cards (front or back)
-- "visiting_card" covers business cards showing name, title, company
-- "noc" covers No Objection Certificate letters
-- "education_certificate" covers degrees, diplomas, transcripts, school/university certificates
+- "passport" — travel passport (bio page, photo page)
+- "nid" — national identity card
+- "employment_letter" — formal employment letter or appointment letter ONLY
+- "office_id" — company or employee ID card (front or back)
+- "visiting_card" — business card showing name, title, company
+- "noc" — No Objection Certificate letter from employer or institution
+- "bank_statement" — bank account transaction statement
+- "bank_solvency" — bank solvency/solvency certificate confirming account balance
+- "education_certificate" — degree, diploma, transcript, school/university certificate
+- "photo" — standalone photograph
 
-For employment_letter (including business cards), doc_data MUST include these exact keys when the information is visible: "designation" (job title / position, e.g. "Managing Director"), "employer_name" (company/organization name).
+For office_id and visiting_card, doc_data MUST include "designation" and "employer_name" when visible.
 
 Return ONLY a JSON object:
 {
-  "doc_type": "<passport|nid|visa|visa_stamp|air_ticket|hotel_voucher|invitation_letter|bank_statement|sponsor_letter|employment_letter|education_certificate|medical_report|vaccination_card|marriage_certificate|birth_certificate|photo|signature|other|bank_solvency|office_id|visiting_card|noc>",
+  "doc_type": "<{$typeEnum}>",
   "doc_number": "<document number or null>",
-  "previous_passport_no": "<if this is a passport and it shows a 'Previous/Old Passport No.' field or annotation, extract that number here, else null>",
+  "previous_passport_no": "<if passport shows Previous Passport No. field, extract it, else null>",
   "suggested_filename_stem": "<short_snake_case_name>",
   "issue_date": "<DD-MM-YYYY or null>",
   "expiry_date": "<DD-MM-YYYY or null>",
@@ -412,36 +389,25 @@ PROMPT;
 // ════════════════════════════════════════════════════════════════════════════
 function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, string $newPassportNo, string $newExpiry, string $userHint, array $docData, string $prevPassportNo = ''): array
 {
-    $existingNo   = $traveler['passport_no'] ?? '';
-    $existingInfo = json_decode($traveler['passport_info'] ?? '[]', true) ?: [];
+    $existingNo     = $traveler['passport_no'] ?? '';
+    $existingInfo   = json_decode($traveler['passport_info'] ?? '[]', true) ?: [];
     $existingExpiry = '';
-    // bio_info এ Gemini-এর raw doc_data সেভ থাকে, যেখানে key হলো 'expiry_date'
-    // (date_of_expiry না) — commit-documents.php এর updateTravelerColumn()
-    // এ $newEntry['bio_info'] = $docData সরাসরি বসায়, সেই একই key ব্যবহার
-    // করা হচ্ছে এখানে। ভুল key নাম থাকায় এতদিন এই তুলনাটা কখনো কাজই করত না,
-    // ফলে পুরনো/expired passport ও ভুলভাবে 'current' হিসেবে সেভ হয়ে যেত।
+
     if (!empty($existingInfo[0]['bio_info']['expiry_date'])) {
         $existingExpiry = formatDateForDb($existingInfo[0]['bio_info']['expiry_date']);
     }
 
-    // ── Confirmed renewal: passport-এ ছাপা "Previous Passport No." যদি এই
-    // traveler-এর existing passport_no-র সাথে exact মেলে, তাহলে এটা document
-    // দিয়ে প্রমাণিত renewal — কোনো heuristic/expiry-guess লাগবে না
     $confirmedRenewal = $prevPassportNo && $existingNo && ($prevPassportNo === $existingNo);
 
     if (!$existingNo)                        $scenario = 'first_time';
     elseif ($existingNo === $newPassportNo)  $scenario = 'matches_existing_current';
     elseif ($confirmedRenewal)               $scenario = 'renewal_demote_old';
-    elseif ($userHint === 'previous')       $scenario = 'historical_upload';
+    elseif ($userHint === 'previous')        $scenario = 'historical_upload';
     else {
         $scenario = 'renewal_demote_old';
         if ($userHint === 'auto' && $newExpiry) {
             $newTs   = strtotime(str_replace(['.','/'], '-', $newExpiry));
             $todayTs = strtotime(date('Y-m-d'));
-
-            // নতুন uploaded passport নিজেই already expired হলে (আজকের
-            // তারিখের চেয়ে আগে), সেটা কখনোই 'current' হতে পারে না —
-            // existing expiry data পাওয়া যাক বা না যাক
             if ($newTs && $todayTs && $newTs < $todayTs) {
                 $scenario = 'historical_upload';
             } elseif ($newTs && $existingExpiry) {
@@ -469,7 +435,8 @@ function analyzePassport(PDO $pdo, string $travelerSysId, array $traveler, strin
 // ════════════════════════════════════════════════════════════════════════════
 function sanitizeDocType(string $t): string
 {
-    return in_array($t, VALID_DOC_TYPES, true) ? $t : 'other';
+    global $VALID_DOC_TYPES;
+    return in_array($t, $VALID_DOC_TYPES, true) ? $t : 'other';
 }
 
 function formatDateForDb(string $raw): string

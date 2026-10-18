@@ -227,25 +227,16 @@ try {
             vsJson(['status' => 'success', 'message' => 'Master set', 'data' => $row]);
             break;
 
-        /* ── UPDATE_META: patch meta_data fields (e.g. required_documents) ─ */
+        /* ── UPDATE_META: patch meta_data fields ──────────────── */
         case 'update_meta':
-            $workSysId = $body['work_sys_id'] ?? '';
-            if (!$workSysId) throw new Exception('work_sys_id required');
-
-            $row = _vsFetch($pdo, $workSysId);
+            $wid  = $body['work_sys_id'] ?? '';
+            if (!$wid) throw new Exception('work_sys_id required');
+            $row  = _vsFetch($pdo, $wid);
             if (!$row) throw new Exception('Visa service not found');
-
-            // Merge incoming fields into existing meta_data
-            $existingMeta = $row['meta_data'] ?? [];
-            $incoming     = $body['meta_data'] ?? [];
-            $merged       = array_merge($existingMeta, $incoming);
-
+            $meta = array_merge($row['meta_data'] ?? [], $body['meta_data'] ?? []);
             $pdo->prepare("UPDATE visa_services SET meta_data = ? WHERE work_sys_id = ?")
-                ->execute([json_encode($merged, JSON_UNESCAPED_UNICODE), $workSysId]);
-
-            $updated = _vsFetch($pdo, $workSysId);
-            vsJson(['status' => 'success', 'message' => 'Meta updated', 'data' => $updated]);
-            break;
+                ->execute([json_encode($meta, JSON_UNESCAPED_UNICODE), $wid]);
+            vsJson(['status' => 'success', 'message' => 'Meta updated', 'data' => _vsFetch($pdo, $wid)]);
 
         /* ── UPDATE_TRAVELERS: full replace of vs_travelers JSON ─── */
         case 'update_travelers':
@@ -260,25 +251,6 @@ try {
 
             $row = _vsFetch($pdo, $workSysId);
             vsJson(['status' => 'success', 'message' => 'Travelers updated', 'data' => $row]);
-            break;
-
-        /* ── UPDATE_MB_NOTES: save mind board notes in meta_data ─── */
-        case 'update_mb_notes':
-            $workSysId = $body['work_sys_id'] ?? '';
-            $mbNotes   = $body['mb_notes']    ?? '';
-            if (!$workSysId) throw new Exception('work_sys_id required');
-
-            $row = _vsFetch($pdo, $workSysId);
-            if (!$row) throw new Exception('Visa service not found');
-
-            $meta             = $row['meta_data'] ?? [];
-            $meta['mb_notes'] = $mbNotes;
-
-            $pdo->prepare("UPDATE visa_services SET meta_data = ? WHERE work_sys_id = ?")
-                ->execute([json_encode($meta, JSON_UNESCAPED_UNICODE), $workSysId]);
-
-            $updated = _vsFetch($pdo, $workSysId);
-            vsJson(['status' => 'success', 'message' => 'Notes saved', 'data' => $updated]);
             break;
 
         /* ── UPDATE_COVER_LETTER: update one traveler's cover letter ─ */

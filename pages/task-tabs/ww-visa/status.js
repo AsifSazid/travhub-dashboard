@@ -1,329 +1,306 @@
 /**
  * FILE PATH: /pages/task-tabs/ww-visa/status.js
- * Visa Service Module — "Application Status" tab (Layer 1)
- *
- * Shows overall status across ALL travelers:
- *  - Per-traveler status row
- *  - Financial summary (client + vendor totals)
- *  - Submit Application action
+ * Application Status tab — overall visa application status
+ * Shows per-traveler VTNR, status, docs, costing summary
+ * Task Create button when ALL travelers are ready
  */
 
-window._renderVsStatus = function () {
-    const el = document.getElementById('vs-tab-status');
+/* ── VTNR Generator ─────────────────────────────────────────
+ * 6-char alphanumeric (mixed case) from work_sys_id + traveler_sys_id
+ * Deterministic — same inputs always produce same VTNR
+ * Algorithm: sha256-like using charCode sums in 5-char blocks
+ */
+function _vsGenerateVTNR(workSysId, travSysId) {
+    const raw    = workSysId + '|' + travSysId;
+    const chars  = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    // Simple deterministic hash: djb2-style
+    let hash = 5381;
+    for (let i = 0; i < raw.length; i++) {
+        hash = ((hash << 5) + hash) + raw.charCodeAt(i);
+        hash = hash & 0x7FFFFFFF; // keep positive 31-bit
+    }
+    // Generate 6 chars using hash with position seeds
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        let seed = hash;
+        for (let j = 0; j < i + 1; j++) {
+            seed = ((seed << 5) + seed) + (i * 31 + j * 17 + raw.charCodeAt(j % raw.length));
+            seed = seed & 0x7FFFFFFF;
+        }
+        result += chars[Math.abs(seed) % chars.length];
+    }
+    return result;
+}
+
+/* ── Status colors ──────────────────────────────────────────── */
+const VS_STATUS = {
+    pending:   { bg:'#F1F5F9', color:'#64748B', label:'Pending' },
+    ready:     { bg:'#DCFCE7', color:'#15803D', label:'Ready' },
+    submitted: { bg:'#EEF2FF', color:'#4F46E5', label:'Submitted' },
+    approved:  { bg:'#D1FAE5', color:'#065F46', label:'Approved' },
+    rejected:  { bg:'#FEE2E2', color:'#B91C1C', label:'Rejected' },
+    on_hold:   { bg:'#FEF3C7', color:'#92400E', label:'On Hold' },
+};
+
+window._vsStatusChip = function _vsStatusChip(status) {
+    const s = VS_STATUS[status] ?? VS_STATUS.pending;
+    return `<span style="background:${s.bg};color:${s.color};font-size:.72rem;font-weight:700;
+                         padding:3px 10px;border-radius:999px;white-space:nowrap;">● ${s.label}</span>`;
+}
+
+/* ── Render Application Status tab ─────────────────────────── */
+window._renderVsAppStatus = function () {
+    const el = document.getElementById('vs-panel-status');
     if (!el) return;
 
     const data      = window._vs.data;
-    const meta      = data?.meta_data;
     const travelers = data?.vs_travelers ?? [];
+    const meta      = data?.meta_data ?? {};
+    const workSysId = window._vs.cfg.workSysId;
 
-    if (!meta?.master_visa_sys_id) {
-        el.innerHTML = `<div style="padding:32px;text-align:center;color:#64748B;font-size:.875rem;">
-            ⚠️ Please select a visa service first (Visa Info tab).
+    if (!travelers.length) {
+        el.innerHTML = `<div style="padding:32px;text-align:center;color:#94A3B8;font-size:.875rem;">
+            No travelers linked yet. Add travelers from the Traveler Docs tab.
         </div>`;
         return;
     }
 
-    const travCount   = travelers.length;
-    const b2cTotal    = Number(meta.b2c_price ?? 0)      * travCount;
-    const vendorTotal = Number(meta.purchase_price ?? 0) * travCount;
-    const cur         = meta.currency ?? 'BDT';
+    // Compute overall stats
+    const total       = travelers.length;
+    const ready       = travelers.filter(t => t.app_status === 'ready').length;
+    const submitted   = travelers.filter(t => t.app_status === 'submitted').length;
+    const approved    = travelers.filter(t => t.app_status === 'approved').length;
+    const rejected    = travelers.filter(t => t.app_status === 'rejected').length;
+    const allReady    = travelers.every(t =>
+        ['ready','submitted','approved'].includes(t.app_status ?? 'pending')
+    );
+    const pct = Math.round((ready + submitted + approved) / total * 100);
 
-    const isSubmitted = data.status === 'submitted';
-    const isCompleted = data.status === 'completed';
-    const locked      = isSubmitted || isCompleted;
-
-    // Overall doc readiness
-    let docsTotal = 0, docsUploaded = 0;
-    travelers.forEach(t => {
-        const rd = window._vsRequiredDocs(t.profession_type ?? 'general');
-        docsTotal    += rd.length;
-        docsUploaded += (t.docs ?? []).filter(d => d.status === 'uploaded').length;
-    });
-    const readyCount = travelers.filter(t => window._vsTravelerReady(t)).length;
+    // Costing
+    const clientPrice   = parseFloat(meta.client_price   ?? meta.selling_price ?? 0);
+    const purchasePrice = parseFloat(meta.purchase_price ?? meta.buying_price  ?? 0);
+    const totalClient   = clientPrice * total;
+    const totalPurchase = purchasePrice * total;
+    const profit        = totalClient - totalPurchase;
 
     el.innerHTML = `
-    <div style="padding:16px 0;max-width:720px;">
+    <div style="max-width:860px;">
 
-        <!-- Overall status header -->
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;">
-            ${_vsStatusChip(data.status)}
-            ${data.submitted_at
-                ? `<span style="font-size:.8rem;color:#64748B;">
-                       Submitted: ${new Date(data.submitted_at).toLocaleString('en-BD')}
-                   </span>`
-                : ''}
-            <div style="margin-left:auto;font-size:.82rem;color:#64748B;font-weight:600;">
-                ${readyCount}/${travCount} travelers ready
+        <!-- Overall progress -->
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;
+                    padding:18px 20px;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div style="font-size:.95rem;font-weight:800;color:#0F172A;">Application Progress</div>
+                <div style="font-size:.82rem;font-weight:700;color:${pct===100?'#15803D':'#64748B'};">
+                    ${ready + submitted + approved} / ${total} Ready
+                </div>
+            </div>
+            <div style="height:8px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-bottom:14px;">
+                <div style="height:100%;width:${pct}%;background:${pct===100?'#22C55E':'#6366f1'};
+                            border-radius:999px;transition:width .3s;"></div>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                ${_vsStatBadge('Pending',   travelers.filter(t=>!t.app_status||t.app_status==='pending').length,   '#F1F5F9','#64748B')}
+                ${_vsStatBadge('Ready',     ready,     '#DCFCE7','#15803D')}
+                ${_vsStatBadge('Submitted', submitted, '#EEF2FF','#4F46E5')}
+                ${_vsStatBadge('Approved',  approved,  '#D1FAE5','#065F46')}
+                ${rejected ? _vsStatBadge('Rejected', rejected, '#FEE2E2','#B91C1C') : ''}
             </div>
         </div>
 
-        <!-- Per-traveler status table -->
-        ${travCount > 0 ? `
-        <div style="margin-bottom:22px;">
-            <div style="font-size:.78rem;font-weight:700;color:#475569;text-transform:uppercase;
-                        letter-spacing:.04em;margin-bottom:10px;">Traveler Status</div>
-            <div style="border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
-                <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
-                            padding:8px 14px;background:#F8FAFC;
-                            font-size:.72rem;font-weight:700;color:#94A3B8;text-transform:uppercase;">
-                    <span>Traveler</span><span>Docs</span><span>Cover Letter</span><span>Status</span>
+        <!-- Per-traveler rows -->
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;
+                    overflow:visible;margin-bottom:18px;">
+            <div style="padding:12px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;
+                        display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:12px;
+                        font-size:.72rem;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;">
+                <div>Traveler</div>
+                <div>VTNR</div>
+                <div>Docs</div>
+                <div>Cover Letter</div>
+                <div>Status</div>
+            </div>
+            ${travelers.map(t => _vsAppStatusRow(t, workSysId)).join('')}
+        </div>
+
+        <!-- Costing summary (show when all ready) -->
+        ${allReady && clientPrice > 0 ? `
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;
+                    padding:18px 20px;margin-bottom:18px;">
+            <div style="font-size:.85rem;font-weight:800;color:#0F172A;margin-bottom:14px;">Costing Summary</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                ${_vsCostBox('Client Total', 'BDT ' + totalClient.toLocaleString(), '#EEF2FF', '#4F46E5')}
+                ${_vsCostBox('Purchase Total', 'BDT ' + totalPurchase.toLocaleString(), '#F1F5F9', '#475569')}
+                ${_vsCostBox('Profit', 'BDT ' + profit.toLocaleString(), profit>=0?'#DCFCE7':'#FEE2E2', profit>=0?'#15803D':'#B91C1C')}
+            </div>
+            <div style="margin-top:10px;font-size:.75rem;color:#94A3B8;">
+                ${total} traveler(s) × BDT ${clientPrice.toLocaleString()} client price
+            </div>
+        </div>` : ''}
+
+        <!-- Task Create button -->
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px 20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <div style="font-size:.9rem;font-weight:700;color:#0F172A;margin-bottom:4px;">
+                        Create Task
+                    </div>
+                    <div style="font-size:.78rem;color:#64748B;">
+                        ${allReady
+                            ? 'All travelers are ready. You can now create the submission task.'
+                            : `Waiting for ${total - (ready+submitted+approved)} more traveler(s) to be marked Ready.`}
+                    </div>
                 </div>
-                ${travelers.map(t => {
-                    const docs     = t.docs ?? [];
-                    const total    = docs.length;
-                    const uploaded = docs.filter(d => d.status === 'uploaded').length;
-                    const hasCL    = !!t.cover_letter;
-                    const pct      = total > 0 ? Math.round(uploaded/total*100) : 0;
-
-                    return `<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
-                                        padding:10px 14px;border-top:1px solid #F1F5F9;
-                                        align-items:center;">
-                        <div>
-                            <div style="font-size:.85rem;font-weight:600;color:#0F172A;">${_vsEsc(t.name)}</div>
-                            <div style="font-size:.72rem;color:#94A3B8;">${_vsEsc(t.passport_no ?? '—')}</div>
-                        </div>
-                        <div>
-                            <div style="font-size:.75rem;font-weight:700;color:${pct===100?'#15803D':'#64748B'};">
-                                ${uploaded}/${total}
-                            </div>
-                            <div style="height:4px;width:60px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-top:3px;">
-                                <div style="height:100%;width:${pct}%;background:${pct===100?'#22C55E':'#6366f1'};border-radius:999px;"></div>
-                            </div>
-                        </div>
-                        <div style="font-size:.82rem;">
-                            ${hasCL ? '<span style="color:#15803D;">✓</span>' : '<span style="color:#CBD5E1;">—</span>'}
-                        </div>
-                        <div>
-                            ${window._vsTravStatusChip(t.app_status ?? 'pending')}
-                        </div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>` : `
-        <div style="padding:20px;text-align:center;color:#94A3B8;font-size:.85rem;margin-bottom:20px;">
-            No travelers added yet.
-        </div>`}
-
-        <!-- Financial summary -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;">
-            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;">
-                <div style="font-size:.7rem;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px;">Travelers</div>
-                <div style="font-size:1.4rem;font-weight:800;color:#0F172A;">${travCount}</div>
-            </div>
-            <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;padding:14px;">
-                <div style="font-size:.7rem;font-weight:700;color:#6366f1;text-transform:uppercase;margin-bottom:4px;">Client Total</div>
-                <div style="font-size:1rem;font-weight:800;color:#4F46E5;">${b2cTotal.toLocaleString()} ${cur}</div>
-                <div style="font-size:.72rem;color:#94A3B8;">${Number(meta.b2c_price).toLocaleString()} × ${travCount}</div>
-            </div>
-            <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:14px;">
-                <div style="font-size:.7rem;font-weight:700;color:#D97706;text-transform:uppercase;margin-bottom:4px;">Vendor Cost</div>
-                <div style="font-size:1rem;font-weight:800;color:#92400E;">${vendorTotal.toLocaleString()} ${cur}</div>
-                <div style="font-size:.72rem;color:#94A3B8;">${Number(meta.purchase_price).toLocaleString()} × ${travCount}</div>
+                <button onclick="window._vsCreateTask()"
+                        ${allReady ? '' : 'disabled'}
+                        style="padding:10px 24px;border-radius:9px;font-size:.875rem;font-weight:700;
+                               cursor:${allReady?'pointer':'not-allowed'};border:none;
+                               background:${allReady?'#4F46E5':'#E2E8F0'};
+                               color:${allReady?'#fff':'#94A3B8'};">
+                    + Create Task
+                </button>
             </div>
         </div>
 
-        <!-- Doc readiness bar -->
-        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:20px;">
-            <div style="font-size:.82rem;font-weight:700;color:#0F172A;margin-bottom:10px;">Overall Document Readiness</div>
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="flex:1;height:8px;background:#E2E8F0;border-radius:999px;overflow:hidden;">
-                    <div style="height:100%;width:${docsTotal>0?Math.round(docsUploaded/docsTotal*100):0}%;
-                                background:${docsUploaded===docsTotal&&docsTotal>0?'#22C55E':'#6366f1'};
-                                border-radius:999px;transition:width .3s;"></div>
-                </div>
-                <div style="font-size:.85rem;font-weight:700;color:${docsUploaded===docsTotal&&docsTotal>0?'#15803D':'#64748B'};">
-                    ${docsUploaded}/${docsTotal}
-                </div>
-            </div>
-            ${docsTotal === 0
-                ? `<div style="font-size:.75rem;color:#94A3B8;margin-top:6px;">Sync documents in Traveler Docs tab first.</div>`
-                : ''}
-        </div>
-
-        <!-- Action area -->
-        ${locked
-            ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                   <div style="font-size:.85rem;font-weight:600;color:#15803D;">
-                       ✓ Application submitted. Financial entries recorded.
-                   </div>
-                   <button onclick="window._vsDownloadDocPackage()"
-                           style="padding:7px 14px;border-radius:7px;background:#0F172A;color:#fff;
-                                  border:none;font-size:.78rem;font-weight:600;cursor:pointer;">
-                       📦 Download Full Package
-                   </button>
-                   ${data.status !== 'completed'
-                       ? `<button onclick="window._vsReopen()"
-                                  style="padding:7px 14px;border-radius:7px;border:1.5px solid #E2E8F0;
-                                         background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;color:#64748B;">
-                              ↩ Reopen
-                          </button>`
-                       : ''}
-               </div>`
-            : `<div style="border-top:1px solid #E2E8F0;padding-top:20px;">
-                   <div style="font-size:.82rem;color:#64748B;margin-bottom:14px;">
-                       Submitting will record financial entries for ${travCount} traveler${travCount!==1?'s':''}.
-                   </div>
-
-                   <!-- Vendor + account selectors -->
-                   <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;
-                               padding:14px;margin-bottom:18px;">
-                       <div style="font-size:.78rem;font-weight:700;color:#92400E;margin-bottom:10px;">
-                           ⚡ Vendor Payment Details
-                       </div>
-                       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                           <div>
-                               <label style="font-size:.73rem;font-weight:600;color:#64748B;display:block;margin-bottom:4px;">Vendor *</label>
-                               <select id="vs-submit-vendor"
-                                       style="width:100%;padding:7px 10px;font-size:.82rem;border:1.5px solid #E2E8F0;
-                                              border-radius:7px;outline:none;background:#fff;">
-                                   <option value="">Select vendor</option>
-                               </select>
-                           </div>
-                           <div>
-                               <label style="font-size:.73rem;font-weight:600;color:#64748B;display:block;margin-bottom:4px;">Pay from Account *</label>
-                               <select id="vs-submit-account"
-                                       style="width:100%;padding:7px 10px;font-size:.82rem;border:1.5px solid #E2E8F0;
-                                              border-radius:7px;outline:none;background:#fff;">
-                                   <option value="">Select account</option>
-                               </select>
-                           </div>
-                       </div>
-                   </div>
-
-                   <button onclick="window._vsSubmitApplication()"
-                           style="padding:10px 28px;background:#4F46E5;color:#fff;font-weight:700;
-                                  font-size:.9rem;border:none;border-radius:9px;cursor:pointer;">
-                       ✈ Submit Application
-                   </button>
-               </div>`
-        }
     </div>`;
-
-    if (!locked) _vsPopulateSubmitDropdowns();
 };
 
-/* ── Populate vendor/account dropdowns ──────────────────────── */
-async function _vsPopulateSubmitDropdowns() {
-    const vSel = document.getElementById('vs-submit-vendor');
-    const aSel = document.getElementById('vs-submit-account');
-    if (!vSel || !aSel) return;
+function _vsAppStatusRow(t, workSysId) {
+    const vtnr      = _vsGenerateVTNR(workSysId, t.sys_id);
+    const docs      = t.docs ?? [];
+    const uploaded  = docs.filter(d => d.status === 'uploaded').length;
+    const total     = docs.filter(d => d.required !== false).length;
+    const hasCL     = !!t.cover_letter;
+    const status    = t.app_status ?? 'pending';
+    const approvalDoc = t.approval_doc ?? null;
 
-    try {
-        const j = await fetch(window._vs.cfg.api.allVendors).then(r => r.json());
-        const vendors = j.data ?? j ?? [];
-        vSel.innerHTML = '<option value="">Select vendor</option>' +
-            vendors.map(v => `<option value="${v.sys_id}">${_vsEsc(v.name ?? v.vendor_name)}</option>`).join('');
-    } catch (e) { /* silent */ }
+    // Approval doc section — show when approved or to upload
+    const approvalHtml = status === 'approved' || status === 'submitted'
+        ? `<div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+            ${approvalDoc
+                ? `<a href="${_vsEsc(approvalDoc.serve_url ?? '#')}" target="_blank"
+                      style="font-size:.72rem;color:#4F46E5;text-decoration:none;
+                             padding:3px 8px;background:#EEF2FF;border-radius:5px;font-weight:600;">
+                      📄 Download Approval
+                   </a>`
+                : `<label style="font-size:.72rem;color:#64748B;cursor:pointer;
+                                 padding:3px 8px;background:#F1F5F9;border-radius:5px;
+                                 font-weight:600;border:1px solid #E2E8F0;">
+                      📎 Upload Approval
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                             style="display:none;"
+                             onchange="window._vsUploadApprovalDoc('${_vsEsc(t.sys_id)}',this)">
+                   </label>`
+            }
+           </div>`
+        : '';
 
-    try {
-        const j = await fetch(window._vs.cfg.api.allAccounts).then(r => r.json());
-        const accs = j.data ?? j ?? [];
-        aSel.innerHTML = '<option value="">Select account</option>' +
-            accs.map(a => `<option value="${a.sys_id}">${_vsEsc(a.name ?? a.account_name)} (${a.balance ? Number(a.balance).toLocaleString() : '—'})</option>`).join('');
-    } catch (e) { /* silent */ }
+    return `<div style="border-bottom:1px solid #F1F5F9;">
+        <div style="display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:12px;
+                    align-items:center;padding:12px 16px;">
+            <div>
+                <div style="font-size:.875rem;font-weight:700;color:#0F172A;">${_vsEsc(t.name ?? t.sys_id)}</div>
+                <div style="font-size:.72rem;color:#94A3B8;">${_vsEsc(t.passport_no ?? '')}</div>
+                ${approvalHtml}
+            </div>
+            <div>
+                <code style="background:#F1F5F9;padding:3px 8px;border-radius:5px;
+                             font-size:.8rem;font-weight:700;color:#4F46E5;
+                             letter-spacing:.05em;">${vtnr}</code>
+                <button onclick="navigator.clipboard.writeText('${vtnr}').then(()=>_vsToast('VTNR copied ✓'))"
+                        title="Copy VTNR"
+                        style="margin-left:6px;padding:2px 6px;border:1px solid #E2E8F0;
+                               border-radius:4px;background:#fff;cursor:pointer;
+                               font-size:.7rem;color:#94A3B8;">📋</button>
+            </div>
+            <div>
+                <span style="font-size:.82rem;font-weight:600;
+                             color:${uploaded===total&&total>0?'#15803D':'#64748B'};">
+                    ${uploaded}/${total}
+                </span>
+                <span style="font-size:.72rem;color:#94A3B8;"> docs</span>
+            </div>
+            <div>
+                <span style="font-size:.82rem;">${hasCL ? '✅' : '⬜'}</span>
+                <span style="font-size:.72rem;color:#94A3B8;margin-left:4px;">${hasCL?'Ready':'None'}</span>
+            </div>
+            <div>${_vsStatusChip(status)}</div>
+        </div>
+    </div>`;
 }
 
-/* ── Submit ─────────────────────────────────────────────────── */
-window._vsSubmitApplication = async function () {
-    const vendorSysId  = document.getElementById('vs-submit-vendor')?.value;
-    const accountSysId = document.getElementById('vs-submit-account')?.value;
+/* ── Upload approval document ───────────────────────────────── */
+window._vsUploadApprovalDoc = async function (travSysId, input) {
+    const file = input.files?.[0];
+    if (!file) return;
 
-    if (!vendorSysId)  return alert('Please select a vendor');
-    if (!accountSysId) return alert('Please select a payment account');
-    if (!confirm('Submit application and record financial entries?')) return;
+    const label = input.closest('label');
+    if (label) label.textContent = 'Uploading…';
 
-    const data      = window._vs.data;
-    const meta      = data?.meta_data ?? {};
-    const travCount = (data?.vs_travelers ?? []).length;
-    const b2cTotal  = Number(meta.b2c_price ?? 0) * travCount;
-    const vendTotal = Number(meta.purchase_price ?? 0) * travCount;
-    const cur       = meta.currency ?? 'BDT';
-    const purpose   = `Visa — ${meta.master_visa_title ?? ''}`;
-    const cfg       = window._vs.cfg;
-
-    const j = await window._vsApi({ action: 'submit_application' });
-    if (j.status !== 'success') { alert(j.message); return; }
-    window._vs.data = j.data;
-
-    // Client sale entry
-    if (b2cTotal > 0 && cfg.clientSysId) {
-        try {
-            await fetch(cfg.api.saveFinancial, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'credit', amount: b2cTotal, purpose,
-                    client_id: cfg.clientSysId, work_id: cfg.workSysId,
-                    date: new Date().toISOString().split('T')[0],
-                    qty_rate: JSON.stringify({ qty: travCount, rate: meta.b2c_price }),
-                    ref: data.sys_id,
-                }),
-            });
-        } catch (e) { console.error('[Visa] Client entry failed:', e); }
-    }
-
-    // Vendor purchase entry
-    if (vendTotal > 0 && vendorSysId) {
-        try {
-            await fetch(cfg.api.saveFinancial, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'credit', amount: vendTotal, purpose,
-                    vendor_id: vendorSysId, account_id: accountSysId,
-                    transaction_mode: 'realtime', work_id: cfg.workSysId,
-                    date: new Date().toISOString().split('T')[0],
-                    qty_rate: JSON.stringify({ qty: travCount, rate: meta.purchase_price }),
-                    ref: data.sys_id,
-                }),
-            });
-        } catch (e) { console.error('[Visa] Vendor entry failed:', e); }
-    }
-
-    await window._vsReload();
-    window._renderVsStatus();
-    const badge = document.getElementById('vs-submitted-badge');
-    if (badge) badge.style.display = 'flex';
-};
-
-/* ── Reopen ─────────────────────────────────────────────────── */
-window._vsReopen = async function () {
-    if (!confirm('Reopen application? Financial entries already recorded will remain.')) return;
-    const j = await window._vsApi({ action: 'reopen' });
-    if (j.status !== 'success') { alert(j.message); return; }
-    await window._vsReload();
-    window._renderVsStatus();
-    const badge = document.getElementById('vs-submitted-badge');
-    if (badge) badge.style.display = 'none';
-};
-
-/* ── Download full doc package ──────────────────────────────── */
-window._vsDownloadDocPackage = async function () {
-    const cfg = window._vs.cfg;
-    const btn = event?.target;
-    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Generating…'; }
+    const fd = new FormData();
+    fd.append('work_sys_id',     window._vs.cfg.workSysId);
+    fd.append('traveler_sys_id', travSysId);
+    fd.append('file',            file);
 
     try {
-        const res = await fetch(cfg.api.genDocPackage, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ work_sys_id: cfg.workSysId }),
-        });
-        if (!res.ok) throw new Error('Server error ' + res.status);
+        const apiUrl = window._vs.cfg.api.uploadApprovalDoc
+            ?? (window._vs.cfg.api.visaServices.replace('endpoints.php', 'upload-approval-doc.php'));
 
-        const ct = res.headers.get('Content-Type') ?? '';
-        if (ct.includes('application/json')) {
-            const j = await res.json();
-            alert(j.message || 'Failed to generate package');
+        const res = await fetch(apiUrl, { method: 'POST', body: fd });
+        const j   = await res.json();
+
+        if (j.status !== 'success') {
+            alert('Upload failed: ' + (j.message ?? 'Unknown error'));
+            if (label) label.textContent = '📎 Upload Approval';
             return;
         }
 
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href = url; a.download = `visa-docs-${cfg.workSysId}.zip`;
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+        window._vs.data = j.data;
+        _vsToast('Approval document uploaded ✓');
+        window._renderVsAppStatus();
     } catch (e) {
-        alert('Download failed: ' + e.message);
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '📦 Download Full Package'; }
+        alert('Upload error: ' + e.message);
+        if (label) label.textContent = '📎 Upload Approval';
+    }
+};
+
+function _vsStatBadge(label, count, bg, color) {
+    return `<div style="background:${bg};padding:6px 14px;border-radius:8px;text-align:center;">
+        <div style="font-size:1.1rem;font-weight:800;color:${color};">${count}</div>
+        <div style="font-size:.7rem;font-weight:600;color:${color};opacity:.8;">${label}</div>
+    </div>`;
+}
+
+function _vsCostBox(label, value, bg, color) {
+    return `<div style="background:${bg};padding:14px;border-radius:10px;text-align:center;">
+        <div style="font-size:1rem;font-weight:800;color:${color};">${_vsEsc(value)}</div>
+        <div style="font-size:.72rem;font-weight:600;color:${color};opacity:.8;margin-top:3px;">${label}</div>
+    </div>`;
+}
+
+/* ── Create Task ────────────────────────────────────────────── */
+window._vsCreateTask = async function () {
+    const data    = window._vs.data;
+    const meta    = data?.meta_data ?? {};
+    const trav    = data?.vs_travelers ?? [];
+    const workId  = window._vs.cfg.workSysId;
+
+    // Open task create modal with pre-filled visa info
+    if (typeof window.openTaskCreateModal === 'function') {
+        window.openTaskCreateModal({
+            work_sys_id:   workId,
+            task_type:     'visa_submission',
+            subject:       `Visa Submission — ${meta.country_name ?? ''} (${trav.length} traveler${trav.length>1?'s':''})`,
+            vendor_hint:   (meta.country_name ?? '') + ' Embassy',
+            amount:        parseFloat(meta.purchase_price ?? 0) * trav.length,
+        });
+    } else {
+        // Fallback — show task URL
+        const params = new URLSearchParams({
+            work_sys_id: workId,
+            subject:     `Visa Submission — ${meta.country_name ?? ''}`,
+            prefill:     '1',
+        });
+        window.open(`create-task.php?${params}`, '_blank');
     }
 };

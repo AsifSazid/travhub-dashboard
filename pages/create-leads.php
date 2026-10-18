@@ -16,7 +16,7 @@ $speechApi    = $ip_port . 'api/ai/lead-speech-polish.php';
 $hotelsApi         = $ip_port . 'api/hotels/search.php';
 $hotelQuickCreate  = $ip_port . 'api/masterdata/hotels/quick-create.php';
 $countriesApi      = $ip_port . 'api/masterdata/countries/endpoints.php';
-$visaApi           = $ip_port . 'api/masterdata/visa/endpoints.php';
+$visaApi           = $ip_port . 'api/visa-services/endpoints.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -2260,14 +2260,26 @@ async function onVisaSegCountryChange(sel, idx) {
     removeNotice(`visa_req_${idx}`);
     if (!countryId) { catSel.innerHTML = '<option value="">Select country first…</option>'; return; }
     try {
-        const res  = await fetch(`${VISA_API}?action=get&country=${encodeURIComponent(countryId)}`);
+        const res  = await fetch(`${VISA_API}?action=search_master&country=${encodeURIComponent(countryName)}`);
         const json = await res.json();
-        const cats = json.data?.categories ?? [];
+        // search_master returns flat list — convert to categories structure
+        const items = json.data ?? [];
+        const cats  = items.map(item => ({
+            name:           item.title,
+            sys_id:         item.sys_id,
+            visa_type:      item.visa_type_name,
+            visa_category:  item.visa_category_name,
+            duration_label: item.duration_label,
+            b2c_price:      item.b2c_price,
+            currency:       item.currency,
+            sub_categories: [],
+            _raw:           item,
+        }));
         _visaSegCats[idx] = cats;
         if (!cats.length) { catSel.innerHTML = '<option value="">No visa data for this country</option>'; return; }
-        catSel.innerHTML = `<option value="">Select category…</option>` +
+        catSel.innerHTML = '<option value="">Select category…</option>' +
             cats.map((c, i) => `<option value="${i}">${esc(c.name)}</option>`).join('');
-    } catch { catSel.innerHTML = '<option value="">Failed to load</option>'; }
+    } catch (e) { catSel.innerHTML = '<option value="">Failed to load</option>'; console.error(e); }
     syncAllVisaSegments();
 }
 
@@ -2381,16 +2393,21 @@ function syncAllVisaSegments() {
         const spIns = collectSegSpIns(`visaSpIns${idx}`);
 
         segments.push({
-            country_sys_id:    countrySel?.value ?? '',
-            country_name:      countryOpt?.dataset?.name ?? '',
-            category_idx:      catIdx >= 0 ? catIdx : null,
-            category_name:     cat?.name ?? '',
-            sub_cat_idx:       subIdx >= 0 ? subIdx : null,
-            sub_category:      sub?.name ?? '',
-            invitation_status: invRadio?.value ?? 'No',
+            country_sys_id:      countrySel?.value ?? '',
+            country_name:        countryOpt?.dataset?.name ?? '',
+            category_idx:        catIdx >= 0 ? catIdx : null,
+            category_name:       cat?.name ?? '',
+            master_visa_sys_id:  cat?._raw?.sys_id ?? cat?.sys_id ?? '',
+            visa_type_name:      cat?._raw?.visa_type ?? cat?.visa_type ?? '',
+            visa_category_name:  cat?._raw?.visa_category ?? cat?.visa_category ?? '',
+            duration_label:      cat?._raw?.duration_label ?? cat?.duration_label ?? '',
+            b2c_price:           cat?._raw?.b2c_price ?? cat?.b2c_price ?? '',
+            sub_cat_idx:         subIdx >= 0 ? subIdx : null,
+            sub_category:        sub?.name ?? '',
+            invitation_status:   invRadio?.value ?? 'No',
             applicants,
-            cost_bearer:       costCbs,
-            self_bearers:      selfBearers,
+            cost_bearer:         costCbs,
+            self_bearers:        selfBearers,
             special_instruction: spIns,
         });
     });

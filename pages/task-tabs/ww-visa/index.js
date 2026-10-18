@@ -23,8 +23,12 @@
         });
         if (tab === 'mindboard') window._renderVsMindboard?.();
         if (tab === 'info')      window._renderVsInfo?.();
-        if (tab === 'travelers') window._renderVsTravelers?.();
-        if (tab === 'status')    window._renderVsStatus?.();
+        if (tab === 'travelers') window._buildTravelersShell?.();
+        if (tab === 'status')    {
+            const el = document.getElementById('vs-tab-status');
+            if (el) el.innerHTML = '<div id="vs-panel-status" style="padding:20px 0;"></div>';
+            window._renderVsAppStatus?.();
+        }
     };
 
     /* ── Layer 2 switch ───────────────────────────────────── */
@@ -337,21 +341,56 @@
 
     /* ── Shell builder ────────────────────────────────────── */
     function _buildShell(mount, data) {
-        const isSubmitted = ['submitted','completed'].includes(data?.status);
+        const isSubmitted  = ['submitted','completed'].includes(data?.status);
+        const segments     = window._vs.cfg.countrySegments ?? [];
+        const countries    = segments.length > 0
+            ? segments.map(s => s.country_name).filter(Boolean)
+            : [data?.meta_data?.country_name ?? 'Visa'];
+        const activeCountry = countries[0] ?? 'Visa';
+
+        // Store active country in cfg
+        if (!window._vs.cfg._activeCountry) {
+            window._vs.cfg._activeCountry = activeCountry;
+        }
+
         mount.innerHTML = `
         <style>
             @keyframes vs-spin { to { transform:rotate(360deg); } }
             .vs-tab-btn,.vs-trav-pill,.vs-sub-btn { transition:all .15s; }
             .vs-sub-btn { border-radius:7px; }
+            .vs-country-tab { padding:4px 14px;border-radius:6px;border:1.5px solid #E2E8F0;
+                              background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;
+                              color:#64748B;transition:all .15s; }
+            .vs-country-tab.active { background:#EEF2FF;border-color:#6366f1;color:#4F46E5; }
         </style>
+
+        <!-- Country tabs (if multiple) -->
+        ${countries.length > 1 ? `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 4px 0;margin-bottom:2px;">
+            <span style="font-size:.72rem;font-weight:700;color:#94A3B8;text-transform:uppercase;
+                         letter-spacing:.05em;">Country:</span>
+            ${countries.map((cn, ci) => `
+                <button class="vs-country-tab ${ci===0?'active':''}"
+                        data-country="${_vsEsc(cn)}"
+                        onclick="window._vsSwitchCountry('${_vsEsc(cn)}', this)">
+                    ${_vsEsc(cn)}
+                </button>`).join('')}
+        </div>` : `
+        <div style="padding:6px 4px 0;">
+            <span style="display:inline-block;padding:3px 10px;background:#EEF2FF;border-radius:6px;
+                         font-size:.75rem;font-weight:700;color:#4F46E5;">
+                ${_vsEsc(countries[0])}
+            </span>
+        </div>`}
+
         <!-- Layer 1 tab bar -->
-        <div style="display:flex;align-items:center;border-bottom:2px solid #E2E8F0;padding:0 4px;">
+        <div style="display:flex;align-items:center;border-bottom:2px solid #E2E8F0;padding:0 4px;margin-top:8px;">
             ${[
-                {tab:'mindboard', icon:'', label:'Mind Board'},
-                {tab:'info',      icon:'', label:'Visa Info'},
-                {tab:'travelers', icon:'', label:'Traveler Docs', badge:true},
-                {tab:'status',    icon:'', label:'Application Status'},
-            ].map(({tab,icon,label,badge}) => `
+                {tab:'mindboard', label:'Mind Board'},
+                {tab:'info',      label:'Visa Info'},
+                {tab:'travelers', label:'Traveler Docs', badge:true},
+                {tab:'status',    label:'Application Status'},
+            ].map(({tab,label,badge}) => `
                 <button class="vs-tab-btn" data-tab="${tab}"
                         onclick="window._vsSwitchTab('${tab}',this)"
                         style="padding:11px 16px;font-size:.875rem;background:none;border:none;
@@ -362,7 +401,6 @@
                                 font-size:.7rem;font-weight:700;background:#EEF2FF;color:#4F46E5;
                                 display:none;"></span>` : ''}
                 </button>`).join('')}
-
             <div id="vs-submitted-badge"
                  style="margin-left:auto;display:${isSubmitted?'flex':'none'};align-items:center;
                         gap:6px;padding:4px 10px;background:#DCFCE7;border-radius:999px;
@@ -378,6 +416,18 @@
             <div id="vs-tab-status"    style="display:none;"></div>
         </div>`;
     }
+
+    /* ── Switch Country Tab ─────────────────────────────────── */
+    window._vsSwitchCountry = function (countryName, btnEl) {
+        window._vs.cfg._activeCountry = countryName;
+        // Update active tab styling
+        document.querySelectorAll('.vs-country-tab').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+        // Reload current tab content for new country
+        const activeTab = window._vs.activeTab;
+        window._vsSwitchTab(activeTab,
+            document.querySelector(`.vs-tab-btn[data-tab="${activeTab}"]`));
+    };
 
     /* ── Init ─────────────────────────────────────────────── */
     window.initWorkVisaTab = async function (config) {

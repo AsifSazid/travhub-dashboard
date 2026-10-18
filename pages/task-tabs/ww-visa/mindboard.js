@@ -56,7 +56,7 @@ window._renderVsMindboard = function () {
                        </div>
                    </div>
                    <div style="margin-left:auto;">
-                       ${_vsStatusChip(data.status)}
+                       ${window._vsTravStatusChip?.(data.status) ?? ""}
                    </div>
                </div>
 

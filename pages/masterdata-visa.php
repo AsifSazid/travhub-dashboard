@@ -301,6 +301,21 @@ body{background:var(--surface);}
         </div>
         <div id="desc-sections-wrap"></div>
       </div>
+
+      <!-- Cover Letter Templates -->
+      <div style="margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <label class="f-label" style="margin:0;">
+            Cover Letter Templates
+            <span style="color:var(--muted);font-weight:400;font-size:.75rem;">
+              (AI uses these as reference when generating cover letters)
+            </span>
+          </label>
+          <button class="add-more-btn" onclick="_addCLTemplate()">+ Add Template</button>
+        </div>
+        <div id="cl-templates-wrap"></div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="_closeSvcModal()">Cancel</button>
@@ -792,6 +807,7 @@ async function _saveSvc() {
         file_size_limit_kb:  parseInt(document.getElementById('svc-file-size').value) || 300,
         required_documents:  _profDocs,
         description:         _descSections,
+        cl_templates:        _clTemplates,
     };
 
     if (!payload.title)            return alert('Title is required');
@@ -814,6 +830,63 @@ async function _saveSvc() {
     if (j.status !== 'success') return alert(j.message || 'Save failed');
     _closeSvcModal();
     _loadServices();
+}
+
+/* ── Cover Letter Templates ───────────────────────────── */
+let _clTemplates = [];
+
+const CL_PROF_TYPES = [
+    {key:'general',        label:'General'},
+    {key:'employment',     label:'Employed'},
+    {key:'businessman',    label:'Businessman'},
+    {key:'student',        label:'Student'},
+    {key:'non_employment', label:'Non-employed'},
+    {key:'married_child',  label:'Married with Child'},
+];
+
+function _renderCLTemplates() {
+    const wrap = document.getElementById('cl-templates-wrap');
+    if (!wrap) return;
+    if (!_clTemplates.length) {
+        wrap.innerHTML = `<div style="padding:12px;background:#F8FAFC;border:1px dashed #E2E8F0;
+            border-radius:8px;text-align:center;color:#94A3B8;font-size:.82rem;">
+            No templates yet. Click "+ Add Template" to add one.
+        </div>`;
+        return;
+    }
+    wrap.innerHTML = _clTemplates.map((t, i) => `
+        <div style="border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <select onchange="_clTemplates[${i}].profession_type=this.value"
+                        style="padding:6px 10px;border:1.5px solid #E2E8F0;border-radius:7px;
+                               font-size:.82rem;outline:none;background:#fff;">
+                    ${CL_PROF_TYPES.map(p =>
+                        `<option value="${p.key}" ${t.profession_type===p.key?'selected':''}>${p.label}</option>`
+                    ).join('')}
+                </select>
+                <input value="${t.label??''}"
+                       oninput="_clTemplates[${i}].label=this.value"
+                       placeholder="Template label (e.g. Employee with family)"
+                       style="flex:1;padding:6px 10px;border:1.5px solid #E2E8F0;border-radius:7px;
+                              font-size:.82rem;outline:none;" />
+                <button onclick="_clTemplates.splice(${i},1);_renderCLTemplates()"
+                        style="padding:4px 10px;border:1px solid #FCA5A5;background:#FFF1F2;
+                               border-radius:6px;color:#EF4444;cursor:pointer;font-size:.75rem;">
+                    Remove
+                </button>
+            </div>
+            <textarea rows="6"
+                      oninput="_clTemplates[${i}].template=this.value"
+                      placeholder="Paste sample cover letter template here..."
+                      style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;
+                             font-size:.82rem;outline:none;resize:vertical;box-sizing:border-box;
+                             font-family:monospace;line-height:1.6;">${t.template??''}</textarea>
+        </div>`).join('');
+}
+
+function _addCLTemplate() {
+    _clTemplates.push({ profession_type:'general', label:'', template:'' });
+    _renderCLTemplates();
 }
 
 async function _toggleSvc(sysId) {
