@@ -164,6 +164,61 @@ try {
             _notifyDeptEmployees($pdo, $deptSysId, $workSysId, $swIds['sys_id'], $svcName, $clientName, $userName);
         }
 
+        // ── LFDP-21: visa — init visa_services row with lead segment mb_notes ──
+        if ($svcSlug === 'visa') {
+            $visaData = $segmentData['visa'] ?? [];
+            $allSegs  = $visaData['segments'] ?? [$visaData];
+            $mbParts  = [];
+
+            // Build mb_notes from segment info
+            foreach ($allSegs as $i => $s) {
+                if (count($allSegs) > 1) $mbParts[] = "Segment " . ($i + 1) . ":";
+                if (!empty($s['country_name']))       $mbParts[] = "🌍 Country: "   . $s['country_name'];
+                if (!empty($s['visa_type_name']))     $mbParts[] = "📋 Type: "       . $s['visa_type_name'];
+                if (!empty($s['visa_category_name'])) $mbParts[] = "📁 Category: "  . $s['visa_category_name'];
+                if (!empty($s['b2c_price']))          $mbParts[] = "💰 Client Price: BDT " . number_format((float)$s['b2c_price']);
+                $names = array_filter(array_map(fn($a) => trim($a['name'] ?? ''), $s['applicants'] ?? []));
+                if ($names) $mbParts[] = "👥 Applicants (" . count($names) . "): " . implode(', ', $names);
+                if (count($allSegs) > 1) $mbParts[] = '';
+            }
+            $mbNotes = trim(implode("\n", $mbParts));
+
+            // Build placeholder vs_travelers from applicants
+            $placeholders = [];
+            foreach ($allSegs as $s) {
+                foreach (($s['applicants'] ?? []) as $app) {
+                    $appName = trim($app['name'] ?? '');
+                    if (!$appName) continue;
+                    $placeholders[] = [
+                        'sys_id'          => 'PH-' . strtoupper(substr(md5($appName . microtime()), 0, 8)),
+                        'name'            => $appName,
+                        'passport_no'     => '',
+                        'profession_type' => trim($app['profession'] ?? 'general') ?: 'general',
+                        'is_placeholder'  => true,   // flag — not yet linked to a real traveler
+                        'docs'            => [],
+                        'cover_letter'    => null,
+                        'app_status'      => 'pending',
+                        'status_history'  => [],
+                        'app_info'        => [],
+                    ];
+                }
+            }
+
+            // Init visa_services row
+            $vsCheck = $pdo->prepare("SELECT id FROM visa_services WHERE work_sys_id = ? LIMIT 1");
+            $vsCheck->execute([$workSysId]);
+            if (!$vsCheck->fetchColumn()) {
+                $vsIds   = generateV2IDs($pdo, 'visa_services');
+                $vsMeta  = json_encode(['mb_notes' => $mbNotes], JSON_UNESCAPED_UNICODE);
+                $vsTravs = json_encode($placeholders, JSON_UNESCAPED_UNICODE);
+                $pdo->prepare("
+                    INSERT INTO visa_services (uuid, sys_id, work_sys_id, vs_travelers, meta_data, status)
+                    VALUES (?, ?, ?, ?, ?, 'pending')
+                ")->execute([$vsIds['uuid'], $vsIds['sys_id'], $workSysId, $vsTravs, $vsMeta]);
+            }
+        }
+        // ── end LFDP-21 ──
+
         $createdSW[] = [
             'sys_id'        => $swIds['sys_id'],
             'service_slug'  => $svcSlug,

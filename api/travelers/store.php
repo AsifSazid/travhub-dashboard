@@ -150,9 +150,12 @@ try {
                         }
 
                         $pasteStatus = $omv->paste_file($localTargetPath, $cloudTargetPath);
-                        
-                        if ($pasteStatus === true) {
+
+                        // paste_file may return true, 1, a path string, or other truthy value on success
+                        if ($pasteStatus !== false && $pasteStatus !== null && $pasteStatus !== 0) {
                             $movedCloudPath = $cloudTargetPath;
+                        } else {
+                            error_log("[store.php] paste_file returned: " . var_export($pasteStatus, true) . " for {$cloudTargetPath}");
                         }
                     } catch (Exception $e) {
                         // SMB copy failed but local copy succeeded
@@ -198,8 +201,7 @@ try {
     }
 
     // ── traveler_documents row (initial passport/NID scan) ──────────────────
-    // শুধু SMB upload সফল হলেই row বসাবো — যাতে Documents tab এ orphan/broken
-    // entry না দেখায় (commit-documents.php এর একই discipline অনুসরণ করে)
+    // SMB cloud path থাকলেই row বসাবো (SMB is the source of truth)
     $initialDocSysId = null;
     if ($movedCloudPath && $documentType) {
         $docNumberForInsert = ($documentType === 'passport') ? $passportNo : $nidNo;

@@ -27,7 +27,7 @@ try {
                        COUNT(DISTINCT m.traveler_id) AS traveler_count
                 FROM   traveler_groups g
                 LEFT JOIN traveler_group_members m ON m.group_id = g.sys_id
-                WHERE  g.type = 'umrah' OR g.type IS NULL
+                WHERE  g.type = 'umrah'
                 GROUP  BY g.id
                 ORDER  BY g.created_at DESC
             ");

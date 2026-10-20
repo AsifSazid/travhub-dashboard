@@ -15,8 +15,11 @@
  *   action=set_master                    → set/change master_visa_sys_id + update meta_data
  *   action=update_travelers              → replace full vs_travelers JSON
  *   action=update_cover_letter           → update one traveler's cover_letter field
+ *   action=update_mb_notes               → patch mb_notes in meta_data (Mind Board)
  *   action=submit_application            → status → submitted, record submitted_at
  *   action=reopen                        → status → in_progress (undo submit)
+ *   action=update_meta                   → patch arbitrary meta_data fields
+ *   action=create_visa_task  (LFDP-21)  → create task row, set service_works.status=confirmed
  */
 
 ob_start();
@@ -40,6 +43,7 @@ register_shutdown_function(function() {
 require_once '../../server/api_bootstrap.php';
 require_once '../../server/db_connection.php';
 require_once '../../server/sys_id_generator_v2.php';
+require_once '../../server/generate_meta_data.php';
 
 $method   = $_SERVER['REQUEST_METHOD'];
 $action   = $_GET['action'] ?? '';
@@ -92,6 +96,82 @@ function _fetchMaster(PDO $pdo, string $sysId): ?array
     return $row;
 }
 
+// ── Auto-create task for visa service (LFDP-21) ──────────
+function _vsAutoCreateTask(PDO $pdo, string $workSysId, string $userName): string|false
+{
+    // Idempotent: return existing task if already created
+    $chk = $pdo->prepare("
+        SELECT t.sys_id FROM tasks t
+        JOIN service_works sw ON sw.sys_id = t.service_work_sys_id
+        WHERE sw.work_sys_id = ? AND sw.service_slug = 'visa'
+        LIMIT 1
+    ");
+    $chk->execute([$workSysId]);
+    if ($existing = $chk->fetchColumn()) return $existing;
+
+    // Fetch work + client info
+    $ws = $pdo->prepare("SELECT client_info, work_name FROM works WHERE sys_id = ? LIMIT 1");
+    $ws->execute([$workSysId]);
+    $work = $ws->fetch(PDO::FETCH_ASSOC);
+    if (!$work) return false;
+
+    $ci          = json_decode($work['client_info'], true) ?? [];
+    $clientName  = $ci['name']   ?? 'Unknown';
+    $clientSysId = $ci['sys_id'] ?? null;
+
+    // Get service_works row for 'visa'
+    $sw = $pdo->prepare("SELECT sys_id FROM service_works WHERE work_sys_id = ? AND service_slug = 'visa' LIMIT 1");
+    $sw->execute([$workSysId]);
+    $swSysId = $sw->fetchColumn() ?: null;
+
+    // Fetch visa meta for task name
+    $vs = $pdo->prepare("SELECT meta_data FROM visa_services WHERE work_sys_id = ? LIMIT 1");
+    $vs->execute([$workSysId]);
+    $vsRow  = $vs->fetch(PDO::FETCH_ASSOC);
+    $vsMeta = $vsRow ? (json_decode($vsRow['meta_data'], true) ?? []) : [];
+
+    $countryName = $vsMeta['country_name']       ?? '';
+    $visaTitle   = $vsMeta['master_visa_title']  ?? ($countryName ? "$countryName Visa" : 'Visa Submission');
+    $travCount   = 0;
+    if ($vsRow) {
+        $trav = $pdo->prepare("SELECT JSON_LENGTH(vs_travelers) FROM visa_services WHERE work_sys_id = ?");
+        $trav->execute([$workSysId]);
+        $travCount = (int)($trav->fetchColumn() ?? 0);
+    }
+
+    $taskName = $visaTitle . ($travCount > 0 ? " ({$travCount} traveler" . ($travCount > 1 ? 's' : '') . ')' : '');
+
+    $ids  = generateV2IDs($pdo, 'tasks');
+    $meta = buildMetaData(null, $userName);
+
+    $pdo->prepare("
+        INSERT INTO tasks
+            (uuid, sys_id, service_work_sys_id, work_sys_id, client_sys_id, client_name, workname,
+             status, overall_status, service_slug, meta_data)
+        VALUES
+            (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', 'visa', ?)
+    ")->execute([
+        $ids['uuid'], $ids['sys_id'],
+        $swSysId, $workSysId, $clientSysId,
+        $clientName, $taskName, $meta,
+    ]);
+
+    // Update service_works status → confirmed
+    if ($swSysId) {
+        $swMeta = buildMetaData(null, $userName);
+        $pdo->prepare("UPDATE service_works SET status = 'confirmed', meta_data = ? WHERE sys_id = ?")
+            ->execute([$swMeta, $swSysId]);
+    }
+
+    // Store task_sys_id back into visa_services.meta_data for UI reference
+    $existingMeta = $vsMeta;
+    $existingMeta['task_sys_id'] = $ids['sys_id'];
+    $pdo->prepare("UPDATE visa_services SET meta_data = ? WHERE work_sys_id = ?")
+        ->execute([json_encode($existingMeta, JSON_UNESCAPED_UNICODE), $workSysId]);
+
+    return $ids['sys_id'];
+}
+
 try {
 
     switch ($action) {
@@ -137,6 +217,15 @@ try {
                 $params[] = $like;
             }
 
+            // country name search (used by create-leads dropdown)
+            if (!empty($_GET['country']) || !empty($_GET['countryName'])) {
+                $cn = trim($_GET['country'] ?? $_GET['countryName'] ?? '');
+                if ($cn) {
+                    $where[]  = 'mvs.country_name LIKE ?';
+                    $params[] = '%' . $cn . '%';
+                }
+            }
+
             $whereStr = implode(' AND ', $where);
             $stmt = $pdo->prepare("
                 SELECT mvs.sys_id, mvs.title, mvs.country_sys_id, mvs.country_name,
@@ -162,7 +251,6 @@ try {
             $workSysId = $body['work_sys_id'] ?? '';
             if (!$workSysId) throw new Exception('work_sys_id required');
 
-            // Check duplicate
             $chk = $pdo->prepare("SELECT id FROM visa_services WHERE work_sys_id = ? LIMIT 1");
             $chk->execute([$workSysId]);
             if ($chk->fetchColumn()) {
@@ -183,7 +271,7 @@ try {
 
         /* ── SET_MASTER: select/change master visa + snapshot meta ── */
         case 'set_master':
-            $workSysId     = $body['work_sys_id']      ?? '';
+            $workSysId     = $body['work_sys_id']        ?? '';
             $masterSysId   = $body['master_visa_sys_id'] ?? '';
             if (!$workSysId)   throw new Exception('work_sys_id required');
             if (!$masterSysId) throw new Exception('master_visa_sys_id required');
@@ -191,25 +279,33 @@ try {
             $master = _fetchMaster($pdo, $masterSysId);
             if (!$master) throw new Exception('Master visa service not found');
 
-            $meta = json_encode([
-                'master_visa_sys_id'  => $master['sys_id'],
-                'master_visa_title'   => $master['title'],
-                'country_sys_id'      => $master['country_sys_id'],
-                'country_name'        => $master['country_name'],
-                'visa_type_sys_id'    => $master['visa_type_sys_id'],
-                'visa_type_name'      => $master['visa_type_name'],
-                'visa_category_sys_id'=> $master['visa_category_sys_id'],
-                'visa_category_name'  => $master['visa_category_name'],
-                'duration_days'       => $master['duration_days'],
-                'duration_label'      => $master['duration_label'],
-                'b2c_price'           => $master['b2c_price'],
-                'purchase_price'      => $master['purchase_price'],
-                'currency'            => $master['currency'],
-                'file_size_limit_kb'  => $master['file_size_limit_kb'],
-                'required_documents'  => $master['required_documents'],
-            ], JSON_UNESCAPED_UNICODE);
+            // Preserve existing meta fields (mb_notes, task_sys_id etc.)
+            $existing = _vsFetch($pdo, $workSysId);
+            $preserve = [];
+            if ($existing && is_array($existing['meta_data'])) {
+                foreach (['mb_notes', 'task_sys_id'] as $k) {
+                    if (isset($existing['meta_data'][$k])) $preserve[$k] = $existing['meta_data'][$k];
+                }
+            }
 
-            // Ensure row exists
+            $meta = json_encode(array_merge($preserve, [
+                'master_visa_sys_id'   => $master['sys_id'],
+                'master_visa_title'    => $master['title'],
+                'country_sys_id'       => $master['country_sys_id'],
+                'country_name'         => $master['country_name'],
+                'visa_type_sys_id'     => $master['visa_type_sys_id'],
+                'visa_type_name'       => $master['visa_type_name'],
+                'visa_category_sys_id' => $master['visa_category_sys_id'],
+                'visa_category_name'   => $master['visa_category_name'],
+                'duration_days'        => $master['duration_days'],
+                'duration_label'       => $master['duration_label'],
+                'b2c_price'            => $master['b2c_price'],
+                'purchase_price'       => $master['purchase_price'],
+                'currency'             => $master['currency'],
+                'file_size_limit_kb'   => $master['file_size_limit_kb'],
+                'required_documents'   => $master['required_documents'],
+            ]), JSON_UNESCAPED_UNICODE);
+
             $chk = $pdo->prepare("SELECT id FROM visa_services WHERE work_sys_id = ? LIMIT 1");
             $chk->execute([$workSysId]);
             if (!$chk->fetchColumn()) {
@@ -237,6 +333,20 @@ try {
             $pdo->prepare("UPDATE visa_services SET meta_data = ? WHERE work_sys_id = ?")
                 ->execute([json_encode($meta, JSON_UNESCAPED_UNICODE), $wid]);
             vsJson(['status' => 'success', 'message' => 'Meta updated', 'data' => _vsFetch($pdo, $wid)]);
+            break;
+
+        /* ── UPDATE_MB_NOTES: save Mind Board notes ─────────── */
+        case 'update_mb_notes':
+            $wid     = $body['work_sys_id'] ?? '';
+            $mbNotes = $body['mb_notes']    ?? '';
+            if (!$wid) throw new Exception('work_sys_id required');
+            $row  = _vsFetch($pdo, $wid);
+            if (!$row) throw new Exception('Visa service not found');
+            $meta = array_merge($row['meta_data'] ?? [], ['mb_notes' => $mbNotes]);
+            $pdo->prepare("UPDATE visa_services SET meta_data = ? WHERE work_sys_id = ?")
+                ->execute([json_encode($meta, JSON_UNESCAPED_UNICODE), $wid]);
+            vsJson(['status' => 'success', 'message' => 'MB notes saved']);
+            break;
 
         /* ── UPDATE_TRAVELERS: full replace of vs_travelers JSON ─── */
         case 'update_travelers':
@@ -253,13 +363,13 @@ try {
             vsJson(['status' => 'success', 'message' => 'Travelers updated', 'data' => $row]);
             break;
 
-        /* ── UPDATE_COVER_LETTER: update one traveler's cover letter ─ */
+        /* ── UPDATE_COVER_LETTER ─────────────────────────────── */
         case 'update_cover_letter':
-            $workSysId   = $body['work_sys_id']   ?? '';
+            $workSysId   = $body['work_sys_id']     ?? '';
             $travSysId   = $body['traveler_sys_id'] ?? '';
-            $coverLetter = $body['cover_letter']   ?? null;
-            if (!$workSysId)  throw new Exception('work_sys_id required');
-            if (!$travSysId)  throw new Exception('traveler_sys_id required');
+            $coverLetter = $body['cover_letter']    ?? null;
+            if (!$workSysId) throw new Exception('work_sys_id required');
+            if (!$travSysId) throw new Exception('traveler_sys_id required');
 
             $row = _vsFetch($pdo, $workSysId);
             if (!$row) throw new Exception('Visa service not found');
@@ -269,8 +379,7 @@ try {
             foreach ($travelers as &$t) {
                 if ($t['sys_id'] === $travSysId) {
                     $t['cover_letter'] = $coverLetter;
-                    $found = true;
-                    break;
+                    $found = true; break;
                 }
             }
             unset($t);
@@ -282,15 +391,14 @@ try {
             vsJson(['status' => 'success', 'message' => 'Cover letter updated']);
             break;
 
-        /* ── SUBMIT_APPLICATION: mark submitted ─────────────── */
+        /* ── SUBMIT_APPLICATION ──────────────────────────────── */
         case 'submit_application':
             $workSysId = $body['work_sys_id'] ?? '';
             if (!$workSysId) throw new Exception('work_sys_id required');
 
             $row = _vsFetch($pdo, $workSysId);
             if (!$row) throw new Exception('Visa service not found');
-            if ($row['status'] === 'submitted')
-                throw new Exception('Already submitted');
+            if ($row['status'] === 'submitted') throw new Exception('Already submitted');
 
             $pdo->prepare("
                 UPDATE visa_services
@@ -300,16 +408,15 @@ try {
 
             $row = _vsFetch($pdo, $workSysId);
             vsJson([
-                'status'  => 'success',
-                'message' => 'Application submitted',
-                'data'    => $row,
-                // meta for JS to trigger financial entries
-                'meta'    => $row['meta_data'],
+                'status'         => 'success',
+                'message'        => 'Application submitted',
+                'data'           => $row,
+                'meta'           => $row['meta_data'],
                 'traveler_count' => count($row['vs_travelers'] ?? []),
             ]);
             break;
 
-        /* ── REOPEN: un-submit ───────────────────────────────── */
+        /* ── REOPEN ──────────────────────────────────────────── */
         case 'reopen':
             $workSysId = $body['work_sys_id'] ?? '';
             if (!$workSysId) throw new Exception('work_sys_id required');
@@ -319,6 +426,44 @@ try {
                 WHERE work_sys_id = ?
             ")->execute([$workSysId]);
             vsJson(['status' => 'success', 'message' => 'Reopened']);
+            break;
+
+        /* ── CREATE_VISA_TASK (LFDP-21) ──────────────────────
+         *
+         * Creates a tasks row linked to the visa service_works row.
+         * Sets service_works.status = 'confirmed'.
+         * Stores task_sys_id back into visa_services.meta_data.
+         * Idempotent — returns existing task_sys_id if already created.
+         * Financial entries are posted by the JS layer after this call.
+         */
+        case 'create_visa_task':
+            $workSysId = $body['work_sys_id'] ?? '';
+            if (!$workSysId) throw new Exception('work_sys_id required');
+
+            $row = _vsFetch($pdo, $workSysId);
+            if (!$row) throw new Exception('Visa service not found');
+
+            // Check travelers are actually ready
+            $travelers   = $row['vs_travelers'] ?? [];
+            $readyCount  = 0;
+            foreach ($travelers as $t) {
+                $s = $t['app_status'] ?? 'pending';
+                if (in_array($s, ['ready', 'submitted', 'approved'], true)) $readyCount++;
+            }
+            if (count($travelers) === 0)   throw new Exception('কোনো traveler নেই');
+            if ($readyCount < count($travelers)) {
+                throw new Exception("সব travelers ready নয় ({$readyCount}/" . count($travelers) . ")");
+            }
+
+            $taskSysId = _vsAutoCreateTask($pdo, $workSysId, $userName);
+            if (!$taskSysId) throw new Exception('Task creation failed — work not found');
+
+            vsJson([
+                'status'     => 'success',
+                'task_sys_id'=> $taskSysId,
+                'work_sys_id'=> $workSysId,
+                'message'    => 'Task created successfully',
+            ]);
             break;
 
         default:

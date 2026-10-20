@@ -16,6 +16,7 @@
  *   action=delete_quotation            → pk_quotations[] থেকে remove
  *   action=confirm_and_create_task     → quotation → confirmation + task create
  *   action=update_confirmation         → confirmed package update
+ *   action=save_itinerary  (LFDP-22)  → pk_itinerary + trip_days + start_date save
  */
 
 ob_start();
@@ -59,8 +60,12 @@ function _pkFetch(PDO $pdo, string $workSysId): ?array
     $s->execute([$workSysId]);
     $row = $s->fetch(PDO::FETCH_ASSOC);
     if (!$row) return null;
-    $row['pk_quotations']  = $row['pk_quotations']  ? (json_decode($row['pk_quotations'],  true) ?: []) : [];
+    $row['pk_quotations']   = $row['pk_quotations']   ? (json_decode($row['pk_quotations'],   true) ?: [])   : [];
     $row['pk_confirmation'] = $row['pk_confirmation'] ? (json_decode($row['pk_confirmation'], true) ?: null) : null;
+    // LFDP-22: new columns
+    $row['pk_itinerary']    = isset($row['pk_itinerary']) && $row['pk_itinerary']
+                              ? (json_decode($row['pk_itinerary'], true) ?: []) : [];
+    // trip_days and start_date are raw DB values — no decode needed
     return $row;
 }
 
@@ -108,7 +113,7 @@ function _pkGetConfirmedServices(PDO $pdo, string $workSysId): array
         foreach ($confs as $c) {
             if (($c['status'] ?? '') === 'confirmed') {
                 $result['air_tickets'][] = [
-                    'sys_id'  => $c['sys_id']  ?? '',
+                    'sys_id'  => $c['sys_id']    ?? '',
                     'label'   => ($c['segments'][0]['origin'] ?? '') . '-' . ($c['segments'][count($c['segments'])-1]['destination'] ?? ''),
                     'airline' => $c['airline']   ?? '',
                     'pnr'     => $c['pnr']       ?? '',
@@ -119,6 +124,15 @@ function _pkGetConfirmedServices(PDO $pdo, string $workSysId): array
                 ];
             }
         }
+    }
+
+    // LFDP-22: expose top-level air_ticket.departure_date for itinerary date auto-sync
+    if (!empty($result['air_tickets'])) {
+        $first = $result['air_tickets'][0];
+        $result['air_ticket'] = [
+            'departure_date' => $first['depart'] ?? null,
+            'pnr'            => $first['pnr']    ?? null,
+        ];
     }
 
     // Confirmed hotel services
@@ -338,40 +352,38 @@ try {
             if (!$quotation) { echo json_encode(['status'=>'error','message'=>'Quotation not found']); exit; }
 
             // Build confirmation
-            $pricing    = $quotation['pricing'] ?? [];
+            $pricing = $quotation['pricing'] ?? [];
             $conf = [
                 'sys_id'           => 'C-001',
                 'quotation_sys_id' => $qSysId,
-                'title'            => $quotation['title']       ?? '',
-                'itinerary'        => $quotation['itinerary']   ?? '',
+                'title'            => $quotation['title']        ?? '',
+                'itinerary'        => $quotation['itinerary']    ?? '',
                 'destinations'     => $quotation['destinations'] ?? [],
                 'duration_days'    => $quotation['duration_days'] ?? 0,
-                'pax'              => $quotation['pax']          ?? 1,
-                'services'         => $quotation['services']     ?? [],
+                'pax'              => $quotation['pax']           ?? 1,
+                'services'         => $quotation['services']      ?? [],
                 'pricing'          => $pricing,
-                'currency'         => $pricing['currency']       ?? 'BDT',
-                'gross_total'      => $pricing['gross_total']    ?? 0,
-                'per_pax'          => $pricing['per_pax']        ?? 0,
-                // These can be filled later via update_confirmation
-                'client_paid'      => (float)($body['client_paid']   ?? 0),
-                'vendor_ref'       => trim($body['vendor_ref']       ?? ''),
-                'vendor_sys_id'    => trim($body['vendor_sys_id']    ?? ''),
-                'vendor_cost'      => (float)($body['vendor_cost']   ?? 0),
-                'note'             => trim($body['note']              ?? ''),
+                'currency'         => $pricing['currency']        ?? 'BDT',
+                'gross_total'      => $pricing['gross_total']     ?? 0,
+                'per_pax'          => $pricing['per_pax']         ?? 0,
+                'client_paid'      => (float)($body['client_paid']  ?? 0),
+                'vendor_ref'       => trim($body['vendor_ref']      ?? ''),
+                'vendor_sys_id'    => trim($body['vendor_sys_id']   ?? ''),
+                'vendor_cost'      => (float)($body['vendor_cost']  ?? 0),
+                'note'             => trim($body['note']             ?? ''),
                 'status'           => 'confirmed',
                 'confirmed_at'     => date('c'),
             ];
 
             _pkSave($pdo, $workSysId, $row['pk_quotations'], $conf, $row['meta_data'], $userName);
 
-            // Create task
             $taskSysId = _pkAutoCreateTask($pdo, $conf, $workSysId, $userName);
 
             ob_clean();
             echo json_encode([
-                'status'        => 'success',
-                'confirmation'  => $conf,
-                'task_sys_id'   => $taskSysId,
+                'status'       => 'success',
+                'confirmation' => $conf,
+                'task_sys_id'  => $taskSysId,
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
@@ -390,14 +402,49 @@ try {
             foreach ($numFields as $f) {
                 if (isset($body[$f])) $conf[$f] = (float)$body[$f];
             }
-            if (isset($body['pricing']))     $conf['pricing']      = $body['pricing'];
-            if (isset($body['services']))    $conf['services']     = $body['services'];
+            if (isset($body['pricing']))      $conf['pricing']      = $body['pricing'];
+            if (isset($body['services']))     $conf['services']     = $body['services'];
             if (isset($body['destinations'])) $conf['destinations'] = $body['destinations'];
             $conf['updated_at'] = date('c');
 
             _pkSave($pdo, $workSysId, $row['pk_quotations'], $conf, $row['meta_data'], $userName);
             ob_clean();
             echo json_encode(['status'=>'success','confirmation'=>$conf], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // ── save_itinerary (LFDP-22) ──────────────────────────
+        case 'save_itinerary': {
+            $itinerary = $body['pk_itinerary'] ?? [];
+            $tripDays  = isset($body['trip_days']) ? (int)$body['trip_days'] : null;
+            $startDate = !empty($body['start_date']) ? trim($body['start_date']) : null;
+
+            if (!is_array($itinerary)) {
+                echo json_encode(['status'=>'error','message'=>'pk_itinerary must be array']);
+                exit;
+            }
+
+            // Validate start_date format YYYY-MM-DD
+            if ($startDate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+                $startDate = null;
+            }
+
+            $pdo->prepare("
+                UPDATE package_services
+                SET pk_itinerary = ?,
+                    trip_days    = ?,
+                    start_date   = ?
+                WHERE work_sys_id = ?
+            ")->execute([
+                json_encode($itinerary, JSON_UNESCAPED_UNICODE),
+                $tripDays,
+                $startDate,
+                $workSysId,
+            ]);
+
+            $row = _pkFetch($pdo, $workSysId);
+            ob_clean();
+            echo json_encode(['status'=>'success','message'=>'Itinerary saved','data'=>$row], JSON_UNESCAPED_UNICODE);
             exit;
         }
 

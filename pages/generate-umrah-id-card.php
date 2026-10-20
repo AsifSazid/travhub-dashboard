@@ -367,15 +367,49 @@ function makeWatermark(isBack) {
 </svg>`;
 }
 
+function getTravelerFlights(travSysId) {
+    const segs = groupData?.segments ?? [];
+    return segs.filter(f =>
+        f.legs && (f.passengers ?? []).some(p => p.traveler_sys_id === travSysId)
+    );
+}
+
+function buildFlightHtml(flights, accentColor) {
+    if (!flights.length) return '';
+    let html = '';
+    flights.forEach((f, fi) => {
+        const legs = f.legs ?? [];
+        const legsHtml = legs.map((l, li) => {
+            const dep = l.dep_date ? fmtDate(l.dep_date) + (l.dep_time ? ' ' + l.dep_time : '') : '—';
+            const arr = l.arr_date ? fmtDate(l.arr_date) + (l.arr_time ? ' ' + l.arr_time : '') : '';
+            return `<div style="font-size:8px;color:#475569;padding:1px 0;">
+                <span style="font-weight:700;color:${accentColor}">${esc(l.from||'?')}→${esc(l.to||'?')}</span>
+                <span style="margin-left:4px">${esc(dep)}${arr?' → '+esc(arr):''}</span>
+            </div>`;
+        }).join('');
+        html += `<div style="margin-bottom:${fi<flights.length-1?'6':'0'}px">
+            <div style="font-size:8px;font-weight:700;color:#374151;margin-bottom:2px">
+                ${esc(f.airline||'Flight')}
+                ${f.pnr?`<span style="font-family:monospace;color:${accentColor};margin-left:4px">${esc(f.pnr)}</span>`:''}
+                <span style="font-weight:400;color:#94a3b8;margin-left:4px;text-transform:capitalize">${esc(f.class||'')}</span>
+            </div>
+            ${legsHtml}
+        </div>`;
+    });
+    return html;
+}
+
 function buildFront(t, gName, isLeader, qrVal){
     const cls=isLeader?'leader':'member';
     const qrClr=isLeader?'b45309':'3b82f6';
+    const accentColor=isLeader?'#d97706':'#3b82f6';
     const logo=LOGO?'<img src="'+LOGO+'" alt="">':'<i class="fas fa-plane" style="color:#3b82f6;font-size:1.4rem"></i>';
     const badge=isLeader?'Group Leader':'Umrah';
-    const segs=groupData?.segments??[];
-    const arrival=segs.length?fmtDate(segs[0]?.arrival_date):'—';
-    const ret=segs.length?fmtDate(segs[segs.length-1]?.departure_date):'—';
     const h=groupData?.hotels??{};
+
+    // Traveler-specific flights
+    const myFlights = getTravelerFlights(t.traveler_sys_id);
+    const flightHtml = buildFlightHtml(myFlights, accentColor);
 
     const hotelHtml=[
         h.makkah?.name?'<div class="hotel-item"><div class="hotel-name">Makkah: '+esc(h.makkah.name)+'</div>'+(h.makkah.address?'<div class="hotel-date">'+esc(h.makkah.address)+'</div>':'')+(h.makkah.checkin?'<div class="hotel-date">'+esc(h.makkah.checkin)+(h.makkah.checkout?' \u2192 '+esc(h.makkah.checkout):'')+'</div>':'')+'</div>':'',
@@ -399,20 +433,19 @@ function buildFront(t, gName, isLeader, qrVal){
             +'</div>'
         +'</div>'
         +(isLeader?'<div class="leader-badge-strip">Group Leader</div>':'')
-        +'<div class="card-body" style="padding-left:22px">'
-            +'<div class="info-row"><span class="info-lbl">Passport</span><span class="info-val">'+esc(t.passport_no||'—')+'</span></div>'
-            +'<div class="info-row"><span class="info-lbl">Date of Birth</span><span class="info-val">'+esc(t.date_of_birth||'—')+'</span></div>'
+                +'<div class="card-body" style="padding-left:22px;padding-bottom:4px">'
+            +'<div class="info-row"><span class="info-lbl">Passport</span><span class="info-val accent">'+esc(t.passport_no||'—')+'</span></div>'
+            +'<div class="info-row"><span class="info-lbl">D.O.B</span><span class="info-val">'+esc(t.date_of_birth||'—')+'</span></div>'
             +(t.roaming_phone?'<div class="info-row"><span class="info-lbl">Phone (KSA)</span><span class="info-val">'+esc(t.roaming_phone)+'</span></div>':'')
         +'</div>'
-        +'<div class="card-divider"></div>'
-        // Arrival / Return dates
-        +'<div class="date-section" style="padding-left:22px">'
-            +'<div class="date-item"><div class="date-lbl">Arrival to KSA</div><div class="date-val">'+esc(arrival)+'</div></div>'
-            +'<div class="date-item"><div class="date-lbl">Return</div><div class="date-val">'+esc(ret)+'</div></div>'
-        +'</div>'
-        // Accommodation — no icons
-        +(hotelHtml?'<div class="card-divider"></div><div class="back-section" style="padding:8px 12px 6px 22px"><div class="back-sec-title" style="margin-bottom:5px">Accommodation</div>'+hotelHtml+'</div>':'')
-        // QR at bottom
+        +(flightHtml
+            ?'<div class="card-divider"></div><div class="back-section" style="padding:5px 12px 5px 22px">'
+                +'<div class="back-sec-title" style="margin-bottom:3px">&#9992; Flight</div>'
+                +flightHtml
+            +'</div>'
+            :'')
+        +(hotelHtml?'<div class="card-divider"></div><div class="back-section" style="padding:5px 12px 4px 22px"><div class="back-sec-title" style="margin-bottom:3px">&#127968; Hotels</div>'+hotelHtml+'</div>':'')
+                // QR at bottom
         +'<div class="qr-section" style="padding-left:22px">'
             +'<div class="qr-img-wrap">'
                 +'<img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&ecc=H&color='+qrClr+'&data='+encodeURIComponent(qrVal)+'" alt="QR">'
@@ -529,7 +562,41 @@ async function getPairCanvas(i){
     return html2canvas(document.getElementById('pair_'+i),{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#f1f5f9',logging:false});
 }
 async function getFrontCanvas(sysId){
-    return html2canvas(document.getElementById('front_'+sysId),{scale:2,useCORS:true,allowTaint:true,backgroundColor:null,logging:false});
+    const cv = await html2canvas(document.getElementById('front_'+sysId),
+        {scale:2,useCORS:true,allowTaint:true,backgroundColor:null,logging:false});
+    
+    // Draw logo over QR center if LOGO exists
+    if (LOGO) {
+        const ctx   = cv.getContext('2d');
+        const card  = document.getElementById('front_'+sysId);
+        const qrImg = card.querySelector('.qr-img');
+        if (qrImg) {
+            const rect     = qrImg.getBoundingClientRect();
+            const cardRect = card.getBoundingClientRect();
+            const scale    = 2; // html2canvas scale
+            const cx = (rect.left - cardRect.left + rect.width/2)  * scale;
+            const cy = (rect.top  - cardRect.top  + rect.height/2) * scale;
+            const r  = 14 * scale;
+
+            // White circle background
+            ctx.beginPath();
+            ctx.arc(cx, cy, r+2, 0, Math.PI*2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            // Logo image
+            const img = new Image();
+            img.src   = LOGO;
+            await new Promise(res => { img.onload=res; img.onerror=res; });
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI*2);
+            ctx.clip();
+            ctx.drawImage(img, cx-r, cy-r, r*2, r*2);
+            ctx.restore();
+        }
+    }
+    return cv;
 }
 async function getBackCanvas(sysId){
     return html2canvas(document.getElementById('back_'+sysId),{scale:2,useCORS:true,allowTaint:true,backgroundColor:null,logging:false});

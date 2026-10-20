@@ -79,6 +79,34 @@ $occupation = !empty($appInfo['occupation'])
     : ($occupationMap[$profType] ?? ucfirst($profType));
 $employer   = trim($appInfo['employer_name'] ?? '');
 
+// ── Cover letter template from master visa service ────────────
+$clTemplate = '';
+if ($workSysId) {
+    try {
+        $vs = $pdo->prepare("SELECT meta_data FROM visa_services WHERE work_sys_id = ? LIMIT 1");
+        $vs->execute([$workSysId]);
+        $vsMeta = json_decode($vs->fetchColumn(), true) ?? [];
+        $masterSysId = $vsMeta['master_visa_sys_id'] ?? '';
+        if ($masterSysId) {
+            $ms = $pdo->prepare("SELECT service_data FROM master_visa_services WHERE sys_id = ? LIMIT 1");
+            $ms->execute([$masterSysId]);
+            $sd = json_decode($ms->fetchColumn(), true) ?? [];
+            // cl_templates[] — keyed by profession_type
+            $templates = $sd['cl_templates'] ?? [];
+            foreach ($templates as $t) {
+                if (($t['profession_type'] ?? '') === $profType) {
+                    $clTemplate = trim($t['template'] ?? '');
+                    break;
+                }
+            }
+            // Fallback: first template
+            if (!$clTemplate && !empty($templates[0]['template'])) {
+                $clTemplate = trim($templates[0]['template']);
+            }
+        }
+    } catch (Throwable $e) {}
+}
+
 // ── Prompt ───────────────────────────────────────────────────
 $templateSection = $clTemplate
     ? "REFERENCE TEMPLATE (use this style and structure — adapt for this specific applicant):

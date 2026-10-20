@@ -1,12 +1,16 @@
 <?php
 
-// include_once('./under-maintenance.php');
 // die;
 
 session_start();
 if (!isset($_SESSION['user_email'])) {
     header("Location: ../auth/login.php");
     exit();
+}
+// একবার ভেরিফাই হয়ে গেলে notice.php আর লোড হবে না
+if (empty($_SESSION['new_system_verified'])) {
+    include_once('./notice.php');
+    exit(); // নোটিশ দেখালে পেজের বাকি অংশ রেন্ডার বন্ধ রাখতে exit() দেওয়া জরুরি
 }
 
 $authUser = $_SESSION['user_name'];

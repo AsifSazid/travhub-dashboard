@@ -568,3 +568,11 @@ document.addEventListener('click', e => {
         document.querySelectorAll('.pk-note-menu').forEach(m => m.style.display = 'none');
     }
 });
+
+// ── LFDP-22: render activity suggestions after mindboard loads ──
+window._renderPkMindboard = (function(_orig) {
+    return function() {
+        _orig.apply(this, arguments);
+        setTimeout(() => window._pkMbRenderSuggestions?.(), 50);
+    };
+})(window._renderPkMindboard);

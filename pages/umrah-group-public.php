@@ -143,17 +143,31 @@ async function load() {
             ).join('');
         }
 
-        // Flights
-        const segs = group.segments ?? [];
+        // Flights — show only this traveler's flights (new legs structure)
+        const segs = (group.segments ?? []).filter(f =>
+            f.legs && (f.passengers ?? []).some(p => p.traveler_sys_id === T)
+        );
         if (segs.length) {
             document.getElementById('flightsCard').style.display = 'block';
-            document.getElementById('flightsInfo').innerHTML = segs.map(s =>
-                `<div class="seg-item">
-                    <p style="font-weight:700;font-size:.88rem;color:#1e1b4b">${esc(s.title || s.from_airport + ' → ' + s.to_airport)}</p>
-                    <p style="font-size:.75rem;color:#6b7280;margin-top:3px">${esc(s.airline||'')} · ${esc(s.class||'Economy')}</p>
-                    <p style="font-size:.75rem;color:#7c3aed;margin-top:3px">✈ ${esc(s.departure_date)} ${esc(s.departure_time)} → ${esc(s.arrival_date)} ${esc(s.arrival_time)}</p>
-                </div>`
-            ).join('');
+            document.getElementById('flightsInfo').innerHTML = segs.map((f, fi) => {
+                const legsHtml = (f.legs ?? []).map((l, li) => {
+                    const dep = [l.dep_date, l.dep_time].filter(Boolean).join(' ');
+                    const arr = [l.arr_date, l.arr_time].filter(Boolean).join(' ');
+                    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #ede9fe">
+                        <span style="font-size:.75rem;font-weight:700;color:#7c3aed;min-width:20px">L${li+1}</span>
+                        <span style="font-size:.82rem;font-weight:700;color:#1e1b4b">${esc(l.from||'?')} → ${esc(l.to||'?')}</span>
+                        <span style="font-size:.72rem;color:#6b7280;margin-left:auto">${esc(dep)}${arr?' → '+esc(arr):''}</span>
+                    </div>`;
+                }).join('');
+                return `<div class="seg-item">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                        <span style="font-size:.85rem;font-weight:700;color:#1e1b4b">${esc(f.airline||'Flight '+(fi+1))}</span>
+                        ${f.pnr?`<span style="font-family:monospace;font-size:.75rem;background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:5px">${esc(f.pnr)}</span>`:''}
+                        <span style="font-size:.72rem;color:#6b7280;margin-left:auto;text-transform:capitalize">${esc(f.class||'Economy')}</span>
+                    </div>
+                    ${legsHtml}
+                </div>`;
+            }).join('');
         }
 
         // Hotels

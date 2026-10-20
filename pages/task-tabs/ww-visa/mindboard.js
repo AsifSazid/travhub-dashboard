@@ -2,8 +2,12 @@
  * FILE PATH: /pages/task-tabs/ww-visa/mindboard.js
  * Visa Service Module — "Mind Board" tab
  *
+ * LFDP-21: now shows lead segment summary card (from cfg.countrySegments)
+ * and reads mb_notes that move-to-work.php writes at conversion time.
+ *
  * Shows:
- *  - Standard paste/note area (same pattern as other modules)
+ *  - Lead segment info card (country, type, applicants from lead)
+ *  - Standard paste/note area (auto-populated by move-to-work on conversion)
  *  - AI Visa Readiness Check: compares master required docs vs traveler docs
  *  - Per-traveler readiness summary cards
  */
@@ -15,24 +19,33 @@ window._renderVsMindboard = function () {
     const data      = window._vs.data;
     const meta      = data?.meta_data;
     const travelers = data?.vs_travelers ?? [];
+    const cfg       = window._vs.cfg;
+
+    // Lead segment data comes from two places:
+    //  1. cfg.countrySegments — passed from show-works.php at mount time
+    //  2. meta.mb_notes — written by move-to-work.php on conversion
+    const countrySegs  = cfg?.countrySegments ?? [];
+    const hasLeadSegs  = countrySegs.length > 0;
 
     el.innerHTML = `
     <div style="padding:16px 0;">
+
+        ${hasLeadSegs ? _vsMbLeadSegCard(countrySegs) : ''}
 
         <!-- Notes / paste area -->
         <div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;
                     padding:14px;margin-bottom:20px;">
             <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;
                         letter-spacing:.05em;margin-bottom:10px;">Mind Board Notes</div>
-            <textarea id="vs-mb-notes" rows="4" placeholder="Paste requirements, client info, embassy notes…"
+            <textarea id="vs-mb-notes" rows="5" placeholder="Paste requirements, client info, embassy notes…"
                       style="width:100%;border:none;background:transparent;resize:vertical;
-                             font-size:.875rem;color:#0F172A;outline:none;line-height:1.7;"
+                             font-size:.875rem;color:#0F172A;outline:none;line-height:1.7;box-sizing:border-box;"
                       onblur="window._vsSaveMbNotes()">${_vsEsc(meta?.mb_notes ?? '')}</textarea>
             <div style="display:flex;justify-content:flex-end;margin-top:6px;">
                 <button onclick="window._vsRunReadinessCheck()"
                         style="padding:7px 16px;background:#4F46E5;color:#fff;font-size:.8rem;
                                font-weight:700;border:none;border-radius:8px;cursor:pointer;">
-                    Run AI Readiness Check
+                    🔍 Run AI Readiness Check
                 </button>
             </div>
         </div>
@@ -56,7 +69,7 @@ window._renderVsMindboard = function () {
                        </div>
                    </div>
                    <div style="margin-left:auto;">
-                       ${window._vsTravStatusChip?.(data.status) ?? ""}
+                       ${window._vsTravStatusChip?.(data.status) ?? ''}
                    </div>
                </div>
 
@@ -72,6 +85,44 @@ window._renderVsMindboard = function () {
         }
     </div>`;
 };
+
+/* ── Lead segment card ───────────────────────────────────────── */
+function _vsMbLeadSegCard(segs) {
+    if (!segs.length) return '';
+
+    const rows = segs.map(s => {
+        const country  = _vsEsc(s.country_name     ?? '—');
+        const type     = _vsEsc(s.visa_type_name    ?? s.category_name ?? '—');
+        const price    = s.b2c_price ? `BDT ${parseFloat(s.b2c_price).toLocaleString()}` : '—';
+        const applicants = (s.applicants ?? []).map(a => _vsEsc(a.name || '?')).filter(Boolean);
+        return `<div style="border-left:3px solid #6366f1;padding:8px 10px 8px 12px;
+                             background:#FAFAFE;border-radius:0 8px 8px 0;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                <div>
+                    <span style="font-size:.85rem;font-weight:800;color:#0F172A;">🌍 ${country}</span>
+                    <span style="font-size:.75rem;color:#6366f1;margin-left:8px;">${type}</span>
+                </div>
+                <span style="font-size:.78rem;font-weight:700;color:#059669;">${price}</span>
+            </div>
+            ${applicants.length ? `
+            <div style="margin-top:4px;font-size:.73rem;color:#64748B;">
+                👥 ${applicants.join(' · ')}
+            </div>` : ''}
+        </div>`;
+    }).join('');
+
+    return `
+    <div style="background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:12px;
+                padding:14px;margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:800;color:#4338CA;text-transform:uppercase;
+                    letter-spacing:.05em;margin-bottom:10px;">📋 Lead Segments</div>
+        ${rows}
+        ${segs.length > 1 ? `
+        <div style="margin-top:6px;font-size:.72rem;color:#6366f1;font-weight:600;">
+            ${segs.length} visa segment${segs.length > 1 ? 's' : ''} from this lead
+        </div>` : ''}
+    </div>`;
+}
 
 /* ── Readiness cards ─────────────────────────────────────────── */
 function _vsMbReadinessHtml(travelers) {
@@ -102,7 +153,7 @@ function _vsMbTravelerCard(t) {
     const missing     = docs.filter(d => d.status === 'missing');
     const pct         = total > 0 ? Math.round(uploaded / total * 100) : 0;
     const ready       = window._vsTravelerReady(t);
-    const hasCover    = !!t.cover_letter;
+    const hasCover    = !!(t.cover_letter?.edited || t.cover_letter?.ai_draft);
     const travStatus  = t.app_status ?? 'pending';
 
     return `
@@ -201,7 +252,6 @@ window._vsRunReadinessCheck = async function () {
             <div>Syncing docs & checking readiness…</div>
         </div>`;
 
-    // Sync first, then re-render
     await window._vsSyncDocs();
 
     const updatedTravelers = window._vs.data?.vs_travelers ?? [];

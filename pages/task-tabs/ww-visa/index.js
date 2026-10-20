@@ -2,9 +2,10 @@
  * FILE PATH: /pages/task-tabs/ww-visa/index.js
  * Visa Service Module — 4-tab nav + Layer 2/3 shell
  *
- * Layer 1: [Mind Board][Visa Info][Traveler Docs][Application Status]
- * Layer 2: Traveler pills (inside Traveler Docs)
- * Layer 3: [Documents][Applicant Info][Cover Letter][Export][Status]
+ * LFDP-21 patch: placeholder travelers from lead PAX
+ *   - _buildTravelersShell shows placeholder slots (is_placeholder:true)
+ *   - _vsOpenAddTraveler accepts optional replacePlaceholderSysId
+ *   - _vsAddTraveler removes placeholder when linking real traveler
  */
 (function () {
 
@@ -81,11 +82,11 @@
         const cur    = window._vs.activeTravSub;
 
         const subs = [
-            { key:'docs',        icon:'📄', label:'Documents' },
-            { key:'appinfo',     icon:'📝', label:'Applicant Info' },
-            { key:'coverletter', icon:'✉️',  label:'Cover Letter' },
-            { key:'export',      icon:'📦', label:'Export' },
-            { key:'travstatus',  icon:'📋', label:'Status' },
+            { key:'docs',        label:'Documents' },
+            { key:'appinfo',     label:'Applicant Info' },
+            { key:'coverletter', label:'Cover Letter' },
+            { key:'export',      label:'Export' },
+            { key:'travstatus',  label:'Status' },
         ];
 
         navEl.innerHTML = `
@@ -98,8 +99,7 @@
                                color:${cur===s.key?'#4F46E5':'#64748B'};
                                font-weight:${cur===s.key?'700':'500'};
                                border:1.5px solid ${cur===s.key?'#C7D2FE':'transparent'};
-                               border-radius:7px;cursor:pointer;
-                               display:flex;align-items:center;gap:5px;">
+                               border-radius:7px;cursor:pointer;">
                     ${s.label}
                 </button>`).join('')}
             <span style="margin-left:auto;font-size:.78rem;color:#94A3B8;">
@@ -125,17 +125,22 @@
             return;
         }
 
+        // Placeholder travelers — from lead PAX, not yet linked to a real traveler
+        const placeholders = (data?.vs_travelers ?? []).filter(t => t.is_placeholder);
+
         const readyCount = wTravs.filter(t => window._vsTravelerReady(vsMap[t.sys_id])).length;
-        const totalCount = wTravs.length;
+        const totalCount = wTravs.length + placeholders.length;
 
         el.innerHTML = `
         <!-- Layer 2: Traveler pills -->
         <div style="display:flex;align-items:center;gap:8px;padding:14px 0 10px;
                     flex-wrap:wrap;border-bottom:1px solid #F1F5F9;">
-            ${wTravs.map(t => {
+
+            ${/* Real linked travelers */
+            wTravs.map(t => {
                 const vsT  = vsMap[t.sys_id] ?? {};
                 const ready = window._vsTravelerReady(vsT);
-                const icon = (!ready && vsT.docs?.length && !window._vsTravelerReady(vsT)) ? '⚠️' : '';
+                const icon = (!ready && vsT.docs?.length) ? '⚠️' : '';
                 return `<div style="display:flex;align-items:center;border-radius:20px;
                                    border:1.5px solid #E2E8F0;background:#F1F5F9;overflow:hidden;">
                             <button class="vs-trav-pill" data-trav-id="${_vsEsc(t.sys_id)}"
@@ -154,6 +159,21 @@
                         </div>`;
             }).join('')}
 
+            ${/* Placeholder slots — lead PAX not yet linked */
+            placeholders.map(ph => `
+                <div style="display:flex;align-items:center;border-radius:20px;
+                             border:1.5px dashed #FCA5A5;background:#FEF2F2;overflow:hidden;">
+                    <span style="padding:5px 10px;font-size:.78rem;font-weight:600;color:#B91C1C;">
+                        ⚠️ ${_vsEsc(ph.name || 'Traveler')}
+                    </span>
+                    <button onclick="window._vsOpenAddTraveler('${_vsEsc(ph.sys_id)}')"
+                            title="Search & link traveler"
+                            style="padding:5px 8px;border:none;border-left:1px solid #FCA5A5;
+                                   background:transparent;cursor:pointer;color:#DC2626;
+                                   font-size:.72rem;font-weight:700;">🔍 Link</button>
+                </div>`
+            ).join('')}
+
             <button onclick="window._vsOpenAddTraveler()"
                     style="padding:6px 12px;border-radius:20px;border:1.5px dashed #C7D2FE;
                            background:#EEF2FF;color:#4F46E5;font-size:.82rem;font-weight:600;
@@ -168,6 +188,13 @@
                 </button>` : ''}
         </div>
 
+        <!-- Placeholder count info -->
+        ${placeholders.length > 0 ? `
+        <div style="padding:8px 0 4px;font-size:.75rem;color:#B91C1C;font-weight:600;">
+            ⚠️ ${placeholders.length} traveler${placeholders.length>1?'s':''} from lead PAX —
+            click 🔍 Link to connect each to a real traveler profile.
+        </div>` : ''}
+
         <!-- Layer 3 panels -->
         <div id="vs-trav-content">
             <div id="vs-trav-subnav"  style="display:none;border-bottom:1px solid #F1F5F9;padding:10px 0 0;"></div>
@@ -180,13 +207,13 @@
             </div>
         </div>
 
-        ${wTravs.length === 0 ? `
+        ${wTravs.length === 0 && placeholders.length === 0 ? `
         <div style="padding:40px;text-align:center;color:#94A3B8;font-size:.875rem;">
             No travelers linked yet.<br>
             Add from the right sidebar or click <strong>+ Add</strong> above.
         </div>` : ''}`;
 
-        // Auto-select first
+        // Auto-select first real traveler
         if (wTravs.length) {
             const first = el.querySelector('.vs-trav-pill');
             if (first) window._vsSwitchTraveler(wTravs[0].sys_id, first);
@@ -194,16 +221,31 @@
     };
 
     /* ── Add traveler modal ───────────────────────────────── */
-    window._vsOpenAddTraveler = function () {
+    window._vsOpenAddTraveler = function (replacePlaceholderSysId) {
+        window._vs._replacingPlaceholder = replacePlaceholderSysId ?? null;
+
         document.getElementById('vs-add-trav-modal')?.remove();
         const modal = document.createElement('div');
         modal.id = 'vs-add-trav-modal';
         modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+        // Find placeholder name for context
+        const ph = replacePlaceholderSysId
+            ? (window._vs.data?.vs_travelers ?? []).find(t => t.sys_id === replacePlaceholderSysId)
+            : null;
+
         modal.innerHTML = `
         <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:85vh;
                     overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);">
             <div style="padding:16px 20px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
-                <div style="font-weight:700;font-size:.95rem;">Add Traveler to Visa</div>
+                <div>
+                    <div style="font-weight:700;font-size:.95rem;">
+                        ${ph ? `Link Traveler — ${_vsEsc(ph.name)}` : 'Add Traveler to Visa'}
+                    </div>
+                    ${ph ? `<div style="font-size:.75rem;color:#B91C1C;margin-top:2px;">
+                        Search & link a real traveler profile to replace this placeholder.
+                    </div>` : ''}
+                </div>
                 <button onclick="document.getElementById('vs-add-trav-modal').remove()"
                         style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#64748B;">✕</button>
             </div>
@@ -222,7 +264,12 @@
         modal.querySelector('#vs-trav-search-q')
              ?.addEventListener('keydown', e => { if (e.key==='Enter') window._vsSearchTravelers(); });
         modal.querySelector('#vs-trav-search-q')?.focus();
-        window._vsSearchTravelers('');
+
+        // Pre-fill search with placeholder name
+        if (ph?.name) {
+            modal.querySelector('#vs-trav-search-q').value = ph.name;
+        }
+        window._vsSearchTravelers(ph?.name ?? '');
     };
 
     window._vsSearchTravelers = async function (q) {
@@ -232,7 +279,6 @@
         el.innerHTML = '<div style="padding:12px;text-align:center;color:#64748B;font-size:.85rem;">Searching…</div>';
 
         try {
-            // Use allTravelers to search across ALL travelers in the system
             const j    = await fetch(window._vs.cfg.api.allTravelers).then(r => r.json());
             const all  = j.travelers ?? j.data ?? [];
             const rows = q
@@ -245,7 +291,13 @@
                 return;
             }
 
-            const added = new Set((window._vs.data?.vs_travelers ?? []).map(t => t.sys_id));
+            // real linked traveler sys_ids (not placeholders)
+            const added = new Set(
+                (window._vs.data?.vs_travelers ?? [])
+                    .filter(t => !t.is_placeholder)
+                    .map(t => t.sys_id)
+            );
+
             el.innerHTML = rows.map(t => {
                 const isAdded = added.has(t.sys_id);
                 return `<div style="display:flex;align-items:center;justify-content:space-between;
@@ -268,7 +320,7 @@
     };
 
     window._vsAddTraveler = async function (travSysId, name, passportNo) {
-        // Step 1: Link traveler to work (works.traveler_sys_ids)
+        // Step 1: Link traveler to work
         try {
             const linkRes = await fetch(window._vs.cfg.api.workTravelers, {
                 method: 'POST',
@@ -288,23 +340,30 @@
             return;
         }
 
-        // Step 2: Add to visa_services.vs_travelers JSON
-        const travelers = JSON.parse(JSON.stringify(window._vs.data?.vs_travelers ?? []));
+        // Step 2: Add to vs_travelers — remove placeholder if replacing
+        const replacingSysId = window._vs._replacingPlaceholder ?? null;
+        let travelers = JSON.parse(JSON.stringify(window._vs.data?.vs_travelers ?? []));
+
+        // Remove placeholder being replaced
+        if (replacingSysId) {
+            travelers = travelers.filter(t => t.sys_id !== replacingSysId);
+        }
+
         if (!travelers.find(t => t.sys_id === travSysId)) {
             travelers.push({
                 sys_id: travSysId, name, passport_no: passportNo,
                 profession_type: 'general', docs: [],
                 cover_letter: null, app_status: 'pending',
             });
-            const j = await window._vsApi({ action: 'update_travelers', vs_travelers: travelers });
-            if (j.status !== 'success') { alert(j.message); return; }
-            window._vs.data = j.data;
         }
+
+        const j = await window._vsApi({ action: 'update_travelers', vs_travelers: travelers });
+        if (j.status !== 'success') { alert(j.message); return; }
+        window._vs.data = j.data;
+        window._vs._replacingPlaceholder = null;
 
         // Step 3: Refresh work travelers cache + rebuild UI
         window._vs.cfg._workTravelersLive = null;
-
-        // Fetch fresh — inline so no dependency on travelers.js load order
         try {
             const fresh = await fetch(
                 `${window._vs.cfg.api.workTravelers}?action=list&work_sys_id=${encodeURIComponent(window._vs.cfg.workSysId)}`
@@ -331,6 +390,7 @@
             badge.textContent = `${readyCount}/${totalCount}`;
             badge.style.background = readyCount===totalCount ? '#DCFCE7' : '#EEF2FF';
             badge.style.color      = readyCount===totalCount ? '#15803D' : '#4F46E5';
+            badge.style.display    = 'inline-block';
         }
     };
 
@@ -348,7 +408,6 @@
             : [data?.meta_data?.country_name ?? 'Visa'];
         const activeCountry = countries[0] ?? 'Visa';
 
-        // Store active country in cfg
         if (!window._vs.cfg._activeCountry) {
             window._vs.cfg._activeCountry = activeCountry;
         }
@@ -364,7 +423,7 @@
             .vs-country-tab.active { background:#EEF2FF;border-color:#6366f1;color:#4F46E5; }
         </style>
 
-        <!-- Country tabs (if multiple) -->
+        <!-- Country tabs -->
         ${countries.length > 1 ? `
         <div style="display:flex;align-items:center;gap:8px;padding:10px 4px 0;margin-bottom:2px;">
             <span style="font-size:.72rem;font-weight:700;color:#94A3B8;text-transform:uppercase;
@@ -420,10 +479,8 @@
     /* ── Switch Country Tab ─────────────────────────────────── */
     window._vsSwitchCountry = function (countryName, btnEl) {
         window._vs.cfg._activeCountry = countryName;
-        // Update active tab styling
         document.querySelectorAll('.vs-country-tab').forEach(b => b.classList.remove('active'));
         if (btnEl) btnEl.classList.add('active');
-        // Reload current tab content for new country
         const activeTab = window._vs.activeTab;
         window._vsSwitchTab(activeTab,
             document.querySelector(`.vs-tab-btn[data-tab="${activeTab}"]`));
@@ -432,7 +489,7 @@
     /* ── Init ─────────────────────────────────────────────── */
     window.initWorkVisaTab = async function (config) {
         window._vs.cfg = config;
-        window._vs.cfg._workTravelersLive = null; // will be loaded fresh
+        window._vs.cfg._workTravelersLive = null;
 
         const mount = document.getElementById(config.containerId ?? 'ww-visa-mount');
         if (!mount) return;
@@ -446,7 +503,6 @@
         </div>
         <style>@keyframes vs-spin{to{transform:rotate(360deg);}}</style>`;
 
-        // Load visa_services row
         let data = null;
         try {
             const j = await fetch(
@@ -468,7 +524,6 @@
         }
         window._vs.data = data;
 
-        // Load work travelers fresh
         try {
             const j = await fetch(
                 `${config.api.workTravelers}?action=list&work_sys_id=${encodeURIComponent(config.workSysId)}`
