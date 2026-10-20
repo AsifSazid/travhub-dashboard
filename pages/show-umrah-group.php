@@ -673,6 +673,10 @@ function renderFlights() {
                 ${(f.type||'one_way').replace('_',' ')}
             </span>
             <span class="text-xs text-gray-400 capitalize">${esc(f.class||'economy')}</span>
+            <button onclick="syncFlightTravelers(${fi})" title="Sync travelers"
+                class="text-violet-400 hover:text-violet-600 text-xs ml-1 flex-shrink-0">
+                <i class="fas fa-sync"></i>
+            </button>
             <button onclick="deleteFlight(${fi})" title="Remove flight"
                 class="text-red-400 hover:text-red-600 text-xs ml-1 flex-shrink-0">
                 <i class="fas fa-trash"></i>
@@ -701,6 +705,31 @@ function renderFlights() {
             </div>` : ''}
         </div>
     </div>`).join('');
+}
+
+async function syncFlightTravelers(fi) {
+    const segs = groupData.segments ?? [];
+    const f    = segs[fi];
+    if (!f) return;
+
+    const updated = (f.passengers ?? []).map(p => {
+        if (p.traveler_sys_id) return p;
+        const match = travelers.find(t => {
+            const tWords = t.traveler_name.toLowerCase().split(' ');
+            const pWords = p.ticket_name.toLowerCase().split(' ');
+            const common = tWords.filter(w => w.length > 2 && pWords.includes(w));
+            return common.length >= 2;
+        });
+        if (match) return { ...p, traveler_sys_id: match.traveler_sys_id, traveler_name: match.traveler_name, match: 'fuzzy' };
+        return p;
+    });
+
+    segs[fi].passengers = updated;
+    await doUpdate({ segments: segs });
+    groupData.segments = segs;
+    renderFlights();
+    renderTravelers();
+    toast('success', 'Travelers synced!');
 }
 
 async function deleteFlight(displayIndex) {
