@@ -6,8 +6,7 @@ if (empty($ip_port)) {
 }
 
 $storeAllVendorApi = $ip_port . "api/vendors/all-vendors.php";
-$toggleVendorClientApi = $ip_port . "api/vendors/vendor-store.php";
-
+$toggleVendorClientApi = $ip_port . "api/vendors/client-store.php";
 ?>
 
 <!DOCTYPE html>

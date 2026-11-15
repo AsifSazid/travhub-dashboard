@@ -28,6 +28,10 @@ function generateVTNR(string $workSysId, string $travSysId): string {
         }
         $result .= $chars[abs($seed) % strlen($chars)];
     }
+    
+    var_dump($result);
+    // die;
+    
     return $result;
 }
 

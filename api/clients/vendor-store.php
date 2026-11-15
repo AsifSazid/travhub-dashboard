@@ -1,6 +1,16 @@
 <?php
+/**
+ * vendor-store.php
+ * Called from: Client List toggle
+ * Purpose: Toggle a client's vendor relationship (enable / disable)
+ *
+ * Input  : { client_id, action }   action = 'toggle' | 'enable' | 'disable'
+ * Link   : vendors.client_sys_id  ↔  clients.sys_id
+ *          clients.vendor_sys_id  ↔  vendors.sys_id
+ */
+
 session_start();
-require '../../server/db_connection.php'; // $pdo
+require '../../server/db_connection.php';
 require '../../server/generate_meta_data.php';
 require '../../server/uuid_with_system_id_generator.php';
 
@@ -9,41 +19,27 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-/* ======================
-   Validate Request
-   ====================== */
+/* ── Validate Request ─────────────────────────────────────────────────────── */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid request method'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
     exit;
 }
 
-$data = json_decode(file_get_contents("php://input"), true);
+$data      = json_decode(file_get_contents('php://input'), true);
+$client_id = $data['client_id'] ?? null;
+$action    = $data['action']    ?? 'toggle'; // 'toggle' | 'enable' | 'disable'
 
-if (empty($data['client_id'])) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Client ID required'
-    ]);
+if (empty($client_id)) {
+    echo json_encode(['success' => false, 'message' => 'client_id required']);
     exit;
 }
-
-$client_id = $data['client_id'];
-$action = $data['action'] ?? 'toggle'; // 'toggle', 'enable', 'disable'
 
 try {
     $pdo->beginTransaction();
 
-    /* ======================
-       1️⃣ Fetch Client
-       ====================== */
+    /* ── 1. Fetch Client ──────────────────────────────────────────────────── */
     $stmt = $pdo->prepare("
-        SELECT id, uuid, client_sys_id, name, email, phone, address, is_vendor
+        SELECT id, uuid, sys_id, name, email, phone, address, is_vendor, vendor_sys_id
         FROM clients
         WHERE id = :id
         LIMIT 1
@@ -55,194 +51,129 @@ try {
         throw new Exception('Client not found');
     }
 
-    /* ======================
-       2️⃣ Check if Already Vendor (from both sides)
-       ====================== */
-    $checkStmt = $pdo->prepare("
-        SELECT id, uuid, vendor_sys_id, name, status, is_client
+    /* ── 2. Find existing vendor linked to this client ────────────────────── */
+    // vendors.client_sys_id stores clients.sys_id  (the correct FK)
+    $stmt = $pdo->prepare("
+        SELECT id, uuid, sys_id, vendor_sys_id, name, status, is_client
         FROM vendors
         WHERE client_sys_id = :client_sys_id
-           OR id = (SELECT vendor_sys_id FROM clients WHERE id = :client_id)
         LIMIT 1
     ");
-    $checkStmt->execute([
-        'client_sys_id' => $client_id,
-        'client_id' => $client_id
-    ]);
-    
-    $existingVendor = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute(['client_sys_id' => $client['sys_id']]);
+    $existingVendor = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    /* ======================
-       3️⃣ If Disable/Remove Action
-       ====================== */
-    if ($action === 'disable' || ($action === 'toggle' && $existingVendor)) {
-        
+    /* ── 3. Determine intent ──────────────────────────────────────────────── */
+    $shouldDisable = $action === 'disable'
+        || ($action === 'toggle' && (int)$client['is_vendor'] === 1);
+
+    /* ── 4. DISABLE ──────────────────────────────────────────────────────── */
+    if ($shouldDisable) {
         if (!$existingVendor) {
-            throw new Exception('No vendor relation found to disable');
+            // Edge-case: flag was on but no vendor row — just clear the flag
+            $pdo->prepare("UPDATE clients SET is_vendor = 0, vendor_sys_id = NULL WHERE id = :id")
+                ->execute(['id' => $client_id]);
+            $pdo->commit();
+            echo json_encode(['success' => true, 'message' => 'Vendor flag cleared (no vendor row found)', 'is_active' => false]);
+            exit;
         }
-        
-        // Only remove the relationship, don't delete the vendor
-        $updateClient = $pdo->prepare("
-            UPDATE clients
-            SET is_vendor = 0
-            WHERE id = :client_id
-        ");
-        $updateClient->execute(['client_id' => $client_id]);
-        
-        // Mark vendor as inactive but keep record
-        $updateVendor = $pdo->prepare("
-            UPDATE vendors
-            SET is_client = 0,
-                status = 'inactive'
-            WHERE id = :vendor_id
-        ");
-        $updateVendor->execute(['vendor_id' => $existingVendor['id']]);
-        
+
+        $pdo->prepare("UPDATE clients SET is_vendor = 0, vendor_sys_id = NULL WHERE id = :id")
+            ->execute(['id' => $client_id]);
+
+        $pdo->prepare("UPDATE vendors SET is_client = 0, status = 'inactive' WHERE id = :id")
+            ->execute(['id' => $existingVendor['id']]);
+
         $pdo->commit();
-        
         echo json_encode([
-            'success' => true,
-            'message' => 'Client removed from vendors (but vendor record kept)',
+            'success'   => true,
+            'message'   => 'Client removed from vendors (vendor record kept)',
             'is_active' => false
         ]);
         exit;
     }
 
-    /* ======================
-       4️⃣ If Already Exists → Sync (Enable)
-       ====================== */
+    /* ── 5. ENABLE — vendor row already exists, just reactivate ─────────── */
     if ($existingVendor) {
-        
-        // Reactivate the relation
-        $updateClient = $pdo->prepare("
+        $pdo->prepare("
             UPDATE clients
-            SET is_vendor = 1,
-                vendor_sys_id = :vendor_sys_id
-            WHERE id = :client_id
-        ");
-        $updateClient->execute([
-            'vendor_sys_id' => $existingVendor['vendor_sys_id'],
-            'client_id' => $client_id
-        ]);
-        
-        $updateVendor = $pdo->prepare("
+            SET is_vendor = 1, vendor_sys_id = :vendor_sys_id
+            WHERE id = :id
+        ")->execute(['vendor_sys_id' => $existingVendor['sys_id'], 'id' => $client_id]);
+
+        $pdo->prepare("
             UPDATE vendors
-            SET is_client = 1,
-                status = 'active'
-            WHERE id = :vendor_id
-        ");
-        $updateVendor->execute(['vendor_id' => $existingVendor['id']]);
-        
+            SET is_client = 1, status = 'active'
+            WHERE id = :id
+        ")->execute(['id' => $existingVendor['id']]);
+
         $pdo->commit();
-        
         echo json_encode([
-            'success' => true,
-            'message' => 'Existing vendor-client relation reactivated',
+            'success'   => true,
+            'message'   => 'Existing vendor–client relation reactivated',
             'is_active' => true,
-            'vendor' => [
-                'id' => $existingVendor['id'],
-                'sys_id' => $existingVendor['vendor_sys_id'],
-                'name' => $existingVendor['name']
+            'vendor'    => [
+                'id'     => $existingVendor['id'],
+                'sys_id' => $existingVendor['sys_id'],
+                'name'   => $existingVendor['name']
             ]
         ]);
         exit;
     }
 
-    /* ======================
-       5️⃣ Create New Vendor
-       ====================== */
-    $vendorIDs = generateIDs('vendors');
-    
+    /* ── 6. ENABLE — no vendor row yet, create one ───────────────────────── */
+    $vendorIDs     = generateIDs('vendors');
     $vendor_uuid   = $vendorIDs['uuid'];
     $vendor_sys_id = $vendorIDs['sys_id'];
-    $vendor_name   = $client['name'];
-    
-    $metaDataJson = buildMetaData(
-        null,
-        $_SESSION['user_name'] ?? 'system'
-    );
-    
-    $insertVendor = $pdo->prepare("
+    $metaDataJson  = buildMetaData(null, $_SESSION['user_name'] ?? 'system');
+
+    $pdo->prepare("
         INSERT INTO vendors (
-            uuid,
-            vendor_sys_id,
-            type,
-            name,
-            email,
-            phone,
-            address,
-            status,
-            is_client,
-            client_sys_id,
+            uuid, sys_id, type,
+            name, email, phone, address,
+            status, is_client, client_sys_id,
             meta_data
-        )
-        VALUES (
-            :uuid,
-            :vendor_sys_id,
-            :type,
-            :name,
-            :email,
-            :phone,
-            :address,
-            :status,
-            :is_client,
-            :client_sys_id,
+        ) VALUES (
+            :uuid, :sys_id, :type,
+            :name, :email, :phone, :address,
+            :status, :is_client, :client_sys_id,
             :meta_data
         )
-    ");
-    
-    $insertVendor->execute([
+    ")->execute([
         'uuid'           => $vendor_uuid,
-        'vendor_sys_id'  => $vendor_sys_id,
+        'sys_id'         => $vendor_sys_id,
         'type'           => 'client',
-        'name'           => $vendor_name,
+        'name'           => $client['name'],
         'email'          => $client['email'],
         'phone'          => $client['phone'],
         'address'        => $client['address'],
         'status'         => 'active',
         'is_client'      => 1,
-        'client_sys_id'  => $client_id,
+        'client_sys_id'  => $client['sys_id'],   // ← correct FK
         'meta_data'      => $metaDataJson
     ]);
-    
+
     $vendor_db_id = $pdo->lastInsertId();
-    
-    /* ======================
-       6️⃣ Update Client
-       ====================== */
-    $updateClient = $pdo->prepare("
+
+    $pdo->prepare("
         UPDATE clients
-        SET is_vendor = 1,
-            vendor_sys_id = :vendor_sys_id
-        WHERE id = :client_id
-    ");
-    
-    $updateClient->execute([
-        'vendor_sys_id' => $vendor_sys_id,
-        'client_id'     => $client['id']
-    ]);
-    
+        SET is_vendor = 1, vendor_sys_id = :vendor_sys_id
+        WHERE id = :id
+    ")->execute(['vendor_sys_id' => $vendor_sys_id, 'id' => $client_id]);
+
     $pdo->commit();
-    
     echo json_encode([
-        'success' => true,
-        'message' => 'Client converted to vendor successfully',
+        'success'   => true,
+        'message'   => 'Client converted to vendor successfully',
         'is_active' => true,
-        'vendor'  => [
-            'id' => $vendor_db_id,
+        'vendor'    => [
+            'id'     => $vendor_db_id,
             'sys_id' => $vendor_sys_id,
-            'name'   => $vendor_name
+            'name'   => $client['name']
         ]
     ]);
-    
+
 } catch (Exception $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-    
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

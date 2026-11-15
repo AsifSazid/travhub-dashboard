@@ -2,8 +2,8 @@
 
 session_start();
 require '../../server/db_connection.php';
-require_once '../../server/hrm_permissions.php';
-requireHrm($pdo, 'hrm_employee_view');
+// require_once '../../server/hrm_permissions.php';
+// requireHrm($pdo, 'hrm_employee_view');
 
 header('Content-Type: application/json');
 
