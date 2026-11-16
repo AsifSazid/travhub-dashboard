@@ -296,6 +296,25 @@ function _vsDocRow(travSysId, rd, existing) {
     </div>`;
 }
 
+function _vsToInputDate(date) {
+    if (!date) return '';
+
+    // Already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date;
+    }
+
+    // DD-MM-YYYY → YYYY-MM-DD
+    const match = date.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+
+    if (match) {
+        const [, day, month, year] = match;
+        return `${year}-${month}-${day}`;
+    }
+
+    return '';
+}
+
 /* ══════════════════════════════════════════════════════════════
    LAYER 3 — Applicant Info (auto-fill from traveler profile)
 ══════════════════════════════════════════════════════════════ */
@@ -319,18 +338,20 @@ window._renderVsAppInfo = function (travSysId) {
     const famInfo = _vsParseJson(wT.family_info     ?? '{}');
     const eduInfo = _vsParseJson(wT.educational_info ?? '{}');
     const credInfo= _vsParseJson(wT.credentials    ?? '{}');
+    
+    console.log(wT);
 
     // Field values — saved app_info first, then traveler profile
     const fields = {
-        surname:          v('surname',         pInfo.surname ?? ''),
+        surname:          v('surname',          pInfo.surname ?? ''),
         given_name:       v('given_name',       pInfo.given_names ?? wT.name ?? ''),
         passport_no:      v('passport_no',      wT.passport_no ?? pInfo.passport_number ?? ''),
-        dob:              v('dob',              wT.date_of_birth ?? ''),
+        dob:              _vsToInputDate(v('dob', wT.date_of_birth ?? '')),
         place_of_birth:   v('place_of_birth',   perInfo.place_of_birth ?? ''),
         country_of_birth: v('country_of_birth', pInfo.country_code ?? ''),
         nationality:      v('nationality',      pInfo.nationality ?? ''),
-        passport_expiry:  v('passport_expiry',  pInfo.date_of_expiry ?? ''),
-        passport_issue:   v('passport_issue',   pInfo.date_of_issue ?? ''),
+        passport_expiry: _vsToInputDate(v('passport_expiry', pInfo.date_of_expiry ?? '')),
+        passport_issue: _vsToInputDate(v('passport_issue', pInfo.date_of_issue ?? '')),
         issuing_authority:v('issuing_authority',pInfo.issuing_authority ?? ''),
         gender:           v('gender',           perInfo.gender ?? ''),
         marital_status:   v('marital_status',   perInfo.marital_status ?? ''),

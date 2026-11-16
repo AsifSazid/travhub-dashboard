@@ -867,7 +867,8 @@ async function confirmMove() {
         const j = await r.json();
         if (j.success || j.status === 'success') {
             showToast('success', 'Lead moved to workboard!');
-            setTimeout(() => { window.location.href = 'index-works.php'; }, 1200);
+            const workSysId = j.work_sys_id;
+            setTimeout(() => { window.location.href = `show-works.php?id=${workSysId}`; }, 1200);
         } else {
             showToast('error', j.message || 'Failed.');
         }

@@ -9,7 +9,7 @@
  *   traveler_sys_id:  TR-XXXXXX (required)
  *   group_by:         'doc_type' | 'smb_folder' (default: doc_type)
  *   include_pages:    1 or 0 (default: 1)
- *   include_data:     1 or 0 (default: 0 - excludes doc_data/ocr to keep response small)
+ *   include_data:     1 or 0 (default: 0)
  *   status:           comma-separated list, default 'active'
  *
  * Output:
@@ -17,12 +17,8 @@
  *     success: true,
  *     traveler: {sys_id, name},
  *     total_docs: int,
- *     groups: {
- *       "passport": [{sys_id, doc_type, doc_number, pages, ...}, ...],
- *       "visa":     [...],
- *       ...
- *     },
- *     expiring_soon: [{doc_type, expiry_date, days_left, sys_id}, ...]
+ *     groups: { "passport": [{...}], ... },
+ *     expiring_soon: [{...}]
  *   }
  */
 
@@ -49,7 +45,6 @@ if (!in_array($groupBy, ['doc_type', 'smb_folder'], true)) {
     $groupBy = 'doc_type';
 }
 
-// Parse status into array
 $statuses = array_filter(array_map('trim', explode(',', $statusList)));
 if (empty($statuses)) $statuses = ['active'];
 $validStatuses = ['pending', 'active', 'expired', 'archived', 'deleted'];
@@ -68,138 +63,168 @@ if (!$traveler) {
 }
 
 // ============================================================================
-// Build column list (skip heavy columns unless requested)
+// Build column list
 // ============================================================================
 $cols = [
-    'sys_id', 'doc_type', 'doc_subtype', 'doc_number', 'suggested_filename_stem',
-    'confidence', 'classification_mode', 'passport_status',
-    'original_filename', 'file_size', 'mime_type',
-    'page_count', 'smb_folder', 'server_path',
-    'summary', 'language',
-    'country', 'validity_from', 'validity_to',
-    'issue_date', 'expiry_date',
-    'verification_status', 'verified_at', 'verified_by',
-    'is_primary', 'status', 'created_at', 'updated_at',
+    'd.sys_id', 'd.doc_type', 'd.doc_subtype', 'd.doc_number', 'd.suggested_filename_stem',
+    'd.confidence', 'd.classification_mode', 'd.passport_status',
+    'd.original_filename', 'd.file_size', 'd.mime_type',
+    'd.page_count', 'd.smb_folder', 'd.server_path',
+    'd.summary', 'd.language',
+    'd.country', 'd.validity_from', 'd.validity_to',
+    'd.issue_date', 'd.expiry_date',
+    'd.verification_status', 'd.verified_at', 'd.verified_by',
+    'd.is_primary', 'd.status', 'd.created_at', 'd.updated_at',
+    // doc_type_registry থেকে validity rule columns
+    'r.validity_mode', 'r.auto_validity_days', 'r.expired_label', 'r.validity_ui_label',
 ];
-if ($includePages) {
-    $cols[] = 'pages';
-}
-if ($includeData) {
-    $cols[] = 'doc_data';
-    $cols[] = 'key_fields';
-}
+if ($includePages) $cols[] = 'd.pages';
+if ($includeData)  { $cols[] = 'd.doc_data'; $cols[] = 'd.key_fields'; }
 
 $colSql = implode(', ', $cols);
 
 // ============================================================================
-// Fetch docs
+// Fetch docs — LEFT JOIN doc_type_registry
 // ============================================================================
 $placeholders = implode(',', array_fill(0, count($statuses), '?'));
 $sql = "SELECT {$colSql}
-        FROM traveler_documents
-        WHERE traveler_id = ?
-          AND status IN ({$placeholders})
+        FROM traveler_documents d
+        LEFT JOIN doc_type_registry r ON r.doc_type = d.doc_type
+        WHERE d.traveler_id = ?
+          AND d.status IN ({$placeholders})
         ORDER BY
-          CASE doc_type
+          CASE d.doc_type
             WHEN 'passport' THEN 1
-            WHEN 'nid' THEN 2
-            WHEN 'visa' THEN 3
-            WHEN 'air_ticket' THEN 4
-            WHEN 'hotel_voucher' THEN 5
+            WHEN 'nid'      THEN 2
+            WHEN 'visa'     THEN 3
+            WHEN 'air_ticket'     THEN 4
+            WHEN 'hotel_voucher'  THEN 5
             ELSE 99
           END,
-          created_at DESC";
+          d.created_at DESC";
 
 $params = array_merge([$traveler['sys_id']], $statuses);
-$stmt = $pdo->prepare($sql);
+$stmt   = $pdo->prepare($sql);
 $stmt->execute($params);
 $docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ============================================================================
 // Decorate + group
 // ============================================================================
-$groups = [];
+$groups       = [];
 $expiringSoon = [];
-$today = strtotime(date('Y-m-d'));
+$today        = strtotime(date('Y-m-d'));
 
 foreach ($docs as &$doc) {
-    // Parse pages JSON
+
+    // ── Pages JSON parse ──────────────────────────────────────────────────
     if (isset($doc['pages']) && $doc['pages']) {
         $pages = json_decode($doc['pages'], true) ?: [];
-        // Build URLs via serve.php?doc_id=SYS_ID&file=FILENAME
-        if (!empty($pages) && !empty($doc['sys_id'])) {
-            foreach ($pages as &$p) {
-                $p['url'] = buildFileUrl($doc['sys_id'], $p['filename'] ?? '');
-            }
-            unset($p);
+        foreach ($pages as &$p) {
+            $p['url'] = buildFileUrl($doc['sys_id'], $p['filename'] ?? '');
         }
+        unset($p);
         $doc['pages'] = $pages;
     }
 
-    // Parse doc_data/key_fields if requested
+    // ── doc_data / key_fields ─────────────────────────────────────────────
     if ($includeData) {
         if (!empty($doc['doc_data']))   $doc['doc_data']   = json_decode($doc['doc_data'],   true);
         if (!empty($doc['key_fields'])) $doc['key_fields'] = json_decode($doc['key_fields'], true);
     }
 
-    // Compute days_until_expiry for hot UI display
+    // ── Effective expiry — registry rule দিয়ে compute ────────────────────
+    $mode     = $doc['validity_mode']     ?? 'none';
+    $autoDays = (int)($doc['auto_validity_days'] ?? 0);
+    $anchor   = null;
+
+    switch ($mode) {
+        case 'expiry_date':
+            $anchor = !empty($doc['expiry_date']) ? $doc['expiry_date'] : null;
+            break;
+
+        case 'validity_range':
+            $anchor = !empty($doc['validity_to']) ? $doc['validity_to'] : null;
+            break;
+
+        case 'auto_from_issue':
+            if (!empty($doc['issue_date']) && $autoDays > 0) {
+                $anchor = date('Y-m-d', strtotime($doc['issue_date'] . " +{$autoDays} days"));
+            }
+            break;
+
+        case 'auto_from_upload':
+            if ($autoDays > 0 && !empty($doc['created_at'])) {
+                $anchor = date('Y-m-d', strtotime($doc['created_at'] . " +{$autoDays} days"));
+            }
+            break;
+
+        case 'entry_exit':
+            // expiry নেই — entry/exit date + stay days হিসাব
+            $doc['stay_days'] = null;
+            if (!empty($doc['validity_from']) && !empty($doc['validity_to'])) {
+                $doc['stay_days'] = (int)floor(
+                    (strtotime($doc['validity_to']) - strtotime($doc['validity_from'])) / 86400
+                );
+            }
+            break;
+
+        case 'none':
+        default:
+            $anchor = null;
+            break;
+    }
+
+    $doc['effective_expiry'] = $anchor;
+
+    // ── Days until expiry + flags ─────────────────────────────────────────
     $doc['days_until_expiry'] = null;
     $doc['is_expiring_soon']  = false;
     $doc['is_expired']        = false;
-    if (!empty($doc['expiry_date'])) {
-        $exp = strtotime($doc['expiry_date']);
-        if ($exp) {
-            $days = (int)floor(($exp - $today) / 86400);
-            $doc['days_until_expiry'] = $days;
-            $doc['is_expired']        = $days < 0;
-            $doc['is_expiring_soon']  = $days >= 0 && $days <= 30;
 
-            if ($doc['is_expiring_soon'] || $doc['is_expired']) {
-                $expiringSoon[] = [
-                    'sys_id'       => $doc['sys_id'],
-                    'doc_type'     => $doc['doc_type'],
-                    'doc_number'   => $doc['doc_number'],
-                    'expiry_date'  => $doc['expiry_date'],
-                    'days_left'    => $days,
-                    'is_expired'   => $doc['is_expired'],
-                ];
-            }
+    if ($anchor) {
+        $days = (int)floor((strtotime($anchor) - $today) / 86400);
+        $doc['days_until_expiry'] = $days;
+        $doc['is_expired']        = $days < 0;
+        $doc['is_expiring_soon']  = $days >= 0 && $days <= 30;
+
+        if ($doc['is_expiring_soon'] || $doc['is_expired']) {
+            $expiringSoon[] = [
+                'sys_id'        => $doc['sys_id'],
+                'doc_type'      => $doc['doc_type'],
+                'doc_number'    => $doc['doc_number'],
+                'expiry_date'   => $anchor,
+                'days_left'     => $days,
+                'is_expired'    => $doc['is_expired'],
+                'expired_label' => $doc['expired_label'] ?? 'Expired', // ← নতুন line
+            ];
         }
     }
 
-    // Group
+    // ── Group ─────────────────────────────────────────────────────────────
     $groupKey = $doc[$groupBy];
     if (!isset($groups[$groupKey])) $groups[$groupKey] = [];
     $groups[$groupKey][] = $doc;
 }
 unset($doc);
 
-// Sort expiring_soon by urgency (negative days first = expired)
 usort($expiringSoon, fn($a, $b) => $a['days_left'] <=> $b['days_left']);
 
 // ============================================================================
 // Response
 // ============================================================================
 echo json_encode([
-    'success'      => true,
-    'traveler'     => [
-        'sys_id' => $traveler['sys_id'],
-        'name'   => $traveler['name'],
-    ],
-    'total_docs'   => count($docs),
-    'group_by'     => $groupBy,
-    'groups'       => $groups,
-    'expiring_soon'=> $expiringSoon,
+    'success'       => true,
+    'traveler'      => ['sys_id' => $traveler['sys_id'], 'name' => $traveler['name']],
+    'total_docs'    => count($docs),
+    'group_by'      => $groupBy,
+    'groups'        => $groups,
+    'expiring_soon' => $expiringSoon,
 ]);
 
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * SMB file URL — serve.php?doc_id=SYS_ID&file=FILENAME
- * _serveDoc() handler use করে traveler_documents থেকে path resolve করে
- */
 function buildFileUrl($docSysId, $filename) {
     if (!$docSysId || !$filename) return null;
     return '/api/file/serve.php?doc_id=' . urlencode($docSysId) . '&file=' . urlencode($filename);

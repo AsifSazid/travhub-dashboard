@@ -80,12 +80,8 @@
 <script>
 (function() {
     const TRAVELER_ID = <?= json_encode($travelerId) ?>;
-    // parent page (show-travelers.php) এ session_start() হয়ে গেছে ধরে
-    // নিয়ে সরাসরি $_SESSION পড়া হচ্ছে — role='0' মানে admin, শুধু তখনই
-    // Delete/Restore বাটন দেখানো হবে (backend-এও একই check আছে, এটা শুধু UX)
     const IS_ADMIN = <?= json_encode(($_SESSION['role'] ?? null) == '0') ?>;
 
-    // SMB folder order — label = smb_folder name অবিকল (doc requirement অনুযায়ী)
     const FOLDERS = [
         { key: 'passport_identity',      icon: 'fa-passport',    color: 'blue' },
         { key: 'nid',                    icon: 'fa-id-card',     color: 'indigo' },
@@ -96,13 +92,12 @@
         { key: 'personal_documents',     icon: 'fa-file-alt',    color: 'pink' },
         { key: 'photos_signature',       icon: 'fa-image',       color: 'purple' },
         { key: 'travel_history',         icon: 'fa-history',     color: 'teal' },
-        // 'all_documents' folder সরিয়ে দেওয়া হয়েছে — session doc "Design/UX" নোট অনুযায়ী
     ];
 
-    let allDocs = {};       // smb_folder → docs[]
+    let allDocs = {};
     let selectedFolder = null;
     let selectedDoc    = null;
-    let viewingDeleted = false; // true হলে soft-deleted docs দেখাচ্ছে (restore view)
+    let viewingDeleted = false;
 
     // ── Load ──────────────────────────────────────────────────────────────────
     async function load() {
@@ -124,7 +119,6 @@
                 return;
             }
 
-            // API already groups by smb_folder
             allDocs = data.groups || {};
 
             renderExpiringSoon(data.expiring_soon || []);
@@ -132,8 +126,6 @@
 
             document.getElementById('docsExplorer').classList.remove('hidden');
 
-            // Auto-select first non-empty folder — FOLDERS প্রথমে, তারপর কোনো
-            // extra/unlisted folder (যেমন all_documents) থাকলে সেটাও fallback হিসেবে
             const knownFirst = FOLDERS.find(f => allDocs[f.key]?.length);
             const anyFirst   = knownFirst?.key
                 || Object.keys(allDocs).find(k => allDocs[k]?.length);
@@ -154,14 +146,18 @@
         strip.classList.remove('hidden');
         strip.innerHTML = `
             <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex flex-wrap gap-1.5 items-center">
-                <span class="text-xs font-semibold text-amber-800"><i class="fas fa-exclamation-triangle mr-1"></i>Attention</span>
+                <span class="text-xs font-semibold text-amber-800">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>Attention
+                </span>
                 ${items.map(item => {
-                    const isExp = item.is_expired;
-                    const color = isExp ? 'red' : 'amber';
-                    const label = isExp ? `Expired ${Math.abs(item.days_left)}d ago` : `${item.days_left}d left`;
+                    const isExp  = item.is_expired;
+                    const color  = isExp ? 'red' : 'amber';
+                    const label  = isExp
+                        ? `${item.expired_label || 'Expired'} ${Math.abs(item.days_left)}d ago`
+                        : `${item.days_left}d left`;
                     return `<span class="text-xs px-2 py-0.5 rounded-full bg-${color}-100 text-${color}-800 cursor-pointer"
                                   onclick="jumpToDoc('${item.sys_id}')">
-                        ${item.doc_number || item.doc_type} · ${label}
+                        ${escHtml(item.doc_number || item.doc_type)} · ${label}
                     </span>`;
                 }).join('')}
             </div>`;
@@ -172,8 +168,6 @@
         const list = document.getElementById('folderList');
         list.innerHTML = '';
 
-        // all_documents folder-এ কোনো data না থাকলে list-এ দেখাবো না, কিন্তু data
-        // থাকলে অবশ্যই দেখাবো — নাহলে সেই doc গুলো UI থেকে হারিয়ে যায়
         const knownKeys = new Set(FOLDERS.map(f => f.key));
         const extraFolders = Object.keys(allDocs)
             .filter(k => !knownKeys.has(k) && (allDocs[k]?.length > 0))
@@ -202,7 +196,6 @@
         selectedFolder = folderKey;
         selectedDoc    = null;
 
-        // Highlight active folder
         document.querySelectorAll('[id^="folder-"]').forEach(el => {
             el.classList.remove('bg-blue-50', 'text-blue-700', 'font-medium');
         });
@@ -220,12 +213,9 @@
         const empty = document.getElementById('filesEmpty');
 
         grid.innerHTML = '';
-        docsBySysId = {}; // right-click context menu থেকে doc lookup করার জন্য
+        docsBySysId = {};
 
-        if (!docs.length) {
-            empty.classList.remove('hidden');
-            return;
-        }
+        if (!docs.length) { empty.classList.remove('hidden'); return; }
         empty.classList.add('hidden');
 
         docs.forEach(doc => {
@@ -235,44 +225,61 @@
             card.id        = `file-${doc.sys_id}`;
             card.className = `flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100
                               cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all text-center`;
-            card.onclick        = () => selectDoc(doc);
-            card.oncontextmenu  = (e) => { e.preventDefault(); openContextMenu(e, doc); };
+            card.onclick       = () => selectDoc(doc);
+            card.oncontextmenu = (e) => { e.preventDefault(); openContextMenu(e, doc); };
 
             const pages    = doc.pages || [];
             const thumbUrl = pages[0]?.url;
-            const isExpired= doc.is_expired;
-            const expBadge = isExpired
-                ? `<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded">Expired</span>`
-                : (doc.is_expiring_soon
-                    ? `<span class="text-[9px] bg-amber-100 text-amber-700 px-1 rounded">${doc.days_until_expiry}d</span>`
-                    : '');
+
+            // ── Overlay badge (top-right corner of thumbnail) + date line ─────
+            let overlayBadge = '';
+            let dateLine     = '';
+
+            // diagonal corner-ribbon (inside overflow-hidden thumbnail → clipped at rounded edges)
+            const rib = 'absolute top-3 -right-6 w-20 py-[3px] rotate-45 text-white text-[8px] font-extrabold text-center shadow leading-none';
+            if (doc.validity_mode === 'none') {
+                overlayBadge = `<div class="${rib} bg-blue-500">No Expiry</div>`;
+            } else if (doc.is_expired) {
+                overlayBadge = `<div class="${rib} bg-red-600">Expired</div>`;
+                if (doc.effective_expiry) dateLine = `Expired ${formatDate(doc.effective_expiry)}`;
+            } else if (doc.effective_expiry) {
+                const days = doc.days_until_expiry;
+                if (days !== null && days <= 90) {
+                    overlayBadge = `<div class="${rib} bg-amber-500">Expiring</div>`;
+                    dateLine = `Expires ${formatDate(doc.effective_expiry)}`;
+                } else {
+                    overlayBadge = `<div class="${rib} bg-green-500">Valid</div>`;
+                    dateLine = `Valid till ${formatDate(doc.effective_expiry)}`;
+                }
+            }
 
             card.innerHTML = `
-                <div class="w-14 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 border border-gray-200">
+                <div class="relative w-14 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 border border-gray-200">
                     ${thumbUrl
                         ? `<img src="${escHtml(thumbUrl)}" class="w-full h-full object-cover"
                                onerror="this.parentNode.innerHTML='<i class=\\'fas fa-file text-gray-400 text-2xl\\'></i>'">`
                         : `<i class="fas fa-file text-gray-400 text-2xl"></i>`}
+                    ${overlayBadge}
                 </div>
                 <div class="w-full">
-                    <p class="text-xs font-medium text-gray-700 truncate" title="${escHtml(doc.suggested_filename_stem || doc.doc_number || '')}">
+                    <p class="text-xs font-medium text-gray-700 truncate"
+                       title="${escHtml(doc.suggested_filename_stem || doc.doc_number || '')}">
                         ${escHtml(doc.suggested_filename_stem || doc.doc_number || 'unnamed')}
                     </p>
-                    ${expBadge}
+                    ${dateLine ? `<p class="text-xs text-gray-400 mt-0.5">${dateLine}</p>` : ''}
                 </div>`;
 
             grid.appendChild(card);
         });
     }
 
-    // ── Right-click context menu (Windows File Explorer style) ─────────────────
+    // ── Right-click context menu ───────────────────────────────────────────────
     let docsBySysId = {};
 
     function openContextMenu(e, doc) {
         closeContextMenu();
-        selectDoc(doc); // highlight + properties panel (খোলা থাকলে) sync করে দেয়
+        selectDoc(doc);
 
-        // Deleted view — শুধু View + Restore
         if (viewingDeleted) {
             const pagesD = doc.pages || [];
             const m = document.createElement('div');
@@ -339,12 +346,10 @@
 
         document.body.appendChild(menu);
 
-        // viewport এর বাইরে চলে গেলে position ঠিক করো
         const rect = menu.getBoundingClientRect();
         if (rect.right > window.innerWidth)  menu.style.left = `${window.innerWidth - rect.width - 8}px`;
         if (rect.bottom > window.innerHeight) menu.style.top  = `${window.innerHeight - rect.height - 8}px`;
 
-        // menu-র বাইরে click করলে বন্ধ হয়ে যাবে
         setTimeout(() => document.addEventListener('click', closeContextMenu, { once: true }), 0);
     }
 
@@ -382,10 +387,6 @@
         document.getElementById('fileContextMenu')?.remove();
     }
 
-    // ── Properties panel toggle (Windows-এর মতো on/off) ─────────────────────────
-    // window.-তে attach করা আবশ্যক: এই ফাংশন HTML onclick="" attribute থেকে
-    // কল হয়, যা সবসময় global (window) scope-এ resolve হয় — IIFE-এর ভেতরের
-    // local function হিসেবে থাকলে "not defined" error দেয়
     window.togglePropsPanel = function(forceOpen) {
         const panel = document.getElementById('propsPanel');
         const shouldShow = forceOpen !== undefined ? forceOpen : panel.classList.contains('hidden');
@@ -401,25 +402,20 @@
         }
     }
 
-    // ── Select doc → show properties ─────────────────────────────────────────
     function selectDoc(doc) {
         selectedDoc = doc;
 
-        // Highlight selected file
         document.querySelectorAll('[id^="file-"]').forEach(el => {
             el.classList.remove('bg-blue-100', 'border-blue-400');
         });
         const el = document.getElementById(`file-${doc.sys_id}`);
         if (el) el.classList.add('bg-blue-100', 'border-blue-400');
 
-        // Properties panel খোলা থাকলে content sync করো, বন্ধ থাকলে খুলবে না
-        // (Windows explorer এর মতো — click শুধু select করে, properties আলাদা)
         if (!document.getElementById('propsPanel').classList.contains('hidden')) {
             showProps(doc);
         }
     }
 
-    // ── Properties panel header (toggle close বাটনসহ) ───────────────────────────
     function propsHeaderHtml() {
         return `
             <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
@@ -436,23 +432,92 @@
         const content = document.getElementById('propsContent');
         panel.classList.remove('hidden');
 
-        const pages   = doc.pages || [];
-        const folder  = FOLDERS.find(f => f.key === doc.smb_folder) || { key: doc.smb_folder };
+        const pages  = doc.pages || [];
+        const folder = FOLDERS.find(f => f.key === doc.smb_folder) || { key: doc.smb_folder };
+        const mode = doc.validity_mode || 'none';
 
-        // Expiry badge
+        const uiLabel = escHtml(doc.validity_ui_label || 'Expiry Date');
+
+        // ── Expiry badge (Properties panel pill) ─────────────────────────────
         let expBadge = '';
-        if (doc.expiry_date) {
-            if (doc.is_expired) {
-                expBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Expired</span>`;
-            } else if (doc.is_expiring_soon) {
-                expBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">${doc.days_until_expiry}d left</span>`;
+        if (doc.validity_mode === 'none') {
+            expBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">No Expiry</span>`;
+        } else if (doc.is_expired) {
+            expBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">${escHtml(doc.expired_label || 'Expired')}</span>`;
+        } else if (doc.effective_expiry) {
+            const days = doc.days_until_expiry;
+            if (days !== null && days <= 90) {
+                const dLabel = days <= 30 ? `${days}d left` : `${Math.ceil(days / 30)}mo left`;
+                expBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">${dLabel}</span>`;
+            } else {
+                expBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Valid</span>`;
             }
         }
 
+        // ── Validity block ────────────────────────────────────────────────────
+        let validityBlock = '';
+
+        if (mode === 'none') {
+            validityBlock = `
+                <div>
+                    <p class="text-gray-400 uppercase tracking-wide mb-0.5">Validity</p>
+                    <p class="text-gray-400 text-xs italic">Not Applicable</p>
+                </div>`;
+
+        } else if (mode === 'entry_exit') {
+            validityBlock = `
+                <div>
+                    <p class="text-gray-400 uppercase tracking-wide mb-0.5">Entry / Exit</p>
+                    <div class="space-y-0.5">
+                        ${doc.validity_from
+                            ? `<p class="text-gray-700"><span class="text-gray-400">In:</span> ${formatDate(doc.validity_from)}</p>`
+                            : '<p class="text-gray-400 text-xs italic">Entry date — Not recorded</p>'}
+                        ${doc.validity_to
+                            ? `<p class="text-gray-700"><span class="text-gray-400">Out:</span> ${formatDate(doc.validity_to)}</p>`
+                            : '<p class="text-gray-400 text-xs italic">Exit date — Not recorded</p>'}
+                        ${doc.stay_days != null
+                            ? `<p class="text-gray-500 text-xs">Stay: ${doc.stay_days} day${doc.stay_days !== 1 ? 's' : ''}</p>`
+                            : ''}
+                    </div>
+                </div>`;
+
+        } else if (mode === 'validity_range') {
+            validityBlock = `
+                <div>
+                    <p class="text-gray-400 uppercase tracking-wide mb-0.5">${uiLabel}</p>
+                    ${(doc.validity_from && doc.effective_expiry)
+                        ? `<p class="text-gray-700">${formatDate(doc.validity_from)} → ${formatDate(doc.effective_expiry)}</p>`
+                        : (doc.effective_expiry
+                            ? `<p class="text-gray-700">${formatDate(doc.effective_expiry)}</p>`
+                            : '<p class="text-gray-400 text-xs italic">Not recorded</p>')}
+                    ${expBadge ? `<div class="mt-0.5">${expBadge}</div>` : ''}
+                </div>`;
+
+        } else if (doc.effective_expiry) {
+            validityBlock = `
+                <div>
+                    <p class="text-gray-400 uppercase tracking-wide mb-0.5">${uiLabel}</p>
+                    <div class="flex items-center gap-1 flex-wrap">
+                        <p class="text-gray-700">${formatDate(doc.effective_expiry)}</p>
+                        ${expBadge}
+                    </div>
+                    ${(mode === 'auto_from_issue' || mode === 'auto_from_upload')
+                        ? `<p class="text-[10px] text-gray-400 mt-0.5">Auto-calculated</p>`
+                        : ''}
+                </div>`;
+
+        } else {
+            validityBlock = `
+                <div>
+                    <p class="text-gray-400 uppercase tracking-wide mb-0.5">${uiLabel}</p>
+                    <p class="text-gray-400 text-xs italic">Not recorded</p>
+                </div>`;
+        }
+
+        // ── HTML ──────────────────────────────────────────────────────────────
         content.innerHTML = `
             ${propsHeaderHtml()}
 
-            <!-- Thumbnail / preview -->
             <div class="mb-3">
                 ${pages.length && pages[0].url
                     ? `<img src="${escHtml(pages[0].url)}"
@@ -464,24 +529,21 @@
                        </div>`}
             </div>
 
-            <!-- Info -->
             <div class="space-y-2 text-xs">
                 <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Document Number</p>
                     <p class="font-mono font-semibold text-gray-800">${escHtml(doc.doc_number || '—')}</p>
                 </div>
-                ${doc.issue_date ? `<div>
+                ${doc.issue_date ? `
+                <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Issue Date</p>
                     <p class="text-gray-700">${formatDate(doc.issue_date)}</p>
                 </div>` : ''}
-                ${doc.expiry_date ? `<div>
-                    <p class="text-gray-400 uppercase tracking-wide mb-0.5">Expiry Date</p>
-                    <div class="flex items-center gap-1">
-                        <p class="text-gray-700">${formatDate(doc.expiry_date)}</p>
-                        ${expBadge}
-                    </div>
-                </div>` : ''}
-                ${doc.country ? `<div>
+
+                ${validityBlock}
+
+                ${doc.country ? `
+                <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Country</p>
                     <p class="text-gray-700">${escHtml(doc.country)}</p>
                 </div>` : ''}
@@ -493,7 +555,8 @@
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Confidence</p>
                     <p class="text-gray-700">${doc.confidence ? Math.round(doc.confidence * 100) + '%' : '—'}</p>
                 </div>
-                ${pages.length > 1 ? `<div>
+                ${pages.length > 1 ? `
+                <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Pages</p>
                     <div class="flex flex-wrap gap-1">
                         ${pages.map((p, i) => `
@@ -503,13 +566,14 @@
                             </button>`).join('')}
                     </div>
                 </div>` : ''}
-                ${doc.summary ? `<div>
+                ${doc.summary ? `
+                <div>
                     <p class="text-gray-400 uppercase tracking-wide mb-0.5">Summary</p>
                     <p class="text-gray-600 leading-relaxed">${escHtml(doc.summary)}</p>
                 </div>` : ''}
             </div>
 
-            <!-- File actions — right-click context menu-এও একই action গুলো আছে -->
+            <!-- Actions -->
             ${viewingDeleted ? `
             <div class="mt-4 pt-3 border-t border-gray-200 space-y-1.5">
                 <p class="text-[10px] text-red-500 px-2">This document is deleted</p>
@@ -528,8 +592,7 @@
                 <button onclick="copyImageToClipboard('${escHtml(pages[0].url)}', this)"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 text-gray-700 flex items-center gap-2">
                     <i class="fas fa-copy w-3 text-gray-500"></i> Copy Image
-                </button>
-                ` : ''}
+                </button>` : ''}
                 ${doc.doc_type !== 'passport' ? `
                 <button onclick="startRenameDoc('${doc.sys_id}', '${escHtml(doc.suggested_filename_stem || '')}')"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 text-gray-700 flex items-center gap-2">
@@ -538,10 +601,8 @@
                 <button onclick="startMoveDoc('${doc.sys_id}', '${escHtml(doc.smb_folder)}')"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 text-gray-700 flex items-center gap-2">
                     <i class="fas fa-folder-open w-3 text-gray-500"></i> Move to Folder
-                </button>
-                ` : `
-                <p class="text-[10px] text-gray-400 px-2 py-1">Passport ফাইলের নাম/folder systematic — rename/move নেই</p>
-                `}
+                </button>` : `
+                <p class="text-[10px] text-gray-400 px-2 py-1">Passport ফাইলের নাম/folder systematic — rename/move নেই</p>`}
                 ${IS_ADMIN ? `
                 <button onclick="startDeleteDoc('${doc.sys_id}')"
                     class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-red-50 text-red-600 flex items-center gap-2">
@@ -550,25 +611,17 @@
             </div>`}`;
     }
 
-    // ── Copy Image (clipboard) ──────────────────────────────────────────────────
-    // Client-side, কোনো API লাগে না — image fetch করে blob বানিয়ে সরাসরি
-    // clipboard-এ কপি করে দেয়, যেকোনো জায়গায় paste করা যাবে
+    // ── Copy Image ────────────────────────────────────────────────────────────
     window.copyImageToClipboard = async function(url, btnEl) {
         const original = btnEl.innerHTML;
         try {
             const res  = await fetch(url);
             const blob = await res.blob();
-
-            // clipboard.write() strict user-gesture এর মধ্যেই হতে হয়, তাই
-            // window.focus() + ছোট delay — না হলে কিছু browser এ
-            // NotAllowedError আসে
             window.focus();
             await new Promise(r => setTimeout(r, 100));
-
             await navigator.clipboard.write([
                 new ClipboardItem({ [blob.type]: blob })
             ]);
-
             btnEl.innerHTML = '<i class="fas fa-check w-3 text-green-500"></i> Copied!';
             setTimeout(() => { btnEl.innerHTML = original; }, 1500);
         } catch (err) {
@@ -606,7 +659,6 @@
 
     window.confirmMoveDoc = function(sysId) {
         const newFolder = document.getElementById('moveTargetFolder').value;
-
         fetch(`/api/travelers/move-document.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -616,12 +668,8 @@
         .then(r => r.json())
         .then(res => {
             document.querySelectorAll('.fixed.inset-0.bg-black\\/50').forEach(el => el.remove());
-            if (res.success) {
-                hideProps();
-                load();
-            } else {
-                alert('Move ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
-            }
+            if (res.success) { hideProps(); load(); }
+            else alert('Move ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
         })
         .catch(err => alert('Move এ সমস্যা: ' + err.message));
     }
@@ -629,7 +677,7 @@
     // ── Rename ────────────────────────────────────────────────────────────────
     window.startRenameDoc = function(sysId, currentStem) {
         const newStem = prompt('নতুন filename (extension ছাড়া, শুধু letters/numbers/underscore):', currentStem);
-        if (newStem === null) return; // cancelled
+        if (newStem === null) return;
         if (!newStem.trim()) { alert('নাম খালি রাখা যাবে না'); return; }
 
         fetch(`/api/travelers/rename-document.php`, {
@@ -640,16 +688,13 @@
         })
         .then(r => r.json())
         .then(res => {
-            if (res.success) {
-                load(); // পুরো তালিকা রিফ্রেশ, নতুন filename দেখানোর জন্য
-            } else {
-                alert('Rename ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
-            }
+            if (res.success) { load(); }
+            else alert('Rename ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
         })
         .catch(err => alert('Rename এ সমস্যা: ' + err.message));
     }
 
-    // ── Delete (soft) — reason আবশ্যক + sys_id confirm করতে হবে ────────────────
+    // ── Delete (soft) ─────────────────────────────────────────────────────────
     window.startDeleteDoc = function(sysId) {
         const overlay = document.createElement('div');
         overlay.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
@@ -682,14 +727,8 @@
         const confirmInput = document.getElementById('delConfirmInput').value.trim();
         const reason       = document.getElementById('delReasonInput').value.trim();
 
-        if (confirmInput !== sysId) {
-            alert('Document ID মেলেনি — আবার চেষ্টা করুন');
-            return;
-        }
-        if (reason.length < 5) {
-            alert('Delete করার কারণ লিখুন (কমপক্ষে ৫ অক্ষর)');
-            return;
-        }
+        if (confirmInput !== sysId) { alert('Document ID মেলেনি — আবার চেষ্টা করুন'); return; }
+        if (reason.length < 5)      { alert('Delete করার কারণ লিখুন (কমপক্ষে ৫ অক্ষর)'); return; }
 
         fetch(`/api/travelers/delete-document.php`, {
             method: 'POST',
@@ -700,12 +739,8 @@
         .then(r => r.json())
         .then(res => {
             document.querySelectorAll('.fixed.inset-0.bg-black\\/50').forEach(el => el.remove());
-            if (res.success) {
-                hideProps();
-                load();
-            } else {
-                alert('Delete ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
-            }
+            if (res.success) { hideProps(); load(); }
+            else alert('Delete ব্যর্থ: ' + (res.message || 'অজানা কারণ'));
         })
         .catch(err => alert('Delete এ সমস্যা: ' + err.message));
     }
@@ -756,11 +791,10 @@
                 selectFolder(folder);
                 setTimeout(() => {
                     selectDoc(doc);
-                    showProps(doc); // Attention badge থেকে এলে properties খুলে দাও
+                    showProps(doc);
                     const el = document.getElementById(`file-${doc.sys_id}`);
                     if (el) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        // ২ সেকেন্ডের জন্য pulse করে চোখে পড়াও
                         el.classList.add('ring-2', 'ring-amber-400');
                         setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400'), 2000);
                     }

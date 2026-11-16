@@ -828,6 +828,7 @@ $deepLinkSw = $_GET['sw'] ?? '';
 </script>
 <!-- ══ End Common Note Menu System ══ -->
 
+<!-- Air Ticket Module -->
 <script src="../pages/task-tabs/ww-air-tickets/_state.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/_helpers.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/gds-panel.js?t=<?php echo time(); ?>"></script>
@@ -836,6 +837,7 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <script src="../pages/task-tabs/ww-air-tickets/booking.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/confirmation.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-air-tickets/index.js?t=<?php echo time(); ?>"></script>
+<!-- Hotel Module -->
 <script src="../pages/task-tabs/ww-hotel/_state.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-hotel/_helpers.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-hotel/mindboard.js?t=<?php echo time(); ?>"></script>
@@ -843,12 +845,14 @@ $deepLinkSw = $_GET['sw'] ?? '';
 <script src="../pages/task-tabs/ww-hotel/booking.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-hotel/confirmation.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-hotel/index.js?t=<?php echo time(); ?>"></script>
+<!-- Transport Module -->
 <script src="../pages/task-tabs/ww-transport/_state.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-transport/_helpers.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-transport/mindboard.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-transport/quotation.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-transport/confirmation.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-transport/index.js?t=<?php echo time(); ?>"></script>
+<!-- Umrah Module -->
 <script src="../pages/task-tabs/ww-umrah/_state.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/_helper.js?t=<?php echo time(); ?>"></script>
 <script src="../pages/task-tabs/ww-umrah/travelers.js?t=<?php echo time(); ?>"></script>
