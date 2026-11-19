@@ -6,7 +6,7 @@ function generateEmployeeId(int $department, string $joiningDate): string
     global $pdo;
 
     // Validate department
-    if ($department < 1 || $department > 8) {
+    if ($department < 1 || $department > 12) {
         throw new Exception('Invalid Department');
     }
 

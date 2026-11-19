@@ -33,9 +33,10 @@ if (!$invoiceId || !$token) {
 
 try {
     $stmt = $pdo->prepare("SELECT * FROM invoices WHERE sys_id = ? AND public_token = ?");
+    
     $stmt->execute([$invoiceId, $token]);
     $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
     if (!$invoice) {
         http_response_code(403);
         echo 'Invalid invoice link';
@@ -56,6 +57,7 @@ try {
     // lookup on the clients table (whose phone/address are themselves JSON)
     // if client_info is missing or incomplete.
     $clientInfo = json_decode($invoice['client_info'] ?? '{}', true) ?: [];
+    
 
     $clientStmt = $pdo->prepare("SELECT * FROM clients WHERE sys_id = ?");
     $clientStmt->execute([$invoice['client_sys_id']]);
@@ -77,7 +79,9 @@ try {
 
     // PLACEHOLDER: adjust these URLs to your actual domain once deployed.
     
-    $baseUrl    = 'https://dev.travhub.com.bd/api/epsgw';
+    
+    $baseUrl    = 'https://admin.travhub.com.bd/api/epsgw';
+    
     $successUrl = "{$baseUrl}/verify-callback.php?invoice_id=" . urlencode($invoiceId) . "&token=" . urlencode($token) . "&result=success";
     $failUrl    = "{$baseUrl}/verify-callback.php?invoice_id=" . urlencode($invoiceId) . "&token=" . urlencode($token) . "&result=fail";
     $cancelUrl  = "{$baseUrl}/verify-callback.php?invoice_id=" . urlencode($invoiceId) . "&token=" . urlencode($token) . "&result=cancel";

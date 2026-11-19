@@ -458,12 +458,31 @@ function reRenderAllCards() {
     }
 }
 
-/* ── Traveler-specific flights ── */
+/* ── Traveler-specific flights — deduplicated by PNR ── */
 function getTravelerFlights(travSysId) {
     const segs = groupData?.segments ?? [];
-    return segs.filter(f =>
-        f.legs && (f.passengers ?? []).some(p => p.traveler_sys_id === travSysId)
-    );
+    const seen = new Map(); // key: PNR, value: flight object
+
+    segs.forEach(f => {
+        const hasTrav = (f.passengers ?? []).some(p => p.traveler_sys_id === travSysId);
+        if (!hasTrav || !f.legs) return;
+
+        // Normalize airline name (remove spaces, lowercase for comparison)
+        const airlineNorm = (f.airline || '').replace(/\s+/g, '').toLowerCase();
+        const pnr         = (f.pnr || '').trim().toUpperCase();
+        const key         = pnr || (airlineNorm + '_' + (f.legs[0]?.dep_date || ''));
+
+        if (!seen.has(key)) {
+            // First time seeing this PNR — clone and normalize airline name
+            seen.set(key, {
+                ...f,
+                airline: (f.airline || '').trim().replace(/\s+/g, ' '),
+            });
+        }
+        // If already seen same PNR, skip (duplicate entry)
+    });
+
+    return [...seen.values()];
 }
 
 function buildFlightHtml(flights, accentColor) {

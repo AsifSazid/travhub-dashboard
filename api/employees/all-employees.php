@@ -7,6 +7,7 @@ require '../../server/db_connection.php';
 
 header('Content-Type: application/json');
 
+
 try {
     $stmt = $pdo->prepare("
         SELECT * FROM employees
